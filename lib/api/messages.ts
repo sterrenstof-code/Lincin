@@ -31,6 +31,8 @@ export type AttachmentInfo = {
 export type MessageContent = {
   text?: string;
   attachment?: AttachmentInfo;
+  /** Aanwezig wanneer dit bericht een videogesprek-uitnodiging is. */
+  call?: { started: true };
 };
 
 export type DecryptedMessage = {
@@ -143,9 +145,10 @@ export async function sendMessage(args: {
   senderId: string;
   text?: string;
   attachment?: AttachmentInfo;
+  call?: { started: true };
 }): Promise<{ id: string; created_at: string }> {
-  if (!args.text && !args.attachment) {
-    throw new Error("Bericht heeft tekst of bijlage nodig.");
+  if (!args.text && !args.attachment && !args.call) {
+    throw new Error("Bericht heeft tekst, bijlage of call nodig.");
   }
 
   const { data: members, error } = await supabase
@@ -165,6 +168,7 @@ export async function sendMessage(args: {
   const content: MessageContent = {};
   if (args.text) content.text = args.text;
   if (args.attachment) content.attachment = args.attachment;
+  if (args.call) content.call = args.call;
 
   const payloads = encryptForRecipients(enc.encode(JSON.stringify(content)), recipients);
 

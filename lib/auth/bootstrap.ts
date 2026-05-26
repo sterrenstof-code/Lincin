@@ -16,8 +16,9 @@ export async function bootstrapProfile(args: {
   userId: string;
   email: string;
   preferredUsername?: string;
-}): Promise<{ username: string | null; pubkeyMismatch: boolean }> {
+}): Promise<{ username: string | null; pubkeyMismatch: boolean; isNewDevice: boolean }> {
   // 1. Load or generate identity keypair on this device.
+  const hadLocalKeys = !!(await loadIdentity());
   let identity = await loadIdentity();
   if (!identity) {
     identity = await generateAndStoreIdentity();

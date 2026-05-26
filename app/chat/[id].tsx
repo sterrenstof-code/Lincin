@@ -90,6 +90,8 @@ export default function ChatDetail() {
   >(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
+  // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
+  const callSentRef = useRef(false);
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -486,13 +488,23 @@ export default function ChatDetail() {
               </View>
             </Pressable>
             <Pressable
-              onPress={() => {
+              onPress={async () => {
                 if (!id) return;
                 // Op web: open in-app modal. Op native: open in browser.
                 if (typeof window !== "undefined" && window.document) {
                   setCallOpen(true);
                 } else {
                   openJitsiCall(id).catch(() => {});
+                }
+                // Stuur één keer per sessie een call-notificatie in de chat,
+                // zodat andere deelnemers een "Deelnemen"-kaart te zien krijgen.
+                if (!callSentRef.current && myUserId) {
+                  callSentRef.current = true;
+                  try {
+                    await sendMessage({ chatId: id, senderId: myUserId, call: { started: true } });
+                  } catch (e: any) {
+                    console.warn("sendCallMessage", e?.message ?? e);
+                  }
                 }
               }}
               className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
@@ -580,6 +592,26 @@ export default function ChatDetail() {
                 const senderColor = colorForSenderId(item.sender_id);
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
+                // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
+                if (item.content?.call?.started) {
+                  return (
+                    <View style={{ marginTop: 8 }}>
+                      <CallNotificationCard
+                        msg={item}
+                        isMine={isMine}
+                        senderName={senderName}
+                        onJoin={() => {
+                          if (typeof window !== "undefined" && window.document) {
+                            setCallOpen(true);
+                          } else {
+                            openJitsiCall(item.chat_id).catch(() => {});
+                          }
+                        }}
+                      />
+                    </View>
+                  );
+                }
+
                 return (
                   <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
                     <MessageBubble
@@ -971,6 +1003,47 @@ function colorForSenderId(id: string): string {
     hash = ((hash * 31) + id.charCodeAt(i)) | 0;
   }
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+}
+
+function CallNotificationCard({
+  msg,
+  isMine,
+  senderName,
+  onJoin,
+}: {
+  msg: DecryptedMessage;
+  isMine: boolean;
+  senderName: string;
+  onJoin: () => void;
+}) {
+  const time = new Date(msg.created_at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <View className="items-center my-1">
+      <View
+        className="bg-paper-soft rounded-2xl px-4 py-3 flex-row items-center gap-3"
+        style={{ maxWidth: 320, width: "100%" }}
+      >
+        <View className="w-10 h-10 rounded-full bg-blue-500/15 items-center justify-center">
+          <Ionicons name="videocam" color="#5B8DEF" size={18} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-ink font-semibold text-sm">
+            {isMine ? "Je startte een videogesprek" : `${senderName} startte een videogesprek`}
+          </Text>
+          <Text className="text-ink-muted text-xs mt-0.5">{time}</Text>
+        </View>
+        <Pressable
+          onPress={onJoin}
+          className="bg-blue-500 active:bg-blue-600 rounded-full px-3 py-1.5"
+        >
+          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Deelnemen</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 function AttachmentView({
