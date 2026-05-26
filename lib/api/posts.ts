@@ -14,6 +14,8 @@ export type PostWithAuthor = PostRow & {
   author: Profile | null;
   /** Signed image URL — only present when image_path is set. */
   image_url: string | null;
+  /** Aantal reacties op deze post (via embedded PostgREST count). */
+  comment_count: number;
 };
 
 const POSTS_BUCKET = "posts";
@@ -103,13 +105,15 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
 }
 
 export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
+  // comments(count) is een PostgREST embedded aggregate — geeft [{count: N}] per rij.
+  // RLS op comments piggybacks op posts, dus de count respecteert bestaande visibility-regels.
   const { data, error } = await supabase
     .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at")
+    .select("id, user_id, image_path, caption, link_url, created_at, comments(count)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const rows = (data ?? []) as PostRow[];
+  const rows = (data ?? []) as (PostRow & { comments: { count: number }[] })[];
   if (rows.length === 0) return [];
 
   const authorIds = Array.from(new Set(rows.map((r) => r.user_id)));
@@ -121,18 +125,19 @@ export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
+    comment_count: (r.comments?.[0]?.count as number) ?? 0,
   }));
 }
 
 export async function listUserPosts(userId: string, limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at")
+    .select("id, user_id, image_path, caption, link_url, created_at, comments(count)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const rows = (data ?? []) as PostRow[];
+  const rows = (data ?? []) as (PostRow & { comments: { count: number }[] })[];
   if (rows.length === 0) return [];
 
   const authors = await getProfiles([userId]);
@@ -143,6 +148,7 @@ export async function listUserPosts(userId: string, limit = 50): Promise<PostWit
     ...r,
     author,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
+    comment_count: (r.comments?.[0]?.count as number) ?? 0,
   }));
 }
 

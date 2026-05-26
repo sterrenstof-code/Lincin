@@ -214,6 +214,25 @@ function PostCard({
       )}
 
       {hasLink && post.link_url && <LinkCard url={post.link_url} />}
+
+      {/* Reacties-footer — altijd zichtbaar, tikt door naar post detail */}
+      <Pressable
+        onPress={onPress}
+        className="flex-row items-center px-4 pb-3 pt-2"
+      >
+        <Ionicons
+          name={post.comment_count > 0 ? "chatbubble" : "chatbubble-outline"}
+          color="#8C7B6B"
+          size={14}
+        />
+        <Text className="text-ink-muted text-sm ml-2">
+          {post.comment_count === 0
+            ? "Reageer"
+            : post.comment_count === 1
+            ? "1 reactie"
+            : `${post.comment_count} reacties`}
+        </Text>
+      </Pressable>
     </View>
   );
 }
