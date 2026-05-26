@@ -2,7 +2,7 @@ import "../global.css";
 
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
@@ -25,9 +25,37 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const router = useRouter();
+
   useEffect(() => {
     initCryptoRandom();
   }, []);
+
+  useEffect(() => {
+    // Wanneer de PWA heropend wordt vanuit de achtergrond, onthoudt iOS de
+    // exacte URL van de laatste pagina (bv. /chat/abc). Dit geeft een lege
+    // of gebroken chat bij herstart. We detecteren standalone-modus bij mount
+    // en sturen detail-routes terug naar / zodat index.tsx naar de feed leidt.
+    //
+    // Uitzondering: push-notificatie navigatie (via SW postMessage) vuurt
+    // ná deze mount, dus die overschrijft de redirect correct.
+    if (typeof window === "undefined") return;
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      !!(window.navigator as any).standalone;
+    if (!isStandalone) return;
+
+    const path = window.location.pathname;
+    const isDetailRoute =
+      path.startsWith("/chat/") ||
+      path.startsWith("/post/") ||
+      path.startsWith("/event/") ||
+      path.startsWith("/user/");
+    if (isDetailRoute) {
+      router.replace("/");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // enkel op mount — niet bij elke navigatie
 
   return (
     <ErrorBoundary>
