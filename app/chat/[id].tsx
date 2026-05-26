@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
+import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Skeleton } from "@/components/Skeleton";
@@ -63,7 +64,7 @@ import {
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
-import { openJitsiCall } from "@/lib/jitsi";
+import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -82,6 +83,7 @@ export default function ChatDetail() {
   );
   const [reactions, setReactions] = useState<ReactionRow[]>([]);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
   const [reactionPicker, setReactionPicker] = useState<DecryptedMessage | null>(null);
   const [mentionList, setMentionList] = useState<
     { display: string; username: string }[] | null
@@ -483,15 +485,20 @@ export default function ChatDetail() {
                 </View>
               </View>
             </Pressable>
-            {/* Video-call knop verborgen tot Jitsi-flow productie-klaar is.
-                openJitsiCall blijft geïmporteerd zodat de code intact blijft
-                — alleen geen UI-ingang meer. */}
-            {/* <Pressable
-              onPress={() => id && openJitsiCall(id).catch(() => {})}
+            <Pressable
+              onPress={() => {
+                if (!id) return;
+                // Op web: open in-app modal. Op native: open in browser.
+                if (typeof window !== "undefined" && window.document) {
+                  setCallOpen(true);
+                } else {
+                  openJitsiCall(id).catch(() => {});
+                }
+              }}
               className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
             >
               <Ionicons name="videocam-outline" color="#1A1714" size={18} />
-            </Pressable> */}
+            </Pressable>
             {chat?.type === "group" && (
               <Pressable
                 onPress={() => router.push(`/group/${id}`)}
@@ -530,6 +537,22 @@ export default function ChatDetail() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, gap: 6 }}
               onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+              ListHeaderComponent={
+                // Toon één uitlegbanner als er berichten zijn die niet
+                // ontsleuteld konden worden — dit is normaal als de gebruiker
+                // voor het eerst inlogt op een nieuw apparaat of browser.
+                // Één melding bovenaan is duidelijker dan tientallen ⚠ bubbles.
+                messages.some((m) => m.content === null) ? (
+                  <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
+                    <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
+                    <Text className="text-ink-soft text-xs leading-5 flex-1">
+                      Sommige berichten zijn versleuteld met de sleutel van een
+                      ander apparaat en kunnen hier niet gelezen worden. Stuur
+                      een nieuw bericht — dat werkt wel.
+                    </Text>
+                  </View>
+                ) : null
+              }
               renderItem={({ item, index }) => {
                 const prev = index > 0 ? messages[index - 1] : null;
                 const next =
@@ -687,6 +710,14 @@ export default function ChatDetail() {
             setReactionPicker(null);
           }}
         />
+
+        {id && (
+          <VideoCallModal
+            chatId={id}
+            visible={callOpen}
+            onClose={() => setCallOpen(false)}
+          />
+        )}
       </ScreenContainer>
     </SafeAreaView>
   );
@@ -823,9 +854,9 @@ function MessageBubble({
       >
         {content === null ? (
           <Text
-            className={`italic px-1 ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
+            className={`italic px-1 text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
           >
-            ⚠ Kon niet ontsleutelen
+            🔒 versleuteld
           </Text>
         ) : (
           <>

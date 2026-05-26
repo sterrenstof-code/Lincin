@@ -1,21 +1,29 @@
 import * as Linking from "expo-linking";
 
 /**
- * Open een Jitsi Meet room voor deze chat. Jitsi is een tussenstap tot we
- * native WebRTC calling bouwen. Op iOS opent de Jitsi Meet app als die
- * geïnstalleerd is, anders Safari. Op web opent meet.jit.si direct.
+ * Jitsi via meet.jit.si — volledig gratis, geen account, geen minuten-limiet.
+ * Rooms zijn technisch publiek maar de naam is UUID-afgeleid en dus praktisch
+ * onraadbaar. Voor echte toegangscontrole: voeg later een JWT toe via JaaS.
  *
- * De roomname leiden we deterministisch af van de chat-id zodat alle
- * deelnemers met dezelfde URL terechtkomen.
+ * Room-slug: "lincin-" + chatId (UUID met koppelstreepjes).
+ * Deterministisch → alle deelnemers met dezelfde chatId komen in dezelfde room.
  */
-export function buildJitsiRoomUrl(chatId: string, opts?: { audioOnly?: boolean }): string {
-  const slug = chatId.replace(/-/g, "").slice(0, 24);
-  const room = `Lincin-${slug}`;
-  const config = opts?.audioOnly ? "#config.startAudioOnly=true" : "";
-  return `https://meet.jit.si/${room}${config}`;
+function roomSlug(chatId: string): string {
+  return `lincin-${chatId}`;
 }
 
-export async function openJitsiCall(chatId: string, opts?: { audioOnly?: boolean }): Promise<void> {
-  const url = buildJitsiRoomUrl(chatId, opts);
-  await Linking.openURL(url);
+/**
+ * Iframe-embedbare URL voor meet.jit.si.
+ * ?minimal=1 is niet ondersteund op meet.jit.si; de standaard UI is voldoende.
+ */
+export function buildJitsiEmbedUrl(chatId: string): string {
+  return `https://meet.jit.si/${roomSlug(chatId)}`;
+}
+
+/**
+ * Open een Jitsi call in de browser (native fallback).
+ * Op iOS/Android opent dit in Safari/Chrome; de in-app modal is web-only.
+ */
+export async function openJitsiCall(chatId: string): Promise<void> {
+  await Linking.openURL(buildJitsiEmbedUrl(chatId));
 }
