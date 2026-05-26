@@ -1,0 +1,236 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Redirect, Tabs } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+
+import { useAuth } from "@/lib/auth/provider";
+import { bootstrapProfile } from "@/lib/auth/bootstrap";
+import { listMyChats } from "@/lib/api/chats";
+import { subscribeToAllMyMessages } from "@/lib/api/messages";
+import { addNotificationTapListener, registerPushToken } from "@/lib/push";
+import { supabase } from "@/lib/supabase/client";
+
+export default function AppLayout() {
+  const { session, loading, hasPassword } = useAuth();
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!session) return;
+    (async () => {
+      try {
+        await bootstrapProfile({
+          userId: session.user.id,
+          email: session.user.email ?? "unknown@example.com",
+        });
+      } catch (err) {
+        console.warn("bootstrapProfile failed", err);
+      } finally {
+        setBootstrapping(false);
+      }
+    })();
+  }, [session]);
+
+  // Totaal aantal ongelezen berichten over alle chats — toont op de
+  // Chats-tab als badge zodat je ziet wanneer iemand jou geschreven heeft.
+  // Friend-requests krijgen géén tab-badge (te ruis), enkel de incoming-
+  // teller op de Vrienden-pagina zelf.
+  //
+  // We hoeven niet meer aggressief te pollen want we hebben een globale
+  // realtime subscription die de query invalideert bij elk inkomend bericht.
+  // refetchOnWindowFocus vangt netwerk-blips op: keer terug naar de tab en
+  // we trekken meteen de actuele state binnen (catch-up voor wat realtime
+  // tijdens disconnect heeft gemist).
+  const chats = useQuery({
+    queryKey: ["chats", session?.user.id ?? "anon"],
+    queryFn: () => listMyChats(session!.user.id),
+    enabled: !!session && !bootstrapping && hasPassword,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  const totalUnread = (chats.data ?? []).reduce(
+    (sum, c) => sum + (c.unread_count ?? 0),
+    0
+  );
+
+  // Globale realtime: zodra er ergens in een van mijn chats een nieuw
+  // bericht valt, invalideren we de chatlijst zodat de bottom-bar badge,
+  // de chats-screen, én eventuele "laatst bericht" previews direct
+  // updaten. Telegram-snel — geen 30s poll-wait meer.
+  useEffect(() => {
+    if (!session || bootstrapping || !hasPassword) return;
+    const myId = session.user.id;
+    const channel = subscribeToAllMyMessages(myId, () => {
+      qc.invalidateQueries({ queryKey: ["chats", myId] });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, bootstrapping, hasPassword, qc]);
+
+  // Web: zet ongelezen-aantal in de browser tab-titel zodat je het ziet
+  // wanneer Lincin in een andere tab open staat. Poor-man's web push.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const base = "Lincin";
+    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ${base}` : base;
+    return () => {
+      document.title = base;
+    };
+  }, [totalUnread]);
+
+  useEffect(() => {
+    if (!session || bootstrapping || !hasPassword) return;
+    registerPushToken(session.user.id).catch(() => {});
+  }, [session, bootstrapping, hasPassword]);
+
+  useEffect(() => {
+    return addNotificationTapListener((data) => {
+      if (data?.chat_id) {
+        import("expo-router").then(({ router }) => {
+          router.push(`/chat/${data.chat_id}`);
+        });
+      } else if (data?.post_id) {
+        import("expo-router").then(({ router }) => {
+          router.push(`/post/${data.post_id}`);
+        });
+      }
+    });
+  }, []);
+
+  if (loading) return null;
+  if (!session) return <Redirect href="/(auth)/login" />;
+  if (!hasPassword) return <Redirect href="/set-password" />;
+
+  if (bootstrapping) {
+    return (
+      <View className="flex-1 items-center justify-center bg-shell">
+        <ActivityIndicator color="#F5E8D3" />
+      </View>
+    );
+  }
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: "#15141A",
+          borderTopColor: "#2A2620",
+          borderTopWidth: 1,
+          height: 68,
+          paddingTop: 8,
+          paddingBottom: 10,
+        },
+        tabBarActiveTintColor: "#1A1714",
+        tabBarInactiveTintColor: "#8A8275",
+        tabBarShowLabel: false,
+        tabBarItemStyle: { paddingHorizontal: 4 },
+        tabBarBadgeStyle: {
+          backgroundColor: "#E66B3F",
+          color: "#F5E8D3",
+          fontSize: 10,
+          fontWeight: "700",
+          minWidth: 18,
+          height: 18,
+          lineHeight: 18,
+        },
+      }}
+      tabBar={(props) => (
+        <PaperTabBar {...props} totalUnread={totalUnread} />
+      )}
+    >
+      <Tabs.Screen name="feed" />
+      <Tabs.Screen name="events" />
+      <Tabs.Screen name="chats" />
+      <Tabs.Screen name="friends" />
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}
+
+/**
+ * Custom tab bar geïnspireerd op de screenshot referentie: een paper-warm
+ * pil rondom de actieve tab, cream icoon op shell achtergrond voor inactieve.
+ */
+function PaperTabBar({
+  state,
+  descriptors,
+  navigation,
+  totalUnread,
+}: any) {
+  const tabs: Array<{
+    key: string;
+    routeName: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+  }> = [
+    { key: "feed", routeName: "feed", icon: "images-outline", label: "Feed" },
+    { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
+    { key: "chats", routeName: "chats", icon: "chatbubbles-outline", label: "Chats" },
+    { key: "friends", routeName: "friends", icon: "people-outline", label: "Vrienden" },
+    { key: "profile", routeName: "profile", icon: "person-outline", label: "Profiel" },
+  ];
+
+  return (
+    <View className="bg-shell-soft border-t border-line">
+      <View
+        className="flex-row items-center py-2 px-3 self-center"
+        style={{ width: "100%", maxWidth: 600 }}
+      >
+        {tabs.map((tab, index) => {
+          const route = state.routes.find((r: any) => r.name === tab.routeName);
+          if (!route) return null;
+          const isFocused =
+            state.index === state.routes.findIndex((r: any) => r.name === tab.routeName);
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+          const badge =
+            tab.routeName === "chats" && totalUnread > 0 ? totalUnread : 0;
+
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={onPress}
+              className={`flex-1 items-center justify-center py-2 mx-0.5 rounded-full ${
+                isFocused ? "bg-paper-warm" : ""
+              }`}
+            >
+              <View>
+                <Ionicons
+                  name={tab.icon}
+                  size={isFocused ? 18 : 20}
+                  color={isFocused ? "#1A1714" : "#8A8275"}
+                />
+                {badge > 0 && (
+                  <View
+                    className="bg-flame rounded-full absolute -right-2 -top-1.5 px-1.5"
+                    style={{ minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Text className="text-cream text-[9px] font-bold">
+                      {badge > 99 ? "99+" : badge}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {isFocused && (
+                <Text className="text-ink text-[10px] font-semibold mt-0.5">
+                  {tab.label}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
