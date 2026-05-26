@@ -49,6 +49,25 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * Bepaal de redirect-URL voor magic-link / confirmation-mails. Op web gebruiken
+ * we `window.location.origin` zodat preview-deploys, productie en lokaal dev
+ * elk naar hun eigen origin terugverwijzen — anders zou Supabase terugvallen
+ * op de in het dashboard ingestelde Site URL, wat tot links-naar-localhost
+ * leidt zodra een dev-Site-URL is blijven staan. Op native (toekomstig) valt
+ * `window` weg en gebruiken we de expliciet geconfigureerde public URL.
+ *
+ * Belangrijk: elke origin die hier teruggegeven kan worden, moet ook staan in
+ * Supabase → Authentication → URL Configuration → Redirect URLs allowlist,
+ * anders weigert Supabase de redirect.
+ */
+function getAuthRedirectUrl(): string | undefined {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return process.env.EXPO_PUBLIC_PUBLIC_URL;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signInWithEmail(email: string) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { shouldCreateUser: true },
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: getAuthRedirectUrl(),
+          },
         });
         return { error };
       },
@@ -105,7 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { has_password: true } },
+          options: {
+            data: { has_password: true },
+            emailRedirectTo: getAuthRedirectUrl(),
+          },
         });
         if (error) {
           return { error, needsConfirmation: false, alreadyExists: false };
@@ -135,11 +160,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       },
       async sendPasswordReset(email: string) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: getAuthRedirectUrl(),
+        });
         return { error };
       },
       async resendConfirmation(email: string) {
-        const { error } = await supabase.auth.resend({ type: "signup", email });
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: getAuthRedirectUrl() },
+        });
         return { error };
       },
       async signOut() {
