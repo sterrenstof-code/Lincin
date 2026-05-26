@@ -483,12 +483,15 @@ export default function ChatDetail() {
                 </View>
               </View>
             </Pressable>
-            <Pressable
+            {/* Video-call knop verborgen tot Jitsi-flow productie-klaar is.
+                openJitsiCall blijft geïmporteerd zodat de code intact blijft
+                — alleen geen UI-ingang meer. */}
+            {/* <Pressable
               onPress={() => id && openJitsiCall(id).catch(() => {})}
               className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
             >
               <Ionicons name="videocam-outline" color="#1A1714" size={18} />
-            </Pressable>
+            </Pressable> */}
             {chat?.type === "group" && (
               <Pressable
                 onPress={() => router.push(`/group/${id}`)}

@@ -12,15 +12,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonListCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import {
   chatTitle,
+  deleteChatForEveryone,
   getOrCreateDirectChat,
+  hideChat,
+  leaveChat,
   listMyChats,
-  otherMember,
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -32,6 +35,14 @@ export default function ChatsScreen() {
   const qc = useQueryClient();
 
   const [filter, setFilter] = useState("");
+  // Twee-traps menu voor chat-acties:
+  //   menuChat = chat waarvoor de eerste sheet (acties-lijst) open is
+  //   confirmKind = welke destructieve actie wacht op bevestiging
+  // We splitsen ze omdat hideChat geen confirm hoeft, maar leave/delete wel.
+  const [menuChat, setMenuChat] = useState<ChatWithMembers | null>(null);
+  const [confirmKind, setConfirmKind] = useState<
+    null | { chat: ChatWithMembers; kind: "leave" | "delete" }
+  >(null);
 
   const chats = useQuery({
     queryKey: ["chats", myUserId],
@@ -67,6 +78,80 @@ export default function ChatsScreen() {
       console.warn("openChatWith", e?.message ?? e);
     }
   }
+
+  // Optimistisch wegtrekken uit de lijst: we filteren de chat eruit in de
+  // cache zodat hij meteen verdwijnt, daarna doet de mutatie z'n werk.
+  // Bij fout invalidate'n we de query zodat de echte server-state terugkomt.
+  function removeFromCache(chatId: string) {
+    qc.setQueryData<ChatWithMembers[]>(
+      ["chats", myUserId],
+      (old) => (old ?? []).filter((c) => c.id !== chatId)
+    );
+  }
+
+  async function onHide(chat: ChatWithMembers) {
+    removeFromCache(chat.id);
+    try {
+      await hideChat(chat.id, myUserId);
+    } catch (e: any) {
+      console.warn("hideChat", e?.message ?? e);
+      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    }
+  }
+
+  async function onLeave(chat: ChatWithMembers) {
+    removeFromCache(chat.id);
+    try {
+      await leaveChat(chat.id, myUserId);
+    } catch (e: any) {
+      console.warn("leaveChat", e?.message ?? e);
+      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    }
+  }
+
+  async function onDeleteForEveryone(chat: ChatWithMembers) {
+    removeFromCache(chat.id);
+    try {
+      await deleteChatForEveryone(chat.id);
+    } catch (e: any) {
+      console.warn("deleteChatForEveryone", e?.message ?? e);
+      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    }
+  }
+
+  // Acties dynamisch op basis van chat-type. Voor groepen geen "verwijder
+  // voor iedereen" (RLS blokkeert het server-side ook), maar wel "verlaat
+  // groep". Voor 1:1 chats: verberg + verwijder voor iedereen.
+  const menuActions = menuChat
+    ? menuChat.type === "direct"
+      ? [
+          {
+            label: "Verberg gesprek",
+            icon: "eye-off-outline" as const,
+            onPress: () => onHide(menuChat),
+          },
+          {
+            label: "Verwijder gesprek voor iedereen",
+            icon: "trash-outline" as const,
+            destructive: true,
+            onPress: () =>
+              setConfirmKind({ chat: menuChat, kind: "delete" }),
+          },
+        ]
+      : [
+          {
+            label: "Verberg gesprek",
+            icon: "eye-off-outline" as const,
+            onPress: () => onHide(menuChat),
+          },
+          {
+            label: "Verlaat groep",
+            icon: "exit-outline" as const,
+            destructive: true,
+            onPress: () => setConfirmKind({ chat: menuChat, kind: "leave" }),
+          },
+        ]
+    : [];
 
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
@@ -170,17 +255,57 @@ export default function ChatsScreen() {
             chat={item}
             myUserId={myUserId}
             onPress={() => router.push(`/chat/${item.id}`)}
-            onAvatarPress={() => {
-              const other = otherMember(item, myUserId);
-              if (other) router.push(`/user/${other.username}`);
-              else router.push(`/chat/${item.id}`);
-            }}
+            onLongPress={() => setMenuChat(item)}
+            onMenuPress={() => setMenuChat(item)}
             isFirst={index === 0}
             isLast={index === filtered.length - 1}
           />
         )}
       />
       </ScreenContainer>
+
+      {/* Acties-menu voor een specifieke chat (long-press of 3-dots). */}
+      <ActionSheet
+        visible={!!menuChat}
+        onClose={() => setMenuChat(null)}
+        title={menuChat ? chatTitle(menuChat, myUserId) : undefined}
+        actions={menuActions}
+      />
+
+      {/* Bevestigings-sheet voor destructieve acties — verlaat-groep of
+          verwijder-voor-iedereen. Aparte sheet zodat de eerste vlot dichtgaat. */}
+      <ActionSheet
+        visible={!!confirmKind}
+        onClose={() => setConfirmKind(null)}
+        title={
+          confirmKind?.kind === "delete"
+            ? "Verwijder dit gesprek voor iedereen?"
+            : confirmKind?.kind === "leave"
+            ? "Deze groep verlaten?"
+            : undefined
+        }
+        actions={
+          confirmKind?.kind === "delete"
+            ? [
+                {
+                  label: "Verwijder definitief",
+                  icon: "trash-outline",
+                  destructive: true,
+                  onPress: () => onDeleteForEveryone(confirmKind.chat),
+                },
+              ]
+            : confirmKind?.kind === "leave"
+            ? [
+                {
+                  label: "Verlaat groep",
+                  icon: "exit-outline",
+                  destructive: true,
+                  onPress: () => onLeave(confirmKind.chat),
+                },
+              ]
+            : []
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -189,14 +314,16 @@ function ChatRow({
   chat,
   myUserId,
   onPress,
-  onAvatarPress,
+  onLongPress,
+  onMenuPress,
   isFirst,
   isLast,
 }: {
   chat: ChatWithMembers;
   myUserId: string;
   onPress: () => void;
-  onAvatarPress: () => void;
+  onLongPress: () => void;
+  onMenuPress: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -212,15 +339,19 @@ function ChatRow({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
       className={`flex-row items-center bg-paper-soft active:bg-paper px-4 py-3.5 ${
         isFirst ? "rounded-t-2xl" : ""
       } ${isLast ? "rounded-b-2xl" : ""} ${
         !isLast ? "border-b border-line-paper/60" : ""
       }`}
     >
-      <Pressable onPress={onAvatarPress} hitSlop={8}>
-        <Avatar name={title} size="md" tint="warm" />
-      </Pressable>
+      {/* Avatar is geen aparte tap-target meer — op mobile vrat de hitSlop
+          regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
+          chat. Toegang tot het profiel zit nu via de header binnen de chat
+          (tap op de naam → /user/[username]). */}
+      <Avatar name={title} size="md" tint="warm" />
       <View className="flex-1 ml-3 mr-2">
         <View className="flex-row items-center">
           <Text
@@ -251,14 +382,24 @@ function ChatRow({
         </Text>
       </View>
       {unread > 0 ? (
-        <View className="bg-flame rounded-full min-w-[22px] h-[22px] px-1.5 items-center justify-center">
+        <View className="bg-flame rounded-full min-w-[22px] h-[22px] px-1.5 items-center justify-center mr-1">
           <Text className="text-cream text-[11px] font-bold">
             {unread > 99 ? "99+" : unread}
           </Text>
         </View>
-      ) : (
-        <Ionicons name="chevron-forward" color="#8A7E6C" size={18} />
-      )}
+      ) : null}
+      {/* 3-dots actie-knop — opent verberg/verlaat/verwijder menu.
+          Eigen Pressable met hitSlop, NIET ingebed in de row-onPress: door
+          de visuele scheiding (rechts, klein icoon) en kleine hitbox gaan
+          row-taps NIET per ongeluk hierheen — alleen wie écht op de drie
+          puntjes mikt opent het menu. */}
+      <Pressable
+        onPress={onMenuPress}
+        hitSlop={10}
+        className="w-9 h-9 items-center justify-center -mr-2"
+      >
+        <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={18} />
+      </Pressable>
     </Pressable>
   );
 }

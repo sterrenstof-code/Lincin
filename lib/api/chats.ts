@@ -57,6 +57,35 @@ export async function leaveChat(chatId: string, myUserId: string): Promise<void>
   if (error) throw error;
 }
 
+/**
+ * Verberg een chat voor mij — WhatsApp-archive stijl. De chat verdwijnt uit
+ * mijn lijst maar verschijnt opnieuw zodra de andere persoon iets stuurt
+ * (filter in listMyChats vergelijkt hidden_at met chat.last_message_at).
+ *
+ * Niets wordt verwijderd, voor de andere partij verandert er niets.
+ */
+export async function hideChat(chatId: string, myUserId: string): Promise<void> {
+  const { error } = await supabase
+    .from("chat_members")
+    .update({ hidden_at: new Date().toISOString() })
+    .eq("chat_id", chatId)
+    .eq("user_id", myUserId);
+  if (error) throw error;
+}
+
+/**
+ * Verwijder een 1:1 chat hard voor alle deelnemers. De delete-policy op
+ * `chats` checkt dat type='direct' en dat ik member ben. CASCADE-FK's
+ * ruimen messages en chat_members op.
+ *
+ * Werkt NIET op groepen — daar moet je leaveChat() gebruiken. Server-side
+ * RLS blokkeert het anders ook.
+ */
+export async function deleteChatForEveryone(chatId: string): Promise<void> {
+  const { error } = await supabase.from("chats").delete().eq("id", chatId);
+  if (error) throw error;
+}
+
 /** Mark a chat as read up to "now" for the current user. */
 export async function markChatRead(chatId: string): Promise<void> {
   const { error } = await supabase.rpc("mark_chat_read", { p_chat_id: chatId });
@@ -77,15 +106,33 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   if (chatRows.length === 0) return [];
 
   const chatIds = chatRows.map((c) => c.id);
-  const [membersResult, unreadResult] = await Promise.all([
+  const [membersResult, unreadResult, hiddenResult] = await Promise.all([
     supabase
       .from("chat_members")
       .select("chat_id, user_id")
       .in("chat_id", chatIds),
     supabase.rpc("my_chat_unread_counts"),
+    // Mijn eigen chat_members rijen om hidden_at op te halen. Pre-0023
+    // databases kennen de kolom niet — we vangen dat verderop op (filter
+    // wordt dan effectief no-op).
+    supabase
+      .from("chat_members")
+      .select("chat_id, hidden_at")
+      .eq("user_id", myUserId)
+      .in("chat_id", chatIds),
   ]);
   if (membersResult.error) throw membersResult.error;
   if (unreadResult.error) throw unreadResult.error;
+  // hiddenResult kan falen op pre-0023 DB's; dan slaan we het filter over.
+  const hiddenByChat = new Map<string, string | null>();
+  if (!hiddenResult.error) {
+    for (const r of hiddenResult.data ?? []) {
+      hiddenByChat.set(
+        (r as any).chat_id,
+        (r as any).hidden_at ?? null
+      );
+    }
+  }
 
   const members = membersResult.data ?? [];
   const memberUserIds = Array.from(new Set(members.map((m) => m.user_id)));
@@ -109,11 +156,21 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
     (unreadResult.data ?? []).map((u: any) => [u.chat_id, u.unread_count ?? 0])
   );
 
-  return chatRows.map((c) => ({
-    ...c,
-    members: membersByChat.get(c.id) ?? [],
-    unread_count: unreadByChat.get(c.id) ?? 0,
-  }));
+  return chatRows
+    .filter((c) => {
+      // Verborgen chats wegfilteren — tenzij er sindsdien een nieuw bericht
+      // binnenkwam, dan komt de chat vanzelf terug (archive-stijl).
+      const hiddenAt = hiddenByChat.get(c.id);
+      if (!hiddenAt) return true;
+      const lastAt = c.last_message_at;
+      if (!lastAt) return false;
+      return new Date(lastAt).getTime() > new Date(hiddenAt).getTime();
+    })
+    .map((c) => ({
+      ...c,
+      members: membersByChat.get(c.id) ?? [],
+      unread_count: unreadByChat.get(c.id) ?? 0,
+    }));
 }
 
 /** Compute a friendly title for a chat from the current user's perspective. */

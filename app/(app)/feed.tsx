@@ -87,8 +87,10 @@ export default function FeedScreen() {
               </View>
             </Pressable>
 
-            {/* Live/upcoming events */}
-            {liveEvents.length > 0 && (
+            {/* Live/upcoming events — verborgen tot events-feature klaar is.
+                De useQuery hierboven blijft draaien zodat re-enable enkel
+                deze block hoeft te uncommenten. */}
+            {/* {liveEvents.length > 0 && (
               <View className="mb-6">
                 <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
                   Events
@@ -99,7 +101,7 @@ export default function FeedScreen() {
                   ))}
                 </View>
               </View>
-            )}
+            )} */}
 
             <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
               Recent

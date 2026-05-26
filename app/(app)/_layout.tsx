@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile } from "@/lib/auth/bootstrap";
 import { listMyChats } from "@/lib/api/chats";
+import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
@@ -54,6 +55,25 @@ export default function AppLayout() {
     0
   );
 
+  // Inkomende vriendschapsverzoeken — telt enkel pending requests die naar
+  // mij zijn gestuurd (addressee_id == mij). Hetzelfde patroon als de chat-
+  // unread badge: een vlam-pil op de Vrienden-tab + meegerekend in de
+  // browser tab-titel zodat je het ziet in een andere tab.
+  //
+  // refetchInterval 60s is genoeg — vriendschapsverzoeken zijn lage-frequentie
+  // events. Geen aparte realtime subscription nodig.
+  const friendships = useQuery({
+    queryKey: ["friendships", session?.user.id ?? "anon"],
+    queryFn: () => listMyFriendships(session!.user.id),
+    enabled: !!session && !bootstrapping && hasPassword,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  const pendingIncoming = (friendships.data ?? []).filter(
+    (f) =>
+      f.status === "pending" && f.addressee_id === (session?.user.id ?? "")
+  ).length;
+
   // Globale realtime: zodra er ergens in een van mijn chats een nieuw
   // bericht valt, invalideren we de chatlijst zodat de bottom-bar badge,
   // de chats-screen, én eventuele "laatst bericht" previews direct
@@ -71,14 +91,23 @@ export default function AppLayout() {
 
   // Web: zet ongelezen-aantal in de browser tab-titel zodat je het ziet
   // wanneer Lincin in een andere tab open staat. Poor-man's web push.
+  //
+  // We tellen chat-unreads + inkomende friend-requests samen op — dat is
+  // wat de gebruiker wil weten ("is er iets nieuws voor mij?"). De badges
+  // op de tabs zelf blijven afzonderlijk (chats vs vrienden) zodat
+  // gebruikers in de app zien WAT er nieuw is.
+  const totalAttention = totalUnread + pendingIncoming;
   useEffect(() => {
     if (typeof document === "undefined") return;
     const base = "Lincin";
-    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ${base}` : base;
+    document.title =
+      totalAttention > 0
+        ? `(${totalAttention > 99 ? "99+" : totalAttention}) ${base}`
+        : base;
     return () => {
       document.title = base;
     };
-  }, [totalUnread]);
+  }, [totalAttention]);
 
   useEffect(() => {
     if (!session || bootstrapping || !hasPassword) return;
@@ -138,7 +167,11 @@ export default function AppLayout() {
         },
       }}
       tabBar={(props) => (
-        <PaperTabBar {...props} totalUnread={totalUnread} />
+        <PaperTabBar
+          {...props}
+          totalUnread={totalUnread}
+          pendingFriendRequests={pendingIncoming}
+        />
       )}
     >
       <Tabs.Screen name="feed" />
@@ -159,6 +192,7 @@ function PaperTabBar({
   descriptors,
   navigation,
   totalUnread,
+  pendingFriendRequests,
 }: any) {
   const tabs: Array<{
     key: string;
@@ -167,7 +201,10 @@ function PaperTabBar({
     label: string;
   }> = [
     { key: "feed", routeName: "feed", icon: "images-outline", label: "Feed" },
-    { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
+    // Events-tab tijdelijk verborgen tot de feature productie-klaar is.
+    // De Tabs.Screen route hieronder blijft staan zodat directe URLs en de
+    // feed-link niet breken — alleen het tab-knopje is weg.
+    // { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
     { key: "chats", routeName: "chats", icon: "chatbubbles-outline", label: "Chats" },
     { key: "friends", routeName: "friends", icon: "people-outline", label: "Vrienden" },
     { key: "profile", routeName: "profile", icon: "person-outline", label: "Profiel" },
@@ -194,8 +231,12 @@ function PaperTabBar({
               navigation.navigate(route.name);
             }
           };
-          const badge =
-            tab.routeName === "chats" && totalUnread > 0 ? totalUnread : 0;
+          // Per-tab badge: chats = ongelezen berichten, friends = inkomende
+          // friend-requests. Beide gebruiken dezelfde flame-pill styling
+          // (consistente visuele taal voor "er is iets dat aandacht vraagt").
+          let badge = 0;
+          if (tab.routeName === "chats") badge = totalUnread;
+          else if (tab.routeName === "friends") badge = pendingFriendRequests ?? 0;
 
           return (
             <Pressable
