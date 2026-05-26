@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -164,6 +165,10 @@ function PostCard({
   const hasLink = !!post.link_url;
   const hasCaption = !!post.caption && post.caption.trim().length > 0;
 
+  // Natuurlijke aspect ratio — ingesteld via onLoad zodra de afbeelding
+  // geladen is. undefined = nog onbekend, container toont nog niet.
+  const [imageRatio, setImageRatio] = useState<number | undefined>(undefined);
+
   return (
     <View className="bg-paper-soft rounded-3xl overflow-hidden">
       <Pressable
@@ -190,10 +195,22 @@ function PostCard({
         <Pressable onPress={onPress} className="bg-shell">
           <SafeImage
             uri={post.image_url}
-            style={{ width: "100%", aspectRatio: 1 }}
+            style={{
+              width: "100%",
+              // Toon de container pas zodra de echte ratio bekend is —
+              // voorkomt layout shift van vierkant naar juiste formaat.
+              // Cap tussen 9:16 (erg hoog portret) en 2:1 (breed landschap).
+              aspectRatio: imageRatio
+                ? Math.min(Math.max(imageRatio, 9 / 16), 2)
+                : undefined,
+            }}
             contentFit="cover"
             transition={150}
             fallbackIcon="image-outline"
+            onLoad={(e) => {
+              const { width, height } = (e as any).source ?? {};
+              if (width && height) setImageRatio(width / height);
+            }}
           />
         </Pressable>
       )}
