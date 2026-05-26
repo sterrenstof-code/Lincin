@@ -110,6 +110,18 @@ export default function AppLayout() {
     };
   }, [totalAttention]);
 
+  // PWA app-icoon badge — toont het ongelezen-aantal op het homescreen-icoon,
+  // net als WhatsApp/Telegram. Werkt op iOS 16.4+ PWA en Chrome Android/desktop.
+  // In de browser zelf wordt dit stil genegeerd.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) return;
+    if (totalAttention > 0) {
+      (navigator as any).setAppBadge(totalAttention).catch(() => {});
+    } else {
+      (navigator as any).clearAppBadge().catch(() => {});
+    }
+  }, [totalAttention]);
+
   useEffect(() => {
     if (!session || bootstrapping || !hasPassword) return;
     registerPushToken(session.user.id).catch(() => {});
