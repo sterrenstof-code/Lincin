@@ -11,6 +11,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
+import { InstallBanner } from "@/components/InstallBanner";
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
@@ -114,6 +115,7 @@ export default function AppLayout() {
     registerPushToken(session.user.id).catch(() => {});
   }, [session, bootstrapping, hasPassword]);
 
+  // Native: expo-notifications tap listener
   useEffect(() => {
     return addNotificationTapListener((data) => {
       if (data?.chat_id) {
@@ -126,6 +128,22 @@ export default function AppLayout() {
         });
       }
     });
+  }, []);
+
+  // Web: service worker stuurt een postMessage na notificatieklik zodat
+  // expo-router de navigatie kan oppakken zonder een full page reload.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type !== "PUSH_NAV") return;
+      const path = event.data.path as string;
+      if (!path) return;
+      import("expo-router").then(({ router }) => {
+        router.push(path as any);
+      });
+    }
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
 
   if (loading) return null;
@@ -141,6 +159,8 @@ export default function AppLayout() {
   }
 
   return (
+    <>
+    <InstallBanner />
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -180,6 +200,7 @@ export default function AppLayout() {
       <Tabs.Screen name="friends" />
       <Tabs.Screen name="profile" />
     </Tabs>
+    </>
   );
 }
 
