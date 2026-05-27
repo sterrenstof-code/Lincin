@@ -31,6 +31,14 @@ export async function loadIdentity(): Promise<IdentityKeyPair | null> {
   };
 }
 
+/**
+ * Sla een bestaand keypair op in SecureStore (bijv. na herstel van server).
+ */
+export async function storeIdentity(kp: IdentityKeyPair): Promise<void> {
+  await secureStorage.setItem(IDENTITY_PRIVATE_KEY, bytesToBase64(kp.secretKey));
+  await secureStorage.setItem(IDENTITY_PUBLIC_KEY, bytesToBase64(kp.publicKey));
+}
+
 export async function wipeIdentity(): Promise<void> {
   await secureStorage.removeItem(IDENTITY_PRIVATE_KEY);
   await secureStorage.removeItem(IDENTITY_PUBLIC_KEY);

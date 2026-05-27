@@ -1,117 +1,101 @@
-import { bytesToBase64 } from "./base64";
+import { bytesToBase64, base64ToBytes } from "./base64";
 import {
   generateAndStoreIdentity,
-  getDeviceId,
-  getOrCreateDeviceId,
   loadIdentity,
-  wipeDeviceId,
+  storeIdentity,
   wipeIdentity,
   type IdentityKeyPair,
 } from "./keys";
-import { registerOrUpdateDevice, removeDevice, guessDeviceLabel } from "../api/devices";
 import { supabase } from "../supabase/client";
 
 /**
- * Status van de device-registratie voor de huidige sessie.
+ * Status van de account-sleutels voor de huidige sessie.
  *
- * Multi-device model: elk toestel registreert zich in `profile_devices`
- * met zijn eigen keypair. `checkKeySync` controleert of dit toestel
- * nog steeds actief geregistreerd is.
+ * Account-sleutel model: één keypair per account, opgeslagen in
+ * `profiles.identity_privkey`. Elk apparaat haalt de sleutel op bij
+ * het inloggen via bootstrap — geen per-device complexity meer.
  */
 export type KeySyncStatus =
   | { kind: "ok"; pubkey: string }
-  | { kind: "no-device-keys" }
-  | { kind: "not-registered" }
+  | { kind: "no-keys" }
   | { kind: "no-profile" };
 
 /**
- * Controleer of dit toestel geregistreerd staat in `profile_devices`.
- * Vervangt de vroegere single-device `profiles.identity_pubkey` check.
+ * Controleer of dit toestel werkende encryptie-sleutels heeft.
+ * Probeert lokaal te laden; als die er niet zijn, kijkt het op de server.
  */
 export async function checkKeySync(userId: string): Promise<KeySyncStatus> {
+  // Probeer lokale sleutels.
   const identity = await loadIdentity();
-  if (!identity) return { kind: "no-device-keys" };
+  if (identity) {
+    return { kind: "ok", pubkey: bytesToBase64(identity.publicKey) };
+  }
 
-  const deviceId = await getDeviceId();
-  if (!deviceId) return { kind: "no-device-keys" };
-
-  const pubB64 = bytesToBase64(identity.publicKey);
-
+  // Geen lokale sleutels — kijk op de server.
   const { data, error } = await supabase
-    .from("profile_devices")
-    .select("identity_pubkey")
-    .eq("user_id", userId)
-    .eq("device_id", deviceId)
+    .from("profiles")
+    .select("identity_pubkey, identity_privkey")
+    .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
+  if (!data) return { kind: "no-profile" };
+  if (!data.identity_privkey) return { kind: "no-keys" };
 
-  if (!data) return { kind: "not-registered" };
-
-  return { kind: "ok", pubkey: pubB64 };
+  // Herstel van server.
+  await storeIdentity({
+    secretKey: base64ToBytes(data.identity_privkey),
+    publicKey: base64ToBytes(data.identity_pubkey),
+  });
+  return { kind: "ok", pubkey: data.identity_pubkey };
 }
 
 /**
- * Registreer (of herregistreer) dit toestel in `profile_devices`.
- * Gebruik dit wanneer het toestel `not-registered` teruggeeft, bv. na
- * een server-reset of als de device-rij verwijderd is.
+ * Herstel of herregistreer de account-sleutels.
+ * Haalt de sleutel van de server op als aanwezig; genereert anders een
+ * nieuwe en slaat die op in zowel SecureStore als profiles.
  */
 export async function resyncDevice(userId: string): Promise<void> {
-  const identity = await loadIdentity();
-  if (!identity) throw new Error("Geen device-keys om te syncen.");
-  const deviceId = await getOrCreateDeviceId();
-  const pubB64 = bytesToBase64(identity.publicKey);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("identity_pubkey, identity_privkey")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
 
-  await registerOrUpdateDevice({
-    userId,
-    deviceId,
-    identityPubkey: pubB64,
-    label: guessDeviceLabel(),
-  });
+  if (data?.identity_privkey) {
+    // Herstel van server.
+    await storeIdentity({
+      secretKey: base64ToBytes(data.identity_privkey),
+      publicKey: base64ToBytes(data.identity_pubkey),
+    });
+    return;
+  }
 
-  // Houd profiles.identity_pubkey bij voor legacy-decryptie van oude berichten.
+  // Geen sleutels op server — genereer nieuw.
+  const fresh = await generateAndStoreIdentity();
+  const pubB64 = bytesToBase64(fresh.publicKey);
+  const privB64 = bytesToBase64(fresh.secretKey);
   await supabase
     .from("profiles")
-    .update({ identity_pubkey: pubB64 })
+    .update({ identity_pubkey: pubB64, identity_privkey: privB64 })
     .eq("id", userId);
 }
 
 /**
- * Volledig device-reset: wipe lokale keys en device-id, genereer nieuwe,
- * verwijder oud device uit profile_devices, registreer nieuwe.
- *
- * Gevolg: berichten die encrypted waren voor de oude key zijn onleesbaar
- * op dit toestel (Signal-stijl). Andere toestellen met hun eigen key
- * worden niet geraakt — zij kunnen nieuwe berichten nog steeds lezen.
+ * Reset de account-sleutels: wis lokaal, genereer nieuw, sla op in server.
+ * Gevolg: alle bestaande berichten zijn onleesbaar (nieuwe sleutel kan ze
+ * niet ontsleutelen). Gebruik alleen als de gebruiker expliciet vraagt om
+ * een volledige reset.
  */
 export async function resetDeviceIdentity(userId: string): Promise<IdentityKeyPair> {
-  const oldDeviceId = await getDeviceId();
-
-  // Wipe bestaande keys en device-id.
   await wipeIdentity();
-  await wipeDeviceId();
-
-  // Genereer nieuwe keys en een nieuw device-id.
   const fresh = await generateAndStoreIdentity();
-  const newDeviceId = await getOrCreateDeviceId();
   const pubB64 = bytesToBase64(fresh.publicKey);
+  const privB64 = bytesToBase64(fresh.secretKey);
 
-  // Verwijder het oude device-record zodat het geen dode entry achterlaat.
-  if (oldDeviceId) {
-    await removeDevice(userId, oldDeviceId).catch(() => {});
-  }
-
-  // Registreer het nieuwe device.
-  await registerOrUpdateDevice({
-    userId,
-    deviceId: newDeviceId,
-    identityPubkey: pubB64,
-    label: guessDeviceLabel(),
-  });
-
-  // Update profiles.identity_pubkey voor legacy-compat.
   const { error } = await supabase
     .from("profiles")
-    .update({ identity_pubkey: pubB64 })
+    .update({ identity_pubkey: pubB64, identity_privkey: privB64 })
     .eq("id", userId);
   if (error) {
     console.warn("[resetDeviceIdentity] profiles update error:", error.message);

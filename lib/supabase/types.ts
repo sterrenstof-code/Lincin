@@ -15,6 +15,8 @@ export type Database = {
           display_name: string | null;
           avatar_url: string | null;
           identity_pubkey: string;
+          /** Base64 X25519 privé-sleutel. Alleen ophalen voor de eigen user. */
+          identity_privkey: string | null;
           created_at: string;
         };
         Insert: {
@@ -23,6 +25,7 @@ export type Database = {
           display_name?: string | null;
           avatar_url?: string | null;
           identity_pubkey: string;
+          identity_privkey?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;

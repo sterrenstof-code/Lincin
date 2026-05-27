@@ -238,8 +238,9 @@ export default function ProfileScreen() {
             <Text className="text-ink font-semibold ml-3">End-to-end versleuteld</Text>
           </View>
           <Text className="text-ink-soft text-sm leading-5">
-            Berichten worden op dit toestel versleuteld met X25519 +
-            XChaCha20-Poly1305. Lincin's servers zien enkel onleesbare blobs.
+            Berichten worden versleuteld met X25519 + XChaCha20-Poly1305. Je
+            encryptie-sleutel is gekoppeld aan je account — elk apparaat
+            waarop je inlogt kan automatisch berichten lezen.
           </Text>
           <View className="bg-paper-light border border-line-paper rounded-xl mt-4 p-3">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
@@ -250,30 +251,26 @@ export default function ProfileScreen() {
             </Text>
           </View>
 
-          {/* Device registratie status */}
+          {/* Sleutelstatus */}
           {keySync && keySync.kind === "ok" && (
             <View className="flex-row items-center mt-3">
               <Ionicons name="checkmark-circle" color="#22c55e" size={14} />
               <Text className="text-ink-muted text-xs ml-1.5">
-                Toestel geregistreerd — berichten worden correct ontsleuteld
+                Sleutels actief — berichten worden correct ontsleuteld
               </Text>
             </View>
           )}
           {keySync && keySync.kind !== "ok" && (
             <View className="bg-red-100 border border-red-300 rounded-xl mt-3 p-3">
               <Text className="text-red-900 text-xs font-semibold mb-1">
-                {keySync.kind === "no-device-keys"
-                  ? "⚠ Geen device-keys gevonden"
-                  : keySync.kind === "not-registered"
-                    ? "⚠ Toestel niet geregistreerd"
-                    : "⚠ Geen profiel gevonden"}
+                {keySync.kind === "no-keys"
+                  ? "⚠ Geen encryptie-sleutels"
+                  : "⚠ Geen profiel gevonden"}
               </Text>
               <Text className="text-red-900 text-xs leading-5">
-                {keySync.kind === "no-device-keys"
-                  ? "Je toestel heeft geen identity-keys (cache gewist?). Klik 'Registreer opnieuw' of reset om nieuwe te genereren."
-                  : keySync.kind === "not-registered"
-                    ? "Dit toestel is niet langer geregistreerd — nieuwe berichten kunnen niet worden ontsleuteld. Klik 'Registreer opnieuw' om te herstellen."
-                    : "Profielrij ontbreekt. Probeer uit te loggen en opnieuw aan te melden."}
+                {keySync.kind === "no-keys"
+                  ? "Klik 'Herstel sleutels' om de sleutels van de server te halen."
+                  : "Profielrij ontbreekt. Probeer uit te loggen en opnieuw aan te melden."}
               </Text>
             </View>
           )}
@@ -312,7 +309,7 @@ export default function ProfileScreen() {
                     : "text-ink-muted"
                 }`}
               >
-                Registreer opnieuw
+                Herstel sleutels
               </Text>
             </Pressable>
             <Pressable
@@ -321,7 +318,7 @@ export default function ProfileScreen() {
               className="flex-1 rounded-full py-2.5 items-center border border-red-300"
             >
               <Text className="text-red-700 font-semibold text-xs">
-                Reset device keys
+                Reset sleutels
               </Text>
             </Pressable>
           </View>

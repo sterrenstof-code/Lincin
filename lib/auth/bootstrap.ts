@@ -1,31 +1,34 @@
-import { bytesToBase64 } from "../crypto/base64";
+import { bytesToBase64, base64ToBytes } from "../crypto/base64";
 import {
   generateAndStoreIdentity,
-  getOrCreateDeviceId,
   loadIdentity,
+  storeIdentity,
 } from "../crypto/keys";
-import { registerOrUpdateDevice, guessDeviceLabel } from "../api/devices";
 import { supabase } from "../supabase/client";
 
 /**
  * Wordt aangeroepen na succesvolle login. Zorgt voor:
- *   1. Identity keypair op dit toestel (genereer indien afwezig).
- *   2. Registratie van dit toestel in `profile_devices` met eigen pubkey.
- *   3. Profile-rij aanmaken als die nog niet bestaat.
+ *   1. Identity keypair beschikbaar op dit toestel.
+ *   2. Sleutels gesynchroniseerd met de server (profiles.identity_privkey).
  *
- * Multi-device model: elk toestel heeft een eigen identity keypair.
- * `sendMessage` encrypt voor elk geregistreerd device van de ontvanger,
- * zodat elk toestel berichten zelfstandig kan ontsleutelen — zonder
- * dat een toestel-login een ander toestel blokkeert.
+ * Account-sleutel model (per-account, niet per-device):
+ *   - De privé-sleutel wordt samen met de publieke sleutel opgeslagen in
+ *     `profiles`. Zo kan elk apparaat dat inlogt direct berichten lezen
+ *     zonder QR-koppeling of extra stappen.
+ *   - Trade-off: de sleutel staat op de Supabase server. Dat is prima voor
+ *     een vrienden/familie-app — berichten zijn versleuteld voor andere
+ *     gebruikers maar niet voor server-admins.
  *
- * `confirmOverwrite` wordt genegeerd en is alleen nog aanwezig voor
- * backwards-compat met bestaande call-sites.
+ * Volgorde:
+ *   A. Lokale sleutels aanwezig → zorg dat ze gesynchroniseerd zijn naar server.
+ *   B. Geen lokale sleutels maar wel op server → herstel naar SecureStore.
+ *   C. Nergens → genereer nieuw keypair, sla op lokaal én op server.
  */
 export async function bootstrapProfile(args: {
   userId: string;
   email: string;
   preferredUsername?: string;
-  /** @deprecated Genegeerd — niet langer nodig in het multi-device model. */
+  /** @deprecated Genegeerd */
   confirmOverwrite?: boolean;
 }): Promise<{
   username: string | null;
@@ -33,59 +36,91 @@ export async function bootstrapProfile(args: {
   isNewDevice: boolean;
   needsDeviceConfirm: boolean;
 }> {
-  // 1. Laad of genereer identity keypair voor dit toestel.
-  const hadLocalKeys = !!(await loadIdentity());
-  let identity = await loadIdentity();
-  if (!identity) {
-    identity = await generateAndStoreIdentity();
-  }
-  const pubB64 = bytesToBase64(identity.publicKey);
-
-  // 2. Registreer dit toestel in profile_devices (upsert — veilig om
-  //    meerdere keren aan te roepen, bv. bij app-herstart).
-  const deviceId = await getOrCreateDeviceId();
-  await registerOrUpdateDevice({
-    userId: args.userId,
-    deviceId,
-    identityPubkey: pubB64,
-    label: guessDeviceLabel(),
-  });
-
-  // 3. Controleer of er al een profiel-rij bestaat.
+  // Haal de huidige profilesrij op (of null als nog niet aangemaakt).
   const { data: existing, error: selErr } = await supabase
     .from("profiles")
-    .select("id, username, identity_pubkey")
+    .select("id, username, identity_pubkey, identity_privkey")
     .eq("id", args.userId)
     .maybeSingle();
   if (selErr) throw selErr;
 
-  if (!existing) {
-    // Nieuw account: maak profiel aan.
-    const username =
-      args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
-    const { error } = await supabase.from("profiles").insert({
-      id: args.userId,
-      username,
-      identity_pubkey: pubB64,
-    });
-    if (error) throw error;
+  // ── A. Lokale sleutels aanwezig ──────────────────────────────────────────
+  const localIdentity = await loadIdentity();
+  if (localIdentity) {
+    const pubB64 = bytesToBase64(localIdentity.publicKey);
+    const privB64 = bytesToBase64(localIdentity.secretKey);
+
+    if (!existing) {
+      // Nieuw account, lokale keys al aanwezig (zeldzaam edge-case).
+      const username =
+        args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
+      await supabase.from("profiles").insert({
+        id: args.userId,
+        username,
+        identity_pubkey: pubB64,
+        identity_privkey: privB64,
+      });
+      return { username, pubkeyMismatch: false, isNewDevice: false, needsDeviceConfirm: false };
+    }
+
+    // Bestaand profiel — sync sleutels naar server als ze er nog niet staan
+    // of als de lokale sleutel nieuwer is (bv. na resetDeviceIdentity).
+    if (!existing.identity_privkey || existing.identity_pubkey !== pubB64) {
+      await supabase
+        .from("profiles")
+        .update({ identity_pubkey: pubB64, identity_privkey: privB64 })
+        .eq("id", args.userId);
+    }
+
     return {
-      username,
+      username: existing.username,
+      pubkeyMismatch: false,
+      isNewDevice: false,
+      needsDeviceConfirm: false,
+    };
+  }
+
+  // ── B. Geen lokale sleutels — herstel van server ─────────────────────────
+  if (existing?.identity_privkey && existing?.identity_pubkey) {
+    const kp = {
+      secretKey: base64ToBytes(existing.identity_privkey),
+      publicKey: base64ToBytes(existing.identity_pubkey),
+    };
+    await storeIdentity(kp);
+    return {
+      username: existing.username,
       pubkeyMismatch: false,
       isNewDevice: true,
       needsDeviceConfirm: false,
     };
   }
 
-  // 4. Bestaand profiel — geen pubkey-overschrijving nodig. In het
-  //    multi-device model worden berichten per device_id geëncrypt;
-  //    profiles.identity_pubkey wordt alleen nog bijgehouden voor
-  //    legacy-berichten die vóór de migratie zijn verstuurd.
+  // ── C. Nergens — genereer nieuw keypair ──────────────────────────────────
+  const fresh = await generateAndStoreIdentity();
+  const pubB64 = bytesToBase64(fresh.publicKey);
+  const privB64 = bytesToBase64(fresh.secretKey);
+
+  if (!existing) {
+    const username =
+      args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
+    await supabase.from("profiles").insert({
+      id: args.userId,
+      username,
+      identity_pubkey: pubB64,
+      identity_privkey: privB64,
+    });
+    return { username, pubkeyMismatch: false, isNewDevice: true, needsDeviceConfirm: false };
+  }
+
+  await supabase
+    .from("profiles")
+    .update({ identity_pubkey: pubB64, identity_privkey: privB64 })
+    .eq("id", args.userId);
 
   return {
     username: existing.username,
     pubkeyMismatch: false,
-    isNewDevice: !hadLocalKeys,
-    needsDeviceConfirm: false, // nooit meer blokkeren op nieuw toestel
+    isNewDevice: true,
+    needsDeviceConfirm: false,
   };
 }

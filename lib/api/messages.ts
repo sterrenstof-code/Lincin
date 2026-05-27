@@ -6,10 +6,9 @@ import {
   encryptForRecipients,
   type EncryptedPayload,
 } from "../crypto/encrypt";
-import { getDeviceId, loadIdentity } from "../crypto/keys";
+import { loadIdentity } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
-import { listUserDevices } from "./devices";
 
 export type MessageRow = {
   id: string;
@@ -117,26 +116,26 @@ export async function decryptRows(
     console.warn("[decryptRows] geen identity-keys op dit toestel.");
   }
 
-  // Multi-device: zoek envelope eerst op via device_id (nieuwe berichten),
-  // dan via user_id als fallback (berichten van vóór de multi-device migratie).
-  const myDeviceId = await getDeviceId();
-
   return rows.map((r) => {
     if (!identity) {
       return { id: r.id, chat_id: r.chat_id, sender_id: r.sender_id, content: null, created_at: r.created_at };
     }
 
-    const envelope =
-      (myDeviceId ? r.recipient_payloads?.[myDeviceId] : null)
-      ?? r.recipient_payloads?.[myUserId];
+    // Account-model: envelop gekeyed op user_id.
+    // Backward-compat voor de per-device periode: probeer alle enveloppen
+    // met de accountsleutel — bij toevallige match werkt het, anders null.
+    const payloads = r.recipient_payloads ?? {};
+    const primary = payloads[myUserId];
+    const candidates = primary
+      ? [primary]
+      : Object.values(payloads);
 
-    if (!envelope) {
-      // Bericht is verstuurd vóór dit device geregistreerd was — normaal
-      // gedrag voor oude berichten op een nieuw apparaat.
-      return { id: r.id, chat_id: r.chat_id, sender_id: r.sender_id, content: null, created_at: r.created_at };
+    let plaintext: Uint8Array | null = null;
+    for (const env of candidates) {
+      const result = decryptFromSender(env, identity.secretKey);
+      if (result) { plaintext = result; break; }
     }
 
-    const plaintext = decryptFromSender(envelope, identity.secretKey);
     return {
       id: r.id,
       chat_id: r.chat_id,
@@ -174,28 +173,14 @@ export async function sendMessage(args: {
   const memberIds = (members ?? []).map((m) => m.user_id);
   if (memberIds.length === 0) throw new Error("chat has no members");
 
-  // Multi-device: haal alle geregistreerde devices op voor elk lid.
-  // Elk device krijgt een eigen envelope (gekeyed op device_id).
-  const allDevices = await listUserDevices(memberIds);
-
-  // Leden zonder geregistreerd device (legacy / niet-geüpdatete clients)
-  // krijgen een fallback-envelope op user_id via profiles.identity_pubkey.
-  const registeredUserIds = new Set(allDevices.map((d) => d.user_id));
-  const legacyUserIds = memberIds.filter((id) => !registeredUserIds.has(id));
-
-  const deviceRecipients = allDevices.map((d) => ({
-    userId: d.device_id, // device_id als sleutel in recipient_payloads
-    publicKey: base64ToBytes(d.identity_pubkey),
+  // Account-model: één envelop per user_id, gekeyed op user_id.
+  // Elk apparaat van de ontvanger haalt de account-sleutel op bij inloggen
+  // en kan daarmee alle berichten ontsleutelen.
+  const memberProfiles = await getProfiles(memberIds);
+  const recipients = memberProfiles.map((p) => ({
+    userId: p.id,
+    publicKey: base64ToBytes(p.identity_pubkey),
   }));
-
-  let legacyRecipients: { userId: string; publicKey: Uint8Array }[] = [];
-  if (legacyUserIds.length > 0) {
-    const legacyProfiles = await getProfiles(legacyUserIds);
-    legacyRecipients = legacyProfiles.map((p) => ({
-      userId: p.id,
-      publicKey: base64ToBytes(p.identity_pubkey),
-    }));
-  }
 
   const content: MessageContent = {};
   if (args.text) content.text = args.text;
@@ -204,7 +189,7 @@ export async function sendMessage(args: {
 
   const payloads = encryptForRecipients(
     enc.encode(JSON.stringify(content)),
-    [...deviceRecipients, ...legacyRecipients]
+    recipients
   );
 
   const { data: inserted, error: insertErr } = await supabase
