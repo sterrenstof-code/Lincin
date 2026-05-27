@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -55,6 +55,10 @@ export default function FeedScreen() {
         data={feed.data ?? []}
         keyExtractor={(p) => p.id}
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        removeClippedSubviews
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        initialNumToRender={5}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}
@@ -130,7 +134,7 @@ export default function FeedScreen() {
           )
         }
         ItemSeparatorComponent={() => <View className="h-4" />}
-        renderItem={({ item }) => (
+        renderItem={useCallback(({ item }: { item: PostWithAuthor }) => (
           <PostCard
             post={item}
             myUserId={myUserId}
@@ -139,14 +143,15 @@ export default function FeedScreen() {
               item.author?.username && router.push(`/user/${item.author.username}`)
             }
           />
-        )}
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        ), [myUserId])}
       />
       </ScreenContainer>
     </SafeAreaView>
   );
 }
 
-function PostCard({
+const PostCard = memo(function PostCard({
   post,
   myUserId,
   onPress,
@@ -197,12 +202,11 @@ function PostCard({
             uri={post.image_url}
             style={{
               width: "100%",
-              // Toon de container pas zodra de echte ratio bekend is —
-              // voorkomt layout shift van vierkant naar juiste formaat.
               // Cap tussen 9:16 (erg hoog portret) en 2:1 (breed landschap).
+              // Default 1 (vierkant) op native iOS — undefined geeft height 0.
               aspectRatio: imageRatio
                 ? Math.min(Math.max(imageRatio, 9 / 16), 2)
-                : undefined,
+                : 1,
             }}
             contentFit="cover"
             transition={150}
@@ -252,7 +256,7 @@ function PostCard({
       </Pressable>
     </View>
   );
-}
+});
 
 function LinkCard({ url }: { url: string }) {
   let hostname = url;

@@ -14,7 +14,7 @@ import { loadIdentity } from "@/lib/crypto/keys";
 import {
   checkKeySync,
   resetDeviceIdentity,
-  syncDeviceKeyToProfile,
+  resyncDevice,
   type KeySyncStatus,
 } from "@/lib/crypto/sync";
 import { confirm } from "@/lib/confirm";
@@ -54,12 +54,12 @@ export default function ProfileScreen() {
     setKeyBusy(true);
     setKeyMsg(null);
     try {
-      await syncDeviceKeyToProfile(myUserId);
+      await resyncDevice(myUserId);
       const fresh = await checkKeySync(myUserId);
       setKeySync(fresh);
-      setKeyMsg("✓ Public key gesynchroniseerd. Nieuwe berichten zouden nu moeten ontsleutelen.");
+      setKeyMsg("✓ Toestel opnieuw geregistreerd. Nieuwe berichten zullen ontsleutelen.");
     } catch (e: any) {
-      setKeyMsg(e?.message ?? "Sync mislukt.");
+      setKeyMsg(e?.message ?? "Registratie mislukt.");
     } finally {
       setKeyBusy(false);
     }
@@ -250,44 +250,69 @@ export default function ProfileScreen() {
             </Text>
           </View>
 
-          {/* Key sync status + reset */}
+          {/* Device registratie status */}
+          {keySync && keySync.kind === "ok" && (
+            <View className="flex-row items-center mt-3">
+              <Ionicons name="checkmark-circle" color="#22c55e" size={14} />
+              <Text className="text-ink-muted text-xs ml-1.5">
+                Toestel geregistreerd — berichten worden correct ontsleuteld
+              </Text>
+            </View>
+          )}
           {keySync && keySync.kind !== "ok" && (
             <View className="bg-red-100 border border-red-300 rounded-xl mt-3 p-3">
               <Text className="text-red-900 text-xs font-semibold mb-1">
-                {keySync.kind === "mismatch"
-                  ? "⚠ Key mismatch gedetecteerd"
-                  : keySync.kind === "no-device-keys"
-                    ? "⚠ Geen device-keys gevonden"
+                {keySync.kind === "no-device-keys"
+                  ? "⚠ Geen device-keys gevonden"
+                  : keySync.kind === "not-registered"
+                    ? "⚠ Toestel niet geregistreerd"
                     : "⚠ Geen profiel gevonden"}
               </Text>
               <Text className="text-red-900 text-xs leading-5">
-                {keySync.kind === "mismatch"
-                  ? "De public key in je profiel komt niet overeen met je device-keys. Daarom kunnen berichten niet ontsleuteld worden. Klik 'Sync' om de profile-pubkey te updaten met deze device-keys."
-                  : keySync.kind === "no-device-keys"
-                    ? "Je toestel heeft geen identity-keys meer (cache gewist?). Reset om nieuwe te maken."
-                    : "Je profile-rij ontbreekt. Probeer uit te loggen en opnieuw aan te melden."}
+                {keySync.kind === "no-device-keys"
+                  ? "Je toestel heeft geen identity-keys (cache gewist?). Klik 'Registreer opnieuw' of reset om nieuwe te genereren."
+                  : keySync.kind === "not-registered"
+                    ? "Dit toestel is niet langer geregistreerd — nieuwe berichten kunnen niet worden ontsleuteld. Klik 'Registreer opnieuw' om te herstellen."
+                    : "Profielrij ontbreekt. Probeer uit te loggen en opnieuw aan te melden."}
               </Text>
             </View>
           )}
 
-          <View className="flex-row gap-2 mt-3">
+          {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
+          <Pressable
+            onPress={() => router.push("/device-link" as any)}
+            className="flex-row items-center bg-brand/10 active:bg-brand/20 rounded-2xl px-4 py-3 mt-3"
+          >
+            <Ionicons name="qr-code-outline" color="#5B8DEF" size={18} />
+            <View className="flex-1 ml-3">
+              <Text className="text-brand font-semibold text-sm">
+                Nieuw apparaat koppelen
+              </Text>
+              <Text className="text-ink-muted text-xs mt-0.5">
+                QR-code — chats blijven leesbaar
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" color="#5B8DEF" size={16} />
+          </Pressable>
+
+          <View className="flex-row gap-2 mt-2">
             <Pressable
               onPress={onSyncKeys}
-              disabled={keyBusy || keySync?.kind !== "mismatch"}
+              disabled={keyBusy || keySync?.kind === "ok" || keySync?.kind === "no-profile"}
               className={`flex-1 rounded-full py-2.5 items-center ${
-                keySync?.kind === "mismatch" && !keyBusy
+                !keyBusy && keySync?.kind !== "ok" && keySync?.kind !== "no-profile"
                   ? "bg-ink active:bg-ink-soft"
                   : "bg-paper-warm"
               }`}
             >
               <Text
                 className={`font-semibold text-xs ${
-                  keySync?.kind === "mismatch" && !keyBusy
+                  !keyBusy && keySync?.kind !== "ok" && keySync?.kind !== "no-profile"
                     ? "text-cream"
                     : "text-ink-muted"
                 }`}
               >
-                Sync naar profile
+                Registreer opnieuw
               </Text>
             </Pressable>
             <Pressable

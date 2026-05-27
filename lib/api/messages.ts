@@ -6,9 +6,10 @@ import {
   encryptForRecipients,
   type EncryptedPayload,
 } from "../crypto/encrypt";
-import { loadIdentity } from "../crypto/keys";
+import { getDeviceId, loadIdentity } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
+import { listUserDevices } from "./devices";
 
 export type MessageRow = {
   id: string;
@@ -66,11 +67,11 @@ function parseDecrypted(bytes: Uint8Array): MessageContent {
   return { text: str };
 }
 
-/** Fetch the most recent messages in a chat (default: last 100, oldest first). */
+/** Fetch the most recent messages in a chat (default: last 50, oldest first). */
 export async function fetchMessages(
   chatId: string,
   myUserId: string,
-  limit = 100
+  limit = 50
 ): Promise<DecryptedMessage[]> {
   const { data, error } = await supabase
     .from("messages")
@@ -83,45 +84,59 @@ export async function fetchMessages(
   return decryptRows(rows, myUserId);
 }
 
+/**
+ * Haal een oudere pagina op: berichten die aangemaakt zijn vóór `before`.
+ * Gebruikt als cursor de `created_at` van het oudste zichtbare bericht.
+ * Geeft `hasMore: false` terug als er minder dan `limit` rows zijn.
+ */
+export async function fetchEarlierMessages(
+  chatId: string,
+  myUserId: string,
+  before: string,
+  limit = 50
+): Promise<{ messages: DecryptedMessage[]; hasMore: boolean }> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, chat_id, sender_id, recipient_payloads, created_at")
+    .eq("chat_id", chatId)
+    .lt("created_at", before)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = ((data ?? []) as MessageRow[]).reverse();
+  const messages = await decryptRows(rows, myUserId);
+  return { messages, hasMore: rows.length === limit };
+}
+
 export async function decryptRows(
   rows: MessageRow[],
   myUserId: string
 ): Promise<DecryptedMessage[]> {
   const identity = await loadIdentity();
   if (!identity) {
-    console.warn(
-      "[decryptRows] geen identity-keys gevonden op dit toestel — alle berichten worden als 'kon niet ontsleutelen' getoond. Reset device keys via Profiel."
-    );
+    console.warn("[decryptRows] geen identity-keys op dit toestel.");
   }
+
+  // Multi-device: zoek envelope eerst op via device_id (nieuwe berichten),
+  // dan via user_id als fallback (berichten van vóór de multi-device migratie).
+  const myDeviceId = await getDeviceId();
+
   return rows.map((r) => {
     if (!identity) {
-      return {
-        id: r.id,
-        chat_id: r.chat_id,
-        sender_id: r.sender_id,
-        content: null,
-        created_at: r.created_at,
-      };
+      return { id: r.id, chat_id: r.chat_id, sender_id: r.sender_id, content: null, created_at: r.created_at };
     }
-    const envelope = r.recipient_payloads?.[myUserId];
+
+    const envelope =
+      (myDeviceId ? r.recipient_payloads?.[myDeviceId] : null)
+      ?? r.recipient_payloads?.[myUserId];
+
     if (!envelope) {
-      console.warn(
-        `[decryptRows] geen envelope voor mijn user_id (${myUserId}) in bericht ${r.id}. Mogelijk verstuurd voor jouw key-rotation of door legacy-client.`
-      );
-      return {
-        id: r.id,
-        chat_id: r.chat_id,
-        sender_id: r.sender_id,
-        content: null,
-        created_at: r.created_at,
-      };
+      // Bericht is verstuurd vóór dit device geregistreerd was — normaal
+      // gedrag voor oude berichten op een nieuw apparaat.
+      return { id: r.id, chat_id: r.chat_id, sender_id: r.sender_id, content: null, created_at: r.created_at };
     }
+
     const plaintext = decryptFromSender(envelope, identity.secretKey);
-    if (!plaintext) {
-      console.warn(
-        `[decryptRows] decryptie faalde voor bericht ${r.id}. Het AEAD auth-tag matcht niet — je private key komt niet overeen met de public key die de afzender gebruikte. Meestal: je keys zijn lokaal vervangen na een logout/wipe terwijl de DB nog de oude pubkey heeft, of omgekeerd.`
-      );
-    }
     return {
       id: r.id,
       chat_id: r.chat_id,
@@ -159,18 +174,38 @@ export async function sendMessage(args: {
   const memberIds = (members ?? []).map((m) => m.user_id);
   if (memberIds.length === 0) throw new Error("chat has no members");
 
-  const profiles = await getProfiles(memberIds);
-  const recipients = profiles.map((p) => ({
-    userId: p.id,
-    publicKey: base64ToBytes(p.identity_pubkey),
+  // Multi-device: haal alle geregistreerde devices op voor elk lid.
+  // Elk device krijgt een eigen envelope (gekeyed op device_id).
+  const allDevices = await listUserDevices(memberIds);
+
+  // Leden zonder geregistreerd device (legacy / niet-geüpdatete clients)
+  // krijgen een fallback-envelope op user_id via profiles.identity_pubkey.
+  const registeredUserIds = new Set(allDevices.map((d) => d.user_id));
+  const legacyUserIds = memberIds.filter((id) => !registeredUserIds.has(id));
+
+  const deviceRecipients = allDevices.map((d) => ({
+    userId: d.device_id, // device_id als sleutel in recipient_payloads
+    publicKey: base64ToBytes(d.identity_pubkey),
   }));
+
+  let legacyRecipients: { userId: string; publicKey: Uint8Array }[] = [];
+  if (legacyUserIds.length > 0) {
+    const legacyProfiles = await getProfiles(legacyUserIds);
+    legacyRecipients = legacyProfiles.map((p) => ({
+      userId: p.id,
+      publicKey: base64ToBytes(p.identity_pubkey),
+    }));
+  }
 
   const content: MessageContent = {};
   if (args.text) content.text = args.text;
   if (args.attachment) content.attachment = args.attachment;
   if (args.call) content.call = args.call;
 
-  const payloads = encryptForRecipients(enc.encode(JSON.stringify(content)), recipients);
+  const payloads = encryptForRecipients(
+    enc.encode(JSON.stringify(content)),
+    [...deviceRecipients, ...legacyRecipients]
+  );
 
   const { data: inserted, error: insertErr } = await supabase
     .from("messages")
@@ -182,6 +217,25 @@ export async function sendMessage(args: {
     .select("id, created_at")
     .single();
   if (insertErr) throw insertErr;
+
+  // Push notificatie: fire-and-forget — nooit blokkeren op bezorging.
+  // De Edge Function zoekt zelf de push tokens op via `user_devices` en
+  // stuurt de notificatie naar alle ontvangers (iedereen behalve de verzender).
+  const recipientIds = memberIds.filter((id) => id !== args.senderId);
+  if (recipientIds.length > 0) {
+    const textPreview = args.text ? args.text.slice(0, 120) : null;
+    supabase.functions
+      .invoke("send-push", {
+        body: {
+          chat_id: args.chatId,
+          sender_id: args.senderId,
+          recipient_ids: recipientIds,
+          body: textPreview,
+        },
+      })
+      .catch(() => {}); // stil falen — push is best-effort
+  }
+
   return { id: inserted!.id as string, created_at: inserted!.created_at as string };
 }
 

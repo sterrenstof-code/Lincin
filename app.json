@@ -12,7 +12,15 @@
       "supportsTablet": true,
       "bundleIdentifier": "io.beyondesign.lincin",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification",
+          "fetch"
+        ],
+        "NSCameraUsageDescription": "Lincin gebruikt je camera om foto's en video's te maken voor chats en events.",
+        "NSMicrophoneUsageDescription": "Lincin gebruikt je microfoon voor videogesprekken.",
+        "NSPhotoLibraryUsageDescription": "Lincin gebruikt je fotobibliotheek om afbeeldingen te delen in chats en posts.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "android": {
@@ -24,7 +32,15 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -40,6 +56,20 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lincin gebruikt je fotobibliotheek om afbeeldingen te delen.",
+          "cameraPermission": "Lincin gebruikt je camera om foto's en video's te maken."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Lincin gebruikt je camera om foto's te maken voor events.",
+          "microphonePermission": "Lincin gebruikt je microfoon voor videogesprekken."
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -64,6 +94,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16c89c1a-3ad4-4b4a-b199-00bda2a5f3df"
+      }
     }
   }
 }

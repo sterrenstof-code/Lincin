@@ -1,74 +1,121 @@
-import { base64ToBytes, bytesToBase64 } from "./base64";
+import { bytesToBase64 } from "./base64";
 import {
   generateAndStoreIdentity,
+  getDeviceId,
+  getOrCreateDeviceId,
   loadIdentity,
+  wipeDeviceId,
   wipeIdentity,
   type IdentityKeyPair,
 } from "./keys";
+import { registerOrUpdateDevice, removeDevice, guessDeviceLabel } from "../api/devices";
 import { supabase } from "../supabase/client";
 
 /**
- * Status check tussen het toestel z'n private key en de profile pubkey
- * in Supabase. Een mismatch betekent dat E2E-decryptie zal falen — meestal
- * komt dit van een logout-zonder-logback elders, of cache-wipe.
+ * Status van de device-registratie voor de huidige sessie.
+ *
+ * Multi-device model: elk toestel registreert zich in `profile_devices`
+ * met zijn eigen keypair. `checkKeySync` controleert of dit toestel
+ * nog steeds actief geregistreerd is.
  */
 export type KeySyncStatus =
   | { kind: "ok"; pubkey: string }
   | { kind: "no-device-keys" }
-  | { kind: "no-profile" }
-  | { kind: "mismatch"; devicePubkey: string; profilePubkey: string };
+  | { kind: "not-registered" }
+  | { kind: "no-profile" };
 
+/**
+ * Controleer of dit toestel geregistreerd staat in `profile_devices`.
+ * Vervangt de vroegere single-device `profiles.identity_pubkey` check.
+ */
 export async function checkKeySync(userId: string): Promise<KeySyncStatus> {
   const identity = await loadIdentity();
   if (!identity) return { kind: "no-device-keys" };
 
-  const devicePub = bytesToBase64(identity.publicKey);
+  const deviceId = await getDeviceId();
+  if (!deviceId) return { kind: "no-device-keys" };
+
+  const pubB64 = bytesToBase64(identity.publicKey);
+
   const { data, error } = await supabase
-    .from("profiles")
+    .from("profile_devices")
     .select("identity_pubkey")
-    .eq("id", userId)
+    .eq("user_id", userId)
+    .eq("device_id", deviceId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return { kind: "no-profile" };
 
-  if (data.identity_pubkey !== devicePub) {
-    return {
-      kind: "mismatch",
-      devicePubkey: devicePub,
-      profilePubkey: data.identity_pubkey as string,
-    };
-  }
-  return { kind: "ok", pubkey: devicePub };
+  if (!data) return { kind: "not-registered" };
+
+  return { kind: "ok", pubkey: pubB64 };
 }
 
 /**
- * Forceer dat profile.identity_pubkey gelijk is aan device public key.
- * Niet-destructief: geen wipe van keys. Lost mismatches op waar profile
- * achterloopt op device.
+ * Registreer (of herregistreer) dit toestel in `profile_devices`.
+ * Gebruik dit wanneer het toestel `not-registered` teruggeeft, bv. na
+ * een server-reset of als de device-rij verwijderd is.
  */
-export async function syncDeviceKeyToProfile(userId: string): Promise<void> {
+export async function resyncDevice(userId: string): Promise<void> {
   const identity = await loadIdentity();
   if (!identity) throw new Error("Geen device-keys om te syncen.");
-  const pub = bytesToBase64(identity.publicKey);
-  const { error } = await supabase
+  const deviceId = await getOrCreateDeviceId();
+  const pubB64 = bytesToBase64(identity.publicKey);
+
+  await registerOrUpdateDevice({
+    userId,
+    deviceId,
+    identityPubkey: pubB64,
+    label: guessDeviceLabel(),
+  });
+
+  // Houd profiles.identity_pubkey bij voor legacy-decryptie van oude berichten.
+  await supabase
     .from("profiles")
-    .update({ identity_pubkey: pub })
+    .update({ identity_pubkey: pubB64 })
     .eq("id", userId);
-  if (error) throw error;
 }
 
 /**
- * Volledige device-reset: wipe lokale keys, genereer nieuwe, publiceer
- * de nieuwe pubkey naar je profile. Signal-stijl: oude berichten worden
- * onleesbaar omdat de oude private key weg is.
+ * Volledig device-reset: wipe lokale keys en device-id, genereer nieuwe,
+ * verwijder oud device uit profile_devices, registreer nieuwe.
+ *
+ * Gevolg: berichten die encrypted waren voor de oude key zijn onleesbaar
+ * op dit toestel (Signal-stijl). Andere toestellen met hun eigen key
+ * worden niet geraakt — zij kunnen nieuwe berichten nog steeds lezen.
  */
 export async function resetDeviceIdentity(userId: string): Promise<IdentityKeyPair> {
+  const oldDeviceId = await getDeviceId();
+
+  // Wipe bestaande keys en device-id.
   await wipeIdentity();
+  await wipeDeviceId();
+
+  // Genereer nieuwe keys en een nieuw device-id.
   const fresh = await generateAndStoreIdentity();
+  const newDeviceId = await getOrCreateDeviceId();
+  const pubB64 = bytesToBase64(fresh.publicKey);
+
+  // Verwijder het oude device-record zodat het geen dode entry achterlaat.
+  if (oldDeviceId) {
+    await removeDevice(userId, oldDeviceId).catch(() => {});
+  }
+
+  // Registreer het nieuwe device.
+  await registerOrUpdateDevice({
+    userId,
+    deviceId: newDeviceId,
+    identityPubkey: pubB64,
+    label: guessDeviceLabel(),
+  });
+
+  // Update profiles.identity_pubkey voor legacy-compat.
   const { error } = await supabase
     .from("profiles")
-    .update({ identity_pubkey: bytesToBase64(fresh.publicKey) })
+    .update({ identity_pubkey: pubB64 })
     .eq("id", userId);
-  if (error) throw error;
+  if (error) {
+    console.warn("[resetDeviceIdentity] profiles update error:", error.message);
+  }
+
   return fresh;
 }

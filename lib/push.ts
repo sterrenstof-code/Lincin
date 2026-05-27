@@ -6,6 +6,65 @@ import { Platform } from "react-native";
 import { supabase } from "./supabase/client";
 
 /**
+ * iOS notification categories — actieknoppen in de notificatie zelf.
+ *
+ * "message" categorie: "Beantwoorden"-knop opent direct de chat.
+ * Roep dit aan bij app-start, samen met setupNotificationChannels.
+ *
+ * De Edge Function die pushes verstuurt moet `categoryIdentifier: "message"`
+ * meesturen in de notification payload voor iOS.
+ */
+export async function setupNotificationCategories(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.setNotificationCategoryAsync("message", [
+      {
+        identifier: "reply",
+        buttonTitle: "Beantwoorden",
+        // Opent de app naar de juiste chat
+        options: { opensAppToForeground: true },
+      },
+    ]);
+    await Notifications.setNotificationCategoryAsync("friend_request", [
+      {
+        identifier: "view",
+        buttonTitle: "Bekijken",
+        options: { opensAppToForeground: true },
+      },
+    ]);
+  } catch {
+    /* Niet-fataal — notificaties werken zonder categorieën gewoon */
+  }
+}
+
+/**
+ * Maak de Android-notificatiekanalen aan. Op Android 8+ (API 26) worden
+ * notificaties zonder kanaal stilletjes genegeerd. Veilig om meerdere keren
+ * te aanroepen — Android negeert duplicaten.
+ *
+ * Roep dit aan bij app-start vóór de eerste push-registratie.
+ */
+export async function setupNotificationChannels(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync("messages", {
+    name: "Berichten",
+    description: "Notificaties voor nieuwe chatberichten.",
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: "#E66B3F",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+  });
+  await Notifications.setNotificationChannelAsync("general", {
+    name: "Algemeen",
+    description: "Overige Lincin-meldingen (vriendschapsverzoeken, events).",
+    importance: Notifications.AndroidImportance.DEFAULT,
+    showBadge: true,
+  });
+}
+
+/**
  * Configureer wat er gebeurt wanneer een notificatie binnenkomt terwijl de
  * app open is. Standaard tonen we de banner + speel het geluid niet
  * (gebruiker is al in de app, dus subtieler).
@@ -198,6 +257,9 @@ export function addNotificationTapListener(
         string,
         any
       >;
+      // "reply"-actie vanuit notificatie-center — zelfde navigatie als tap
+      // (chat opent, gebruiker kan beantwoorden). Inline-send zonder app-open
+      // vereist background task en is fase 2.
       onTap(data);
     }
   );

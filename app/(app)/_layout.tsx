@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile } from "@/lib/auth/bootstrap";
@@ -15,24 +16,27 @@ import { InstallBanner } from "@/components/InstallBanner";
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
+  const router = useRouter();
   const [bootstrapping, setBootstrapping] = useState(true);
   const qc = useQueryClient();
 
   useEffect(() => {
     if (!session) return;
-    (async () => {
-      try {
-        await bootstrapProfile({
-          userId: session.user.id,
-          email: session.user.email ?? "unknown@example.com",
-        });
-      } catch (err) {
-        console.warn("bootstrapProfile failed", err);
-      } finally {
-        setBootstrapping(false);
-      }
-    })();
+    runBootstrap();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  async function runBootstrap() {
+    try {
+      await bootstrapProfile({
+        userId: session!.user.id,
+        email: session!.user.email ?? "unknown@example.com",
+      });
+    } catch (err) {
+      console.warn("bootstrapProfile failed", err);
+    }
+    setBootstrapping(false);
+  }
 
   // Totaal aantal ongelezen berichten over alle chats — toont op de
   // Chats-tab als badge zodat je ziet wanneer iemand jou geschreven heeft.
@@ -255,6 +259,10 @@ function PaperTabBar({
           const isFocused =
             state.index === state.routes.findIndex((r: any) => r.name === tab.routeName);
           const onPress = () => {
+            // Lichte tik-feedback op iOS — subtiel, zoals native apps
+            if (Platform.OS === "ios") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            }
             const event = navigation.emit({
               type: "tabPress",
               target: route.key,

@@ -10,6 +10,7 @@ import "react-native-reanimated";
 import { AuthProvider } from "@/lib/auth/provider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initCryptoRandom } from "@/lib/crypto/random";
+import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     initCryptoRandom();
+    setupNotificationChannels().catch(() => {});
+    setupNotificationCategories().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -40,8 +43,10 @@ export default function RootLayout() {
     // Uitzondering: push-notificatie navigatie (via SW postMessage) vuurt
     // ná deze mount, dus die overschrijft de redirect correct.
     if (typeof window === "undefined") return;
+    // matchMedia bestaat niet op native iOS — enkel in browsers
     const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(display-mode: standalone)").matches) ||
       !!(window.navigator as any).standalone;
     if (!isStandalone) return;
 
@@ -172,6 +177,22 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="event-link/[id]"
+              options={{
+                headerShown: false,
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
+              name="device-link"
+              options={{
+                headerShown: false,
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
+              name="device-receive"
               options={{
                 headerShown: false,
                 presentation: "modal",

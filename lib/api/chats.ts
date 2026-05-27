@@ -1,3 +1,5 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
+
 import { supabase } from "../supabase/client";
 import type { Profile } from "./profiles";
 
@@ -271,4 +273,50 @@ export async function removeChatMember(
     .eq("chat_id", chatId)
     .eq("user_id", userId);
   if (error) throw error;
+}
+
+/**
+ * Haal de `last_read_at` timestamp op voor elk lid van een chat.
+ * Wordt gebruikt voor read receipts (✓✓ Gelezen).
+ */
+export async function fetchMemberLastRead(
+  chatId: string
+): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("chat_members")
+    .select("user_id, last_read_at")
+    .eq("chat_id", chatId);
+  if (error) throw error;
+  const map = new Map<string, string>();
+  for (const r of (data ?? []) as Array<{ user_id: string; last_read_at: string | null }>) {
+    if (r.last_read_at) map.set(r.user_id, r.last_read_at);
+  }
+  return map;
+}
+
+/**
+ * Realtime subscription op `chat_members` updates voor een specifieke chat.
+ * Vuurt af wanneer iemand de chat leest (last_read_at verandert).
+ * Gebruik dit voor live read receipts.
+ */
+export function subscribeToChatMemberUpdates(
+  chatId: string,
+  onChange: (userId: string, lastReadAt: string) => void
+): RealtimeChannel {
+  return supabase
+    .channel(`chat-members-read:${chatId}:${Math.random().toString(36).slice(2)}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "chat_members",
+        filter: `chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const row = payload.new as { user_id: string; last_read_at: string | null };
+        if (row.last_read_at) onChange(row.user_id, row.last_read_at);
+      }
+    )
+    .subscribe();
 }

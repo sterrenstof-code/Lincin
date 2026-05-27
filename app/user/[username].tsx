@@ -204,7 +204,7 @@ export default function UserProfileScreen() {
         {relation.kind !== "not-found" && (
           <View className="mt-6">
             <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-              Foto's
+              Posts
             </Text>
             {posts.isLoading ? (
               <SkeletonGallery />
@@ -212,8 +212,8 @@ export default function UserProfileScreen() {
               <View className="bg-paper-soft rounded-2xl p-5">
                 <Text className="text-ink-soft text-sm leading-5">
                   {relation.kind === "self"
-                    ? "Je hebt nog niks gedeeld. Plaats je eerste foto vanaf de Feed-tab."
-                    : `@${profile.data?.username ?? username} heeft nog geen foto's gedeeld.`}
+                    ? "Je hebt nog niks gedeeld. Plaats je eerste post vanaf de Feed-tab."
+                    : `@${profile.data?.username ?? username} heeft nog niets gedeeld.`}
                 </Text>
               </View>
             ) : (
@@ -232,7 +232,32 @@ export default function UserProfileScreen() {
                           contentFit="cover"
                           transition={150}
                         />
-                      ) : null}
+                      ) : p.link_url ? (
+                        <View className="flex-1 items-center justify-center p-2">
+                          <View className="w-8 h-8 rounded-full bg-paper items-center justify-center mb-1">
+                            <Ionicons name="link" color="#1A1714" size={14} />
+                          </View>
+                          <Text
+                            className="text-ink-soft text-[9px] text-center leading-3"
+                            numberOfLines={2}
+                          >
+                            {(() => { try { return new URL(p.link_url).hostname.replace(/^www\./, ""); } catch { return p.link_url; } })()}
+                          </Text>
+                        </View>
+                      ) : p.caption ? (
+                        <View className="flex-1 justify-center p-2.5">
+                          <Text
+                            className="text-ink text-[11px] font-medium leading-4"
+                            numberOfLines={4}
+                          >
+                            {p.caption}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View className="flex-1 items-center justify-center">
+                          <Ionicons name="text" color="#8C7B6B" size={20} />
+                        </View>
+                      )}
                     </View>
                   </Pressable>
                 ))}

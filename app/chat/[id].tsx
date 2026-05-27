@@ -2,17 +2,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as DocumentPicker from "expo-document-picker";
+import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,14 +32,17 @@ import { useAuth } from "@/lib/auth/provider";
 import { safeBack } from "@/lib/nav";
 import {
   chatTitle,
+  fetchMemberLastRead,
   listMyChats,
   markChatRead,
   otherMember,
+  subscribeToChatMemberUpdates,
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import {
   buildAttachmentInfo,
   downloadEncryptedAttachment,
+  fetchEarlierMessages,
   fetchMessages,
   sendMessage,
   subscribeToAllMyMessages,
@@ -82,9 +90,13 @@ export default function ChatDetail() {
     new Map()
   );
   const [reactions, setReactions] = useState<ReactionRow[]>([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [reactionPicker, setReactionPicker] = useState<DecryptedMessage | null>(null);
+  // Read receipts: last_read_at per user_id van andere chat-leden.
+  const [otherMembersLastRead, setOtherMembersLastRead] = useState<Map<string, string>>(new Map());
   const [mentionList, setMentionList] = useState<
     { display: string; username: string }[] | null
   >(null);
@@ -174,6 +186,18 @@ export default function ChatDetail() {
       setReactions(rxs);
     });
 
+    // Read receipts: initieel laden + realtime updates
+    fetchMemberLastRead(id)
+      .then((map) => { if (!cancelled) setOtherMembersLastRead(map); })
+      .catch(() => {});
+    const readChannel = subscribeToChatMemberUpdates(id, (userId, lastReadAt) => {
+      setOtherMembersLastRead((prev) => {
+        const next = new Map(prev);
+        next.set(userId, lastReadAt);
+        return next;
+      });
+    });
+
     // Globale listener voor messages in ANDERE chats — zodat de
     // back-button-badge live updatet als er ergens een nieuw bericht
     // binnenkomt terwijl ik hier zit. De (app)-layout draait soms niet
@@ -187,6 +211,7 @@ export default function ChatDetail() {
       cancelled = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
+      supabase.removeChannel(readChannel);
       supabase.removeChannel(globalChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,6 +258,29 @@ export default function ChatDetail() {
     [chat, myUserId]
   );
 
+  // Bepaal het meest recente bericht van MIJ dat door alle andere leden gelezen is.
+  // Toont ✓✓ Gelezen onder die bubble — alleen als er echt andere leden zijn.
+  const readReceiptMessageId = useMemo(() => {
+    if (!messages || !myUserId || !chat) return null;
+    const otherIds = chat.members.filter((m) => m.id !== myUserId).map((m) => m.id);
+    if (otherIds.length === 0) return null;
+    // Loop van nieuwste naar oudste om het meest recente geval te vinden.
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.sender_id !== myUserId) continue;
+      if (msg.id.startsWith("optimistic-")) continue;
+      const allRead = otherIds.every((uid) => {
+        const lastRead = otherMembersLastRead.get(uid);
+        if (!lastRead) return false;
+        return new Date(lastRead) >= new Date(msg.created_at);
+      });
+      if (allRead) return msg.id;
+      // Als het nieuwste bericht van mij nog niet gelezen is, stop dan.
+      break;
+    }
+    return null;
+  }, [messages, myUserId, chat, otherMembersLastRead]);
+
   function onDraftChange(text: string) {
     setDraft(text);
     if (text.trim().length > 0) typingSendRef.current?.(myName);
@@ -267,10 +315,37 @@ export default function ChatDetail() {
     setMentionList(null);
   }
 
+  async function loadEarlierMessages() {
+    if (!myUserId || !id || !messages || !hasMoreMessages || loadingEarlier) return;
+    const oldest = messages[0];
+    if (!oldest) return;
+    setLoadingEarlier(true);
+    try {
+      const { messages: earlier, hasMore } = await fetchEarlierMessages(
+        id,
+        myUserId,
+        oldest.created_at
+      );
+      setHasMoreMessages(hasMore);
+      if (earlier.length > 0) {
+        setMessages((prev) => (prev ? [...earlier, ...prev] : earlier));
+      }
+    } catch (e: any) {
+      console.warn("loadEarlierMessages", e?.message ?? e);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }
+
   async function onSend() {
     if (!myUserId || !id) return;
     const text = draft.trim();
     if (!text) return;
+
+    // Lichte impact-feedback bij verzenden — voelt responsief op iOS
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
 
     // Optimistic bericht — toont meteen in de bubble, met "pending" flag.
     // Zodra de echte rij via realtime binnenkomt, vervangen we de optimistic
@@ -410,6 +485,9 @@ export default function ChatDetail() {
 
   async function onToggleReaction(messageId: string, emoji: string) {
     if (!myUserId) return;
+    if (Platform.OS === "ios") {
+      Haptics.selectionAsync().catch(() => {});
+    }
     const mine = reactions.some(
       (r) => r.message_id === messageId && r.user_id === myUserId && r.emoji === emoji
     );
@@ -548,22 +626,52 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, gap: 6 }}
-              onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+              // Scroll to end alleen als de gebruiker al onderaan is —
+              // voorkomt springen naar beneden terwijl iemand oude berichten leest.
+              onContentSizeChange={() => {
+                listRef.current?.scrollToEnd({ animated: false });
+              }}
+              // iOS: toetsenbord wegvegen met swipe-down — native chat-gedrag
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+              keyboardShouldPersistTaps="handled"
+              // Scroll-positie stabiel houden bij laden van oudere berichten bovenaan
+              maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+              // Perf: minder re-renders buiten viewport
+              removeClippedSubviews={Platform.OS !== "web"}
+              maxToRenderPerBatch={15}
+              windowSize={8}
+              initialNumToRender={20}
+              onStartReached={loadEarlierMessages}
+              onStartReachedThreshold={0.1}
               ListHeaderComponent={
-                // Toon één uitlegbanner als er berichten zijn die niet
-                // ontsleuteld konden worden — dit is normaal als de gebruiker
-                // voor het eerst inlogt op een nieuw apparaat of browser.
-                // Één melding bovenaan is duidelijker dan tientallen ⚠ bubbles.
-                messages.some((m) => m.content === null) ? (
-                  <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
-                    <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
-                    <Text className="text-ink-soft text-xs leading-5 flex-1">
-                      Sommige berichten zijn versleuteld met de sleutel van een
-                      ander apparaat en kunnen hier niet gelezen worden. Stuur
-                      een nieuw bericht — dat werkt wel.
-                    </Text>
-                  </View>
-                ) : null
+                <>
+                  {/* Laad-indicator voor oudere berichten */}
+                  {loadingEarlier && (
+                    <View className="items-center py-3">
+                      <ActivityIndicator color="#8A7E6C" size="small" />
+                    </View>
+                  )}
+                  {/* Melding als alle geschiedenis geladen is */}
+                  {!hasMoreMessages && messages.length > 0 && (
+                    <View className="items-center py-2 mb-2">
+                      <Text className="text-ink-muted text-xs">Begin van het gesprek</Text>
+                    </View>
+                  )}
+                  {/* Toon één uitlegbanner als er berichten zijn die niet
+                      ontsleuteld konden worden — dit is normaal als de gebruiker
+                      voor het eerst inlogt op een nieuw apparaat of browser.
+                      Één melding bovenaan is duidelijker dan tientallen ⚠ bubbles. */}
+                  {messages.some((m) => m.content === null) && (
+                    <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
+                      <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
+                      <Text className="text-ink-soft text-xs leading-5 flex-1">
+                        Sommige berichten zijn versleuteld met de sleutel van een
+                        ander apparaat en kunnen hier niet gelezen worden. Stuur
+                        een nieuw bericht — dat werkt wel.
+                      </Text>
+                    </View>
+                  )}
+                </>
               }
               renderItem={({ item, index }) => {
                 const prev = index > 0 ? messages[index - 1] : null;
@@ -624,6 +732,7 @@ export default function ChatDetail() {
                       senderColor={senderColor}
                       pending={isPending && !isFailed}
                       failed={isFailed}
+                      showReadReceipt={item.id === readReceiptMessageId}
                       onRetry={() => retryFailedMessage(item.id)}
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() =>
@@ -814,6 +923,7 @@ function MessageBubble({
   reactions,
   onLongPress,
   onToggleReaction,
+  showReadReceipt,
 }: {
   msg: DecryptedMessage;
   isMine: boolean;
@@ -828,6 +938,7 @@ function MessageBubble({
   reactions: GroupedReaction[];
   onLongPress: () => void;
   onToggleReaction: (emoji: string) => void;
+  showReadReceipt?: boolean;
 }) {
   const time = new Date(msg.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -977,6 +1088,13 @@ function MessageBubble({
           ))}
         </View>
       )}
+
+      {isMine && showReadReceipt && (
+        <View className="flex-row items-center self-end pr-1 mt-0.5 gap-0.5">
+          <Ionicons name="checkmark-done" size={12} color="#5B8DEF" />
+          <Text className="text-[10px] text-brand">Gelezen</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -1046,6 +1164,98 @@ function CallNotificationCard({
   );
 }
 
+/**
+ * Toont een 240×240 thumbnail. Tap opent een fullscreen lightbox modal
+ * met pinch-to-zoom (ScrollView minimumZoomScale/maximumZoomScale werkt
+ * native op iOS; op Android en web is het een statisch fullscreen view).
+ */
+function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { width: screenW, height: screenH } = useWindowDimensions();
+
+  return (
+    <>
+      {/* Thumbnail */}
+      <Pressable
+        onPress={() => uri && setOpen(true)}
+        className="overflow-hidden rounded-2xl"
+        style={{ opacity: loading ? 0.6 : 1 }}
+      >
+        {uri && !loading ? (
+          <Image
+            source={{ uri }}
+            style={{ width: 240, height: 240 }}
+            contentFit="cover"
+            transition={150}
+          />
+        ) : (
+          <View
+            style={{ width: 240, height: 240 }}
+            className="bg-paper-warm items-center justify-center"
+          >
+            {loading ? (
+              <ActivityIndicator color="#8A7E6C" />
+            ) : (
+              <Ionicons name="image-outline" color="#5A4F40" size={32} />
+            )}
+          </View>
+        )}
+      </Pressable>
+
+      {/* Fullscreen lightbox */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
+          {/* Sluit-knop */}
+          <SafeAreaView
+            style={{ position: "absolute", top: 0, right: 0, zIndex: 10, padding: 12 }}
+          >
+            <Pressable
+              onPress={() => setOpen(false)}
+              hitSlop={12}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="close" color="#F5E8D3" size={20} />
+            </Pressable>
+          </SafeAreaView>
+
+          {/* Zoombaar beeld */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+            minimumZoomScale={1}
+            maximumZoomScale={5}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+          >
+            {uri ? (
+              <Image
+                source={{ uri }}
+                style={{ width: screenW, height: screenH * 0.85 }}
+                contentFit="contain"
+                transition={100}
+              />
+            ) : null}
+          </ScrollView>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
 function AttachmentView({
   attachment,
   isMine,
@@ -1096,23 +1306,7 @@ function AttachmentView({
 
   if (attachment.type === "image") {
     return (
-      <View className="overflow-hidden rounded-2xl">
-        {uri && !loading ? (
-          <Image
-            source={{ uri }}
-            style={{ width: 240, height: 240 }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View
-            style={{ width: 240, height: 240 }}
-            className="bg-paper-warm items-center justify-center"
-          >
-            <Ionicons name="image-outline" color="#5A4F40" size={32} />
-          </View>
-        )}
-      </View>
+      <ImageWithLightbox uri={uri ?? null} loading={loading} />
     );
   }
 
@@ -1127,7 +1321,7 @@ function AttachmentView({
         >
           {uri ? (
             <Pressable
-              onPress={() => uri && typeof window !== "undefined" && window.open(uri, "_blank")}
+              onPress={() => uri && Linking.openURL(uri).catch(() => {})}
               className="items-center"
             >
               <Ionicons name="play-circle" color="#1A1714" size={56} />
@@ -1174,7 +1368,7 @@ function AttachmentView({
       </View>
       {uri && (
         <Pressable
-          onPress={() => typeof window !== "undefined" && window.open(uri, "_blank")}
+          onPress={() => Linking.openURL(uri!).catch(() => {})}
           className="ml-2 p-2"
         >
           <Ionicons

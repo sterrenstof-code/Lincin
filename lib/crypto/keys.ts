@@ -45,6 +45,16 @@ export function deriveSharedSecret(
   return sharedKey(ourSecret, theirPublic);
 }
 
+/**
+ * Leid de publieke sleutel af uit een bestaande private sleutel.
+ * Gebruikt door de transfer-module na sleutelherstel.
+ * generateKeyPair(seed) klampt de scalar en berekent het basispunt-product.
+ * Dubbel klampen is idempotent, dus veilig voor al-geklampte keys.
+ */
+export function derivePublicFromPrivate(secretKey: Uint8Array): Uint8Array {
+  return generateKeyPair(secretKey).publicKey;
+}
+
 // ---------- device id ----------
 
 /**

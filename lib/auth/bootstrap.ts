@@ -1,23 +1,39 @@
 import { bytesToBase64 } from "../crypto/base64";
-import { generateAndStoreIdentity, loadIdentity } from "../crypto/keys";
+import {
+  generateAndStoreIdentity,
+  getOrCreateDeviceId,
+  loadIdentity,
+} from "../crypto/keys";
+import { registerOrUpdateDevice, guessDeviceLabel } from "../api/devices";
 import { supabase } from "../supabase/client";
 
 /**
  * Wordt aangeroepen na succesvolle login. Zorgt voor:
  *   1. Identity keypair op dit toestel (genereer indien afwezig).
- *   2. Profile-rij voor deze user.
- *   3. Sync van device pubkey naar profiel (met retry bij netwerk-jitter).
+ *   2. Registratie van dit toestel in `profile_devices` met eigen pubkey.
+ *   3. Profile-rij aanmaken als die nog niet bestaat.
  *
- * Single-device model: één identity_pubkey per profiel. Logged-in-elsewhere
- * scenario lost de gebruiker manueel op via Profiel → Reset device keys
- * (welke browser dat doet, "wint" de account).
+ * Multi-device model: elk toestel heeft een eigen identity keypair.
+ * `sendMessage` encrypt voor elk geregistreerd device van de ontvanger,
+ * zodat elk toestel berichten zelfstandig kan ontsleutelen — zonder
+ * dat een toestel-login een ander toestel blokkeert.
+ *
+ * `confirmOverwrite` wordt genegeerd en is alleen nog aanwezig voor
+ * backwards-compat met bestaande call-sites.
  */
 export async function bootstrapProfile(args: {
   userId: string;
   email: string;
   preferredUsername?: string;
-}): Promise<{ username: string | null; pubkeyMismatch: boolean; isNewDevice: boolean }> {
-  // 1. Load or generate identity keypair on this device.
+  /** @deprecated Genegeerd — niet langer nodig in het multi-device model. */
+  confirmOverwrite?: boolean;
+}): Promise<{
+  username: string | null;
+  pubkeyMismatch: boolean;
+  isNewDevice: boolean;
+  needsDeviceConfirm: boolean;
+}> {
+  // 1. Laad of genereer identity keypair voor dit toestel.
   const hadLocalKeys = !!(await loadIdentity());
   let identity = await loadIdentity();
   if (!identity) {
@@ -25,7 +41,17 @@ export async function bootstrapProfile(args: {
   }
   const pubB64 = bytesToBase64(identity.publicKey);
 
-  // 2. Check whether profile already exists.
+  // 2. Registreer dit toestel in profile_devices (upsert — veilig om
+  //    meerdere keren aan te roepen, bv. bij app-herstart).
+  const deviceId = await getOrCreateDeviceId();
+  await registerOrUpdateDevice({
+    userId: args.userId,
+    deviceId,
+    identityPubkey: pubB64,
+    label: guessDeviceLabel(),
+  });
+
+  // 3. Controleer of er al een profiel-rij bestaat.
   const { data: existing, error: selErr } = await supabase
     .from("profiles")
     .select("id, username, identity_pubkey")
@@ -34,6 +60,7 @@ export async function bootstrapProfile(args: {
   if (selErr) throw selErr;
 
   if (!existing) {
+    // Nieuw account: maak profiel aan.
     const username =
       args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
     const { error } = await supabase.from("profiles").insert({
@@ -42,34 +69,23 @@ export async function bootstrapProfile(args: {
       identity_pubkey: pubB64,
     });
     if (error) throw error;
-    return { username, pubkeyMismatch: false };
+    return {
+      username,
+      pubkeyMismatch: false,
+      isNewDevice: true,
+      needsDeviceConfirm: false,
+    };
   }
 
-  // 3. Sync device pubkey naar profile bij mismatch (met 1 retry).
-  if (existing.identity_pubkey !== pubB64) {
-    let lastError: any = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ identity_pubkey: pubB64 })
-        .eq("id", args.userId);
-      if (!error) {
-        lastError = null;
-        break;
-      }
-      lastError = error;
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 600));
-      }
-    }
-    if (lastError) {
-      console.error(
-        "[bootstrapProfile] pubkey sync naar Supabase faalde. Fix via Profiel → Sync naar profile.",
-        lastError
-      );
-      return { username: existing.username, pubkeyMismatch: true };
-    }
-  }
+  // 4. Bestaand profiel — geen pubkey-overschrijving nodig. In het
+  //    multi-device model worden berichten per device_id geëncrypt;
+  //    profiles.identity_pubkey wordt alleen nog bijgehouden voor
+  //    legacy-berichten die vóór de migratie zijn verstuurd.
 
-  return { username: existing.username, pubkeyMismatch: false };
+  return {
+    username: existing.username,
+    pubkeyMismatch: false,
+    isNewDevice: !hadLocalKeys,
+    needsDeviceConfirm: false, // nooit meer blokkeren op nieuw toestel
+  };
 }
