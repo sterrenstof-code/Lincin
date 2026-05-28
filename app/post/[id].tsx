@@ -217,6 +217,7 @@ export default function PostDetailScreen() {
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {/* Post card */}
           {post.isLoading || !post.data ? (
@@ -262,7 +263,7 @@ export default function PostDetailScreen() {
                   <Image
                     source={{ uri: post.data.image_url }}
                     style={{ width: "100%", aspectRatio: 1 }}
-                    contentFit="cover"
+                    contentFit="contain"
                     transition={150}
                   />
                 </View>

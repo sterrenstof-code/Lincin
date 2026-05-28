@@ -110,6 +110,9 @@ export default function ChatDetail() {
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
   const callSentRef = useRef(false);
+  // Track of de gebruiker onderaan de lijst staat, zodat automatisch
+  // scrollen naar beneden alleen werkt als hij al onderaan was.
+  const isAtBottomRef = useRef(true);
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -636,11 +639,20 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
-              // Scroll to end alleen als de gebruiker al onderaan is —
-              // voorkomt springen naar beneden terwijl iemand oude berichten leest.
+              // Scroll naar beneden alleen als de gebruiker al onderaan stond —
+              // voorkomt terugspringen terwijl iemand oude berichten leest.
               onContentSizeChange={() => {
-                listRef.current?.scrollToEnd({ animated: false });
+                if (isAtBottomRef.current) {
+                  listRef.current?.scrollToEnd({ animated: false });
+                }
               }}
+              // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
+              onScroll={(e) => {
+                const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+                isAtBottomRef.current =
+                  contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+              }}
+              scrollEventThrottle={100}
               // iOS: toetsenbord wegvegen met swipe-down — native chat-gedrag
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               keyboardShouldPersistTaps="handled"
