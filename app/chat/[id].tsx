@@ -97,7 +97,7 @@ export default function ChatDetail() {
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [reactionPicker, setReactionPicker] = useState<DecryptedMessage | null>(null);
+  const [reactionPicker, setReactionPicker] = useState<{ msg: DecryptedMessage; onReply?: () => void } | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -745,9 +745,20 @@ export default function ChatDetail() {
                       showReadReceipt={item.id === readReceiptMessageId}
                       onRetry={() => retryFailedMessage(item.id)}
                       reactions={reactionsForMessage(item.id)}
-                      onLongPress={() =>
-                        !isPending && !isFailed && setReactionPicker(item)
-                      }
+                      onLongPress={() => {
+                        if (isPending || isFailed) return;
+                        const replyFn = () => {
+                          const name = isMine ? "Jij" : (senderName ?? "Onbekend");
+                          const preview = item.content?.text
+                            ? item.content.text.slice(0, 80)
+                            : item.content?.attachment
+                              ? `[${item.content.attachment.type}]`
+                              : "…";
+                          setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
+                          inputRef.current?.focus();
+                        };
+                        setReactionPicker({ msg: item, onReply: replyFn });
+                      }}
                       onToggleReaction={(emoji) =>
                         !isPending && !isFailed && onToggleReaction(item.id, emoji)
                       }
@@ -933,8 +944,12 @@ export default function ChatDetail() {
         <ReactionPickerModal
           visible={!!reactionPicker}
           onClose={() => setReactionPicker(null)}
+          onReply={reactionPicker?.onReply ? () => {
+            reactionPicker.onReply?.();
+            setReactionPicker(null);
+          } : undefined}
           onPick={(emoji) => {
-            if (reactionPicker) onToggleReaction(reactionPicker.id, emoji);
+            if (reactionPicker) onToggleReaction(reactionPicker.msg.id, emoji);
             setReactionPicker(null);
           }}
         />
@@ -965,10 +980,12 @@ function ReactionPickerModal({
   visible,
   onClose,
   onPick,
+  onReply,
 }: {
   visible: boolean;
   onClose: () => void;
   onPick: (emoji: string) => void;
+  onReply?: () => void;
 }) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -977,19 +994,35 @@ function ReactionPickerModal({
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}
       >
         <View
-          className="bg-paper rounded-full mx-6 px-3 py-3 flex-row justify-around"
+          className="bg-paper mx-6 rounded-3xl overflow-hidden"
           style={{ maxWidth: 480, alignSelf: "center", width: "90%" }}
         >
-          {QUICK_REACTIONS.map((emoji) => (
-            <Pressable
-              key={emoji}
-              onPress={() => onPick(emoji)}
-              hitSlop={6}
-              className="w-12 h-12 items-center justify-center"
-            >
-              <Text style={{ fontSize: 28 }}>{emoji}</Text>
-            </Pressable>
-          ))}
+          {/* Reacties */}
+          <View className="flex-row justify-around px-3 py-3">
+            {QUICK_REACTIONS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                onPress={() => onPick(emoji)}
+                hitSlop={6}
+                className="w-12 h-12 items-center justify-center"
+              >
+                <Text style={{ fontSize: 28 }}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {/* Acties */}
+          {onReply && (
+            <>
+              <View className="h-px bg-line-paper mx-1" />
+              <Pressable
+                onPress={onReply}
+                className="flex-row items-center px-5 py-3.5 active:bg-paper-warm"
+              >
+                <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+                <Text className="text-ink font-medium ml-3">Beantwoorden</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </Pressable>
     </Modal>
@@ -1071,15 +1104,9 @@ function MessageBubble({
     })
   ).current;
 
-  // ── Hover-state (web) ────────────────────────────────────────────────────
-  const [hovered, setHovered] = useState(false);
-  const hoverProps = Platform.OS === "web" && onReply
-    ? { onMouseEnter: () => setHovered(true), onMouseLeave: () => setHovered(false) }
-    : {};
-
   return (
-    <View className={isMine ? "items-end" : "items-start"} {...hoverProps}>
-      {/* Swipe reply-indicator (native) */}
+    <View className={isMine ? "items-end" : "items-start"}>
+      {/* Swipe reply-indicator (native only) */}
       {Platform.OS !== "web" && (
         <Animated.View
           style={{
@@ -1096,43 +1123,6 @@ function MessageBubble({
         >
           <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
         </Animated.View>
-      )}
-
-      {/* Hover acties (web) */}
-      {Platform.OS === "web" && hovered && (
-        <View
-          style={{
-            position: "absolute",
-            [isMine ? "left" : "right"]: "calc(100% + 6px)",
-            top: "50%",
-            transform: [{ translateY: -16 }],
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 4,
-            backgroundColor: "rgba(240,234,224,0.97)",
-            borderRadius: 20,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            shadowColor: "#000",
-            shadowOpacity: 0.08,
-            shadowRadius: 6,
-            zIndex: 10,
-          }}
-        >
-          {onReply && (
-            <Pressable onPress={onReply} hitSlop={6}>
-              <Ionicons name="return-down-back-outline" color="#5B8DEF" size={16} />
-            </Pressable>
-          )}
-          {QUICK_REACTIONS.slice(0, 3).map((e) => (
-            <Pressable key={e} onPress={() => onToggleReaction(e)} hitSlop={4}>
-              <Text style={{ fontSize: 16 }}>{e}</Text>
-            </Pressable>
-          ))}
-          <Pressable onPress={onLongPress} hitSlop={4}>
-            <Ionicons name="add-circle-outline" color="#8A7E6C" size={16} />
-          </Pressable>
-        </View>
       )}
 
       <Animated.View
