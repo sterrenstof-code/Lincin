@@ -8,10 +8,12 @@ import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -50,6 +52,7 @@ import {
   uploadEncryptedAttachment,
   type AttachmentInfo,
   type DecryptedMessage,
+  type ReplyInfo,
 } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import {
@@ -95,6 +98,9 @@ export default function ChatDetail() {
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [reactionPicker, setReactionPicker] = useState<DecryptedMessage | null>(null);
+  const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   // Read receipts: last_read_at per user_id van andere chat-leden.
   const [otherMembersLastRead, setOtherMembersLastRead] = useState<Map<string, string>>(new Map());
   const [mentionList, setMentionList] = useState<
@@ -366,8 +372,12 @@ export default function ChatDetail() {
       listRef.current?.scrollToEnd({ animated: true })
     );
 
+    const currentReply = replyTo;
+    setReplyTo(null);
+    setShowEmojiPicker(false);
+
     try {
-      const real = await sendMessage({ chatId: id, senderId: myUserId, text });
+      const real = await sendMessage({ chatId: id, senderId: myUserId, text, reply: currentReply ?? undefined });
       // Vervang optimistic met de echte id (tenzij realtime ons al voor was).
       setMessages((prev) => {
         if (!prev) return prev;
@@ -625,7 +635,7 @@ export default function ChatDetail() {
               ref={listRef}
               data={messages}
               keyExtractor={(m) => m.id}
-              contentContainerStyle={{ padding: 16, gap: 6 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
               // Scroll to end alleen als de gebruiker al onderaan is —
               // voorkomt springen naar beneden terwijl iemand oude berichten leest.
               onContentSizeChange={() => {
@@ -741,6 +751,18 @@ export default function ChatDetail() {
                       onToggleReaction={(emoji) =>
                         !isPending && !isFailed && onToggleReaction(item.id, emoji)
                       }
+                      onReply={!isPending && !isFailed ? () => {
+                        const name = isMine
+                          ? "Jij"
+                          : (senderName ?? "Onbekend");
+                        const preview = item.content?.text
+                          ? item.content.text.slice(0, 80)
+                          : item.content?.attachment
+                            ? `[${item.content.attachment.type}]`
+                            : "…";
+                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
+                        inputRef.current?.focus();
+                      } : undefined}
                     />
                   </View>
                 );
@@ -794,8 +816,56 @@ export default function ChatDetail() {
           )}
 
           {/* Composer */}
-          <View className="px-3 py-3 border-t border-line bg-shell-soft">
-            <View className="flex-row items-end gap-2">
+          <View className="border-t border-line bg-shell-soft">
+            {/* Reply preview bar */}
+            {replyTo && (
+              <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3">
+                <View className="w-0.5 self-stretch bg-brand rounded-full" />
+                <View className="flex-1">
+                  <Text className="text-brand text-xs font-semibold" numberOfLines={1}>
+                    {replyTo.senderName}
+                  </Text>
+                  <Text className="text-ink-muted text-xs" numberOfLines={1}>
+                    {replyTo.previewText}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setReplyTo(null)}
+                  hitSlop={8}
+                  className="w-6 h-6 rounded-full bg-paper-warm items-center justify-center"
+                >
+                  <Ionicons name="close" color="#8A7E6C" size={14} />
+                </Pressable>
+              </View>
+            )}
+
+            {/* Emoji picker panel */}
+            {showEmojiPicker && (
+              <View
+                className="bg-paper-soft border-b border-line-paper"
+                style={{ height: 200 }}
+              >
+                <ScrollView
+                  contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 8 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {CHAT_EMOJIS.map((emoji) => (
+                    <Pressable
+                      key={emoji}
+                      onPress={() => {
+                        setDraft((d) => d + emoji);
+                        inputRef.current?.focus();
+                      }}
+                      style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            <View className="flex-row items-end gap-2 px-3 py-3">
               <Pressable
                 onPress={() => setAttachMenuOpen(true)}
                 disabled={sending}
@@ -805,9 +875,11 @@ export default function ChatDetail() {
               </Pressable>
               <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
                 <TextInput
+                  ref={inputRef}
                   value={draft}
                   onChangeText={onDraftChange}
                   onKeyPress={onComposerKeyPress}
+                  onFocus={() => setShowEmojiPicker(false)}
                   placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
                   placeholderTextColor="#8A7E6C"
                   multiline
@@ -816,6 +888,21 @@ export default function ChatDetail() {
                   style={{ minHeight: 24 }}
                 />
               </View>
+              {/* Emoji-knop */}
+              <Pressable
+                onPress={() => {
+                  setShowEmojiPicker((v) => !v);
+                  if (!showEmojiPicker) {
+                    // Toetsenbord wegvegen op native
+                    inputRef.current?.blur();
+                  } else {
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+              >
+                <Text style={{ fontSize: 20 }}>😊</Text>
+              </Pressable>
               <Pressable
                 onPress={onSend}
                 disabled={sending || !draft.trim()}
@@ -924,6 +1011,7 @@ function MessageBubble({
   onLongPress,
   onToggleReaction,
   showReadReceipt,
+  onReply,
 }: {
   msg: DecryptedMessage;
   isMine: boolean;
@@ -939,6 +1027,7 @@ function MessageBubble({
   onLongPress: () => void;
   onToggleReaction: (emoji: string) => void;
   showReadReceipt?: boolean;
+  onReply?: () => void;
 }) {
   const time = new Date(msg.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -953,9 +1042,104 @@ function MessageBubble({
   const showAvatarSlot = !!isGroup && !isMine;
   const initial = (senderName ?? "?").trim().charAt(0).toUpperCase() || "?";
 
+  // ── Swipe-to-reply (native) ──────────────────────────────────────────────
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipeTriggered = useRef(false);
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onPanResponderGrant: () => {
+        swipeTriggered.current = false;
+      },
+      onPanResponderMove: (_, g) => {
+        // Alleen naar rechts, max 72px
+        const x = Math.max(0, Math.min(g.dx, 72));
+        swipeX.setValue(x);
+        if (x >= 56 && !swipeTriggered.current) {
+          swipeTriggered.current = true;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          onReply?.();
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
+      },
+    })
+  ).current;
+
+  // ── Hover-state (web) ────────────────────────────────────────────────────
+  const [hovered, setHovered] = useState(false);
+  const hoverProps = Platform.OS === "web" && onReply
+    ? { onMouseEnter: () => setHovered(true), onMouseLeave: () => setHovered(false) }
+    : {};
+
   return (
-    <View className={isMine ? "items-end" : "items-start"}>
-      <View className="flex-row items-end" style={{ maxWidth: "85%" }}>
+    <View className={isMine ? "items-end" : "items-start"} {...hoverProps}>
+      {/* Swipe reply-indicator (native) */}
+      {Platform.OS !== "web" && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            [isMine ? "left" : "right"]: 0,
+            top: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
+            transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [isMine ? -24 : 24, 0] }) }],
+            paddingHorizontal: 8,
+          }}
+        >
+          <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+        </Animated.View>
+      )}
+
+      {/* Hover acties (web) */}
+      {Platform.OS === "web" && hovered && (
+        <View
+          style={{
+            position: "absolute",
+            [isMine ? "left" : "right"]: "calc(100% + 6px)",
+            top: "50%",
+            transform: [{ translateY: -16 }],
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            backgroundColor: "rgba(240,234,224,0.97)",
+            borderRadius: 20,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            shadowColor: "#000",
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            zIndex: 10,
+          }}
+        >
+          {onReply && (
+            <Pressable onPress={onReply} hitSlop={6}>
+              <Ionicons name="return-down-back-outline" color="#5B8DEF" size={16} />
+            </Pressable>
+          )}
+          {QUICK_REACTIONS.slice(0, 3).map((e) => (
+            <Pressable key={e} onPress={() => onToggleReaction(e)} hitSlop={4}>
+              <Text style={{ fontSize: 16 }}>{e}</Text>
+            </Pressable>
+          ))}
+          <Pressable onPress={onLongPress} hitSlop={4}>
+            <Ionicons name="add-circle-outline" color="#8A7E6C" size={16} />
+          </Pressable>
+        </View>
+      )}
+
+      <Animated.View
+        className="flex-row items-end"
+        style={{ maxWidth: "85%", transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }] }}
+        {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
+      >
         {showAvatarSlot && (
           <View style={{ width: 28, marginRight: 6 }}>
             {showAvatar && (
@@ -1003,6 +1187,24 @@ function MessageBubble({
           </Text>
         ) : (
           <>
+            {/* Reply-quote */}
+            {content.reply && (
+              <View
+                className={`rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0 ${
+                  isMine ? "bg-white/10" : "bg-paper-warm"
+                }`}
+              >
+                <Text className="text-brand text-[10px] font-semibold" numberOfLines={1}>
+                  {content.reply.senderName}
+                </Text>
+                <Text
+                  className={`text-[11px] ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
+                  numberOfLines={1}
+                >
+                  {content.reply.previewText}
+                </Text>
+              </View>
+            )}
             {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
             {hasText && (
               <View className={hasAttachment ? "px-3 py-2" : ""}>
@@ -1051,7 +1253,7 @@ function MessageBubble({
         )}
       </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
       {reactions.length > 0 && (
         <View
@@ -1098,6 +1300,18 @@ function MessageBubble({
     </View>
   );
 }
+
+/** Veelgebruikte emoji's voor de simpele in-chat picker. */
+const CHAT_EMOJIS = [
+  "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",
+  "🥺","😏","🤩","😇","🤗","😴","🥳","🤯","🫡","🤭",
+  "👍","👎","❤️","💔","🔥","✨","🎉","🙏","💯","👋",
+  "✌️","🤞","🤙","👌","💪","🫶","👏","🙌","🤜","🤛",
+  "🌟","⭐","💫","🌈","☀️","🌙","❄️","🌊","🍀","🌸",
+  "🍕","🍦","🎂","☕","🍺","🥂","🍷","🎵","🎶","🎮",
+  "🐶","🐱","🐻","🦁","🐸","🦄","🦋","🐝","💀","👻",
+  "👽","🤖","💩","🎭","🎲","🏆","💎","🔑","💡","🔥",
+];
 
 /**
  * Deterministische kleur per user — zelfde user_id geeft altijd dezelfde

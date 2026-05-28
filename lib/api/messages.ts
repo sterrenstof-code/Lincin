@@ -28,11 +28,20 @@ export type AttachmentInfo = {
   filename?: string;
 };
 
+export type ReplyInfo = {
+  messageId: string;
+  senderName: string;
+  /** Eerste ~80 tekens van het geciteerde bericht, voor de preview. */
+  previewText: string;
+};
+
 export type MessageContent = {
   text?: string;
   attachment?: AttachmentInfo;
   /** Aanwezig wanneer dit bericht een videogesprek-uitnodiging is. */
   call?: { started: true };
+  /** Aanwezig wanneer dit bericht een reply is op een ander bericht. */
+  reply?: ReplyInfo;
 };
 
 export type DecryptedMessage = {
@@ -160,6 +169,7 @@ export async function sendMessage(args: {
   text?: string;
   attachment?: AttachmentInfo;
   call?: { started: true };
+  reply?: ReplyInfo;
 }): Promise<{ id: string; created_at: string }> {
   if (!args.text && !args.attachment && !args.call) {
     throw new Error("Bericht heeft tekst, bijlage of call nodig.");
@@ -186,6 +196,7 @@ export async function sendMessage(args: {
   if (args.text) content.text = args.text;
   if (args.attachment) content.attachment = args.attachment;
   if (args.call) content.call = args.call;
+  if (args.reply) content.reply = args.reply;
 
   const payloads = encryptForRecipients(
     enc.encode(JSON.stringify(content)),
