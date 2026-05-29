@@ -178,7 +178,9 @@ export default function ChatDetail() {
         }
         return [...prev, msg];
       });
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      if (isAtBottomRef.current) {
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
       // Markeer gelezen + invalidate de chats-query zodat de tab-badge meteen
       // mee daalt, ipv pas bij de volgende refetch.
       (async () => {
@@ -587,7 +589,7 @@ export default function ChatDetail() {
                 name={title}
                 avatarUrl={
                   chat?.type === "group"
-                    ? (chat as any).avatar_url ?? null
+                    ? chat.avatar_url ?? null
                     : (chat?.members.find((m) => m.id !== myUserId)?.avatar_url ?? null)
                 }
                 size="md"
@@ -758,6 +760,20 @@ export default function ChatDetail() {
                 const bubbleColor = isGroup && !isMine ? bubbleColorForSenderId(item.sender_id) : undefined;
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
+                // Systeemmelding — gecentreerde pill.
+                if (item.content?.system) {
+                  return (
+                    <View className="items-center my-2">
+                      <View className="bg-paper-soft rounded-full px-4 py-1.5 flex-row items-center gap-2">
+                        <Ionicons name="camera-outline" color="#8A7E6C" size={13} />
+                        <Text className="text-ink-muted text-xs">
+                          {item.content.system.actorName} heeft de groepsfoto gewijzigd
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                }
+
                 // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
                 if (item.content?.call?.started) {
                   return (

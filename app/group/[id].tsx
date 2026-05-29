@@ -31,6 +31,8 @@ import {
   uploadGroupAvatar,
   type ChatMemberRow,
 } from "@/lib/api/chats";
+import { sendMessage } from "@/lib/api/messages";
+import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 
 export default function GroupInfoScreen() {
@@ -87,6 +89,10 @@ export default function GroupInfoScreen() {
       setLocalAvatarUrl(url);
       await qc.invalidateQueries({ queryKey: ["chat-row", chatId] });
       await qc.invalidateQueries({ queryKey: ["chats"] });
+      // Stuur systeemmelding in de chat
+      const myProf = await getProfile(myUserId);
+      const actorName = myProf?.display_name ?? myProf?.username ?? "Iemand";
+      sendMessage({ chatId, senderId: myUserId, system: { event: "group_avatar_updated", actorName } }).catch(() => {});
     } catch (e: any) {
       setError(e?.message ?? "Kon groepsfoto niet uploaden.");
     } finally {

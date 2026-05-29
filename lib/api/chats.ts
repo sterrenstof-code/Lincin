@@ -102,7 +102,7 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   // staan — Telegram-style. nullsFirst:false zet lege chats onderaan.
   const { data: chats, error } = await supabase
     .from("chats")
-    .select("id, type, name, created_by, created_at, last_message_at")
+    .select("id, type, name, avatar_url, created_by, created_at, last_message_at")
     .order("last_message_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   const chatRows = (chats ?? []) as ChatRow[];

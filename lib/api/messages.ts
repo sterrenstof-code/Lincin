@@ -42,6 +42,8 @@ export type MessageContent = {
   call?: { started: true };
   /** Aanwezig wanneer dit bericht een reply is op een ander bericht. */
   reply?: ReplyInfo;
+  /** Systeemmelding — gecentreerd weergegeven in de chat. */
+  system?: { event: "group_avatar_updated"; actorName: string };
 };
 
 export type DecryptedMessage = {
@@ -197,9 +199,10 @@ export async function sendMessage(args: {
   attachment?: AttachmentInfo;
   call?: { started: true };
   reply?: ReplyInfo;
+  system?: { event: "group_avatar_updated"; actorName: string };
 }): Promise<{ id: string; created_at: string }> {
-  if (!args.text && !args.attachment && !args.call) {
-    throw new Error("Bericht heeft tekst, bijlage of call nodig.");
+  if (!args.text && !args.attachment && !args.call && !args.system) {
+    throw new Error("Bericht heeft tekst, bijlage, call of system nodig.");
   }
 
   const { data: members, error } = await supabase
@@ -224,6 +227,7 @@ export async function sendMessage(args: {
   if (args.attachment) content.attachment = args.attachment;
   if (args.call) content.call = args.call;
   if (args.reply) content.reply = args.reply;
+  if (args.system) content.system = args.system;
 
   const payloads = encryptForRecipients(
     enc.encode(JSON.stringify(content)),
