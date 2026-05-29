@@ -404,6 +404,18 @@ export default function ChatDetail() {
     const currentReply = replyTo;
     setReplyTo(null);
     setShowEmojiPicker(false);
+    // Patch de optimistic rij met de reply zodat de quote meteen zichtbaar is
+    if (currentReply) {
+      setMessages((prev) =>
+        prev
+          ? prev.map((m) =>
+              m.id === tempId
+                ? { ...m, content: { text, reply: currentReply } }
+                : m
+            )
+          : prev
+      );
+    }
 
     try {
       const real = await sendMessage({ chatId: id, senderId: myUserId, text, reply: currentReply ?? undefined });
@@ -1298,54 +1310,84 @@ function MessageBubble({
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
 
-  // ── Swipe-to-reply (native) ──────────────────────────────────────────────
+  // ── Swipe-to-reply / swipe-to-options (native) ───────────────────────────
+  // Rechts swipen → beantwoorden, links swipen → opties (long-press menu)
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeTriggered = useRef(false);
+  const springBack = () =>
+    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderGrant: () => {
         swipeTriggered.current = false;
       },
       onPanResponderMove: (_, g) => {
-        // Alleen naar rechts, max 72px
-        const x = Math.max(0, Math.min(g.dx, 72));
-        swipeX.setValue(x);
-        if (x >= 56 && !swipeTriggered.current) {
-          swipeTriggered.current = true;
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-          onReply?.();
+        if (g.dx > 0) {
+          // ← rechts swipen → antwoorden
+          const x = Math.min(g.dx, 72);
+          swipeX.setValue(x);
+          if (x >= 56 && !swipeTriggered.current) {
+            swipeTriggered.current = true;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            onReply?.();
+          }
+        } else {
+          // ← links swipen → opties
+          const x = Math.max(g.dx, -72);
+          swipeX.setValue(x);
+          if (x <= -56 && !swipeTriggered.current) {
+            swipeTriggered.current = true;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            springBack();
+            onLongPress();
+          }
         }
       },
-      onPanResponderRelease: () => {
-        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
-      },
+      onPanResponderRelease: springBack,
+      onPanResponderTerminate: springBack,
     })
   ).current;
 
   return (
     <View className={isMine ? "items-end" : "items-start"}>
-      {/* Swipe reply-indicator (native only) */}
+      {/* Swipe-indicatoren (native only) */}
       {Platform.OS !== "web" && (
-        <Animated.View
-          style={{
-            position: "absolute",
-            [isMine ? "left" : "right"]: 0,
-            top: 0,
-            bottom: 0,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
-            transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [isMine ? -24 : 24, 0] }) }],
-            paddingHorizontal: 8,
-          }}
-        >
-          <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
-        </Animated.View>
+        <>
+          {/* Rechts swipen → antwoorden */}
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
+              transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [-20, 0] }) }],
+              paddingHorizontal: 8,
+            }}
+          >
+            <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+          </Animated.View>
+          {/* Links swipen → opties */}
+          <Animated.View
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: swipeX.interpolate({ inputRange: [-56, 0], outputRange: [1, 0] }),
+              transform: [{ translateX: swipeX.interpolate({ inputRange: [-56, 0], outputRange: [0, 20] }) }],
+              paddingHorizontal: 8,
+            }}
+          >
+            <Ionicons name="ellipsis-horizontal-circle-outline" color="#8A7E6C" size={18} />
+          </Animated.View>
+        </>
       )}
 
       {/* Avatar + naam — eenmalig boven de eerste bubble van de run */}
