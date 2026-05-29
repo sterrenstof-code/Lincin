@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
+  Clipboard,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -43,7 +44,9 @@ import {
 } from "@/lib/api/chats";
 import {
   buildAttachmentInfo,
+  deleteMessage,
   downloadEncryptedAttachment,
+  editMessage,
   fetchEarlierMessages,
   fetchMessages,
   fetchMessagesByIds,
@@ -98,7 +101,8 @@ export default function ChatDetail() {
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [reactionPicker, setReactionPicker] = useState<{ msg: DecryptedMessage; onReply?: () => void } | null>(null);
+  const [reactionPicker, setReactionPicker] = useState<{ msg: DecryptedMessage; onReply?: () => void; canEdit?: boolean; copyText?: string } | null>(null);
+  const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -419,6 +423,35 @@ export default function ChatDetail() {
     }
   }
 
+  async function onDeleteMessage(messageId: string) {
+    try {
+      await deleteMessage(messageId);
+      setMessages((prev) => prev ? prev.filter((m) => m.id !== messageId) : prev);
+    } catch (e: any) {
+      console.warn("deleteMessage", e?.message ?? e);
+    }
+  }
+
+  async function onConfirmEdit(messageId: string, newText: string) {
+    if (!myUserId || !id) return;
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+    setEditingMessage(null);
+    try {
+      await editMessage(messageId, id, trimmed, myUserId);
+      // Lokaal meteen updaten zodat het niet wacht op realtime
+      setMessages((prev) =>
+        prev ? prev.map((m) =>
+          m.id === messageId
+            ? { ...m, content: { ...m.content, text: trimmed }, edited_at: new Date().toISOString() }
+            : m
+        ) : prev
+      );
+    } catch (e: any) {
+      console.warn("editMessage", e?.message ?? e);
+    }
+  }
+
   function retryFailedMessage(tempId: string) {
     setMessages((prev) => {
       if (!prev) return prev;
@@ -487,14 +520,17 @@ export default function ChatDetail() {
 
   async function pickImage() {
     setAttachMenuOpen(false);
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    // Vraag toestemming op — op iOS verschijnt dit als apart dialoog vóór de
+    // foto-picker. Als toestemming al verleend is, doet dit niets.
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       quality: 0.85,
       allowsEditing: false,
+      allowsMultipleSelection: false,
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
     await onSendAttachment({
       uri: asset.uri,
@@ -823,7 +859,7 @@ export default function ChatDetail() {
                           setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
                           inputRef.current?.focus();
                         };
-                        setReactionPicker({ msg: item, onReply: replyFn });
+                        setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
                       }}
                       onToggleReaction={(emoji) =>
                         !isPending && !isFailed && onToggleReaction(item.id, emoji)
@@ -894,6 +930,14 @@ export default function ChatDetail() {
 
           {/* Composer */}
           <View className="border-t border-line bg-shell-soft">
+            {/* Edit bar */}
+            {editingMessage && (
+              <EditBar
+                text={editingMessage.text}
+                onConfirm={(t) => onConfirmEdit(editingMessage.id, t)}
+                onCancel={() => setEditingMessage(null)}
+              />
+            )}
             {/* Reply preview bar */}
             {replyTo && (
               <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3">
@@ -950,6 +994,20 @@ export default function ChatDetail() {
               >
                 <Ionicons name="add" color="#1A1714" size={22} />
               </Pressable>
+              {/* Emoji-knop — links zodat je de verzendknop niet per ongeluk raakt */}
+              <Pressable
+                onPress={() => {
+                  setShowEmojiPicker((v) => !v);
+                  if (!showEmojiPicker) {
+                    inputRef.current?.blur();
+                  } else {
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+              >
+                <Text style={{ fontSize: 20 }}>😊</Text>
+              </Pressable>
               <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
                 <TextInput
                   ref={inputRef}
@@ -965,32 +1023,18 @@ export default function ChatDetail() {
                   style={{ minHeight: 24 }}
                 />
               </View>
-              {/* Emoji-knop */}
-              <Pressable
-                onPress={() => {
-                  setShowEmojiPicker((v) => !v);
-                  if (!showEmojiPicker) {
-                    // Toetsenbord wegvegen op native
-                    inputRef.current?.blur();
-                  } else {
-                    inputRef.current?.focus();
-                  }
-                }}
-                className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
-              >
-                <Text style={{ fontSize: 20 }}>😊</Text>
-              </Pressable>
               <Pressable
                 onPress={onSend}
                 disabled={sending || !draft.trim()}
-                className={`w-11 h-11 rounded-full items-center justify-center ${
+                className={`w-13 h-13 rounded-full items-center justify-center ${
                   sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
                 }`}
+                style={{ width: 52, height: 52 }}
               >
                 <Ionicons
                   name="arrow-up"
                   color={sending || !draft.trim() ? "#5A4F40" : "#F5E8D3"}
-                  size={20}
+                  size={22}
                 />
               </Pressable>
             </View>
@@ -1012,6 +1056,21 @@ export default function ChatDetail() {
           onClose={() => setReactionPicker(null)}
           onReply={reactionPicker?.onReply ? () => {
             reactionPicker.onReply?.();
+            setReactionPicker(null);
+          } : undefined}
+          canEdit={reactionPicker?.canEdit}
+          onEdit={reactionPicker?.canEdit ? () => {
+            const text = reactionPicker!.msg.content?.text ?? "";
+            setEditingMessage({ id: reactionPicker!.msg.id, text });
+            setReactionPicker(null);
+          } : undefined}
+          onDelete={reactionPicker?.msg.sender_id === myUserId ? () => {
+            const msgId = reactionPicker!.msg.id;
+            setReactionPicker(null);
+            onDeleteMessage(msgId);
+          } : undefined}
+          onCopy={reactionPicker?.copyText ? () => {
+            Clipboard.setString(reactionPicker!.copyText!);
             setReactionPicker(null);
           } : undefined}
           onPick={(emoji) => {
@@ -1091,11 +1150,19 @@ function ReactionPickerModal({
   onClose,
   onPick,
   onReply,
+  canEdit,
+  onEdit,
+  onDelete,
+  onCopy,
 }: {
   visible: boolean;
   onClose: () => void;
   onPick: (emoji: string) => void;
   onReply?: () => void;
+  canEdit?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onCopy?: () => void;
 }) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -1120,22 +1187,66 @@ function ReactionPickerModal({
               </Pressable>
             ))}
           </View>
+          <View className="h-px bg-line-paper mx-1" />
           {/* Acties */}
           {onReply && (
-            <>
-              <View className="h-px bg-line-paper mx-1" />
-              <Pressable
-                onPress={onReply}
-                className="flex-row items-center px-5 py-3.5 active:bg-paper-warm"
-              >
-                <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
-                <Text className="text-ink font-medium ml-3">Beantwoorden</Text>
-              </Pressable>
-            </>
+            <Pressable onPress={onReply} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
+              <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+              <Text className="text-ink font-medium ml-3">Beantwoorden</Text>
+            </Pressable>
+          )}
+          {canEdit && onEdit && (
+            <Pressable onPress={onEdit} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
+              <Ionicons name="pencil-outline" color="#1A1714" size={18} />
+              <Text className="text-ink font-medium ml-3">Bewerken</Text>
+            </Pressable>
+          )}
+          {onCopy && (
+            <Pressable onPress={onCopy} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
+              <Ionicons name="copy-outline" color="#1A1714" size={18} />
+              <Text className="text-ink font-medium ml-3">Kopiëren</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable onPress={onDelete} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
+              <Ionicons name="trash-outline" color="#B23A1C" size={18} />
+              <Text className="font-medium ml-3" style={{ color: "#B23A1C" }}>Verwijderen</Text>
+            </Pressable>
           )}
         </View>
       </Pressable>
     </Modal>
+  );
+}
+
+function EditBar({
+  text,
+  onConfirm,
+  onCancel,
+}: {
+  text: string;
+  onConfirm: (newText: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(text);
+  return (
+    <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3 border-b border-line-paper/60">
+      <View className="w-0.5 self-stretch bg-amber-500 rounded-full" />
+      <TextInput
+        value={value}
+        onChangeText={setValue}
+        autoFocus
+        multiline
+        className="flex-1 text-ink text-base"
+        style={{ minHeight: 24, maxHeight: 80 }}
+      />
+      <Pressable onPress={() => onConfirm(value)} hitSlop={8} className="p-1">
+        <Ionicons name="checkmark" color="#22c55e" size={22} />
+      </Pressable>
+      <Pressable onPress={onCancel} hitSlop={8} className="p-1">
+        <Ionicons name="close" color="#8A7E6C" size={20} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -1254,7 +1365,8 @@ function MessageBubble({
       <Animated.View
         className="flex-row items-end"
         style={{
-          maxWidth: "85%",
+          // Compensteer de marginLeft in de maxWidth zodat de bubble niet afloopt
+          maxWidth: showAvatarSlot ? "78%" : "85%",
           marginLeft: showAvatarSlot ? 44 : 0,
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
@@ -1304,9 +1416,8 @@ function MessageBubble({
             {/* Reply-quote */}
             {content.reply && (
               <View
-                className={`rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0 ${
-                  isMine ? "bg-white/10" : "bg-paper-warm"
-                }`}
+                className="rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0"
+                style={{ backgroundColor: isMine ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)" }}
               >
                 <Text className="text-brand text-[10px] font-semibold" numberOfLines={1}>
                   {content.reply.senderName}
@@ -1339,7 +1450,7 @@ function MessageBubble({
                   isMine ? "text-cream-muted" : "text-ink-muted"
                 }`}
               >
-                {time}
+                {time}{msg.edited_at ? " · bewerkt" : ""}
               </Text>
               {isMine && pending && (
                 <Ionicons

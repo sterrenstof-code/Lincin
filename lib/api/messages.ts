@@ -16,6 +16,7 @@ export type MessageRow = {
   sender_id: string;
   recipient_payloads: Record<string, EncryptedPayload>;
   created_at: string;
+  edited_at?: string | null;
 };
 
 export type AttachmentInfo = {
@@ -59,6 +60,7 @@ export type DecryptedMessage = {
    */
   pendingRekey?: boolean;
   created_at: string;
+  edited_at?: string | null;
 };
 
 const enc = new TextEncoder();
@@ -95,7 +97,7 @@ export async function fetchMessagesByIds(
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at")
+    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
     .in("id", ids);
   if (error) throw error;
   return decryptRows((data ?? []) as MessageRow[], myUserId);
@@ -109,7 +111,7 @@ export async function fetchMessages(
 ): Promise<DecryptedMessage[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at")
+    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
     .eq("chat_id", chatId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -131,7 +133,7 @@ export async function fetchEarlierMessages(
 ): Promise<{ messages: DecryptedMessage[]; hasMore: boolean }> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at")
+    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
     .eq("chat_id", chatId)
     .lt("created_at", before)
     .order("created_at", { ascending: false })
@@ -180,6 +182,7 @@ export async function decryptRows(
       content: plaintext ? parseDecrypted(plaintext) : null,
       pendingRekey: plaintext ? false : pendingRekey,
       created_at: r.created_at,
+      edited_at: r.edited_at ?? null,
     };
   });
 }
@@ -396,4 +399,48 @@ export function buildAttachmentInfo(args: {
     size: args.size,
     filename: args.filename,
   };
+}
+
+/** Verwijder een bericht (alleen eigen berichten, RLS geeft de rest terug). */
+export async function deleteMessage(messageId: string): Promise<void> {
+  const { error } = await supabase
+    .from("messages")
+    .delete()
+    .eq("id", messageId);
+  if (error) throw error;
+}
+
+/**
+ * Bewerk de tekst van een eigen bericht.
+ * We bewaren de bestaande recipient_payloads-sleutels maar vervangen de
+ * plaintext door opnieuw te versleutelen voor alle huidige ontvangers.
+ */
+export async function editMessage(
+  messageId: string,
+  chatId: string,
+  newText: string,
+  senderId: string
+): Promise<void> {
+  const { data: members, error } = await supabase
+    .from("chat_members")
+    .select("user_id")
+    .eq("chat_id", chatId);
+  if (error) throw error;
+  const memberIds = (members ?? []).map((m: any) => m.user_id);
+  const memberProfiles = await getProfiles(memberIds);
+  const recipients = memberProfiles.map((p) => ({
+    userId: p.id,
+    publicKey: base64ToBytes(p.identity_pubkey),
+  }));
+  const content: MessageContent = { text: newText };
+  const payloads = encryptForRecipients(
+    new TextEncoder().encode(JSON.stringify(content)),
+    recipients
+  );
+  const { error: upErr } = await supabase
+    .from("messages")
+    .update({ recipient_payloads: payloads, edited_at: new Date().toISOString() })
+    .eq("id", messageId)
+    .eq("sender_id", senderId);
+  if (upErr) throw upErr;
 }

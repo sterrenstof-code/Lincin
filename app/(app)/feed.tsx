@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { EventCard } from "@/components/EventCard";
 import { SafeImage } from "@/components/SafeImage";
@@ -21,7 +22,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonPostCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
-import { listFeedPosts, type PostWithAuthor } from "@/lib/api/posts";
+import { deletePost, listFeedPosts, type PostWithAuthor } from "@/lib/api/posts";
 
 export default function FeedScreen() {
   const { session } = useAuth();
@@ -142,6 +143,10 @@ export default function FeedScreen() {
             onAuthorPress={() =>
               item.author?.username && router.push(`/user/${item.author.username}`)
             }
+            onDelete={async () => {
+              await deletePost(item);
+              qc.invalidateQueries({ queryKey: ["feed", myUserId] });
+            }}
           />
         // eslint-disable-next-line react-hooks/exhaustive-deps
         ), [myUserId])}
@@ -156,13 +161,16 @@ const PostCard = memo(function PostCard({
   myUserId,
   onPress,
   onAuthorPress,
+  onDelete,
 }: {
   post: PostWithAuthor;
   myUserId: string;
   onPress: () => void;
   onAuthorPress: () => void;
+  onDelete?: () => void;
 }) {
   const isMine = post.user_id === myUserId;
+  const [menuOpen, setMenuOpen] = useState(false);
   const authorName =
     post.author?.display_name ?? post.author?.username ?? "Onbekend";
   const time = formatPostTime(post.created_at);
@@ -188,11 +196,13 @@ const PostCard = memo(function PostCard({
           </Text>
         </View>
         {isMine && (
-          <View className="bg-paper-warm rounded-full px-2.5 py-0.5">
-            <Text className="text-ink text-[10px] font-bold uppercase tracking-wider">
-              Jij
-            </Text>
-          </View>
+          <Pressable
+            onPress={() => setMenuOpen(true)}
+            hitSlop={8}
+            className="w-8 h-8 rounded-full items-center justify-center"
+          >
+            <Ionicons name="ellipsis-horizontal" color="#5A4F40" size={18} />
+          </Pressable>
         )}
       </Pressable>
 
@@ -255,6 +265,22 @@ const PostCard = memo(function PostCard({
             : `${post.comment_count} reacties`}
         </Text>
       </Pressable>
+
+      {isMine && (
+        <ActionSheet
+          visible={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          title="Bericht"
+          actions={[
+            {
+              label: "Verwijderen",
+              icon: "trash-outline",
+              destructive: true,
+              onPress: () => { setMenuOpen(false); onDelete?.(); },
+            },
+          ]}
+        />
+      )}
     </View>
   );
 });
