@@ -733,37 +733,29 @@ export default function ChatDetail() {
           ) : (
             <FlatList
               ref={listRef}
-              data={messages}
+              data={[...(messages ?? [])].reverse()}
               keyExtractor={(m) => m.id}
-              contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
+              inverted
+              contentContainerStyle={{ padding: 16, paddingTop: 28, gap: 6 }}
               keyboardShouldPersistTaps="handled"
               onScroll={(e) => {
-                const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-                const distFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-                setShowScrollDown(distFromBottom > 120);
+                // Bij inverted is offset.y=0 = onderaan
+                setShowScrollDown(e.nativeEvent.contentOffset.y > 120);
               }}
               scrollEventThrottle={100}
               onScrollToIndexFailed={({ index }) => {
-                // Bericht nog buiten het render-venster — scroll eerst naar het einde
-                // en probeer daarna opnieuw zodra de layout klaar is.
-                listRef.current?.scrollToEnd({ animated: false });
                 setTimeout(() => {
                   listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
                 }, 300);
               }}
-              // iOS: toetsenbord wegvegen met swipe-down — native chat-gedrag
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-              keyboardShouldPersistTaps="handled"
-              // Scroll-positie stabiel houden bij laden van oudere berichten bovenaan
-              maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-              // Perf: minder re-renders buiten viewport
               removeClippedSubviews={Platform.OS !== "web"}
               maxToRenderPerBatch={15}
               windowSize={8}
               initialNumToRender={20}
-              onStartReached={loadEarlierMessages}
-              onStartReachedThreshold={0.1}
-              ListHeaderComponent={
+              onEndReached={loadEarlierMessages}
+              onEndReachedThreshold={0.1}
+              ListFooterComponent={
                 <>
                   {/* Laad-indicator voor oudere berichten */}
                   {loadingEarlier && (
@@ -800,9 +792,11 @@ export default function ChatDetail() {
                 </>
               }
               renderItem={({ item, index }) => {
-                const prev = index > 0 ? messages[index - 1] : null;
-                const next =
-                  index < messages.length - 1 ? messages[index + 1] : null;
+                // data is reversed: index 0 = nieuwste bericht
+                // "prev" (ouder) = index+1, "next" (nieuwer) = index-1
+                const reversed = messages ?? [];
+                const prev = index < reversed.length - 1 ? reversed[reversed.length - 2 - index] : null;
+                const next = index > 0 ? reversed[reversed.length - index] : null;
                 const isMine = item.sender_id === myUserId;
                 const isGroup = chat?.type === "group";
                 // Een "run" is een opeenvolgende reeks berichten van dezelfde
@@ -923,9 +917,12 @@ export default function ChatDetail() {
                         setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
                       } : undefined}
                       onReplyQuotePress={(messageId) => {
-                        const idx = (messages ?? []).findIndex((m) => m.id === messageId);
+                        const msgs = messages ?? [];
+                        const idx = msgs.findIndex((m) => m.id === messageId);
                         if (idx !== -1) {
-                          listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+                          // data is reversed, dus de inverted index = msgs.length - 1 - idx
+                          const invertedIdx = msgs.length - 1 - idx;
+                          listRef.current?.scrollToIndex({ index: invertedIdx, animated: true, viewPosition: 0.5 });
                         }
                       }}
                       onReactionLongPress={(emoji, userIds) => {
@@ -1015,7 +1012,7 @@ export default function ChatDetail() {
           {/* Naar-beneden knop */}
           {showScrollDown && (
             <Pressable
-              onPress={() => listRef.current?.scrollToEnd({ animated: true })}
+              onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
               style={{
                 position: "absolute",
                 bottom: 90,
