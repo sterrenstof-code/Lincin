@@ -102,7 +102,7 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   // staan — Telegram-style. nullsFirst:false zet lege chats onderaan.
   const { data: chats, error } = await supabase
     .from("chats")
-    .select("id, type, name, avatar_url, created_by, created_at, last_message_at")
+    .select("id, type, name, created_by, created_at, last_message_at")
     .order("last_message_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   const chatRows = (chats ?? []) as ChatRow[];
@@ -212,14 +212,17 @@ export async function getChatRow(chatId: string): Promise<ChatRow | null> {
   return (data as ChatRow) ?? null;
 }
 
-/** Upload a group avatar and save the URL on the chat row. */
+/** Upload a group avatar and save the URL on the chat row.
+ *  Path: {userId}/group_{chatId}.ext — valt onder de bestaande eigen-map policy.
+ */
 export async function uploadGroupAvatar(
   chatId: string,
+  userId: string,
   fileBytes: Uint8Array,
   mimeType: string
 ): Promise<string> {
   const ext = mimeType === "image/png" ? "png" : "jpg";
-  const path = `group/${chatId}/avatar.${ext}`;
+  const path = `${userId}/group_${chatId}.${ext}`;
   const blob = new Blob([fileBytes], { type: mimeType });
   const { error } = await supabase.storage
     .from("avatars")

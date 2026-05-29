@@ -83,7 +83,7 @@ export default function GroupInfoScreen() {
     setAvatarUploading(true);
     try {
       const bytes = await uriToBytes(asset.uri);
-      const url = await uploadGroupAvatar(chatId, bytes, asset.mimeType ?? "image/jpeg");
+      const url = await uploadGroupAvatar(chatId, myUserId, bytes, asset.mimeType ?? "image/jpeg");
       setLocalAvatarUrl(url);
       await qc.invalidateQueries({ queryKey: ["chat-row", chatId] });
       await qc.invalidateQueries({ queryKey: ["chats"] });
