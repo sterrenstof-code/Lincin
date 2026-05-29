@@ -77,9 +77,33 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
   return data ?? [];
 }
 
+/**
+ * Upload een avatar-afbeelding naar de `avatars` Storage bucket.
+ * Geeft de publieke URL terug die direct in `profiles.avatar_url` opgeslagen kan worden.
+ * Overschrijft altijd hetzelfde pad per user_id zodat er geen orphan files ontstaan.
+ */
+export async function uploadAvatar(
+  userId: string,
+  fileBytes: Uint8Array,
+  mimeType: string
+): Promise<string> {
+  const ext = mimeType === "image/png" ? "png" : "jpg";
+  const path = `${userId}/avatar.${ext}`;
+  const blob = new Blob([fileBytes], { type: mimeType });
+
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, blob, { contentType: mimeType, upsert: true });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+  // Voeg een cache-buster toe zodat de nieuwe foto meteen zichtbaar is.
+  return `${data.publicUrl}?t=${Date.now()}`;
+}
+
 export async function updateMyProfile(
   userId: string,
-  changes: { username?: string; display_name?: string | null }
+  changes: { username?: string; display_name?: string | null; avatar_url?: string | null }
 ): Promise<Profile> {
   const patch: Record<string, unknown> = {};
   if (changes.username !== undefined) {
@@ -91,6 +115,9 @@ export async function updateMyProfile(
   if (changes.display_name !== undefined) {
     const d = changes.display_name?.trim();
     patch.display_name = d && d.length > 0 ? d : null;
+  }
+  if (changes.avatar_url !== undefined) {
+    patch.avatar_url = changes.avatar_url;
   }
 
   const { data, error } = await supabase

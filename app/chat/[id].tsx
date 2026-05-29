@@ -26,6 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
+import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -745,6 +746,7 @@ export default function ChatDetail() {
                   senderProfile?.display_name ??
                   senderProfile?.username ??
                   "Onbekend";
+                const senderAvatarUrl = senderProfile?.avatar_url ?? null;
                 const senderColor = colorForSenderId(item.sender_id);
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
@@ -776,6 +778,7 @@ export default function ChatDetail() {
                       isGroup={!!isGroup}
                       showSenderHeader={showSenderHeader}
                       showAvatar={showAvatar}
+                      senderAvatarUrl={senderAvatarUrl}
                       senderName={senderName}
                       senderColor={senderColor}
                       pending={isPending && !isFailed}
@@ -1134,6 +1137,7 @@ function MessageBubble({
   showSenderHeader?: boolean;
   showAvatar?: boolean;
   senderName?: string;
+  senderAvatarUrl?: string | null;
   senderColor?: string;
   pending?: boolean;
   failed?: boolean;
@@ -1155,7 +1159,6 @@ function MessageBubble({
   // berichten zodat alles netjes onder elkaar uitlijnt, ook als de avatar
   // niet zichtbaar is (alleen op de laatste bubble van een run).
   const showAvatarSlot = !!isGroup && !isMine;
-  const initial = (senderName ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   // ── Swipe-to-reply (native) ──────────────────────────────────────────────
   const swipeX = useRef(new Animated.Value(0)).current;
@@ -1213,23 +1216,20 @@ function MessageBubble({
         {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
       >
         {showAvatarSlot && (
-          <View style={{ width: 28, marginRight: 6 }}>
+          <View style={{ width: 34, marginRight: 6, alignSelf: "flex-end", marginBottom: 2 }}>
             {showAvatar && (
-              <View
-                className="w-7 h-7 rounded-full items-center justify-center"
-                style={{ backgroundColor: senderColor ?? "#5A4F40" }}
-              >
-                <Text className="text-cream text-[11px] font-bold">
-                  {initial}
-                </Text>
-              </View>
+              <Avatar
+                name={senderName}
+                avatarUrl={senderAvatarUrl}
+                size="sm"
+              />
             )}
           </View>
         )}
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
           {showSenderHeader && (
             <Text
-              className="text-[11px] font-semibold mb-0.5 ml-1"
+              className="text-xs font-semibold mb-1 ml-1"
               style={{ color: senderColor ?? "#8A7E6C" }}
               numberOfLines={1}
             >

@@ -14,13 +14,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import * as ImagePicker from "expo-image-picker";
+
+import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
   updateMyProfile,
+  uploadAvatar,
   validateUsername,
 } from "@/lib/api/profiles";
+import { uriToBytes } from "@/lib/crypto/file";
 
 export default function ProfileEditScreen() {
   const router = useRouter();
@@ -30,6 +35,8 @@ export default function ProfileEditScreen() {
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +54,25 @@ export default function ProfileEditScreen() {
       if (p) {
         setUsername(p.username);
         setDisplayName(p.display_name ?? "");
+        setAvatarUrl(p.avatar_url);
       }
       setLoading(false);
     })();
   }, [myUserId]);
+
+  async function onPickAvatar() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    const mime = asset.mimeType ?? "image/jpeg";
+    setPendingAvatar({ uri: asset.uri, mimeType: mime });
+    setAvatarUrl(asset.uri); // toon lokale preview meteen
+  }
 
   const usernameError =
     username.length > 0 ? validateUsername(username.toLowerCase()) : null;
@@ -60,9 +82,15 @@ export default function ProfileEditScreen() {
     setSaving(true);
     setError(null);
     try {
+      let newAvatarUrl: string | null | undefined = undefined;
+      if (pendingAvatar) {
+        const bytes = await uriToBytes(pendingAvatar.uri);
+        newAvatarUrl = await uploadAvatar(myUserId, bytes, pendingAvatar.mimeType);
+      }
       await updateMyProfile(myUserId, {
         username: username.toLowerCase(),
         display_name: displayName,
+        ...(newAvatarUrl !== undefined && { avatar_url: newAvatarUrl }),
       });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
       router.back();
@@ -127,6 +155,24 @@ export default function ProfileEditScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
+
+            {/* ── Avatar-picker ── */}
+            <View className="items-center mb-5">
+              <Pressable onPress={onPickAvatar} className="relative">
+                <Avatar
+                  name={displayName || username}
+                  avatarUrl={avatarUrl}
+                  size="hero"
+                />
+                <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-shell items-center justify-center">
+                  <Ionicons name="camera" color="#F5E8D3" size={14} />
+                </View>
+              </Pressable>
+              <Text className="text-cream-muted text-xs mt-2">
+                Tik om foto te wijzigen
+              </Text>
+            </View>
+
             <View className="bg-paper rounded-3xl p-6">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Gebruikersnaam
