@@ -746,6 +746,7 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
+              keyboardShouldPersistTaps="handled"
               // onContentSizeChange vuurt nadat items gerenderd zijn — correcte
               // plek om naar beneden te scrollen. Bij eerste load (prev=0) altijd,
               // daarna alleen als de gebruiker al onderaan stond.
@@ -1122,7 +1123,7 @@ export default function ChatDetail() {
                   multiline
                   editable={!sending}
                   className="text-ink text-base"
-                  style={{ minHeight: 24 }}
+                  style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
                 />
               </View>
               <Pressable
@@ -1591,6 +1592,8 @@ function MessageBubble({
         onLongPress={onLongPress}
         onPress={failed && onRetry ? onRetry : undefined}
         delayLongPress={300}
+        // @ts-ignore — onContextMenu is een web-only prop voor rechtermuisknop
+        onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onLongPress(); } : undefined}
         style={{
           opacity: pending ? 0.65 : 1,
           ...(bubbleColor && !failed ? { backgroundColor: bubbleColor } : {}),
