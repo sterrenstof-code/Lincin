@@ -152,6 +152,14 @@ export async function listUserPosts(userId: string, limit = 50): Promise<PostWit
   }));
 }
 
+export async function updatePostCaption(postId: string, caption: string): Promise<void> {
+  const { error } = await supabase
+    .from("posts")
+    .update({ caption: caption.trim() || null })
+    .eq("id", postId);
+  if (error) throw error;
+}
+
 export async function deletePost(post: PostRow): Promise<void> {
   const { error } = await supabase.from("posts").delete().eq("id", post.id);
   if (error) throw error;

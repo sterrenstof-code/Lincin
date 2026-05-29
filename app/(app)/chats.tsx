@@ -351,7 +351,16 @@ function ChatRow({
           regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
           chat. Toegang tot het profiel zit nu via de header binnen de chat
           (tap op de naam → /user/[username]). */}
-      <Avatar name={title} size="md" tint="warm" />
+      <Avatar
+        name={title}
+        avatarUrl={
+          chat.type === "group"
+            ? chat.avatar_url ?? null
+            : (chat.members.find((m) => m.id !== myUserId)?.avatar_url ?? null)
+        }
+        size="md"
+        tint="warm"
+      />
       <View className="flex-1 ml-3 mr-2">
         <View className="flex-row items-center">
           <Text

@@ -7,9 +7,13 @@ import { memo, useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,7 +26,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonPostCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
-import { deletePost, listFeedPosts, type PostWithAuthor } from "@/lib/api/posts";
+import { deletePost, updatePostCaption, listFeedPosts, type PostWithAuthor } from "@/lib/api/posts";
 
 export default function FeedScreen() {
   const { session } = useAuth();
@@ -147,6 +151,9 @@ export default function FeedScreen() {
               await deletePost(item);
               qc.invalidateQueries({ queryKey: ["feed", myUserId] });
             }}
+            onEdit={() => {
+              qc.invalidateQueries({ queryKey: ["feed", myUserId] });
+            }}
           />
         // eslint-disable-next-line react-hooks/exhaustive-deps
         ), [myUserId])}
@@ -168,9 +175,13 @@ const PostCard = memo(function PostCard({
   onPress: () => void;
   onAuthorPress: () => void;
   onDelete?: () => void;
+  onEdit?: (newCaption: string) => void;
 }) {
   const isMine = post.user_id === myUserId;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCaption, setEditCaption] = useState(post.caption ?? "");
+  const [saving, setSaving] = useState(false);
   const authorName =
     post.author?.display_name ?? post.author?.username ?? "Onbekend";
   const time = formatPostTime(post.created_at);
@@ -273,6 +284,11 @@ const PostCard = memo(function PostCard({
           title="Bericht"
           actions={[
             {
+              label: "Bijschrift bewerken",
+              icon: "pencil-outline",
+              onPress: () => { setMenuOpen(false); setEditCaption(post.caption ?? ""); setEditOpen(true); },
+            },
+            {
               label: "Verwijderen",
               icon: "trash-outline",
               destructive: true,
@@ -281,6 +297,55 @@ const PostCard = memo(function PostCard({
           ]}
         />
       )}
+
+      {/* Edit caption modal */}
+      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+        >
+          <View className="bg-paper rounded-t-3xl px-5 pt-5 pb-8">
+            <View className="flex-row items-center mb-4">
+              <Text className="flex-1 text-ink font-bold text-lg">Bijschrift bewerken</Text>
+              <Pressable onPress={() => setEditOpen(false)} hitSlop={8}>
+                <Ionicons name="close" color="#8A7E6C" size={22} />
+              </Pressable>
+            </View>
+            <TextInput
+              value={editCaption}
+              onChangeText={setEditCaption}
+              placeholder="Schrijf een bijschrift…"
+              placeholderTextColor="#8A7E6C"
+              multiline
+              autoFocus
+              maxLength={1000}
+              className="bg-paper-light text-ink text-base px-4 py-3 rounded-2xl border border-line-paper"
+              style={{ minHeight: 80, maxHeight: 160 }}
+            />
+            <Text className="text-ink-muted text-xs mt-1 text-right">{editCaption.length}/1000</Text>
+            <Pressable
+              onPress={async () => {
+                setSaving(true);
+                try {
+                  await updatePostCaption(post.id, editCaption);
+                  onEdit?.(editCaption.trim());
+                  setEditOpen(false);
+                } catch (e: any) {
+                  console.warn("updatePostCaption", e?.message ?? e);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="mt-4 bg-ink active:bg-ink-soft rounded-full py-3.5 items-center"
+            >
+              <Text className="text-cream font-semibold">
+                {saving ? "Bewaren…" : "Bewaren"}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 });
