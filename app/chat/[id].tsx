@@ -155,7 +155,6 @@ export default function ChatDetail() {
       setMessages(msgs);
       const rxs = await listReactionsForMessages(msgs.map((m) => m.id));
       if (!cancelled) setReactions(rxs);
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
       // Belangrijk: await zodat de bottom-bar badge meteen 0 toont na opening.
       try {
         await markChatRead(id);
@@ -717,12 +716,17 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
-              // Scroll naar beneden alleen als de gebruiker al onderaan stond —
-              // voorkomt terugspringen terwijl iemand oude berichten leest.
               onContentSizeChange={() => {
+                // Scroll naar beneden bij nieuwe berichten, maar alleen als de
+                // gebruiker al onderaan stond (anders storen we het lezen van oude msgs).
                 if (isAtBottomRef.current) {
                   listRef.current?.scrollToEnd({ animated: false });
                 }
+              }}
+              onLayout={() => {
+                // Eenmalig bij openen: altijd naar het laatste bericht scrollen,
+                // ongeacht isAtBottomRef (die is dan nog niet betrouwbaar).
+                listRef.current?.scrollToEnd({ animated: false });
               }}
               // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
               onScroll={(e) => {
@@ -1468,15 +1472,24 @@ function MessageBubble({
             {content.reply && (
               <Pressable
                 onPress={() => onReplyQuotePress?.(content.reply!.messageId)}
-                className="rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0 active:opacity-70"
-                style={{ backgroundColor: isMine ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)" }}
+                style={{
+                  backgroundColor: isMine ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.10)",
+                  borderLeftWidth: 3,
+                  borderLeftColor: "#5B8DEF",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  marginBottom: 2,
+                }}
               >
-                <Text className="text-brand text-[10px] font-semibold" numberOfLines={1}>
+                <Text selectable={false} style={{ color: "#5B8DEF", fontSize: 10, fontWeight: "600" }} numberOfLines={1}>
                   {content.reply.senderName}
                 </Text>
                 <Text
-                  className={`text-[11px] ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
-                  numberOfLines={1}
+                  selectable={false}
+                  style={{ color: isMine ? "#C4B49A" : "#6B5E4E", fontSize: 11 }}
+                  numberOfLines={2}
                 >
                   {content.reply.previewText}
                 </Text>
