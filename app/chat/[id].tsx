@@ -111,6 +111,7 @@ export default function ChatDetail() {
   const [mentionList, setMentionList] = useState<
     { display: string; username: string }[] | null
   >(null);
+  const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
@@ -118,6 +119,7 @@ export default function ChatDetail() {
   // Track of de gebruiker onderaan de lijst staat, zodat automatisch
   // scrollen naar beneden alleen werkt als hij al onderaan was.
   const isAtBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -184,13 +186,14 @@ export default function ChatDetail() {
       if (isAtBottomRef.current) {
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
       }
-      // Markeer gelezen + invalidate de chats-query zodat de tab-badge meteen
-      // mee daalt, ipv pas bij de volgende refetch.
+      // Markeer gelezen + markeer de chats-query als stale.
+      // refetchType:"none" voorkomt een onmiddellijke refetch die het keyboard
+      // wegduwt via een re-render hoger in de boom.
       (async () => {
         try {
           await markChatRead(id);
         } catch {}
-        qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+        qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
       })();
     });
 
@@ -224,6 +227,7 @@ export default function ChatDetail() {
 
     return () => {
       cancelled = true;
+      initialScrollDoneRef.current = false;
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
@@ -301,6 +305,23 @@ export default function ChatDetail() {
     setDraft(converted);
     if (converted.trim().length > 0) typingSendRef.current?.(myName);
     updateMentionState(converted);
+    updateEmojiState(converted);
+  }
+
+  function updateEmojiState(text: string) {
+    const match = text.match(/:([a-z0-9_+\-]{2,})$/i);
+    if (!match) { setEmojiList(null); return; }
+    const q = match[1].toLowerCase();
+    const results = EMOJI_SHORTCODES
+      .filter(({ name }) => name.includes(q))
+      .slice(0, 8);
+    setEmojiList(results.length > 0 ? results : null);
+  }
+
+  function applyEmoji(name: string, emoji: string) {
+    const replaced = draft.replace(/:([a-z0-9_+\-]{2,})$/i, emoji + " ");
+    setDraft(replaced);
+    setEmojiList(null);
   }
 
   function updateMentionState(text: string) {
@@ -724,9 +745,13 @@ export default function ChatDetail() {
                 }
               }}
               onLayout={() => {
-                // Eenmalig bij openen: altijd naar het laatste bericht scrollen,
-                // ongeacht isAtBottomRef (die is dan nog niet betrouwbaar).
-                listRef.current?.scrollToEnd({ animated: false });
+                // Eenmalig bij openen naar het laatste bericht scrollen.
+                // Daarna NIET meer — anders springt de lijst bij elke
+                // keyboard-open/dicht of layout-change naar beneden.
+                if (!initialScrollDoneRef.current && messages && messages.length > 0) {
+                  initialScrollDoneRef.current = true;
+                  listRef.current?.scrollToEnd({ animated: false });
+                }
               }}
               // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
               onScroll={(e) => {
@@ -947,6 +972,29 @@ export default function ChatDetail() {
             </View>
           )}
 
+          {/* Emoji autocomplete (:naam → emoji) */}
+          {emojiList && emojiList.length > 0 && (
+            <View className="px-3 pb-1">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="always"
+                contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
+              >
+                {emojiList.map(({ name, emoji }) => (
+                  <Pressable
+                    key={name}
+                    onPress={() => applyEmoji(name, emoji)}
+                    className="bg-paper rounded-2xl px-3 py-2 flex-row items-center gap-2"
+                  >
+                    <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                    <Text className="text-ink-muted text-xs">:{name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Mention autocomplete */}
           {mentionList && mentionList.length > 0 && (
             <View className="px-3 pb-1">
@@ -1160,6 +1208,80 @@ const EMOTICON_MAP: [RegExp, string][] = [
   [/:-?X/gi,  "🤐"],
   [/O:-?\)/g, "😇"],
   [/:-?S/gi,  "😖"],
+];
+
+// ── Emoji shortcode lookup (Slack-stijl :naam: → emoji) ─────────────────────
+const EMOJI_SHORTCODES: { name: string; emoji: string }[] = [
+  { name: "thumbsup", emoji: "👍" }, { name: "+1", emoji: "👍" },
+  { name: "thumbsdown", emoji: "👎" }, { name: "-1", emoji: "👎" },
+  { name: "heart", emoji: "❤️" }, { name: "red_heart", emoji: "❤️" },
+  { name: "laughing", emoji: "😂" }, { name: "joy", emoji: "😂" }, { name: "lol", emoji: "😂" },
+  { name: "rofl", emoji: "🤣" },
+  { name: "smile", emoji: "😊" }, { name: "blush", emoji: "😊" },
+  { name: "grin", emoji: "😁" },
+  { name: "wink", emoji: "😉" },
+  { name: "stuck_out_tongue", emoji: "😛" }, { name: "tongue", emoji: "😛" },
+  { name: "sunglasses", emoji: "😎" }, { name: "cool", emoji: "😎" },
+  { name: "thinking", emoji: "🤔" },
+  { name: "hushed", emoji: "😮" }, { name: "open_mouth", emoji: "😮" },
+  { name: "cry", emoji: "😢" }, { name: "crying", emoji: "😢" },
+  { name: "sob", emoji: "😭" },
+  { name: "angry", emoji: "😠" }, { name: "rage", emoji: "😡" },
+  { name: "fire", emoji: "🔥" }, { name: "flame", emoji: "🔥" },
+  { name: "tada", emoji: "🎉" }, { name: "party", emoji: "🎉" },
+  { name: "eyes", emoji: "👀" },
+  { name: "wave", emoji: "👋" },
+  { name: "pray", emoji: "🙏" },
+  { name: "100", emoji: "💯" },
+  { name: "ok", emoji: "👌" }, { name: "ok_hand", emoji: "👌" },
+  { name: "clap", emoji: "👏" },
+  { name: "muscle", emoji: "💪" },
+  { name: "rocket", emoji: "🚀" },
+  { name: "star", emoji: "⭐" },
+  { name: "sparkles", emoji: "✨" },
+  { name: "check", emoji: "✅" }, { name: "white_check_mark", emoji: "✅" },
+  { name: "x", emoji: "❌" }, { name: "no", emoji: "❌" },
+  { name: "broken_heart", emoji: "💔" },
+  { name: "poop", emoji: "💩" },
+  { name: "skull", emoji: "💀" }, { name: "dead", emoji: "💀" },
+  { name: "exploding_head", emoji: "🤯" }, { name: "mind_blown", emoji: "🤯" },
+  { name: "salute", emoji: "🫡" },
+  { name: "hug", emoji: "🤗" },
+  { name: "shrug", emoji: "🤷" },
+  { name: "facepalm", emoji: "🤦" },
+  { name: "chef_kiss", emoji: "🤌" },
+  { name: "point_up", emoji: "☝️" },
+  { name: "raised_hands", emoji: "🙌" },
+  { name: "heart_eyes", emoji: "😍" },
+  { name: "kiss", emoji: "😘" },
+  { name: "yum", emoji: "😋" },
+  { name: "monocle", emoji: "🧐" },
+  { name: "zipper_mouth", emoji: "🤐" },
+  { name: "sweat_smile", emoji: "😅" },
+  { name: "sob", emoji: "😭" },
+  { name: "scream", emoji: "😱" },
+  { name: "flushed", emoji: "😳" },
+  { name: "pleading", emoji: "🥺" },
+  { name: "pensive", emoji: "😔" },
+  { name: "sleeping", emoji: "😴" },
+  { name: "sick", emoji: "🤒" },
+  { name: "nerd", emoji: "🤓" },
+  { name: "clown", emoji: "🤡" },
+  { name: "ghost", emoji: "👻" },
+  { name: "alien", emoji: "👽" },
+  { name: "robot", emoji: "🤖" },
+  { name: "cat", emoji: "🐱" }, { name: "dog", emoji: "🐶" },
+  { name: "pizza", emoji: "🍕" }, { name: "beer", emoji: "🍺" },
+  { name: "coffee", emoji: "☕" }, { name: "cake", emoji: "🎂" },
+  { name: "trophy", emoji: "🏆" }, { name: "medal", emoji: "🥇" },
+  { name: "football", emoji: "⚽" }, { name: "basketball", emoji: "🏀" },
+  { name: "music", emoji: "🎵" }, { name: "microphone", emoji: "🎤" },
+  { name: "phone", emoji: "📱" }, { name: "computer", emoji: "💻" },
+  { name: "email", emoji: "📧" }, { name: "calendar", emoji: "📅" },
+  { name: "clock", emoji: "🕐" }, { name: "hourglass", emoji: "⏳" },
+  { name: "moneybag", emoji: "💰" }, { name: "euro", emoji: "💶" },
+  { name: "bulb", emoji: "💡" }, { name: "warning", emoji: "⚠️" },
+  { name: "lock", emoji: "🔒" }, { name: "key", emoji: "🔑" },
 ];
 
 function replaceEmoticons(text: string): string {
