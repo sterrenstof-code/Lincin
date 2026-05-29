@@ -1209,33 +1209,30 @@ function MessageBubble({
         </Animated.View>
       )}
 
+      {/* Avatar + naam — eenmalig boven de eerste bubble van de run */}
+      {showSenderHeader && showAvatarSlot && (
+        <View className="flex-row items-center mb-0.5 ml-1 gap-2">
+          <Avatar name={senderName} avatarUrl={senderAvatarUrl} size="sm" />
+          <Text
+            className="text-[12px] font-semibold"
+            style={{ color: senderColor }}
+            numberOfLines={1}
+          >
+            {senderName ?? "Onbekend"}
+          </Text>
+        </View>
+      )}
+
       <Animated.View
         className="flex-row items-end"
-        style={{ maxWidth: "85%", transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }] }}
+        style={{
+          maxWidth: "85%",
+          marginLeft: showAvatarSlot ? 44 : 0,
+          transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
+        }}
         {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
       >
-        {/* Avatar-kolom links van inkomende groepsberichten */}
-        {showAvatarSlot && (
-          <View style={{ width: 36, marginRight: 6, alignSelf: "flex-end", marginBottom: 2 }}>
-            {showAvatar ? (
-              <Avatar
-                name={senderName}
-                avatarUrl={senderAvatarUrl}
-                size="sm"
-              />
-            ) : null}
-          </View>
-        )}
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
-          {showSenderHeader && (
-            <Text
-              className="text-[12px] font-semibold mb-0.5 ml-1"
-              style={{ color: senderColor }}
-              numberOfLines={1}
-            >
-              {senderName ?? "Onbekend"}
-            </Text>
-          )}
       <Pressable
         onLongPress={onLongPress}
         onPress={failed && onRetry ? onRetry : undefined}
@@ -1344,7 +1341,7 @@ function MessageBubble({
       {reactions.length > 0 && (
         <View
           className={`flex-row gap-1 mt-1 ${isMine ? "self-end pr-1" : "self-start"}`}
-          style={showAvatarSlot ? { paddingLeft: 42 } : undefined}
+          style={showAvatarSlot ? { marginLeft: 44 } : undefined}
         >
           {reactions.map((r) => (
             <Pressable
