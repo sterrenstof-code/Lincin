@@ -511,9 +511,23 @@ export default function ChatDetail() {
   function onComposerKeyPress(e: any) {
     if (Platform.OS !== "web") return;
     const native = e?.nativeEvent ?? {};
-    const isEnter = native.key === "Enter";
+    const key = native.key;
     const shift = native.shiftKey;
-    if (isEnter && !shift) {
+
+    // Tab: eerste suggestie overnemen (mention of emoji)
+    if (key === "Tab") {
+      e.preventDefault?.();
+      if (emojiList && emojiList.length > 0) {
+        applyEmoji(emojiList[0].name, emojiList[0].emoji);
+        return;
+      }
+      if (mentionList && mentionList.length > 0) {
+        applyMention(mentionList[0].username);
+        return;
+      }
+    }
+
+    if (key === "Enter" && !shift) {
       e.preventDefault?.();
       if (!sending && draft.trim().length > 0) {
         onSend();
