@@ -117,10 +117,7 @@ export default function ChatDetail() {
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
   const callSentRef = useRef(false);
-  // Track of de gebruiker onderaan de lijst staat, zodat automatisch
-  // scrollen naar beneden alleen werkt als hij al onderaan was.
-  const isAtBottomRef = useRef(true);
-  const messageCountRef = useRef(0);
+  const [showScrollDown, setShowScrollDown] = useState(false);
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -184,9 +181,6 @@ export default function ChatDetail() {
         }
         return [...prev, msg];
       });
-      if (isAtBottomRef.current) {
-        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
-      }
       // Markeer gelezen + markeer de chats-query als stale.
       // refetchType:"none" voorkomt een onmiddellijke refetch die het keyboard
       // wegduwt via een re-render hoger in de boom.
@@ -228,8 +222,6 @@ export default function ChatDetail() {
 
     return () => {
       cancelled = true;
-      messageCountRef.current = 0;
-      isAtBottomRef.current = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
@@ -238,12 +230,13 @@ export default function ChatDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, myUserId]);
 
-  // messageCountRef bijhouden zodat onContentSizeChange weet of het om
-  // initieel laden gaat of een nieuw bericht.
+  // Focus input zodra replyTo gezet wordt
   useEffect(() => {
-    if (!messages) return;
-    messageCountRef.current = messages.length;
-  }, [messages]);
+    if (!replyTo) return;
+    const t1 = setTimeout(() => inputRef.current?.focus(), 50);
+    const t2 = setTimeout(() => inputRef.current?.focus(), 200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [replyTo]);
 
   // Typing channel
   useEffect(() => {
@@ -426,9 +419,6 @@ export default function ChatDetail() {
     setMessages((prev) => (prev ? [...prev, optimistic] : [optimistic]));
     setDraft("");
     setMentionList(null);
-    requestAnimationFrame(() =>
-      listRef.current?.scrollToEnd({ animated: true })
-    );
 
     const currentReply = replyTo;
     setReplyTo(null);
@@ -747,19 +737,10 @@ export default function ChatDetail() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
               keyboardShouldPersistTaps="handled"
-              // onContentSizeChange vuurt nadat items gerenderd zijn — correcte
-              // plek om naar beneden te scrollen. Bij eerste load (prev=0) altijd,
-              // daarna alleen als de gebruiker al onderaan stond.
-              onContentSizeChange={() => {
-                if (messageCountRef.current === 0 || isAtBottomRef.current) {
-                  listRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
-              // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
               onScroll={(e) => {
                 const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-                isAtBottomRef.current =
-                  contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+                const distFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+                setShowScrollDown(distFromBottom > 120);
               }}
               scrollEventThrottle={100}
               onScrollToIndexFailed={({ index }) => {
@@ -1029,6 +1010,32 @@ export default function ChatDetail() {
                 ))}
               </View>
             </View>
+          )}
+
+          {/* Naar-beneden knop */}
+          {showScrollDown && (
+            <Pressable
+              onPress={() => listRef.current?.scrollToEnd({ animated: true })}
+              style={{
+                position: "absolute",
+                bottom: 90,
+                right: 16,
+                zIndex: 10,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "#1A1714",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 4,
+              }}
+            >
+              <Ionicons name="chevron-down" color="#F5E8D3" size={20} />
+            </Pressable>
           )}
 
           {/* Composer */}
