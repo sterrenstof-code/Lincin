@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initCryptoRandom } from "@/lib/crypto/random";
@@ -203,6 +204,7 @@ export default function RootLayout() {
           </Stack>
           <StatusBar style="light" />
           <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
