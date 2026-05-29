@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initCryptoRandom } from "@/lib/crypto/random";
@@ -201,6 +202,7 @@ export default function RootLayout() {
             />
           </Stack>
           <StatusBar style="light" />
+          <Analytics />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
