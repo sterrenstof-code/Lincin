@@ -119,7 +119,7 @@ export default function ChatDetail() {
   // Track of de gebruiker onderaan de lijst staat, zodat automatisch
   // scrollen naar beneden alleen werkt als hij al onderaan was.
   const isAtBottomRef = useRef(true);
-  const initialScrollDoneRef = useRef(false);
+  const messageCountRef = useRef(0);
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -227,7 +227,7 @@ export default function ChatDetail() {
 
     return () => {
       cancelled = true;
-      initialScrollDoneRef.current = false;
+      messageCountRef.current = 0;
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
@@ -235,6 +235,21 @@ export default function ChatDetail() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, myUserId]);
+
+  // Scroll naar beneden:
+  // - altijd bij eerste load (messageCountRef gaat van 0 naar N)
+  // - bij nieuwe berichten alleen als de gebruiker al onderaan stond
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const prev = messageCountRef.current;
+    const isInitialLoad = prev === 0;
+    const newMessageArrived = messages.length > prev;
+    messageCountRef.current = messages.length;
+    if (isInitialLoad || (newMessageArrived && isAtBottomRef.current)) {
+      // Kleine delay zodat RN de items heeft kunnen renderen
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: !isInitialLoad }), 80);
+    }
+  }, [messages]);
 
   // Typing channel
   useEffect(() => {
@@ -737,22 +752,6 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
-              onContentSizeChange={() => {
-                // Scroll naar beneden bij nieuwe berichten, maar alleen als de
-                // gebruiker al onderaan stond (anders storen we het lezen van oude msgs).
-                if (isAtBottomRef.current) {
-                  listRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
-              onLayout={() => {
-                // Eenmalig bij openen naar het laatste bericht scrollen.
-                // Daarna NIET meer — anders springt de lijst bij elke
-                // keyboard-open/dicht of layout-change naar beneden.
-                if (!initialScrollDoneRef.current && messages && messages.length > 0) {
-                  initialScrollDoneRef.current = true;
-                  listRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
               // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
               onScroll={(e) => {
                 const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
