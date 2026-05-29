@@ -112,6 +112,7 @@ export default function ChatDetail() {
     { display: string; username: string }[] | null
   >(null);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
+  const [reactionDetail, setReactionDetail] = useState<{ emoji: string; names: string[] } | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
@@ -228,6 +229,7 @@ export default function ChatDetail() {
     return () => {
       cancelled = true;
       messageCountRef.current = 0;
+      isAtBottomRef.current = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
@@ -236,19 +238,11 @@ export default function ChatDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, myUserId]);
 
-  // Scroll naar beneden:
-  // - altijd bij eerste load (messageCountRef gaat van 0 naar N)
-  // - bij nieuwe berichten alleen als de gebruiker al onderaan stond
+  // messageCountRef bijhouden zodat onContentSizeChange weet of het om
+  // initieel laden gaat of een nieuw bericht.
   useEffect(() => {
-    if (!messages || messages.length === 0) return;
-    const prev = messageCountRef.current;
-    const isInitialLoad = prev === 0;
-    const newMessageArrived = messages.length > prev;
+    if (!messages) return;
     messageCountRef.current = messages.length;
-    if (isInitialLoad || (newMessageArrived && isAtBottomRef.current)) {
-      // Kleine delay zodat RN de items heeft kunnen renderen
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: !isInitialLoad }), 80);
-    }
   }, [messages]);
 
   // Typing channel
@@ -752,6 +746,14 @@ export default function ChatDetail() {
               data={messages}
               keyExtractor={(m) => m.id}
               contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 6 }}
+              // onContentSizeChange vuurt nadat items gerenderd zijn — correcte
+              // plek om naar beneden te scrollen. Bij eerste load (prev=0) altijd,
+              // daarna alleen als de gebruiker al onderaan stond.
+              onContentSizeChange={() => {
+                if (messageCountRef.current === 0 || isAtBottomRef.current) {
+                  listRef.current?.scrollToEnd({ animated: false });
+                }
+              }}
               // Bijhouden of de gebruiker onderaan zit (threshold: 80px van de bodem).
               onScroll={(e) => {
                 const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -943,6 +945,15 @@ export default function ChatDetail() {
                         if (idx !== -1) {
                           listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
                         }
+                      }}
+                      onReactionLongPress={(emoji, userIds) => {
+                        const members = chat?.members ?? [];
+                        const names = userIds.map((uid) => {
+                          if (uid === myUserId) return "Jij";
+                          const m = members.find((x) => x.id === uid);
+                          return m?.display_name ?? m?.username ?? "Onbekend";
+                        });
+                        setReactionDetail({ emoji, names });
                       }}
                     />
                   </View>
@@ -1177,6 +1188,33 @@ export default function ChatDetail() {
             onClose={() => setCallOpen(false)}
           />
         )}
+
+        {/* Reactie-detail: wie heeft hierop gereageerd */}
+        <Modal
+          visible={!!reactionDetail}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setReactionDetail(null)}
+        >
+          <Pressable
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" }}
+            onPress={() => setReactionDetail(null)}
+          >
+            <Pressable
+              onPress={() => {}}
+              className="bg-paper rounded-3xl px-6 py-5 mx-8 w-72"
+            >
+              <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>
+                {reactionDetail?.emoji}
+              </Text>
+              {reactionDetail?.names.map((name, i) => (
+                <View key={i} className={`py-2.5 ${i < reactionDetail.names.length - 1 ? "border-b border-line-paper/60" : ""}`}>
+                  <Text className="text-ink font-medium text-center">{name}</Text>
+                </View>
+              ))}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </ScreenContainer>
     </SafeAreaView>
   );
@@ -1435,6 +1473,7 @@ function MessageBubble({
   onReply,
   onMenuPress,
   onReplyQuotePress,
+  onReactionLongPress,
 }: {
   msg: DecryptedMessage;
   isMine: boolean;
@@ -1455,6 +1494,7 @@ function MessageBubble({
   onReply?: () => void;
   onMenuPress?: () => void;
   onReplyQuotePress?: (messageId: string) => void;
+  onReactionLongPress?: (emoji: string, userIds: string[]) => void;
 }) {
   const time = new Date(msg.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -1674,6 +1714,8 @@ function MessageBubble({
             <Pressable
               key={r.emoji}
               onPress={() => onToggleReaction(r.emoji)}
+              onLongPress={() => onReactionLongPress?.(r.emoji, r.userIds)}
+              delayLongPress={300}
               className={`flex-row items-center px-2 py-0.5 rounded-full border ${
                 r.mine
                   ? "bg-brand/20 border-brand"
@@ -1681,15 +1723,13 @@ function MessageBubble({
               }`}
             >
               <Text style={{ fontSize: 13 }}>{r.emoji}</Text>
-              {r.count > 1 && (
-                <Text
-                  className={`ml-1 text-xs font-semibold ${
-                    r.mine ? "text-brand" : "text-ink-soft"
-                  }`}
-                >
-                  {r.count}
-                </Text>
-              )}
+              <Text
+                className={`ml-1 text-xs font-semibold ${
+                  r.mine ? "text-brand" : "text-ink-soft"
+                }`}
+              >
+                {r.count}
+              </Text>
             </Pressable>
           ))}
         </View>
