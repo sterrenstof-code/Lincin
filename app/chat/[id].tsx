@@ -1120,6 +1120,7 @@ function MessageBubble({
   showSenderHeader,
   showAvatar,
   senderName,
+  senderAvatarUrl,
   senderColor,
   pending,
   failed,
