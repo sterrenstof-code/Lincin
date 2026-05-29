@@ -869,7 +869,7 @@ export default function ChatDetail() {
                               ? `[${item.content.attachment.type}]`
                               : "…";
                           setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                          inputRef.current?.focus();
+                          setTimeout(() => inputRef.current?.focus(), 50);
                         };
                         setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
                       }}
@@ -886,7 +886,7 @@ export default function ChatDetail() {
                             ? `[${item.content.attachment.type}]`
                             : "…";
                         setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                        inputRef.current?.focus();
+                        setTimeout(() => inputRef.current?.focus(), 50);
                       } : undefined}
                     />
                   </View>
@@ -1249,8 +1249,8 @@ function EditBar({
         onChangeText={setValue}
         autoFocus
         multiline
-        className="flex-1 text-ink text-base"
-        style={{ minHeight: 24, maxHeight: 80 }}
+        className="flex-1 text-base"
+        style={{ minHeight: 24, maxHeight: 80, color: "#F5E8D3" }}
       />
       <Pressable onPress={() => onConfirm(value)} hitSlop={8} className="p-1">
         <Ionicons name="checkmark" color="#22c55e" size={22} />
