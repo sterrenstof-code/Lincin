@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Clipboard,
   FlatList,
+  InteractionManager,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -230,12 +231,17 @@ export default function ChatDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, myUserId]);
 
-  // Focus input zodra replyTo gezet wordt
+  // Focus input zodra replyTo gezet wordt.
+  // InteractionManager wacht tot alle animaties/transities klaar zijn
+  // voordat hij focust — betrouwbaarder dan een vaste setTimeout op iOS.
   useEffect(() => {
     if (!replyTo) return;
-    const t1 = setTimeout(() => inputRef.current?.focus(), 50);
-    const t2 = setTimeout(() => inputRef.current?.focus(), 200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const task = InteractionManager.runAfterInteractions(() => {
+      inputRef.current?.focus();
+    });
+    // Fallback voor het geval InteractionManager te laat is
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => { task.cancel(); clearTimeout(t); };
   }, [replyTo]);
 
   // Typing channel
@@ -875,17 +881,14 @@ export default function ChatDetail() {
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
                         if (isPending || isFailed) return;
-                        const replyFn = () => {
-                          const name = isMine ? "Jij" : (senderName ?? "Onbekend");
-                          const preview = item.content?.text
-                            ? item.content.text.slice(0, 80)
-                            : item.content?.attachment
-                              ? `[${item.content.attachment.type}]`
-                              : "…";
-                          setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                          setTimeout(() => inputRef.current?.focus(), 50);
-                        };
-                        setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
+                        // Long-press = direct beantwoorden + cursor op input
+                        const name = isMine ? "Jij" : (senderName ?? "Onbekend");
+                        const preview = item.content?.text
+                          ? item.content.text.slice(0, 80)
+                          : item.content?.attachment
+                            ? `[${item.content.attachment.type}]`
+                            : "…";
+                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
                       }}
 
                       onToggleReaction={(emoji) =>
