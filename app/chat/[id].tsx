@@ -680,11 +680,17 @@ export default function ChatDetail() {
                       <Text className="text-ink-muted text-xs">Begin van het gesprek</Text>
                     </View>
                   )}
-                  {/* Toon één uitlegbanner als er berichten zijn die niet
-                      ontsleuteld konden worden — dit is normaal als de gebruiker
-                      voor het eerst inlogt op een nieuw apparaat of browser.
-                      Één melding bovenaan is duidelijker dan tientallen ⚠ bubbles. */}
-                  {messages.some((m) => m.content === null) && (
+                  {/* Banner: berichten worden nog opnieuw versleuteld (re-keying bezig) */}
+                  {messages.some((m) => m.pendingRekey) && (
+                    <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
+                      <ActivityIndicator size="small" color="#8C7B6B" style={{ marginTop: 1 }} />
+                      <Text className="text-ink-soft text-xs leading-5 flex-1">
+                        Oudere berichten worden op de achtergrond ontsleuteld voor je. Scroll omhoog om ze te laden.
+                      </Text>
+                    </View>
+                  )}
+                  {/* Banner: berichten permanent onleesbaar (auth-tag mismatch, ander device) */}
+                  {messages.some((m) => m.content === null && !m.pendingRekey) && (
                     <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
                       <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
                       <Text className="text-ink-soft text-xs leading-5 flex-1">
@@ -1227,11 +1233,25 @@ function MessageBubble({
         }`}
       >
         {content === null ? (
-          <Text
-            className={`italic px-1 text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
-          >
-            🔒 versleuteld
-          </Text>
+          msg.pendingRekey ? (
+            // Envelope ontbreekt nog — re-keying is bezig op de achtergrond.
+            <View className={`flex-row items-center gap-2 px-1 py-0.5`}>
+              <ActivityIndicator
+                size="small"
+                color={isMine ? "#F5E8D3" : "#8C7B6B"}
+              />
+              <Text className={`italic text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
+                wordt ontsleuteld…
+              </Text>
+            </View>
+          ) : (
+            // Envelope bestaat maar decryptie mislukte (ander apparaat / sleutel).
+            <Text
+              className={`italic px-1 text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
+            >
+              🔒 versleuteld
+            </Text>
+          )
         ) : (
           <>
             {/* Reply-quote */}

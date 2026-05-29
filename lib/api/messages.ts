@@ -48,8 +48,14 @@ export type DecryptedMessage = {
   id: string;
   chat_id: string;
   sender_id: string;
-  /** null wanneer decryptie faalde (auth-tag mismatch). */
+  /** null wanneer decryptie faalde (auth-tag mismatch) of envelope ontbreekt. */
   content: MessageContent | null;
+  /**
+   * true wanneer er geen envelope bestaat voor deze user_id — het bericht is
+   * mogelijk onderweg via re-keying en nog niet permanent onleesbaar.
+   * false wanneer de envelope wél bestaat maar decryptie mislukte (auth-tag mismatch).
+   */
+  pendingRekey?: boolean;
   created_at: string;
 };
 
@@ -135,6 +141,8 @@ export async function decryptRows(
     // met de accountsleutel — bij toevallige match werkt het, anders null.
     const payloads = r.recipient_payloads ?? {};
     const primary = payloads[myUserId];
+    // Geen envelope voor deze user_id → re-keying nog niet afgerond.
+    const pendingRekey = !primary;
     const candidates = primary
       ? [primary]
       : Object.values(payloads);
@@ -150,6 +158,7 @@ export async function decryptRows(
       chat_id: r.chat_id,
       sender_id: r.sender_id,
       content: plaintext ? parseDecrypted(plaintext) : null,
+      pendingRekey: plaintext ? false : pendingRekey,
       created_at: r.created_at,
     };
   });

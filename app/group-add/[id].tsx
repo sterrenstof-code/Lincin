@@ -22,6 +22,7 @@ import {
   listChatMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
+import { rekeyMessagesForNewMember } from "@/lib/api/rekey";
 
 export default function GroupAddMembersScreen() {
   const router = useRouter();
@@ -80,6 +81,13 @@ export default function GroupAddMembersScreen() {
       }
       await qc.invalidateQueries({ queryKey: ["chat-members", chatId] });
       await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+
+      // Re-keying: voeg enveloppen toe aan bestaande berichten voor elk nieuw lid.
+      // Fire-and-forget — nooit blokkeren op de navigatie.
+      for (const userId of selected) {
+        rekeyMessagesForNewMember(chatId, userId, myUserId).catch(() => {});
+      }
+
       router.back();
     } catch (e: any) {
       setError(e?.message ?? "Kon leden niet toevoegen.");
