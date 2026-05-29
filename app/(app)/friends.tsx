@@ -91,46 +91,44 @@ export default function FriendsScreen() {
         ListHeaderComponent={
           <View>
             <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
-              Vrienden
+              Lincs
             </Text>
             <Text className="text-cream-soft text-base mb-5">
-              Zoek op handle, accepteer verzoeken, link up.
+              Link up met mensen die je kent.
             </Text>
 
-            {/* ── Vriend toevoegen ── */}
+            {/* ── Link up ── */}
             <View className="bg-paper rounded-3xl p-4 mb-5">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-                Vriend toevoegen
+                Link up
               </Text>
-              <View className="flex-row gap-2">
+              {/* Twee primaire acties naast elkaar */}
+              <View className="flex-row gap-2 mb-2">
                 <Pressable
                   onPress={() => router.push("/qr-scan")}
-                  className="flex-1 items-center gap-1.5 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-2"
+                  className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-4"
                 >
-                  <Ionicons name="qr-code-outline" color="#F5E8D3" size={22} />
-                  <Text className="text-cream text-xs font-semibold text-center">
-                    Scan QR
-                  </Text>
+                  <Ionicons name="qr-code-outline" color="#F5E8D3" size={20} />
+                  <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => router.push("/qr-code")}
-                  className="flex-1 items-center gap-1.5 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-2"
+                  className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-4"
                 >
-                  <Ionicons name="share-outline" color="#1A1714" size={22} />
-                  <Text className="text-ink text-xs font-semibold text-center">
-                    Mijn link
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/invite-email")}
-                  className="flex-1 items-center gap-1.5 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-2"
-                >
-                  <Ionicons name="mail-outline" color="#1A1714" size={22} />
-                  <Text className="text-ink text-xs font-semibold text-center">
-                    E-mail
-                  </Text>
+                  <Ionicons name="share-outline" color="#1A1714" size={20} />
+                  <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
                 </Pressable>
               </View>
+              {/* Secundaire actie: iemand uitnodigen die nog niet op Lincin zit */}
+              <Pressable
+                onPress={() => router.push("/invite-email")}
+                className="flex-row items-center justify-center gap-2 py-2.5"
+              >
+                <Ionicons name="mail-outline" color="#8A7E6C" size={15} />
+                <Text className="text-ink-muted text-xs">
+                  Iemand uitnodigen die nog niet op Lincin zit
+                </Text>
+              </Pressable>
             </View>
 
             {/* ── Zoekbalk ── */}
@@ -139,7 +137,7 @@ export default function FriendsScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Zoek op gebruikersnaam"
+                placeholder="Zoek iemand op handle"
                 placeholderTextColor="#8A7E6C"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -166,7 +164,7 @@ export default function FriendsScreen() {
                         profile={p}
                         onRowPress={() => router.push(`/user/${p.username}`)}
                         onAction={() => onSendRequest(p.id)}
-                        actionLabel="Toevoegen"
+                        actionLabel="Linc"
                         actionIcon="person-add-outline"
                         isLast={i === searchResults.length - 1}
                       />
@@ -177,7 +175,7 @@ export default function FriendsScreen() {
             )}
 
             {pendingIncoming.length > 0 && (
-              <Section title={`Verzoeken voor jou (${pendingIncoming.length})`}>
+              <Section title={`Linc-verzoeken (${pendingIncoming.length})`}>
                 <View className="bg-paper-soft rounded-2xl overflow-hidden">
                   {pendingIncoming.map((f, i) => (
                     <FriendshipRow
@@ -186,7 +184,7 @@ export default function FriendsScreen() {
                       isLast={i === pendingIncoming.length - 1}
                       onRowPress={() => router.push(`/user/${f.other.username}`)}
                       actions={[
-                        { label: "Accepteer", onPress: () => onAccept(f.id), primary: true },
+                        { label: "Link up", onPress: () => onAccept(f.id), primary: true },
                         { label: "Weiger", onPress: () => onDelete(f.id) },
                       ]}
                     />
@@ -211,11 +209,11 @@ export default function FriendsScreen() {
               </Section>
             )}
 
-            <Section title="Jouw vrienden">
+            <Section title="Jouw lincs">
               {friendships.isLoading ? (
                 <SkeletonListCard rows={3} />
               ) : accepted.length === 0 ? (
-                <PaperHint text="Nog geen vrienden. Zoek hierboven of deel je Lincin-link vanuit Profiel." />
+                <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
               ) : (
                 <View className="bg-paper-soft rounded-2xl overflow-hidden">
                   {accepted.map((f, i) => (
