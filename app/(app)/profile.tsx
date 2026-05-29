@@ -1,14 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 
 import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
-import { getProfile } from "@/lib/api/profiles";
+import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
+import { uriToBytes } from "@/lib/crypto/file";
 import { bytesToBase64 } from "@/lib/crypto/base64";
 import { loadIdentity } from "@/lib/crypto/keys";
 import {
@@ -24,11 +26,13 @@ import { buildAddFriendUrl, copyToClipboard, shareText } from "@/lib/share";
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const router = useRouter();
+  const qc = useQueryClient();
   const myUserId = session!.user.id;
 
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
@@ -108,7 +112,31 @@ export default function ProfileScreen() {
   const username = profile.data?.username ?? "";
   const displayName = profile.data?.display_name;
   const heroName = displayName ?? username;
+  const avatarUrl = profile.data?.avatar_url ?? null;
   const addUrl = username ? buildAddFriendUrl(username) : "";
+
+  async function onPickAvatar() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setAvatarUploading(true);
+    try {
+      const bytes = await uriToBytes(asset.uri);
+      const mime = asset.mimeType ?? "image/jpeg";
+      const newUrl = await uploadAvatar(myUserId, bytes, mime);
+      await updateMyProfile(myUserId, { avatar_url: newUrl });
+      await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
+    } catch (e: any) {
+      console.warn("avatar upload", e?.message ?? e);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   async function onCopyHandle() {
     if (!username) return;
@@ -137,7 +165,15 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
         {/* ---- Hero on shell ---- */}
         <View className="items-center mt-2 mb-6">
-          <Avatar name={heroName} size="hero" tint="warm" />
+          <Pressable onPress={onPickAvatar} className="relative">
+            <Avatar name={heroName} avatarUrl={avatarUrl} size="hero" tint="warm" />
+            <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-shell items-center justify-center">
+              {avatarUploading
+                ? <ActivityIndicator size="small" color="#F5E8D3" />
+                : <Ionicons name="camera" color="#F5E8D3" size={14} />
+              }
+            </View>
+          </Pressable>
           {displayName ? (
             <Text className="text-2xl font-bold tracking-tight text-cream mt-3">
               {displayName}
