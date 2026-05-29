@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 
 import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -25,8 +28,10 @@ import {
   listChatMembers,
   removeChatMember,
   renameChat,
+  uploadGroupAvatar,
   type ChatMemberRow,
 } from "@/lib/api/chats";
+import { uriToBytes } from "@/lib/crypto/file";
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -39,6 +44,8 @@ export default function GroupInfoScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const chat = useQuery({
@@ -60,6 +67,32 @@ export default function GroupInfoScreen() {
   const myRole = (members.data ?? []).find((m) => m.user_id === myUserId)?.role;
   const isOwner = myRole === "owner";
   const isGroup = chat.data?.type === "group";
+
+  const groupAvatarUrl = localAvatarUrl ?? chat.data?.avatar_url ?? null;
+
+  async function onPickGroupAvatar() {
+    if (!isOwner) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setAvatarUploading(true);
+    try {
+      const bytes = await uriToBytes(asset.uri);
+      const url = await uploadGroupAvatar(chatId, bytes, asset.mimeType ?? "image/jpeg");
+      setLocalAvatarUrl(url);
+      await qc.invalidateQueries({ queryKey: ["chat-row", chatId] });
+      await qc.invalidateQueries({ queryKey: ["chats"] });
+    } catch (e: any) {
+      setError(e?.message ?? "Kon groepsfoto niet uploaden.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   async function onSaveName() {
     if (!isOwner) return;
@@ -128,9 +161,32 @@ export default function GroupInfoScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
           {/* Hero */}
           <View className="bg-paper rounded-3xl p-6 items-center">
-            <View className="w-20 h-20 rounded-full bg-paper-warm items-center justify-center mb-3">
-              <Ionicons name="people" color="#1A1714" size={32} />
-            </View>
+            <Pressable
+              onPress={onPickGroupAvatar}
+              disabled={!isOwner}
+              className="relative mb-3"
+            >
+              <View className="w-20 h-20 rounded-full bg-paper-warm items-center justify-center overflow-hidden">
+                {groupAvatarUrl ? (
+                  <Image
+                    source={{ uri: groupAvatarUrl, cacheKey: groupAvatarUrl.split("?")[0] }}
+                    cachePolicy="disk"
+                    style={{ width: 80, height: 80 }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <Ionicons name="people" color="#1A1714" size={32} />
+                )}
+              </View>
+              {isOwner && (
+                <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-paper items-center justify-center">
+                  {avatarUploading
+                    ? <ActivityIndicator size="small" color="#F5E8D3" />
+                    : <Ionicons name="camera" color="#F5E8D3" size={14} />
+                  }
+                </View>
+              )}
+            </Pressable>
 
             {editingName ? (
               <View className="w-full">
@@ -281,7 +337,7 @@ function MemberRow({
       }`}
     >
       <Pressable onPress={onPress} className="flex-row items-center flex-1" hitSlop={4}>
-        <Avatar name={name} size="md" />
+        <Avatar name={name} avatarUrl={member.profile?.avatar_url} size="md" />
         <View className="flex-1 ml-3">
           <View className="flex-row items-center">
             <Text className="text-ink font-semibold">{name}</Text>

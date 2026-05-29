@@ -7,6 +7,7 @@ export type ChatRow = {
   id: string;
   type: "direct" | "group";
   name: string | null;
+  avatar_url: string | null;
   created_by: string;
   created_at: string;
   /**
@@ -101,7 +102,7 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   // staan — Telegram-style. nullsFirst:false zet lege chats onderaan.
   const { data: chats, error } = await supabase
     .from("chats")
-    .select("id, type, name, created_by, created_at, last_message_at")
+    .select("id, type, name, avatar_url, created_by, created_at, last_message_at")
     .order("last_message_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   const chatRows = (chats ?? []) as ChatRow[];
@@ -204,11 +205,34 @@ export type ChatMemberRow = {
 export async function getChatRow(chatId: string): Promise<ChatRow | null> {
   const { data, error } = await supabase
     .from("chats")
-    .select("id, type, name, created_by, created_at")
+    .select("id, type, name, avatar_url, created_by, created_at")
     .eq("id", chatId)
     .maybeSingle();
   if (error) throw error;
   return (data as ChatRow) ?? null;
+}
+
+/** Upload a group avatar and save the URL on the chat row. */
+export async function uploadGroupAvatar(
+  chatId: string,
+  fileBytes: Uint8Array,
+  mimeType: string
+): Promise<string> {
+  const ext = mimeType === "image/png" ? "png" : "jpg";
+  const path = `group/${chatId}/avatar.${ext}`;
+  const blob = new Blob([fileBytes], { type: mimeType });
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, blob, { contentType: mimeType, upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+  const url = `${data.publicUrl}?t=${Date.now()}`;
+  const { error: upErr } = await supabase
+    .from("chats")
+    .update({ avatar_url: url })
+    .eq("id", chatId);
+  if (upErr) throw upErr;
+  return url;
 }
 
 /** Fetch chat members with role + profile, sorted by join order. */

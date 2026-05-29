@@ -583,7 +583,15 @@ export default function ChatDetail() {
               className="flex-row items-center flex-1"
               hitSlop={4}
             >
-              <Avatar name={title} size="md" />
+              <Avatar
+                name={title}
+                avatarUrl={
+                  chat?.type === "group"
+                    ? (chat as any).avatar_url ?? null
+                    : (chat?.members.find((m) => m.id !== myUserId)?.avatar_url ?? null)
+                }
+                size="md"
+              />
               <View className="flex-1 ml-3">
                 <Text className="text-ink font-bold" numberOfLines={1}>
                   {title}
@@ -747,6 +755,7 @@ export default function ChatDetail() {
                   "Onbekend";
                 const senderAvatarUrl = senderProfile?.avatar_url ?? null;
                 const senderColor = colorForSenderId(item.sender_id);
+                const bubbleColor = isGroup && !isMine ? bubbleColorForSenderId(item.sender_id) : undefined;
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
                 // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
@@ -780,6 +789,7 @@ export default function ChatDetail() {
                       senderAvatarUrl={senderAvatarUrl}
                       senderName={senderName}
                       senderColor={senderColor}
+                      bubbleColor={bubbleColor}
                       pending={isPending && !isFailed}
                       failed={isFailed}
                       showReadReceipt={item.id === readReceiptMessageId}
@@ -1122,6 +1132,7 @@ function MessageBubble({
   senderName,
   senderAvatarUrl,
   senderColor,
+  bubbleColor,
   pending,
   failed,
   onRetry,
@@ -1139,6 +1150,7 @@ function MessageBubble({
   senderName?: string;
   senderAvatarUrl?: string | null;
   senderColor?: string;
+  bubbleColor?: string;
   pending?: boolean;
   failed?: boolean;
   onRetry?: () => void;
@@ -1237,7 +1249,10 @@ function MessageBubble({
         onLongPress={onLongPress}
         onPress={failed && onRetry ? onRetry : undefined}
         delayLongPress={300}
-        style={{ opacity: pending ? 0.65 : 1 }}
+        style={{
+          opacity: pending ? 0.65 : 1,
+          ...(bubbleColor && !failed ? { backgroundColor: bubbleColor } : {}),
+        }}
         className={`${
           hasAttachment ? "" : "px-4 py-2.5"
         } ${
@@ -1391,9 +1406,9 @@ const CHAT_EMOJIS = [
 ];
 
 /**
- * Deterministische kleur per user — zelfde user_id geeft altijd dezelfde
- * kleur, ongeacht apparaat of sessie. Set is afgestemd op het paper/cream
- * design (warme tinten die contrasteren tegen bg-paper-soft).
+ * Deterministische naam- en bubblekleur per user.
+ * SENDER_COLORS: tekst/naam (voldoende contrast op lichte achtergrond).
+ * BUBBLE_COLORS: zeer lichte tint voor de bubble-achtergrond.
  */
 const SENDER_COLORS = [
   "#A0522D", // terracotta
@@ -1406,12 +1421,32 @@ const SENDER_COLORS = [
   "#7A6E3B", // olijf
 ];
 
+// Zachte pastel-tinten die overeenkomen met bovenstaande kleuren.
+const BUBBLE_COLORS = [
+  "#F5EBE4", // zacht terracotta
+  "#E4EDF5", // zacht blauw
+  "#EDE8E2", // zacht bruin
+  "#E4EDE8", // zacht groen
+  "#EDE8F5", // zacht lavendel
+  "#F5E4EB", // zacht roze
+  "#E4EDEC", // zacht teal
+  "#EDEBE0", // zacht olijf
+];
+
 function colorForSenderId(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = ((hash * 31) + id.charCodeAt(i)) | 0;
   }
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+}
+
+function bubbleColorForSenderId(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash * 31) + id.charCodeAt(i)) | 0;
+  }
+  return BUBBLE_COLORS[Math.abs(hash) % BUBBLE_COLORS.length];
 }
 
 function CallNotificationCard({
