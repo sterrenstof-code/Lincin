@@ -14,7 +14,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
-  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
@@ -1468,32 +1468,30 @@ function MessageBubble({
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
 
-  // ── Swipe-to-reply (rechts) ───────────────────────────────────────────────
+  // ── Swipe-to-reply (rechts) via RNGH — werkt correct binnen FlatList ────
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeTriggered = useRef(false);
   const springBack = () =>
     Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dx > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderGrant: () => {
-        swipeTriggered.current = false;
-      },
-      onPanResponderMove: (_, g) => {
-        const x = Math.min(g.dx, 72);
-        if (x < 0) return;
-        swipeX.setValue(x);
-        if (x >= 56 && !swipeTriggered.current) {
-          swipeTriggered.current = true;
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-          onReply?.();
-        }
-      },
-      onPanResponderRelease: springBack,
-      onPanResponderTerminate: springBack,
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX(10)          // activeert pas bij duidelijk horizontale beweging
+    .failOffsetY([-8, 8])       // faalt als er meer dan 8px verticaal bewogen wordt
+    .runOnJS(true)
+    .onBegin(() => {
+      swipeTriggered.current = false;
     })
-  ).current;
+    .onUpdate((e) => {
+      const x = Math.min(Math.max(e.translationX, 0), 72);
+      swipeX.setValue(x);
+      if (x >= 56 && !swipeTriggered.current) {
+        swipeTriggered.current = true;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onReply?.();
+      }
+    })
+    .onEnd(springBack)
+    .onFinalize(springBack);
 
   return (
     <View className={isMine ? "items-end" : "items-start"}>
@@ -1530,6 +1528,7 @@ function MessageBubble({
         </View>
       )}
 
+      <GestureDetector gesture={Platform.OS !== "web" ? panGesture : Gesture.Pan()}>
       <Animated.View
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         style={{
@@ -1537,7 +1536,6 @@ function MessageBubble({
           marginLeft: showAvatarSlot ? 44 : 0,
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
-        {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
       >
         {/* Drie-puntjes menu-knop */}
         {onMenuPress && (
@@ -1559,7 +1557,7 @@ function MessageBubble({
           ...(bubbleColor && !failed ? { backgroundColor: bubbleColor } : {}),
         }}
         className={`${
-          hasAttachment ? "" : "px-4 py-2.5"
+          hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
         } ${
           failed
             ? "bg-red-700 rounded-2xl rounded-br-md"
@@ -1619,7 +1617,7 @@ function MessageBubble({
             )}
             {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
             {hasText && (
-              <View className={hasAttachment ? "px-3 py-2" : ""}>
+              <View className={hasAttachment ? "px-3 py-2" : content?.reply ? "px-4 pt-1" : ""}>
                 <MentionsText
                   text={content.text!}
                   isMine={isMine}
@@ -1629,7 +1627,7 @@ function MessageBubble({
             )}
             <View
               className={`flex-row items-center ${
-                hasAttachment ? "px-3 pb-2" : "mt-1"
+                hasAttachment ? "px-3 pb-2" : content?.reply ? "px-4 mt-0.5 pb-0.5" : "mt-1"
               }`}
             >
               <Text
@@ -1666,6 +1664,7 @@ function MessageBubble({
       </Pressable>
         </View>
       </Animated.View>
+      </GestureDetector>
 
       {reactions.length > 0 && (
         <View
