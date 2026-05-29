@@ -731,6 +731,14 @@ export default function ChatDetail() {
                   contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
               }}
               scrollEventThrottle={100}
+              onScrollToIndexFailed={({ index }) => {
+                // Bericht nog buiten het render-venster — scroll eerst naar het einde
+                // en probeer daarna opnieuw zodra de layout klaar is.
+                listRef.current?.scrollToEnd({ animated: false });
+                setTimeout(() => {
+                  listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+                }, 300);
+              }}
               // iOS: toetsenbord wegvegen met swipe-down — native chat-gedrag
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               keyboardShouldPersistTaps="handled"
@@ -873,6 +881,7 @@ export default function ChatDetail() {
                         };
                         setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
                       }}
+
                       onToggleReaction={(emoji) =>
                         !isPending && !isFailed && onToggleReaction(item.id, emoji)
                       }
@@ -888,6 +897,25 @@ export default function ChatDetail() {
                         setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
                         setTimeout(() => inputRef.current?.focus(), 50);
                       } : undefined}
+                      onMenuPress={!isPending && !isFailed ? () => {
+                        const replyFn = () => {
+                          const name = isMine ? "Jij" : (senderName ?? "Onbekend");
+                          const preview = item.content?.text
+                            ? item.content.text.slice(0, 80)
+                            : item.content?.attachment
+                              ? `[${item.content.attachment.type}]`
+                              : "…";
+                          setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
+                          setTimeout(() => inputRef.current?.focus(), 50);
+                        };
+                        setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
+                      } : undefined}
+                      onReplyQuotePress={(messageId) => {
+                        const idx = (messages ?? []).findIndex((m) => m.id === messageId);
+                        if (idx !== -1) {
+                          listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+                        }
+                      }}
                     />
                   </View>
                 );
@@ -1280,6 +1308,8 @@ function MessageBubble({
   onToggleReaction,
   showReadReceipt,
   onReply,
+  onMenuPress,
+  onReplyQuotePress,
 }: {
   msg: DecryptedMessage;
   isMine: boolean;
@@ -1298,6 +1328,8 @@ function MessageBubble({
   onToggleReaction: (emoji: string) => void;
   showReadReceipt?: boolean;
   onReply?: () => void;
+  onMenuPress?: () => void;
+  onReplyQuotePress?: (messageId: string) => void;
 }) {
   const time = new Date(msg.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -1310,8 +1342,7 @@ function MessageBubble({
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
 
-  // ── Swipe-to-reply / swipe-to-options (native) ───────────────────────────
-  // Rechts swipen → beantwoorden, links swipen → opties (long-press menu)
+  // ── Swipe-to-reply (rechts) ───────────────────────────────────────────────
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeTriggered = useRef(false);
   const springBack = () =>
@@ -1319,30 +1350,18 @@ function MessageBubble({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        g.dx > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderGrant: () => {
         swipeTriggered.current = false;
       },
       onPanResponderMove: (_, g) => {
-        if (g.dx > 0) {
-          // ← rechts swipen → antwoorden
-          const x = Math.min(g.dx, 72);
-          swipeX.setValue(x);
-          if (x >= 56 && !swipeTriggered.current) {
-            swipeTriggered.current = true;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            onReply?.();
-          }
-        } else {
-          // ← links swipen → opties
-          const x = Math.max(g.dx, -72);
-          swipeX.setValue(x);
-          if (x <= -56 && !swipeTriggered.current) {
-            swipeTriggered.current = true;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-            springBack();
-            onLongPress();
-          }
+        const x = Math.min(g.dx, 72);
+        if (x < 0) return;
+        swipeX.setValue(x);
+        if (x >= 56 && !swipeTriggered.current) {
+          swipeTriggered.current = true;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          onReply?.();
         }
       },
       onPanResponderRelease: springBack,
@@ -1352,42 +1371,23 @@ function MessageBubble({
 
   return (
     <View className={isMine ? "items-end" : "items-start"}>
-      {/* Swipe-indicatoren (native only) */}
+      {/* Swipe-to-reply indicator */}
       {Platform.OS !== "web" && (
-        <>
-          {/* Rechts swipen → antwoorden */}
-          <Animated.View
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              bottom: 0,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
-              transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [-20, 0] }) }],
-              paddingHorizontal: 8,
-            }}
-          >
-            <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
-          </Animated.View>
-          {/* Links swipen → opties */}
-          <Animated.View
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: swipeX.interpolate({ inputRange: [-56, 0], outputRange: [1, 0] }),
-              transform: [{ translateX: swipeX.interpolate({ inputRange: [-56, 0], outputRange: [0, 20] }) }],
-              paddingHorizontal: 8,
-            }}
-          >
-            <Ionicons name="ellipsis-horizontal-circle-outline" color="#8A7E6C" size={18} />
-          </Animated.View>
-        </>
+        <Animated.View
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
+            transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [-20, 0] }) }],
+            paddingHorizontal: 8,
+          }}
+        >
+          <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+        </Animated.View>
       )}
 
       {/* Avatar + naam — eenmalig boven de eerste bubble van de run */}
@@ -1405,15 +1405,24 @@ function MessageBubble({
       )}
 
       <Animated.View
-        className="flex-row items-end"
+        className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         style={{
-          // Compensteer de marginLeft in de maxWidth zodat de bubble niet afloopt
-          maxWidth: showAvatarSlot ? "78%" : "85%",
+          maxWidth: showAvatarSlot ? "82%" : "90%",
           marginLeft: showAvatarSlot ? 44 : 0,
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
         {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
       >
+        {/* Drie-puntjes menu-knop */}
+        {onMenuPress && (
+          <Pressable
+            onPress={onMenuPress}
+            hitSlop={8}
+            className="w-7 h-7 items-center justify-center opacity-50"
+          >
+            <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={16} />
+          </Pressable>
+        )}
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
@@ -1455,10 +1464,11 @@ function MessageBubble({
           )
         ) : (
           <>
-            {/* Reply-quote */}
+            {/* Reply-quote — aantikken scrollt naar het originele bericht */}
             {content.reply && (
-              <View
-                className="rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0"
+              <Pressable
+                onPress={() => onReplyQuotePress?.(content.reply!.messageId)}
+                className="rounded-xl rounded-b-none px-3 py-1.5 border-l-2 border-brand mb-0 active:opacity-70"
                 style={{ backgroundColor: isMine ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)" }}
               >
                 <Text className="text-brand text-[10px] font-semibold" numberOfLines={1}>
@@ -1470,7 +1480,7 @@ function MessageBubble({
                 >
                   {content.reply.previewText}
                 </Text>
-              </View>
+              </Pressable>
             )}
             {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
             {hasText && (
