@@ -291,9 +291,10 @@ export default function ChatDetail() {
   }, [messages, myUserId, chat, otherMembersLastRead]);
 
   function onDraftChange(text: string) {
-    setDraft(text);
-    if (text.trim().length > 0) typingSendRef.current?.(myName);
-    updateMentionState(text);
+    const converted = replaceEmoticons(text);
+    setDraft(converted);
+    if (converted.trim().length > 0) typingSendRef.current?.(myName);
+    updateMentionState(converted);
   }
 
   function updateMentionState(text: string) {
@@ -976,6 +977,50 @@ export default function ChatDetail() {
       </ScreenContainer>
     </SafeAreaView>
   );
+}
+
+/**
+ * Vervang ASCII-emoticons door emoji zodra de gebruiker een spatie of
+ * leesteken typt na de emoticon. Alleen aan het einde van het bericht
+ * of vóór een spatie — zodat typen van bijv. ":-)" in een URL niet
+ * per ongeluk omgezet wordt.
+ */
+const EMOTICON_MAP: [RegExp, string][] = [
+  [/:-?\)/g,  "😊"],
+  [/:-?D/g,   "😄"],
+  [/:-?\(/g,  "😔"],
+  [/;-?\)/g,  "😉"],
+  [/:-?P/gi,  "😛"],
+  [/:-?\*/g,  "😘"],
+  [/:-?O/gi,  "😮"],
+  [/:-?\|/g,  "😐"],
+  [/>:-?\(/g, "😠"],
+  [/:-?\//g,  "😕"],
+  [/:'?\(/g,  "😢"],
+  [/\^_?\^/g, "😊"],
+  [/<3/g,     "❤️"],
+  [/<\/3/g,   "💔"],
+  [/B-?\)/g,  "😎"],
+  [/:-?X/gi,  "🤐"],
+  [/O:-?\)/g, "😇"],
+  [/:-?S/gi,  "😖"],
+];
+
+function replaceEmoticons(text: string): string {
+  // Pas elke emoticon alleen toe als hij gevolgd wordt door een spatie,
+  // leesteken of het einde van de string — zodat gedeeltelijk typen
+  // (bijv. ":D" terwijl je nog verder typt) niet triggert.
+  let result = text;
+  for (const [pattern, emoji] of EMOTICON_MAP) {
+    result = result.replace(pattern, (match, offset, str) => {
+      const after = str[offset + match.length];
+      if (after === undefined || after === " " || /[\s.,!?]/.test(after)) {
+        return emoji;
+      }
+      return match;
+    });
+  }
+  return result;
 }
 
 function typingLabel(
