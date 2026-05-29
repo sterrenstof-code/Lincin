@@ -1155,10 +1155,9 @@ function MessageBubble({
   const content = msg.content;
   const hasAttachment = !!content?.attachment;
   const hasText = !!content?.text && content.text.length > 0;
-  // In group chats reserveren we een avatar-slot links van inkomende
-  // berichten zodat alles netjes onder elkaar uitlijnt, ook als de avatar
-  // niet zichtbaar is (alleen op de laatste bubble van een run).
-  const showAvatarSlot = !!isGroup && !isMine;
+  // In groepsgesprekken: avatar-slot links van inkomende berichten
+  // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
+  const showAvatarSlot = isGroup && !isMine;
 
   // ── Swipe-to-reply (native) ──────────────────────────────────────────────
   const swipeX = useRef(new Animated.Value(0)).current;
@@ -1215,22 +1214,23 @@ function MessageBubble({
         style={{ maxWidth: "85%", transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }] }}
         {...(Platform.OS !== "web" ? panResponder.panHandlers : {})}
       >
+        {/* Avatar-kolom links van inkomende groepsberichten */}
         {showAvatarSlot && (
-          <View style={{ width: 34, marginRight: 6, alignSelf: "flex-end", marginBottom: 2 }}>
-            {showAvatar && (
+          <View style={{ width: 36, marginRight: 6, alignSelf: "flex-end", marginBottom: 2 }}>
+            {showAvatar ? (
               <Avatar
                 name={senderName}
                 avatarUrl={senderAvatarUrl}
                 size="sm"
               />
-            )}
+            ) : null}
           </View>
         )}
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
           {showSenderHeader && (
             <Text
-              className="text-xs font-semibold mb-1 ml-1"
-              style={{ color: senderColor ?? "#8A7E6C" }}
+              className="text-[12px] font-semibold mb-0.5 ml-1"
+              style={{ color: senderColor }}
               numberOfLines={1}
             >
               {senderName ?? "Onbekend"}
@@ -1343,14 +1343,8 @@ function MessageBubble({
 
       {reactions.length > 0 && (
         <View
-          className={`flex-row gap-1 mt-1 ${
-            isMine
-              ? "self-end pr-1"
-              : showAvatarSlot
-                ? "self-start"
-                : "self-start pl-1"
-          }`}
-          style={showAvatarSlot ? { paddingLeft: 34 } : undefined}
+          className={`flex-row gap-1 mt-1 ${isMine ? "self-end pr-1" : "self-start"}`}
+          style={showAvatarSlot ? { paddingLeft: 42 } : undefined}
         >
           {reactions.map((r) => (
             <Pressable
@@ -1405,14 +1399,14 @@ const CHAT_EMOJIS = [
  * design (warme tinten die contrasteren tegen bg-paper-soft).
  */
 const SENDER_COLORS = [
-  "#C75B3D", // warm rood
-  "#3F7AB2", // blauw
-  "#B7882D", // mosterd
-  "#5E8C5A", // groen
-  "#8E5BA3", // paars
-  "#B85277", // magenta
-  "#2B7A78", // teal
-  "#A0623B", // amber-bruin
+  "#A0522D", // terracotta
+  "#4A7FA5", // stofblauw
+  "#8B7355", // warm bruin
+  "#4E7C5F", // sauge groen
+  "#7B5EA7", // lavendel
+  "#A0526B", // oud roze
+  "#3D7E7A", // teal
+  "#7A6E3B", // olijf
 ];
 
 function colorForSenderId(id: string): string {
