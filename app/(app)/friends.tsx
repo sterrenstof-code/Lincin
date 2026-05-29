@@ -97,31 +97,59 @@ export default function FriendsScreen() {
               Zoek op handle, accepteer verzoeken, link up.
             </Text>
 
-            {/* ---- Search pill on shell ---- */}
-            <View className="flex-row items-center gap-2 mb-4">
-              <View className="flex-1 flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper">
-                <Ionicons name="search" color="#8A7E6C" size={18} />
-                <TextInput
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Zoek (min. 2 letters)"
-                  placeholderTextColor="#8A7E6C"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  className="flex-1 text-ink text-base py-3 pl-2"
-                />
-                {query.length > 0 && (
-                  <Pressable onPress={() => setQuery("")} className="p-1">
-                    <Ionicons name="close-circle" color="#8A7E6C" size={18} />
-                  </Pressable>
-                )}
+            {/* ── Vriend toevoegen ── */}
+            <View className="bg-paper rounded-3xl p-4 mb-5">
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
+                Vriend toevoegen
+              </Text>
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={() => router.push("/qr-scan")}
+                  className="flex-1 items-center gap-1.5 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-2"
+                >
+                  <Ionicons name="qr-code-outline" color="#F5E8D3" size={22} />
+                  <Text className="text-cream text-xs font-semibold text-center">
+                    Scan QR
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/qr-code")}
+                  className="flex-1 items-center gap-1.5 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-2"
+                >
+                  <Ionicons name="share-outline" color="#1A1714" size={22} />
+                  <Text className="text-ink text-xs font-semibold text-center">
+                    Mijn link
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/invite-email")}
+                  className="flex-1 items-center gap-1.5 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-2"
+                >
+                  <Ionicons name="mail-outline" color="#1A1714" size={22} />
+                  <Text className="text-ink text-xs font-semibold text-center">
+                    E-mail
+                  </Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={() => router.push("/invite-email")}
-                className="bg-ink active:bg-ink-soft rounded-full w-11 h-11 items-center justify-center"
-              >
-                <Ionicons name="mail-outline" color="#F5E8D3" size={18} />
-              </Pressable>
+            </View>
+
+            {/* ── Zoekbalk ── */}
+            <View className="flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper mb-4">
+              <Ionicons name="search" color="#8A7E6C" size={18} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Zoek op gebruikersnaam"
+                placeholderTextColor="#8A7E6C"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="flex-1 text-ink text-base py-3 pl-2"
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery("")} className="p-1">
+                  <Ionicons name="close-circle" color="#8A7E6C" size={18} />
+                </Pressable>
+              )}
             </View>
 
             {trimmed.length >= 2 && (

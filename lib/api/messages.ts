@@ -81,6 +81,24 @@ function parseDecrypted(bytes: Uint8Array): MessageContent {
   return { text: str };
 }
 
+/**
+ * Haal specifieke berichten op bij hun ID en decrypt ze.
+ * Wordt gebruikt om `pendingRekey`-berichten te herladen nadat re-keying
+ * mogelijk al is afgerond (bijv. wanneer de gebruiker naar boven scrollt).
+ */
+export async function fetchMessagesByIds(
+  ids: string[],
+  myUserId: string
+): Promise<DecryptedMessage[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, chat_id, sender_id, recipient_payloads, created_at")
+    .in("id", ids);
+  if (error) throw error;
+  return decryptRows((data ?? []) as MessageRow[], myUserId);
+}
+
 /** Fetch the most recent messages in a chat (default: last 50, oldest first). */
 export async function fetchMessages(
   chatId: string,

@@ -46,6 +46,7 @@ import {
   downloadEncryptedAttachment,
   fetchEarlierMessages,
   fetchMessages,
+  fetchMessagesByIds,
   sendMessage,
   subscribeToAllMyMessages,
   subscribeToChatMessages,
@@ -331,6 +332,24 @@ export default function ChatDetail() {
     if (!oldest) return;
     setLoadingEarlier(true);
     try {
+      // Re-fetch bestaande pendingRekey-berichten: misschien is re-keying
+      // ondertussen afgerond terwijl de gebruiker omhoog scrollde.
+      const pendingIds = messages
+        .filter((m) => m.pendingRekey)
+        .map((m) => m.id);
+      if (pendingIds.length > 0) {
+        fetchMessagesByIds(pendingIds, myUserId)
+          .then((refreshed) => {
+            if (refreshed.length === 0) return;
+            setMessages((prev) => {
+              if (!prev) return prev;
+              const byId = new Map(refreshed.map((m) => [m.id, m]));
+              return prev.map((m) => byId.get(m.id) ?? m);
+            });
+          })
+          .catch(() => {}); // fire-and-forget
+      }
+
       const { messages: earlier, hasMore } = await fetchEarlierMessages(
         id,
         myUserId,
