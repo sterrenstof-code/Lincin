@@ -200,6 +200,7 @@ const PostCard = memo(function PostCard({
         <Pressable onPress={onPress} className="bg-shell">
           <SafeImage
             uri={post.image_url}
+            cacheKey={post.image_path ?? undefined}
             style={{
               width: "100%",
               // Cap tussen 9:16 (erg hoog portret) en 2:1 (breed landschap).

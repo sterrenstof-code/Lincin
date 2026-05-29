@@ -28,6 +28,7 @@ export default function ProfileScreen() {
 
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
@@ -226,8 +227,24 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" color="#8A7E6C" size={18} />
         </Pressable>
 
-        {/* ---- Security card ---- */}
-        <Text className="text-xs uppercase tracking-wider text-cream-muted mt-6 mb-3 px-1">
+        {/* ---- Geavanceerd (versleuteling + notificaties) ---- */}
+        <Pressable
+          onPress={() => setAdvancedOpen((v) => !v)}
+          className="flex-row items-center mt-6 mb-1 px-1"
+        >
+          <Text className="text-xs uppercase tracking-wider text-cream-muted flex-1">
+            Geavanceerd
+          </Text>
+          <Ionicons
+            name={advancedOpen ? "chevron-up" : "chevron-down"}
+            color="#8A7E6C"
+            size={14}
+          />
+        </Pressable>
+
+        {advancedOpen && <>
+
+        <Text className="text-xs uppercase tracking-wider text-cream-muted mt-4 mb-3 px-1">
           Versleuteling
         </Text>
         <View className="bg-paper-soft rounded-2xl p-5">
@@ -333,6 +350,7 @@ export default function ProfileScreen() {
         <Text className="text-xs uppercase tracking-wider text-cream-muted mt-6 mb-3 px-1">
           Notificaties
         </Text>
+
         <View className="bg-paper-soft rounded-2xl p-5">
           <View className="flex-row items-center mb-2">
             <View className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center">
@@ -376,6 +394,8 @@ export default function ProfileScreen() {
             </>
           )}
         </View>
+
+        </>}
 
         {/* ---- Sign out ---- */}
         <Pressable

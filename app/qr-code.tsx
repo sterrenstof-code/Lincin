@@ -60,20 +60,13 @@ export default function QRCodeScreen() {
           <Ionicons name="close" color="#1A1714" size={20} />
         </Pressable>
         <Text className="flex-1 text-cream text-lg font-semibold ml-3">
-          Jouw QR-code
+          Jouw linc
         </Text>
       </View>
 
       <View className="flex-1 px-5">
         {/* QR-card */}
         <View className="bg-paper rounded-3xl p-6 mt-6 items-center">
-          <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-            Link up
-          </Text>
-          <Text className="text-2xl font-bold tracking-tight text-ink mb-5">
-            Scan om toe te voegen
-          </Text>
-
           <View className="bg-paper-light rounded-3xl p-5 border border-line-paper">
             {addUrl ? (
               <QRCode
@@ -93,18 +86,11 @@ export default function QRCodeScreen() {
             )}
           </View>
 
-          {displayName ? (
-            <Text className="text-2xl font-bold tracking-tight text-ink mt-5">
-              {displayName}
-            </Text>
-          ) : null}
+          <Text className="text-2xl font-bold tracking-tight text-ink mt-5">
+            {heroName || "…"}
+          </Text>
           <Text className="text-ink-soft text-base">
             @{username || "…"}
-          </Text>
-
-          <Text className="text-ink-muted text-xs text-center mt-4 leading-5">
-            Laat iemand deze code met z'n camera scannen.{"\n"}
-            Het opent {addUrl ? "lincin.app" : "Lincin"} en bereidt het verzoek voor.
           </Text>
         </View>
 

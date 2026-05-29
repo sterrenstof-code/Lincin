@@ -99,7 +99,7 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   if (paths.length === 0) return new Map();
   const { data: signed, error: sErr } = await supabase.storage
     .from(POSTS_BUCKET)
-    .createSignedUrls(paths, 60 * 60);
+    .createSignedUrls(paths, 60 * 60 * 24); // 24u — cache overleeft een dag navigeren
   if (sErr) throw sErr;
   return new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
 }

@@ -227,7 +227,8 @@ export default function UserProfileScreen() {
                     <View className="bg-paper-warm" style={{ aspectRatio: 1, borderRadius: 12, overflow: "hidden" }}>
                       {p.image_url ? (
                         <Image
-                          source={{ uri: p.image_url }}
+                          source={{ uri: p.image_url, cacheKey: p.image_path ?? p.id }}
+                          cachePolicy="disk"
                           style={{ width: "100%", height: "100%" }}
                           contentFit="cover"
                           transition={150}
