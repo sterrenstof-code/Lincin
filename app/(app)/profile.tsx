@@ -187,51 +187,35 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* ---- Flame highlight: share link ---- */}
-        <View className="bg-flame rounded-3xl p-6 mb-3">
-          <Text className="text-xs uppercase tracking-wider text-cream/80 mb-1">
+        {/* ---- Link up ---- */}
+        <View className="bg-paper rounded-3xl p-4 mb-3">
+          <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
             Link up
           </Text>
-          <Text className="text-2xl font-bold tracking-tight text-cream mb-4">
-            Deel je Lincin-link
-          </Text>
-          {addUrl ? (
-            <Text className="text-cream/90 text-sm font-mono mb-5" numberOfLines={1}>
-              {addUrl}
-            </Text>
-          ) : null}
-          <View className="flex-row gap-2">
+          <View className="flex-row gap-2 mb-2">
+            <Pressable
+              onPress={() => router.push("/qr-scan")}
+              className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-4"
+            >
+              <Ionicons name="qr-code-outline" color="#F5E8D3" size={20} />
+              <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
+            </Pressable>
             <Pressable
               onPress={onShareUrl}
-              className="flex-1 bg-ink active:bg-ink-soft rounded-full px-5 py-3 flex-row items-center justify-center"
+              className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-4"
             >
-              <Ionicons name="share-outline" color="#F5E8D3" size={18} />
-              <Text className="text-cream font-semibold ml-2">Deel link</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/qr-code")}
-              className="bg-cream active:bg-cream-soft rounded-full w-12 h-12 items-center justify-center"
-            >
-              <Ionicons name="qr-code-outline" color="#1A1714" size={20} />
+              <Ionicons name="share-outline" color="#1A1714" size={20} />
+              <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
             </Pressable>
           </View>
-        </View>
-
-        {/* ---- Secondary share actions ---- */}
-        <View className="flex-row gap-3 mb-3">
           <Pressable
-            onPress={onCopyHandle}
-            className="flex-1 flex-row items-center justify-center bg-paper-soft active:bg-paper rounded-2xl px-4 py-3.5"
+            onPress={() => router.push("/invite-email")}
+            className="flex-row items-center justify-center gap-2 py-2.5"
           >
-            <Ionicons name="at-outline" color="#1A1714" size={18} />
-            <Text className="text-ink font-semibold ml-2">Kopieer @</Text>
-          </Pressable>
-          <Pressable
-            onPress={onCopyUrl}
-            className="flex-1 flex-row items-center justify-center bg-paper-soft active:bg-paper rounded-2xl px-4 py-3.5"
-          >
-            <Ionicons name="link-outline" color="#1A1714" size={18} />
-            <Text className="text-ink font-semibold ml-2">Kopieer link</Text>
+            <Ionicons name="mail-outline" color="#8A7E6C" size={15} />
+            <Text className="text-ink-muted text-xs">
+              Iemand uitnodigen die nog niet op Lincin zit
+            </Text>
           </Pressable>
         </View>
 
