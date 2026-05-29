@@ -22,7 +22,8 @@ import {
   sendFriendRequest,
   type FriendshipWithProfile,
 } from "@/lib/api/friends";
-import { searchProfilesByUsername, type Profile } from "@/lib/api/profiles";
+import { searchProfilesByUsername, getProfile, type Profile } from "@/lib/api/profiles";
+import { buildAddFriendUrl, shareText } from "@/lib/share";
 
 export default function FriendsScreen() {
   const { session } = useAuth();
@@ -31,6 +32,20 @@ export default function FriendsScreen() {
   const router = useRouter();
 
   const [query, setQuery] = useState("");
+
+  const profile = useQuery({
+    queryKey: ["profile", myUserId],
+    queryFn: () => getProfile(myUserId),
+  });
+
+  async function onShareLink() {
+    const username = profile.data?.username;
+    if (!username) return;
+    await shareText({
+      title: "Voeg me toe op Lincin",
+      message: `Linc met mij op Lincin: ${buildAddFriendUrl(username)}`,
+    });
+  }
   const trimmed = query.trim();
 
   const friendships = useQuery({
@@ -112,7 +127,7 @@ export default function FriendsScreen() {
                   <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => router.push("/qr-code")}
+                  onPress={onShareLink}
                   className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-4"
                 >
                   <Ionicons name="share-outline" color="#1A1714" size={20} />

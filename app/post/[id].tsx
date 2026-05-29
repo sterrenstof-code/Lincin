@@ -26,7 +26,7 @@ import {
   subscribeToPostComments,
   type CommentWithAuthor,
 } from "@/lib/api/comments";
-import { deletePost } from "@/lib/api/posts";
+import { deletePost, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { safeBack } from "@/lib/nav";
@@ -62,12 +62,30 @@ export default function PostDetailScreen() {
       if (data.image_path) {
         const { data: signed } = await supabase.storage
           .from("posts")
-          .createSignedUrl(data.image_path, 60 * 60);
+          .createSignedUrl(data.image_path, 60 * 60 * 24);
         imageUrl = signed?.signedUrl ?? null;
       }
       return { ...data, author, image_url: imageUrl };
     },
     enabled: !!id,
+    // Vul meteen met data uit de feed-cache zodat de pagina direct rendert
+    // zonder op de netwerkfetch te wachten. De queryFn draait daarna op de
+    // achtergrond en ververst als de data stale is.
+    initialData: () => {
+      if (!id || !myUserId) return undefined;
+      // Probeer feed-cache eerst, daarna user-profiel-cache.
+      const sources = [
+        qc.getQueryData<PostWithAuthor[]>(["feed", myUserId]),
+        qc.getQueryData<PostWithAuthor[]>(["posts-by-user", myUserId]),
+      ];
+      for (const list of sources) {
+        const match = list?.find((p) => p.id === id);
+        if (match) return match;
+      }
+      return undefined;
+    },
+    initialDataUpdatedAt: () =>
+      qc.getQueryState(["feed", myUserId])?.dataUpdatedAt,
   });
 
   // Fetch + subscribe to comments
@@ -261,7 +279,8 @@ export default function PostDetailScreen() {
               {post.data.image_path && post.data.image_url && (
                 <View className="bg-shell">
                   <Image
-                    source={{ uri: post.data.image_url }}
+                    source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
+                    cachePolicy="disk"
                     style={{ width: "100%", aspectRatio: 1 }}
                     contentFit="contain"
                     transition={150}
