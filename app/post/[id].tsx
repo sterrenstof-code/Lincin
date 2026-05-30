@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +29,7 @@ import {
 import { deletePost, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
+import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
 
@@ -45,6 +46,9 @@ export default function PostDetailScreen() {
   const [commentError, setCommentError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
+  const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const post = useQuery({
     queryKey: ["post", id],
@@ -68,12 +72,8 @@ export default function PostDetailScreen() {
       return { ...data, author, image_url: imageUrl };
     },
     enabled: !!id,
-    // Vul meteen met data uit de feed-cache zodat de pagina direct rendert
-    // zonder op de netwerkfetch te wachten. De queryFn draait daarna op de
-    // achtergrond en ververst als de data stale is.
     initialData: () => {
       if (!id || !myUserId) return undefined;
-      // Probeer feed-cache eerst, daarna user-profiel-cache.
       const sources = [
         qc.getQueryData<PostWithAuthor[]>(["feed", myUserId]),
         qc.getQueryData<PostWithAuthor[]>(["posts-by-user", myUserId]),
@@ -88,7 +88,6 @@ export default function PostDetailScreen() {
       qc.getQueryState(["feed", myUserId])?.dataUpdatedAt,
   });
 
-  // Fetch + subscribe to comments
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -109,39 +108,70 @@ export default function PostDetailScreen() {
     };
   }, [id]);
 
+  // Focus input bij reply
+  useEffect(() => {
+    if (!replyTo) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(t);
+  }, [replyTo]);
+
+  function onDraftChange(text: string) {
+    const converted = replaceEmoticons(text);
+    setDraft(converted);
+    // Emoji autocomplete
+    const match = converted.match(/:([a-z0-9_+\-]{2,})$/i);
+    if (match) {
+      const suggestions = emojiSuggestionsFor(match[1]);
+      setEmojiList(suggestions.length > 0 ? suggestions : null);
+    } else {
+      setEmojiList(null);
+    }
+  }
+
+  function applyEmoji(name: string, emoji: string) {
+    const replaced = draft.replace(/:([a-z0-9_+\-]{2,})$/i, emoji + " ");
+    setDraft(replaced);
+    setEmojiList(null);
+  }
+
+  function onKeyPress(e: any) {
+    if (Platform.OS !== "web") return;
+    const key = e?.nativeEvent?.key;
+    if (key === "Tab") {
+      e.preventDefault?.();
+      if (emojiList && emojiList.length > 0) {
+        applyEmoji(emojiList[0].name, emojiList[0].emoji);
+      }
+      return;
+    }
+    if (key === "Enter" && !e?.nativeEvent?.shiftKey) {
+      e.preventDefault?.();
+      if (!sending && draft.trim()) onSend();
+    }
+  }
+
   async function onSend() {
     if (!myUserId || !id) return;
     const text = draft.trim();
     if (!text) return;
     setSending(true);
     setCommentError(null);
+    // Replies: prefix met @naam
+    const body = replyTo ? `@${replyTo.name} ${text}` : text;
     try {
-      const created = await createComment({
-        postId: id,
-        userId: myUserId,
-        body: text,
-      });
+      const created = await createComment({ postId: id, userId: myUserId, body });
       setDraft("");
-      // Optimistically append, so user sees their comment even if realtime
-      // publication isn't enabled or trips a moment later.
+      setReplyTo(null);
+      setEmojiList(null);
       setComments((prev) => {
         if (!prev) return prev;
         if (prev.some((c) => c.id === created.id)) return prev;
-        return [
-          ...prev,
-          {
-            ...created,
-            author: null, // listPostComments will refresh authoritative state
-          } as CommentWithAuthor,
-        ];
+        return [...prev, { ...created, author: null } as CommentWithAuthor];
       });
       qc.invalidateQueries({ queryKey: ["post-comments", id] });
-      // Re-fetch to pick up author profile + any drift.
       listPostComments(id).then((fresh) => setComments(fresh));
     } catch (e: any) {
-      const message = humanizeCommentError(e);
-      console.warn("createComment", e);
-      setCommentError(message);
+      setCommentError(humanizeCommentError(e));
     } finally {
       setSending(false);
     }
@@ -153,7 +183,6 @@ export default function PostDetailScreen() {
       await deleteComment(commentId);
       setComments((prev) => prev?.filter((c) => c.id !== commentId) ?? null);
     } catch (e: any) {
-      console.warn("deleteComment", e);
       setCommentError(humanizeCommentError(e));
     }
   }
@@ -164,7 +193,7 @@ export default function PostDetailScreen() {
     if (!post.data) return;
     const confirmed = await confirm(
       "Foto verwijderen",
-      "Deze foto wordt definitief verwijderd, samen met alle reacties. Deze actie kan niet ongedaan gemaakt worden.",
+      "Deze foto wordt definitief verwijderd, samen met alle reacties.",
       { affirmativeLabel: "Verwijder", destructive: true }
     );
     if (!confirmed) return;
@@ -218,12 +247,7 @@ export default function PostDetailScreen() {
         onClose={() => setMenuOpen(false)}
         title="Foto opties"
         actions={[
-          {
-            label: "Foto verwijderen",
-            icon: "trash-outline",
-            destructive: true,
-            onPress: onDeletePost,
-          },
+          { label: "Foto verwijderen", icon: "trash-outline", destructive: true, onPress: onDeletePost },
         ]}
       />
 
@@ -266,9 +290,7 @@ export default function PostDetailScreen() {
                 />
                 <View className="flex-1 ml-3">
                   <Text className="text-ink font-semibold">
-                    {post.data.author?.display_name ??
-                      post.data.author?.username ??
-                      "Onbekend"}
+                    {post.data.author?.display_name ?? post.data.author?.username ?? "Onbekend"}
                   </Text>
                   <Text className="text-ink-muted text-xs">
                     @{post.data.author?.username ?? "?"}
@@ -289,11 +311,7 @@ export default function PostDetailScreen() {
               )}
               {post.data.caption && (
                 <View className="px-4 py-4">
-                  <Text
-                    className={`text-ink leading-6 ${
-                      post.data.image_path ? "text-base" : "text-lg"
-                    }`}
-                  >
+                  <Text className={`text-ink leading-6 ${post.data.image_path ? "text-base" : "text-lg"}`}>
                     {post.data.caption}
                   </Text>
                 </View>
@@ -311,17 +329,9 @@ export default function PostDetailScreen() {
                   </View>
                   <View className="flex-1 ml-3">
                     <Text className="text-ink font-semibold text-sm" numberOfLines={1}>
-                      {(() => {
-                        try {
-                          return new URL(post.data.link_url).hostname.replace(/^www\./, "");
-                        } catch {
-                          return post.data.link_url;
-                        }
-                      })()}
+                      {(() => { try { return new URL(post.data.link_url).hostname.replace(/^www\./, ""); } catch { return post.data.link_url; } })()}
                     </Text>
-                    <Text className="text-ink-muted text-xs" numberOfLines={1}>
-                      {post.data.link_url}
-                    </Text>
+                    <Text className="text-ink-muted text-xs" numberOfLines={1}>{post.data.link_url}</Text>
                   </View>
                   <Ionicons name="open-outline" color="#5A4F40" size={16} />
                 </Pressable>
@@ -341,9 +351,7 @@ export default function PostDetailScreen() {
             </View>
           ) : comments.length === 0 ? (
             <View className="bg-paper-soft rounded-2xl p-5">
-              <Text className="text-ink-soft text-sm leading-5">
-                Nog geen reacties. Stuur de eerste hieronder.
-              </Text>
+              <Text className="text-ink-soft text-sm leading-5">Nog geen reacties. Stuur de eerste hieronder.</Text>
             </View>
           ) : (
             <View className="bg-paper-soft rounded-2xl overflow-hidden">
@@ -354,9 +362,11 @@ export default function PostDetailScreen() {
                   isLast={i === comments.length - 1}
                   canDelete={canModerate || c.user_id === myUserId}
                   onDelete={() => onDeleteComment(c.id)}
-                  onAvatarPress={() =>
-                    c.author?.username && router.push(`/user/${c.author.username}`)
-                  }
+                  onAvatarPress={() => c.author?.username && router.push(`/user/${c.author.username}`)}
+                  onReply={() => {
+                    const name = c.author?.username ?? c.author?.display_name ?? "reactie";
+                    setReplyTo({ id: c.id, name });
+                  }}
                 />
               ))}
             </View>
@@ -365,12 +375,44 @@ export default function PostDetailScreen() {
 
         {commentError && (
           <View className="bg-red-100 border border-red-300 rounded-2xl mx-5 mb-2 px-4 py-3">
-            <Text className="text-red-800 text-sm font-semibold mb-1">
-              Kon reactie niet plaatsen
+            <Text className="text-red-800 text-sm font-semibold mb-1">Kon reactie niet plaatsen</Text>
+            <Text className="text-red-800 text-xs leading-5">{commentError}</Text>
+          </View>
+        )}
+
+        {/* Emoji autocomplete */}
+        {emojiList && emojiList.length > 0 && (
+          <View className="px-3 pb-1">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="always"
+              contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
+            >
+              {emojiList.map(({ name, emoji }) => (
+                <Pressable
+                  key={name}
+                  onPress={() => applyEmoji(name, emoji)}
+                  className="bg-paper rounded-2xl px-3 py-2 flex-row items-center gap-2"
+                >
+                  <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                  <Text className="text-ink-muted text-xs">:{name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Reply bar */}
+        {replyTo && (
+          <View className="flex-row items-center px-4 py-2 gap-3 border-t border-line-paper/60">
+            <View className="w-0.5 self-stretch bg-brand rounded-full" />
+            <Text className="flex-1 text-ink-muted text-xs">
+              Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
             </Text>
-            <Text className="text-red-800 text-xs leading-5">
-              {commentError}
-            </Text>
+            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Ionicons name="close" color="#8A7E6C" size={18} />
+            </Pressable>
           </View>
         )}
 
@@ -379,14 +421,16 @@ export default function PostDetailScreen() {
           <View className="flex-row items-end gap-2">
             <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
               <TextInput
+                ref={inputRef}
                 value={draft}
-                onChangeText={setDraft}
+                onChangeText={onDraftChange}
+                onKeyPress={onKeyPress}
                 placeholder="Schrijf een reactie…"
                 placeholderTextColor="#8A7E6C"
                 multiline
                 maxLength={500}
                 className="text-ink text-base"
-                style={{ minHeight: 24 }}
+                style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
               />
             </View>
             <Pressable
@@ -416,21 +460,19 @@ function CommentRow({
   canDelete,
   onDelete,
   onAvatarPress,
+  onReply,
 }: {
   comment: CommentWithAuthor;
   isLast: boolean;
   canDelete: boolean;
   onDelete: () => void;
   onAvatarPress: () => void;
+  onReply: () => void;
 }) {
   const time = formatCommentTime(comment.created_at);
   const name = comment.author?.display_name ?? comment.author?.username ?? "Onbekend";
   return (
-    <View
-      className={`flex-row px-4 py-3 ${
-        isLast ? "" : "border-b border-line-paper/60"
-      }`}
-    >
+    <View className={`flex-row px-4 py-3 ${isLast ? "" : "border-b border-line-paper/60"}`}>
       <Pressable onPress={onAvatarPress} hitSlop={6}>
         <Avatar name={name} size="sm" />
       </Pressable>
@@ -441,45 +483,31 @@ function CommentRow({
         </View>
         <Text className="text-ink text-sm leading-5 mt-0.5">{comment.body}</Text>
       </View>
-      {canDelete && (
-        <Pressable onPress={onDelete} hitSlop={8} className="ml-2 p-1">
-          <Ionicons name="trash-outline" color="#8A7E6C" size={16} />
+      <View className="flex-row items-center gap-1 ml-2">
+        <Pressable onPress={onReply} hitSlop={8} className="p-1">
+          <Ionicons name="return-down-back-outline" color="#8A7E6C" size={16} />
         </Pressable>
-      )}
+        {canDelete && (
+          <Pressable onPress={onDelete} hitSlop={8} className="p-1">
+            <Ionicons name="trash-outline" color="#8A7E6C" size={16} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
 
-/** Translate the most common Supabase / Postgres errors to readable Dutch. */
 function humanizeCommentError(err: any): string {
   const code = err?.code ?? "";
   const msg = err?.message ?? String(err ?? "Onbekende fout");
-
-  // PostgREST: relation does not exist (table missing)
-  if (code === "42P01" || /relation .* does not exist/i.test(msg)) {
-    return (
-      "De `comments` tabel bestaat nog niet in je Supabase project. " +
-      "Open Supabase SQL Editor en run migratie 0007_comments.sql."
-    );
-  }
-  // RLS violation
-  if (code === "42501" || /row-level security/i.test(msg)) {
-    return (
-      "Server-beveiliging weigerde de reactie. Check dat migratie 0007 " +
-      "volledig uitgevoerd is (de RLS-policies horen erbij)."
-    );
-  }
-  // PostgREST: PGRST204 = no rows affected (often RLS hides the row after insert)
-  if (code === "PGRST116" || code === "PGRST204") {
-    return (
-      "De reactie werd ingevoerd maar de server gaf hem niet terug — meestal " +
-      "een RLS-issue. Hard-refresh de pagina om te checken of hij er toch staat."
-    );
-  }
-  // Network errors
-  if (/network|fetch/i.test(msg)) {
-    return "Geen netwerkverbinding. Probeer opnieuw zodra je weer online bent.";
-  }
+  if (code === "42P01" || /relation .* does not exist/i.test(msg))
+    return "De `comments` tabel bestaat nog niet. Run migratie 0007_comments.sql.";
+  if (code === "42501" || /row-level security/i.test(msg))
+    return "Server-beveiliging weigerde de reactie. Check migratie 0007.";
+  if (code === "PGRST116" || code === "PGRST204")
+    return "De reactie werd ingevoerd maar de server gaf hem niet terug — waarschijnlijk een RLS-issue.";
+  if (/network|fetch/i.test(msg))
+    return "Geen netwerkverbinding. Probeer opnieuw.";
   return msg;
 }
 
