@@ -48,6 +48,7 @@ export default function PostDetailScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const post = useQuery({
@@ -416,15 +417,52 @@ export default function PostDetailScreen() {
           </View>
         )}
 
+        {/* Emoji picker */}
+        {showEmojiPicker && (
+          <View className="bg-paper-soft border-t border-line-paper" style={{ height: 200 }}>
+            <ScrollView
+              contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 8 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {POST_EMOJIS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  onPress={() => {
+                    setDraft((d) => d + emoji);
+                    inputRef.current?.focus();
+                  }}
+                  style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Composer */}
         <View className="px-3 py-3 border-t border-line bg-shell-soft">
           <View className="flex-row items-end gap-2">
+            <Pressable
+              onPress={() => {
+                setShowEmojiPicker((v) => !v);
+                if (!showEmojiPicker) {
+                  inputRef.current?.blur();
+                } else {
+                  inputRef.current?.focus();
+                }
+              }}
+              className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+            >
+              <Text style={{ fontSize: 20 }}>😊</Text>
+            </Pressable>
             <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
               <TextInput
                 ref={inputRef}
                 value={draft}
                 onChangeText={onDraftChange}
                 onKeyPress={onKeyPress}
+                onFocus={() => setShowEmojiPicker(false)}
                 placeholder="Schrijf een reactie…"
                 placeholderTextColor="#8A7E6C"
                 multiline
@@ -510,6 +548,17 @@ function humanizeCommentError(err: any): string {
     return "Geen netwerkverbinding. Probeer opnieuw.";
   return msg;
 }
+
+const POST_EMOJIS = [
+  "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",
+  "🥺","😏","🤩","😇","🤗","😴","🥳","🤯","🫡","🤭",
+  "👍","👎","❤️","💔","🔥","✨","🎉","🙏","💯","👋",
+  "✌️","🤞","🤙","👌","💪","🫶","👏","🙌","🤜","🤛",
+  "🌟","⭐","💫","🌈","☀️","🌙","❄️","🌊","🍀","🌸",
+  "🍕","🍦","🎂","☕","🍺","🥂","🍷","🎵","🎶","🎮",
+  "🐶","🐱","🐻","🦁","🐸","🦄","🦋","🐝","💀","👻",
+  "👽","🤖","💩","🎭","🎲","🏆","💎","🔑","💡","🔥",
+];
 
 function formatCommentTime(iso: string): string {
   const date = new Date(iso);
