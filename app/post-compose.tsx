@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import { Video, ResizeMode } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -20,53 +21,66 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { createPost } from "@/lib/api/posts";
 
+type PostType = "tekst" | "foto" | "video" | "link";
+
+const POST_TYPES: { id: PostType; label: string; icon: any }[] = [
+  { id: "tekst",  label: "Tekst",  icon: "text-outline" },
+  { id: "foto",   label: "Foto",   icon: "image-outline" },
+  { id: "video",  label: "Video",  icon: "videocam-outline" },
+  { id: "link",   label: "Link",   icon: "link-outline" },
+];
+
 export default function PostComposeScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [postType, setPostType] = useState<PostType>("tekst");
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaIsVideo, setMediaIsVideo] = useState(false);
   const [caption, setCaption] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
-  const [showLinkField, setShowLinkField] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    !submitting && (imageUri || caption.trim() || linkUrl.trim());
+  const canSubmit = !submitting && (() => {
+    switch (postType) {
+      case "tekst":  return caption.trim().length > 0;
+      case "foto":   return !!mediaUri && !mediaIsVideo;
+      case "video":  return !!mediaUri && mediaIsVideo;
+      case "link":   return linkUrl.trim().length > 0;
+    }
+  })();
 
-  async function pickImage() {
+  async function pickMedia(type: "foto" | "video") {
     setError(null);
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      setError("Geen toegang tot je foto's. Geef Lincin toegang in je systeeminstellingen.");
-      return;
-    }
+    if (!perm.granted) { setError("Geen toegang tot je mediabibliotheek."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.85,
+      mediaTypes: type === "video" ? ["videos"] : ["images"],
+      quality: type === "video" ? 0.7 : 0.85,
       allowsEditing: false,
       selectionLimit: 1,
+      videoMaxDuration: 120,
     });
     if (result.canceled || !result.assets[0]) return;
-    setImageUri(result.assets[0].uri);
+    setMediaUri(result.assets[0].uri);
+    setMediaIsVideo(result.assets[0].type === "video");
   }
 
-  async function takePhoto() {
+  async function takeMedia(type: "foto" | "video") {
     setError(null);
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      setError("Geen camera-toegang. Geef Lincin toegang in je systeeminstellingen.");
-      return;
-    }
+    if (!perm.granted) { setError("Geen camera-toegang."); return; }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      quality: 0.85,
-      allowsEditing: false,
+      mediaTypes: type === "video" ? ["videos"] : ["images"],
+      quality: type === "video" ? 0.7 : 0.85,
+      videoMaxDuration: 120,
     });
     if (result.canceled || !result.assets[0]) return;
-    setImageUri(result.assets[0].uri);
+    setMediaUri(result.assets[0].uri);
+    setMediaIsVideo(result.assets[0].type === "video");
   }
 
   async function onSubmit() {
@@ -76,11 +90,11 @@ export default function PostComposeScreen() {
     try {
       await createPost({
         userId: myUserId,
-        imageUri: imageUri ?? undefined,
-        caption: caption || null,
-        linkUrl: linkUrl.trim() || null,
+        imageUri: mediaUri ?? undefined,
+        caption: caption.trim() || null,
+        linkUrl: postType === "link" ? linkUrl.trim() || null : null,
       });
-      await qc.invalidateQueries({ queryKey: ["feed", myUserId] });
+      await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       router.back();
     } catch (e: any) {
       setError(humanizePostError(e));
@@ -92,6 +106,7 @@ export default function PostComposeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
       <ScreenContainer>
+        {/* Header */}
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
@@ -105,145 +120,208 @@ export default function PostComposeScreen() {
           <Pressable
             onPress={onSubmit}
             disabled={!canSubmit}
-            className={`rounded-full px-4 py-2 ${
-              canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
-            }`}
+            className={`rounded-full px-4 py-2 ${canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"}`}
           >
-            <Text
-              className={`font-semibold ${
-                canSubmit ? "text-ink" : "text-cream-muted"
-              }`}
-            >
-              {submitting ? "Plaatsen…" : "Plaatsen"}
-            </Text>
+            {submitting
+              ? <ActivityIndicator size="small" color="#1A1714" />
+              : <Text className={`font-semibold ${canSubmit ? "text-ink" : "text-cream-muted"}`}>Plaatsen</Text>
+            }
           </Pressable>
         </View>
+
+        {/* Type picker — scrollbare pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
+        >
+          {POST_TYPES.map((t) => {
+            const active = postType === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => { setPostType(t.id); setError(null); setMediaUri(null); }}
+                className={`flex-row items-center gap-2 px-4 py-2.5 rounded-full border ${
+                  active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"
+                }`}
+              >
+                <Ionicons name={t.icon} size={16} color={active ? "#1A1714" : "#8A7E6C"} />
+                <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
+                  {t.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+          {/* Poll + Call plannen als shortcut-pills die doornav */}
+          <Pressable
+            onPress={() => router.replace("/poll-compose")}
+            className="flex-row items-center gap-2 px-4 py-2.5 rounded-full bg-paper-soft border border-paper-soft"
+          >
+            <Ionicons name="bar-chart-outline" size={16} color="#8A7E6C" />
+            <Text className="text-sm font-semibold text-ink-muted">Poll</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.replace("/call-plan-compose")}
+            className="flex-row items-center gap-2 px-4 py-2.5 rounded-full bg-paper-soft border border-paper-soft"
+          >
+            <Ionicons name="videocam-outline" size={16} color="#8A7E6C" />
+            <Text className="text-sm font-semibold text-ink-muted">Call plannen</Text>
+          </Pressable>
+        </ScrollView>
 
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            {/* Caption — primary */}
-            <View className="bg-paper rounded-3xl p-5">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Wat wil je delen?
-              </Text>
-              <TextInput
-                value={caption}
-                onChangeText={setCaption}
-                placeholder="Schrijf iets, of laat leeg…"
-                placeholderTextColor="#8A7E6C"
-                multiline
-                maxLength={1000}
-                className="text-ink text-base bg-paper-light border border-line-paper rounded-2xl px-4 py-3"
-                style={{ minHeight: 100, textAlignVertical: "top" }}
-              />
-              <Text className="text-ink-muted text-xs mt-2 text-right">
-                {caption.length}/1000
-              </Text>
-            </View>
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
 
-            {/* Image preview / picker */}
-            {imageUri ? (
-              <View className="bg-paper-soft rounded-3xl overflow-hidden mt-4">
-                <View className="bg-shell">
-                  <Image
-                    source={{ uri: imageUri }}
-                    style={{ width: "100%", aspectRatio: 1 }}
-                    contentFit="cover"
-                    transition={150}
-                  />
-                </View>
-                <View className="flex-row gap-2 p-3">
-                  <Pressable
-                    onPress={pickImage}
-                    className="flex-1 flex-row items-center justify-center bg-paper-warm active:bg-paper rounded-full px-4 py-2.5"
-                  >
-                    <Ionicons name="images-outline" color="#1A1714" size={16} />
-                    <Text className="text-ink font-semibold ml-2 text-sm">Wijzig</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setImageUri(null)}
-                    className="flex-row items-center justify-center bg-paper-warm active:bg-paper rounded-full px-4 py-2.5"
-                  >
-                    <Ionicons name="trash-outline" color="#1A1714" size={16} />
-                    <Text className="text-ink font-semibold ml-2 text-sm">Verwijder</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <View className="flex-row gap-2 mt-4">
-                <Pressable
-                  onPress={pickImage}
-                  className="flex-1 flex-row items-center justify-center bg-paper-soft active:bg-paper rounded-2xl px-4 py-3.5"
-                >
-                  <Ionicons name="images-outline" color="#1A1714" size={18} />
-                  <Text className="text-ink font-semibold ml-2">Foto</Text>
-                </Pressable>
-                {Platform.OS !== "web" && (
-                  <Pressable
-                    onPress={takePhoto}
-                    className="flex-1 flex-row items-center justify-center bg-paper-soft active:bg-paper rounded-2xl px-4 py-3.5"
-                  >
-                    <Ionicons name="camera-outline" color="#1A1714" size={18} />
-                    <Text className="text-ink font-semibold ml-2">Camera</Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={() => setShowLinkField((s) => !s)}
-                  className={`flex-1 flex-row items-center justify-center rounded-2xl px-4 py-3.5 ${
-                    showLinkField || linkUrl.length > 0
-                      ? "bg-ink"
-                      : "bg-paper-soft active:bg-paper"
-                  }`}
-                >
-                  <Ionicons
-                    name="link-outline"
-                    color={showLinkField || linkUrl.length > 0 ? "#F5E8D3" : "#1A1714"}
-                    size={18}
-                  />
-                  <Text
-                    className={`font-semibold ml-2 ${
-                      showLinkField || linkUrl.length > 0 ? "text-cream" : "text-ink"
-                    }`}
-                  >
-                    Link
-                  </Text>
-                </Pressable>
+            {/* TEKST */}
+            {postType === "tekst" && (
+              <View>
+                <TextInput
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder="Schrijf iets…"
+                  placeholderTextColor="#8A7E6C"
+                  multiline
+                  maxLength={1000}
+                  autoFocus
+                  className="bg-paper rounded-3xl text-ink text-base px-5 py-4"
+                  style={{ minHeight: 160, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                />
+                <Text className="text-ink-muted text-xs mt-2 text-right px-1">{caption.length}/1000</Text>
               </View>
             )}
 
-            {/* Link field — appears when toggled or already filled */}
-            {(showLinkField || linkUrl.length > 0) && (
-              <View className="bg-paper-soft rounded-2xl p-4 mt-4">
-                <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                  Link toevoegen
-                </Text>
-                <View className="flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper">
-                  <Ionicons name="link" color="#8A7E6C" size={16} />
-                  <TextInput
-                    value={linkUrl}
-                    onChangeText={setLinkUrl}
-                    placeholder="https://…"
-                    placeholderTextColor="#8A7E6C"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="url"
-                    className="flex-1 text-ink text-base py-3 pl-2"
-                  />
-                  {linkUrl.length > 0 && (
-                    <Pressable
-                      onPress={() => {
-                        setLinkUrl("");
-                        setShowLinkField(false);
-                      }}
-                      className="p-1"
-                    >
-                      <Ionicons name="close-circle" color="#8A7E6C" size={18} />
+            {/* FOTO */}
+            {postType === "foto" && (
+              <View>
+                {mediaUri && !mediaIsVideo ? (
+                  <View className="rounded-3xl overflow-hidden bg-shell mb-3">
+                    <Image source={{ uri: mediaUri }} style={{ width: "100%", aspectRatio: 1 }} contentFit="cover" />
+                    <View className="flex-row gap-2 p-3">
+                      <Pressable onPress={() => pickMedia("foto")} className="flex-1 flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
+                        <Ionicons name="images-outline" color="#1A1714" size={16} />
+                        <Text className="text-ink font-semibold ml-2 text-sm">Wijzig</Text>
+                      </Pressable>
+                      <Pressable onPress={() => setMediaUri(null)} className="flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
+                        <Ionicons name="trash-outline" color="#B23A1C" size={16} />
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <View className="flex-row gap-3 mb-4">
+                    <Pressable onPress={() => pickMedia("foto")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
+                      <Ionicons name="images-outline" color="#8A7E6C" size={32} />
+                      <Text className="text-ink-muted font-semibold text-sm">Kies foto</Text>
                     </Pressable>
-                  )}
+                    {Platform.OS !== "web" && (
+                      <Pressable onPress={() => takeMedia("foto")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
+                        <Ionicons name="camera-outline" color="#8A7E6C" size={32} />
+                        <Text className="text-ink-muted font-semibold text-sm">Camera</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+                <TextInput
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder="Bijschrift (optioneel)…"
+                  placeholderTextColor="#8A7E6C"
+                  multiline
+                  maxLength={500}
+                  className="bg-paper rounded-2xl text-ink text-base px-4 py-3"
+                  style={{ minHeight: 80, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                />
+              </View>
+            )}
+
+            {/* VIDEO */}
+            {postType === "video" && (
+              <View>
+                {mediaUri && mediaIsVideo ? (
+                  <View className="rounded-3xl overflow-hidden bg-shell mb-3">
+                    <Video
+                      source={{ uri: mediaUri }}
+                      style={{ width: "100%", aspectRatio: 16 / 9 }}
+                      resizeMode={ResizeMode.CONTAIN}
+                      useNativeControls
+                      isLooping={false}
+                    />
+                    <View className="flex-row gap-2 p-3">
+                      <Pressable onPress={() => pickMedia("video")} className="flex-1 flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
+                        <Ionicons name="videocam-outline" color="#1A1714" size={16} />
+                        <Text className="text-ink font-semibold ml-2 text-sm">Andere video</Text>
+                      </Pressable>
+                      <Pressable onPress={() => setMediaUri(null)} className="flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
+                        <Ionicons name="trash-outline" color="#B23A1C" size={16} />
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <View className="flex-row gap-3 mb-4">
+                    <Pressable onPress={() => pickMedia("video")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
+                      <Ionicons name="film-outline" color="#8A7E6C" size={32} />
+                      <Text className="text-ink-muted font-semibold text-sm">Kies video</Text>
+                      <Text className="text-ink-muted text-xs">max. 2 min</Text>
+                    </Pressable>
+                    {Platform.OS !== "web" && (
+                      <Pressable onPress={() => takeMedia("video")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
+                        <Ionicons name="videocam-outline" color="#8A7E6C" size={32} />
+                        <Text className="text-ink-muted font-semibold text-sm">Opnemen</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+                <TextInput
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder="Bijschrift (optioneel)…"
+                  placeholderTextColor="#8A7E6C"
+                  multiline
+                  maxLength={500}
+                  className="bg-paper rounded-2xl text-ink text-base px-4 py-3"
+                  style={{ minHeight: 80, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                />
+              </View>
+            )}
+
+            {/* LINK */}
+            {postType === "link" && (
+              <View className="gap-4">
+                <View className="bg-paper rounded-3xl p-5">
+                  <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3">URL</Text>
+                  <View className="flex-row items-center bg-paper-light rounded-2xl border border-line-paper px-4">
+                    <Ionicons name="link" color="#8A7E6C" size={16} />
+                    <TextInput
+                      value={linkUrl}
+                      onChangeText={setLinkUrl}
+                      placeholder="https://…"
+                      placeholderTextColor="#8A7E6C"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                      autoFocus
+                      className="flex-1 text-ink text-base py-3 pl-2"
+                      style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+                    />
+                    {linkUrl.length > 0 && (
+                      <Pressable onPress={() => setLinkUrl("")} className="p-1">
+                        <Ionicons name="close-circle" color="#8A7E6C" size={18} />
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
+                <TextInput
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder="Toelichting (optioneel)…"
+                  placeholderTextColor="#8A7E6C"
+                  multiline
+                  maxLength={500}
+                  className="bg-paper rounded-3xl text-ink text-base px-5 py-4"
+                  style={{ minHeight: 100, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                />
               </View>
             )}
 
@@ -257,7 +335,7 @@ export default function PostComposeScreen() {
               <View className="items-center mt-6">
                 <ActivityIndicator color="#F5E8D3" />
                 <Text className="text-cream-soft text-xs mt-2">
-                  {imageUri ? "Foto wordt geüpload…" : "Bezig…"}
+                  {mediaUri ? "Media wordt geüpload…" : "Bezig…"}
                 </Text>
               </View>
             )}
@@ -271,15 +349,13 @@ export default function PostComposeScreen() {
 function humanizePostError(err: any): string {
   const msg = err?.message ?? String(err ?? "Onbekende fout");
   if (/schema is invalid|schema is incompatible/i.test(msg)) {
-    return (
-      "Supabase Storage gaf een schema-fout. Run `0003_storage_repair.sql` in de Supabase SQL Editor en probeer opnieuw."
-    );
+    return "Supabase Storage gaf een schema-fout. Run `0003_storage_repair.sql` en probeer opnieuw.";
   }
   if (/row-level security|permission denied/i.test(msg)) {
-    return "Toegang geweigerd. Run de storage-repair migratie (0003_storage_repair).";
+    return "Toegang geweigerd. Run de storage-repair migratie.";
   }
   if (/mime type/i.test(msg)) {
-    return "Dit bestandstype is niet toegelaten. Gebruik JPG, PNG, WebP of HEIC.";
+    return "Dit bestandstype is niet toegelaten. Gebruik JPG, PNG, WebP, HEIC of MP4.";
   }
   return msg;
 }

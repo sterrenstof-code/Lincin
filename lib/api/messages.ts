@@ -41,6 +41,10 @@ export type MessageContent = {
   attachment?: AttachmentInfo;
   /** Aanwezig wanneer dit bericht een videogesprek-uitnodiging is. */
   call?: { started: true };
+  /** Aanwezig wanneer dit bericht een call-plan deelt (Doodle-stijl). */
+  call_plan_id?: string;
+  /** Aanwezig wanneer dit bericht een poll deelt. */
+  poll_id?: string;
   /** Aanwezig wanneer dit bericht een reply is op een ander bericht. */
   reply?: ReplyInfo;
   /** Systeemmelding — gecentreerd weergegeven in de chat. */
@@ -201,11 +205,13 @@ export async function sendMessage(args: {
   text?: string;
   attachment?: AttachmentInfo;
   call?: { started: true };
+  call_plan_id?: string;
+  poll_id?: string;
   reply?: ReplyInfo;
   system?: { event: "group_avatar_updated"; actorName: string };
 }): Promise<{ id: string; created_at: string }> {
-  if (!args.text && !args.attachment && !args.call && !args.system) {
-    throw new Error("Bericht heeft tekst, bijlage, call of system nodig.");
+  if (!args.text && !args.attachment && !args.call && !args.system && !args.call_plan_id && !args.poll_id) {
+    throw new Error("Bericht heeft tekst, bijlage, call, poll of call-plan nodig.");
   }
 
   const { data: members, error } = await supabase
@@ -229,6 +235,8 @@ export async function sendMessage(args: {
   if (args.text) content.text = args.text;
   if (args.attachment) content.attachment = args.attachment;
   if (args.call) content.call = args.call;
+  if (args.call_plan_id) content.call_plan_id = args.call_plan_id;
+  if (args.poll_id) content.poll_id = args.poll_id;
   if (args.reply) content.reply = args.reply;
   if (args.system) content.system = args.system;
 

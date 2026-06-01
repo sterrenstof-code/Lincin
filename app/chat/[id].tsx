@@ -870,6 +870,32 @@ export default function ChatDetail() {
                   );
                 }
 
+                // Call-plan bericht — inline kaart met tijdsloten.
+                if (item.content?.call_plan_id) {
+                  return (
+                    <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+                      <ChatCallPlanCard
+                        callPlanId={item.content.call_plan_id}
+                        senderName={senderName}
+                        isMine={isMine}
+                      />
+                    </View>
+                  );
+                }
+
+                // Poll bericht — inline stemkaart.
+                if (item.content?.poll_id) {
+                  return (
+                    <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+                      <ChatPollCard
+                        pollId={item.content.poll_id}
+                        senderName={senderName}
+                        isMine={isMine}
+                      />
+                    </View>
+                  );
+                }
+
                 // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
                 if (item.content?.call?.started) {
                   return (
@@ -1275,6 +1301,16 @@ export default function ChatDetail() {
           actions={[
             { label: "Foto of video", icon: "image-outline", onPress: pickImage },
             { label: "Bestand", icon: "document-outline", onPress: pickFile },
+            {
+              label: "Videocall plannen",
+              icon: "videocam-outline",
+              onPress: () => router.push(`/call-plan-compose?chatId=${id}` as any),
+            },
+            {
+              label: "Poll",
+              icon: "bar-chart-outline",
+              onPress: () => router.push(`/poll-compose?chatId=${id}` as any),
+            },
           ]}
         />
 
@@ -2072,6 +2108,169 @@ function AttachmentView({
           />
         </Pressable>
       )}
+    </View>
+  );
+}
+
+// ─── Inline chat kaarten voor call-plan en poll berichten ────────────────────
+
+import { useQuery } from "@tanstack/react-query";
+import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
+import { getPollWithDetails, votePoll } from "@/lib/api/polls";
+
+function ChatCallPlanCard({
+  callPlanId,
+  senderName,
+  isMine,
+}: {
+  callPlanId: string;
+  senderName: string;
+  isMine: boolean;
+}) {
+  const { session } = useAuth();
+  const myUserId = session!.user.id;
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const { data: plan, refetch } = useQuery({
+    queryKey: ["call-plan", callPlanId],
+    queryFn: () => getCallPlanWithDetails(callPlanId),
+  });
+
+  if (!plan) {
+    return (
+      <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+        <ActivityIndicator size="small" color="#8A7E6C" />
+      </View>
+    );
+  }
+
+  const bestSlot = [...plan.slots].sort((a, b) => b.yes_voters.length - a.yes_voters.length)[0];
+
+  async function toggleSlot(slotId: string, currentlyYes: boolean) {
+    setSaving(slotId);
+    try {
+      await voteCallPlanSlot({ slotId, userId: myUserId, available: !currentlyYes });
+      refetch();
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+      {/* Header */}
+      <View className="flex-row items-center gap-2 px-4 pt-3 pb-2">
+        <Ionicons name="videocam-outline" color="#5B8DEF" size={16} />
+        <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={1}>{plan.title}</Text>
+      </View>
+      {plan.description ? (
+        <Text className="text-ink-muted text-xs px-4 pb-2" numberOfLines={2}>{plan.description}</Text>
+      ) : null}
+      {/* Slots */}
+      <View className="px-3 pb-3 gap-1.5">
+        {plan.slots.slice(0, 4).map((slot) => {
+          const myVote = slot.yes_voters.includes(myUserId);
+          const isBest = slot.id === bestSlot?.id && bestSlot.yes_voters.length > 0;
+          const isSaving = saving === slot.id;
+          return (
+            <Pressable
+              key={slot.id}
+              onPress={() => toggleSlot(slot.id, myVote)}
+              disabled={!!isSaving}
+              className={`flex-row items-center px-3 py-2 rounded-2xl ${myVote ? "bg-blue-100" : "bg-paper"}`}
+            >
+              <View className="flex-1">
+                <Text className={`text-xs font-semibold ${myVote ? "text-blue-700" : "text-ink"}`}>
+                  {new Date(slot.starts_at).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })}
+                </Text>
+                <Text className={`text-[10px] ${myVote ? "text-blue-600" : "text-ink-muted"}`}>
+                  {new Date(slot.starts_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} – {new Date(slot.ends_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+              </View>
+              <View className="items-end gap-0.5">
+                <Text className="text-xs font-bold text-teal-600">{slot.yes_voters.length} ✓</Text>
+                {isBest && <Text className="text-[9px] text-teal-600 font-semibold">Beste</Text>}
+              </View>
+            </Pressable>
+          );
+        })}
+        {plan.slots.length > 4 && (
+          <Text className="text-ink-muted text-xs text-center mt-1">+{plan.slots.length - 4} meer opties</Text>
+        )}
+      </View>
+      <Text className="text-ink-muted text-[10px] px-4 pb-3">Tik op een tijdstip om beschikbaarheid aan te geven</Text>
+    </View>
+  );
+}
+
+function ChatPollCard({
+  pollId,
+  senderName,
+  isMine,
+}: {
+  pollId: string;
+  senderName: string;
+  isMine: boolean;
+}) {
+  const { session } = useAuth();
+  const myUserId = session!.user.id;
+  const [voting, setVoting] = useState(false);
+
+  const { data: poll, refetch } = useQuery({
+    queryKey: ["poll", pollId],
+    queryFn: () => getPollWithDetails(pollId, myUserId),
+  });
+
+  if (!poll) {
+    return (
+      <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+        <ActivityIndicator size="small" color="#8A7E6C" />
+      </View>
+    );
+  }
+
+  const showResults = !!poll.my_vote_option_id || (poll.ends_at ? new Date(poll.ends_at) < new Date() : false);
+
+  async function handleVote(optionId: string) {
+    if (voting || showResults) return;
+    setVoting(true);
+    try {
+      await votePoll({ optionId, userId: myUserId, pollId: poll!.id });
+      refetch();
+    } finally {
+      setVoting(false);
+    }
+  }
+
+  return (
+    <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+      <View className="flex-row items-center gap-2 px-4 pt-3 pb-1">
+        <Ionicons name="bar-chart-outline" color="#D46220" size={16} />
+        <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={2}>{poll.question}</Text>
+      </View>
+      <View className="px-3 pb-2 gap-1.5">
+        {poll.options.map((option) => {
+          const pct = poll.total_votes > 0 ? Math.round((option.vote_count / poll.total_votes) * 100) : 0;
+          const isMyVote = poll.my_vote_option_id === option.id;
+          if (showResults) {
+            return (
+              <View key={option.id} className="rounded-2xl overflow-hidden">
+                <View className="flex-row items-center px-3 py-2" style={{ backgroundColor: isMyVote ? "#D4622012" : "#1A160E06" }}>
+                  <View className="absolute left-0 top-0 bottom-0 rounded-2xl" style={{ width: `${pct}%`, backgroundColor: isMyVote ? "#D4622020" : "#1A160E08" }} />
+                  <Text className={`flex-1 text-xs font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>{option.label}</Text>
+                  <Text className={`text-xs font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>{pct}%</Text>
+                </View>
+              </View>
+            );
+          }
+          return (
+            <Pressable key={option.id} onPress={() => handleVote(option.id)} className="border border-paper rounded-2xl px-3 py-2 active:bg-paper">
+              <Text className="text-ink text-xs font-medium">{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text className="text-ink-muted text-[10px] px-4 pb-3">{poll.total_votes} stemmen</Text>
     </View>
   );
 }

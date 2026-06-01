@@ -10,19 +10,21 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
+import { sendMessage } from "@/lib/api/messages";
 
 export default function PollComposeScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
+  const { chatId } = useLocalSearchParams<{ chatId?: string }>();
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
@@ -58,8 +60,21 @@ export default function PollComposeScreen() {
         question: question.trim(),
         options: options.filter((o) => o.trim().length > 0),
       });
-      await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
-      await qc.invalidateQueries({ queryKey: ["unified-feed"] });
+
+      if (chatId) {
+        // Gestuurd vanuit een chat — stuur als bericht
+        await sendMessage({
+          chatId,
+          senderId: myUserId,
+          poll_id: poll.id,
+          text: `📊 ${poll.question}`,
+        });
+        await qc.invalidateQueries({ queryKey: ["messages", chatId] });
+      } else {
+        await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
+        await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+      }
+
       router.back();
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
@@ -81,7 +96,9 @@ export default function PollComposeScreen() {
               <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
               </Pressable>
-              <Text className="text-cream font-bold text-lg">Nieuwe stemming</Text>
+              <Text className="text-cream font-bold text-lg">
+                {chatId ? "Poll in chat" : "Nieuwe stemming"}
+              </Text>
               <Pressable
                 onPress={onSubmit}
                 disabled={!canSubmit}
@@ -89,7 +106,9 @@ export default function PollComposeScreen() {
               >
                 {submitting
                   ? <ActivityIndicator size="small" color="#F5E8D3" />
-                  : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>Plaatsen</Text>
+                  : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
+                      {chatId ? "Versturen" : "Plaatsen"}
+                    </Text>
                 }
               </Pressable>
             </View>
