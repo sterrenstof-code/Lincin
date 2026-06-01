@@ -22,6 +22,7 @@ export type CallPlanWithDetails = CallPlanRow & {
   author: Profile | null;
   slots: CallPlanSlot[];
   participant_profiles: Profile[];
+  invitee_profiles: Profile[];
 };
 
 export async function createCallPlan(args: {
@@ -29,6 +30,7 @@ export async function createCallPlan(args: {
   title: string;
   description?: string | null;
   slots: { starts_at: Date; ends_at: Date }[];
+  inviteeIds?: string[];
 }): Promise<CallPlanRow> {
   const { data: plan, error: planErr } = await supabase
     .from("call_plans")
@@ -48,6 +50,14 @@ export async function createCallPlan(args: {
   }));
   const { error: slotErr } = await supabase.from("call_plan_slots").insert(slotRows);
   if (slotErr) throw slotErr;
+
+  if (args.inviteeIds && args.inviteeIds.length > 0) {
+    const inviteRows = args.inviteeIds.map((uid) => ({
+      call_plan_id: plan.id,
+      user_id: uid,
+    }));
+    await supabase.from("call_plan_invites").insert(inviteRows);
+  }
 
   return plan as CallPlanRow;
 }

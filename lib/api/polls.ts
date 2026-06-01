@@ -66,7 +66,7 @@ export async function getPollWithDetails(
 
   const { data: options, error: oErr } = await supabase
     .from("poll_options")
-    .select("id, poll_id, label, position, poll_votes(count, user_id)")
+    .select("id, poll_id, label, position, poll_votes(user_id)")
     .eq("poll_id", pollId)
     .order("position");
   if (oErr) throw oErr;

@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { createNotification } from "./notifications";
 
 export type CommentRow = {
   id: string;
@@ -50,7 +51,63 @@ export async function createComment(args: {
     .select("id, post_id, user_id, body, created_at")
     .single();
   if (error) throw error;
-  return data as CommentRow;
+  const comment = data as CommentRow;
+
+  // Fire-and-forget notifications (don't block the caller)
+  fireCommentNotifications(comment).catch(() => {});
+
+  return comment;
+}
+
+async function fireCommentNotifications(comment: CommentRow): Promise<void> {
+  // 1. Get the post to find its owner
+  const { data: post } = await supabase
+    .from("posts")
+    .select("user_id")
+    .eq("id", comment.post_id)
+    .single();
+
+  // 2. Get all previous commenters on this post (excluding new commenter)
+  const { data: prevComments } = await supabase
+    .from("comments")
+    .select("user_id")
+    .eq("post_id", comment.post_id)
+    .neq("id", comment.id);
+
+  const prevCommenterIds = Array.from(
+    new Set((prevComments ?? []).map((c: any) => c.user_id as string))
+  ).filter((id) => id !== comment.user_id);
+
+  const notifications: Promise<void>[] = [];
+
+  // Notify post owner
+  if (post && post.user_id !== comment.user_id) {
+    notifications.push(
+      createNotification({
+        userId: post.user_id,
+        actorId: comment.user_id,
+        type: "comment_on_post",
+        postId: comment.post_id,
+        commentId: comment.id,
+      })
+    );
+  }
+
+  // Notify previous commenters (who are not the post owner — they already get notified above)
+  for (const uid of prevCommenterIds) {
+    if (uid === post?.user_id) continue; // already notified above
+    notifications.push(
+      createNotification({
+        userId: uid,
+        actorId: comment.user_id,
+        type: "comment_on_thread",
+        postId: comment.post_id,
+        commentId: comment.id,
+      })
+    );
+  }
+
+  await Promise.allSettled(notifications);
 }
 
 export async function deleteComment(commentId: string): Promise<void> {

@@ -29,13 +29,16 @@ export async function createActivityEvent(args: {
   eventId?: string;
   friendId?: string;
 }): Promise<void> {
-  await supabase.from("activity_events").insert({
-    actor_id: args.actorId,
-    kind: args.kind,
-    post_id: args.postId ?? null,
-    event_id: args.eventId ?? null,
-    friend_id: args.friendId ?? null,
-  });
+  await supabase.from("activity_events").upsert(
+    {
+      actor_id: args.actorId,
+      kind: args.kind,
+      post_id: args.postId ?? null,
+      event_id: args.eventId ?? null,
+      friend_id: args.friendId ?? null,
+    },
+    { ignoreDuplicates: true }
+  );
   // Fire-and-forget — niet fatal als het mislukt
 }
 

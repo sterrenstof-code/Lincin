@@ -10,6 +10,7 @@ import { bootstrapProfile } from "@/lib/auth/bootstrap";
 import { listMyChats } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
+import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
@@ -60,6 +61,14 @@ export default function AppLayout() {
     0
   );
 
+  const unreadNotifications = useQuery({
+    queryKey: ["notifications-unread", session?.user.id ?? "anon"],
+    queryFn: () => countUnreadNotifications(session!.user.id),
+    enabled: !!session && !bootstrapping && hasPassword,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
   // Inkomende vriendschapsverzoeken — telt enkel pending requests die naar
   // mij zijn gestuurd (addressee_id == mij). Hetzelfde patroon als de chat-
   // unread badge: een vlam-pil op de Vrienden-tab + meegerekend in de
@@ -94,6 +103,18 @@ export default function AppLayout() {
     };
   }, [session, bootstrapping, hasPassword, qc]);
 
+  // Realtime: nieuwe notificaties invalideren de badge teller direct
+  useEffect(() => {
+    if (!session || bootstrapping || !hasPassword) return;
+    const myId = session.user.id;
+    const channel = subscribeToNotifications(myId, () => {
+      qc.invalidateQueries({ queryKey: ["notifications-unread", myId] });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, bootstrapping, hasPassword, qc]);
+
   // Web: zet ongelezen-aantal in de browser tab-titel zodat je het ziet
   // wanneer Lincin in een andere tab open staat. Poor-man's web push.
   //
@@ -101,7 +122,8 @@ export default function AppLayout() {
   // wat de gebruiker wil weten ("is er iets nieuws voor mij?"). De badges
   // op de tabs zelf blijven afzonderlijk (chats vs vrienden) zodat
   // gebruikers in de app zien WAT er nieuw is.
-  const totalAttention = totalUnread + pendingIncoming;
+  const unreadNotifCount = unreadNotifications.data ?? 0;
+  const totalAttention = totalUnread + pendingIncoming + unreadNotifCount;
   useEffect(() => {
     if (typeof document === "undefined") return;
     const base = "Lincin";
@@ -207,9 +229,11 @@ export default function AppLayout() {
           {...props}
           totalUnread={totalUnread}
           pendingFriendRequests={pendingIncoming}
+          unreadNotifications={unreadNotifCount}
         />
       )}
     >
+      <Tabs.Screen name="notifications" />
       <Tabs.Screen name="feed" />
       <Tabs.Screen name="events" />
       <Tabs.Screen name="chats" />
@@ -230,6 +254,7 @@ function PaperTabBar({
   navigation,
   totalUnread,
   pendingFriendRequests,
+  unreadNotifications,
 }: any) {
   const tabs: Array<{
     key: string;
@@ -237,10 +262,9 @@ function PaperTabBar({
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
   }> = [
+    { key: "notifications", routeName: "notifications", icon: "notifications-outline", label: "Meldingen" },
     { key: "feed", routeName: "feed", icon: "images-outline", label: "Feed" },
     // Events-tab tijdelijk verborgen tot de feature productie-klaar is.
-    // De Tabs.Screen route hieronder blijft staan zodat directe URLs en de
-    // feed-link niet breken — alleen het tab-knopje is weg.
     // { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
     { key: "chats", routeName: "chats", icon: "chatbubbles-outline", label: "Chats" },
     { key: "friends", routeName: "friends", icon: "people-outline", label: "Vrienden" },
@@ -276,7 +300,8 @@ function PaperTabBar({
           // friend-requests. Beide gebruiken dezelfde flame-pill styling
           // (consistente visuele taal voor "er is iets dat aandacht vraagt").
           let badge = 0;
-          if (tab.routeName === "chats") badge = totalUnread;
+          if (tab.routeName === "notifications") badge = unreadNotifications ?? 0;
+          else if (tab.routeName === "chats") badge = totalUnread;
           else if (tab.routeName === "friends") badge = pendingFriendRequests ?? 0;
 
           return (

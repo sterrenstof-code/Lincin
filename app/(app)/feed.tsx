@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useState, useEffect } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,7 +43,15 @@ export default function FeedScreen() {
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
     queryFn: () => listUnifiedFeed(myUserId),
+    refetchOnWindowFocus: true,
   });
+
+  // Refetch elke keer dat de feed-tab zichtbaar wordt (na terugkeer van compose)
+  useFocusEffect(
+    useCallback(() => {
+      qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+    }, [qc, myUserId])
+  );
 
   async function onRefresh() {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
