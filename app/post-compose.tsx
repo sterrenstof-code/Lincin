@@ -24,10 +24,10 @@ import { createPost } from "@/lib/api/posts";
 type PostType = "tekst" | "foto" | "video" | "link";
 
 const POST_TYPES: { id: PostType; label: string; icon: any }[] = [
-  { id: "tekst",  label: "Tekst",  icon: "text-outline" },
-  { id: "foto",   label: "Foto",   icon: "image-outline" },
-  { id: "video",  label: "Video",  icon: "videocam-outline" },
-  { id: "link",   label: "Link",   icon: "link-outline" },
+  { id: "tekst",  label: "Tekst",      icon: "text-outline" },
+  { id: "foto",   label: "Afbeelding", icon: "image-outline" },
+  { id: "video",  label: "Video",      icon: "videocam-outline" },
+  { id: "link",   label: "Link",       icon: "link-outline" },
 ];
 
 export default function PostComposeScreen() {
@@ -161,18 +161,11 @@ export default function PostComposeScreen() {
                 );
               })}
               <Pressable
-                onPress={() => router.replace("/poll-compose")}
+                onPress={() => router.replace("/list-compose")}
                 className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft"
               >
-                <Ionicons name="bar-chart-outline" size={15} color="#8A7E6C" />
-                <Text className="text-sm font-semibold text-ink-muted">Poll</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.replace("/call-plan-compose")}
-                className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft"
-              >
-                <Ionicons name="videocam-outline" size={15} color="#8A7E6C" />
-                <Text className="text-sm font-semibold text-ink-muted">Call plannen</Text>
+                <Ionicons name="checkmark-circle-outline" size={15} color="#8A7E6C" />
+                <Text className="text-sm font-semibold text-ink-muted">Lijst</Text>
               </Pressable>
             </ScrollView>
 

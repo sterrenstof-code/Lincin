@@ -116,9 +116,13 @@ function NotificationRow({
     item.actor?.display_name ?? item.actor?.username ?? "Iemand";
 
   const label =
-    item.type === "comment_on_post"
-      ? `${actorName} reageerde op jouw post`
-      : `${actorName} reageerde ook op een post`;
+    item.type === "comment_on_post"   ? `${actorName} reageerde op jouw post` :
+    item.type === "comment_on_thread" ? `${actorName} reageerde ook op een post` :
+    item.type === "vote_on_poll"      ? `${actorName} stemde op jouw stemming` :
+    item.type === "vote_on_call"      ? `${actorName} koos een tijdslot voor jouw call` :
+    item.type === "invited_to_list"   ? `${actorName} nodigde je uit voor een lijst` :
+    item.type === "invited_to_call"   ? `${actorName} nodigde je uit voor een videocall` :
+    `${actorName} deed iets`;
 
   const snippet = item.post_caption
     ? item.post_caption.length > 60

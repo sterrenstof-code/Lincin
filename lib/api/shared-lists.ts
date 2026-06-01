@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { createNotification } from "./notifications";
 
 export type SharedListRow = {
   id: string;
@@ -47,6 +48,16 @@ export async function createSharedList(args: {
     await supabase.from("list_members").insert(
       args.memberIds.map((uid) => ({ list_id: list.id, user_id: uid }))
     );
+
+    // Notify each invited member
+    for (const uid of args.memberIds) {
+      createNotification({
+        userId: uid,
+        actorId: args.userId,
+        type: "invited_to_list",
+        postId: list.id,
+      });
+    }
   }
   return list as SharedListRow;
 }

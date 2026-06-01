@@ -58,6 +58,16 @@ export async function createCallPlan(args: {
       user_id: uid,
     }));
     await supabase.from("call_plan_invites").insert(inviteRows);
+
+    // Notify each invitee
+    for (const uid of args.inviteeIds) {
+      createNotification({
+        userId: uid,
+        actorId: args.userId,
+        type: "invited_to_call",
+        postId: plan.id,
+      });
+    }
   }
 
   return plan as CallPlanRow;

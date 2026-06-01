@@ -26,28 +26,41 @@ export function PollCard({
   const hasVoted = !!localPoll.my_vote_option_id;
   const isExpired = localPoll.ends_at ? new Date(localPoll.ends_at) < new Date() : false;
   const showResults = hasVoted || isExpired;
+  const canChange = hasVoted && !isExpired;
 
   async function handleVote(optionId: string) {
-    if (voting || showResults) return;
+    if (voting || isExpired) return;
+    if (optionId === localPoll.my_vote_option_id) return; // al gestemd op dit optie
     setVoting(true);
     try {
       await votePoll({ optionId, userId: myUserId, pollId: localPoll.id });
       const myProfile = localPoll.author?.id === myUserId ? localPoll.author : null;
+      const prevVoteId = localPoll.my_vote_option_id;
       const updated: PollWithDetails = {
         ...localPoll,
         my_vote_option_id: optionId,
-        total_votes: localPoll.total_votes + 1,
-        options: localPoll.options.map((o) =>
-          o.id === optionId
-            ? {
-                ...o,
-                vote_count: o.vote_count + 1,
-                voters: myProfile
-                  ? [...o.voters.filter((v) => v.id !== myUserId), myProfile]
-                  : o.voters,
-              }
-            : o
-        ),
+        // total_votes stays the same when changing (remove old, add new)
+        total_votes: prevVoteId ? localPoll.total_votes : localPoll.total_votes + 1,
+        options: localPoll.options.map((o) => {
+          if (o.id === optionId) {
+            return {
+              ...o,
+              vote_count: o.vote_count + 1,
+              voters: myProfile
+                ? [...o.voters.filter((v) => v.id !== myUserId), myProfile]
+                : o.voters,
+            };
+          }
+          if (o.id === prevVoteId) {
+            // Remove old vote
+            return {
+              ...o,
+              vote_count: Math.max(0, o.vote_count - 1),
+              voters: o.voters.filter((v) => v.id !== myUserId),
+            };
+          }
+          return o;
+        }),
       };
       setLocalPoll(updated);
       onVoted?.(updated);
@@ -108,7 +121,12 @@ export function PollCard({
             const shownVoters = option.voters.slice(0, 5);
             const extraVoters = option.voters.length > 5 ? option.voters.length - 5 : 0;
             return (
-              <View key={option.id} className="rounded-2xl overflow-hidden">
+              <Pressable
+                key={option.id}
+                onPress={() => canChange ? handleVote(option.id) : undefined}
+                disabled={!canChange || isMyVote}
+                className="rounded-2xl overflow-hidden"
+              >
                 <View
                   className="flex-row items-center px-4 py-3 gap-2"
                   style={{ backgroundColor: isMyVote ? "#D4622010" : "#1A160E08" }}
@@ -149,7 +167,7 @@ export function PollCard({
                     {option.voters.length} · {pct}%
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             );
           }
 
@@ -166,11 +184,14 @@ export function PollCard({
       </View>
 
       {/* Footer */}
-      <View className="flex-row items-center mt-3 gap-1">
+      <View className="flex-row items-center mt-3 gap-2">
         {voting && <ActivityIndicator size="small" color="#D46220" />}
         <Text className="text-ink-muted text-xs">
           {localPoll.total_votes} {localPoll.total_votes === 1 ? "stem" : "stemmen"}
         </Text>
+        {canChange && !voting && (
+          <Text className="text-ink-muted text-xs">· tik om te wijzigen</Text>
+        )}
       </View>
 
       {isMine && (

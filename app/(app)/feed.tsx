@@ -87,42 +87,38 @@ export default function FeedScreen() {
             </Text>
 
             {/* Compose CTA */}
-            <View className="bg-flame rounded-3xl p-6 mb-6">
-              <Text className="text-xs uppercase tracking-wider text-cream/80 mb-1">
-                Deel
-              </Text>
-              <Text className="text-2xl font-bold tracking-tight text-cream mb-4">
-                Plaats een moment
-              </Text>
-              <View className="flex-row gap-2 flex-wrap">
-                <Pressable
-                  onPress={() => router.push("/post-compose")}
-                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
-                >
-                  <Ionicons name="image-outline" color="#F5E8D3" size={16} />
-                  <Text className="text-cream font-semibold ml-2 text-sm">Foto</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/poll-compose")}
-                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
-                >
-                  <Ionicons name="bar-chart-outline" color="#F5E8D3" size={16} />
-                  <Text className="text-cream font-semibold ml-2 text-sm">Stemming</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/call-plan-compose")}
-                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
-                >
-                  <Ionicons name="videocam-outline" color="#F5E8D3" size={16} />
-                  <Text className="text-cream font-semibold ml-2 text-sm">Call plannen</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/list-compose")}
-                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
-                >
-                  <Ionicons name="checkmark-circle-outline" color="#F5E8D3" size={16} />
-                  <Text className="text-cream font-semibold ml-2 text-sm">Lijst</Text>
-                </Pressable>
+            <View className="bg-flame rounded-3xl p-5 mb-6">
+              <Text className="text-cream font-bold text-xl mb-1">Verbind</Text>
+              <Text className="text-cream/70 text-sm mb-4">Hoe wil je vandaag linken?</Text>
+              <View className="gap-2">
+                <View className="flex-row gap-2">
+                  <ConnectButton
+                    icon="chatbubble-ellipses-outline"
+                    label="Deel iets"
+                    sub="foto, tekst, link"
+                    onPress={() => router.push("/post-compose")}
+                  />
+                  <ConnectButton
+                    icon="bar-chart-outline"
+                    label="Vraag het"
+                    sub="stemming"
+                    onPress={() => router.push("/poll-compose")}
+                  />
+                </View>
+                <View className="flex-row gap-2">
+                  <ConnectButton
+                    icon="videocam-outline"
+                    label="Plan een call"
+                    sub="kies samen een tijd"
+                    onPress={() => router.push("/call-plan-compose")}
+                  />
+                  <ConnectButton
+                    icon="checkmark-circle-outline"
+                    label="Doe iets samen"
+                    sub="gedeelde lijst"
+                    onPress={() => router.push("/list-compose")}
+                  />
+                </View>
               </View>
             </View>
 
@@ -408,6 +404,29 @@ function LinkCard({ url }: { url: string }) {
         </Text>
       </View>
       <Ionicons name="open-outline" color="#5A4F40" size={16} />
+    </Pressable>
+  );
+}
+
+function ConnectButton({
+  icon,
+  label,
+  sub,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  sub: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-1 bg-ink/80 active:bg-ink rounded-2xl px-4 py-3"
+    >
+      <Ionicons name={icon} color="#F5E8D3" size={20} />
+      <Text className="text-cream font-bold text-sm mt-2">{label}</Text>
+      <Text className="text-cream/60 text-xs mt-0.5">{sub}</Text>
     </Pressable>
   );
 }

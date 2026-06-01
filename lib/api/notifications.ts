@@ -6,7 +6,7 @@ export type NotificationRow = {
   id: string;
   user_id: string;
   actor_id: string;
-  type: "comment_on_post" | "comment_on_thread" | "vote_on_poll" | "vote_on_call";
+  type: "comment_on_post" | "comment_on_thread" | "vote_on_poll" | "vote_on_call" | "invited_to_list" | "invited_to_call";
   post_id: string | null;
   comment_id: string | null;
   read: boolean;
