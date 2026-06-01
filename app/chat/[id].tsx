@@ -83,6 +83,8 @@ import {
   uriToBytes,
 } from "@/lib/crypto/file";
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
+import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -2113,10 +2115,6 @@ function AttachmentView({
 }
 
 // ─── Inline chat kaarten voor call-plan en poll berichten ────────────────────
-
-import { useQuery } from "@tanstack/react-query";
-import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
-import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 
 function ChatCallPlanCard({
   callPlanId,
