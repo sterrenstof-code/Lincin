@@ -65,7 +65,7 @@ export default function FeedScreen() {
       <FlatList
         data={feed.data ?? []}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        contentContainerStyle={{ padding: 12, paddingBottom: 60 }}
         removeClippedSubviews
         maxToRenderPerBatch={4}
         windowSize={5}
@@ -79,15 +79,15 @@ export default function FeedScreen() {
         }
         ListHeaderComponent={
           <View>
-            <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
+            <Text className="text-2xl font-bold tracking-tight text-cream mb-0.5">
               Feed
             </Text>
-            <Text className="text-cream-soft text-base mb-5">
-              Foto's, polls en momenten van jou en je vrienden.
+            <Text className="text-cream-soft text-sm mb-3">
+              Momenten van jou en je vrienden.
             </Text>
 
             {/* Compose balk */}
-            <View className="flex-row items-center gap-2 mb-6">
+            <View className="flex-row items-center gap-2 mb-3">
               <Pressable
                 onPress={() => router.push("/post-compose")}
                 className="flex-1 flex-row items-center bg-paper-soft rounded-full px-4 py-3 gap-3"
@@ -131,7 +131,7 @@ export default function FeedScreen() {
             </View>
           )
         }
-        ItemSeparatorComponent={() => <View className="h-3" />}
+        ItemSeparatorComponent={() => <View className="h-2" />}
         renderItem={useCallback(({ item }: { item: FeedItem }) => {
           if (item.type === "memory") {
             return <MemoryCard post={item.data} />;
@@ -210,10 +210,10 @@ const PostCard = memo(function PostCard({
   const [imageRatio, setImageRatio] = useState<number | undefined>(undefined);
 
   return (
-    <View className="bg-paper-soft rounded-3xl overflow-hidden">
+    <View className="bg-paper-soft rounded-2xl overflow-hidden">
       <Pressable
         onPress={onAuthorPress}
-        className="flex-row items-center px-4 py-3"
+        className="flex-row items-center px-3 py-2.5"
       >
         <Avatar name={authorName} size="md" tint="warm" />
         <View className="flex-1 ml-3">

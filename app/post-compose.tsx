@@ -115,7 +115,7 @@ export default function PostComposeScreen() {
             contentContainerStyle={{ paddingBottom: 80 }}
           >
             {/* Header */}
-            <View className="flex-row items-center px-4 pt-3 pb-2">
+            <View className="flex-row items-center px-4 pt-2 pb-1.5">
               <Pressable
                 onPress={() => router.back()}
                 className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"

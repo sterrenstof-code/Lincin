@@ -82,7 +82,7 @@ export function PollCard({
   if (deleting) return null;
 
   return (
-    <View className="bg-paper-soft rounded-3xl p-4 mb-3">
+    <View className="bg-paper-soft rounded-2xl p-3">
       {/* Header */}
       <View className="flex-row items-center gap-2 mb-3">
         <Avatar name={localPoll.author?.display_name ?? localPoll.author?.username} avatarUrl={localPoll.author?.avatar_url ?? null} size="sm" />

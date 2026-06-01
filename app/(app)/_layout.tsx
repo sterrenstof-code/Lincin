@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, Tabs, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile } from "@/lib/auth/bootstrap";
@@ -266,6 +266,8 @@ function PaperTabBar({
   pendingFriendRequests,
   unreadNotifications,
 }: any) {
+  const { width } = useWindowDimensions();
+  const showLabels = width >= 500; // tablet/desktop: labels tonen
   const tabs: Array<{
     key: string;
     routeName: string;
@@ -284,8 +286,8 @@ function PaperTabBar({
   return (
     <View className="bg-shell-soft border-t border-line">
       <View
-        className="flex-row items-center pt-2 pb-3 px-2 self-center"
-        style={{ width: "100%", maxWidth: 600 }}
+        className="flex-row items-center self-center"
+        style={{ width: "100%", maxWidth: 600, paddingTop: 8, paddingBottom: showLabels ? 12 : 10, paddingHorizontal: 8 }}
       >
         {tabs.map((tab) => {
           const route = state.routes.find((r: any) => r.name === tab.routeName);
@@ -318,15 +320,13 @@ function PaperTabBar({
             <Pressable
               key={tab.key}
               onPress={onPress}
-              className="flex-1 items-center gap-1"
-              style={{ paddingVertical: 4, minHeight: 52 }}
+              className="flex-1 items-center"
+              style={{ gap: showLabels ? 3 : 0, paddingVertical: 2, minHeight: showLabels ? 48 : 40 }}
             >
               <View>
                 <Ionicons
-                  name={isFocused
-                    ? (tab.icon.replace("-outline", "") as any)
-                    : tab.icon}
-                  size={24}
+                  name={isFocused ? (tab.icon.replace("-outline", "") as any) : tab.icon}
+                  size={showLabels ? 24 : 26}
                   color={isFocused ? activeColor : inactiveColor}
                 />
                 {badge > 0 && (
@@ -340,12 +340,14 @@ function PaperTabBar({
                   </View>
                 )}
               </View>
-              <Text
-                style={{ fontSize: 10, fontWeight: isFocused ? "700" : "400", color: isFocused ? activeColor : inactiveColor }}
-                numberOfLines={1}
-              >
-                {tab.label}
-              </Text>
+              {showLabels && (
+                <Text
+                  style={{ fontSize: 10, fontWeight: isFocused ? "700" : "400", color: isFocused ? activeColor : inactiveColor }}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              )}
             </Pressable>
           );
         })}

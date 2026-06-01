@@ -140,7 +140,7 @@ export default function CallPlanComposeScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
 
             {/* Header */}
-            <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
+            <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
               <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
               </Pressable>

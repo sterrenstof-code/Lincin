@@ -14,7 +14,7 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
   return (
     <Pressable
       onPress={() => router.push(`/list/${list.id}`)}
-      className="bg-paper-soft rounded-3xl p-4 mb-3 active:bg-paper"
+      className="bg-paper-soft rounded-2xl p-3 active:bg-paper"
     >
       {/* Header */}
       <View className="flex-row items-center gap-2 mb-3">

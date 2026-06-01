@@ -52,9 +52,9 @@ export function CallPlanCard({
   )[0];
 
   return (
-    <View className="bg-paper-soft rounded-3xl p-4 mb-3">
+    <View className="bg-paper-soft rounded-2xl p-3">
       {/* Header */}
-      <View className="flex-row items-center gap-2 mb-3">
+      <View className="flex-row items-center gap-2 mb-2">
         <Avatar name={localPlan.author?.display_name ?? localPlan.author?.username} avatarUrl={localPlan.author?.avatar_url ?? null} size="sm" />
         <View className="flex-1">
           <Text className="text-ink font-semibold text-sm">
