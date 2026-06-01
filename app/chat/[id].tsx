@@ -9,6 +9,7 @@ import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   ActivityIndicator,
   Clipboard,
@@ -115,6 +116,13 @@ export default function ChatDetail() {
   >(null);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const [reactionDetail, setReactionDetail] = useState<{ emoji: string; names: string[] } | null>(null);
+  const [pendingImage, setPendingImage] = useState<{
+    uri: string;
+    mimeType: string;
+    filename?: string;
+    caption: string;
+  } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
@@ -537,13 +545,19 @@ export default function ChatDetail() {
     uri: string;
     mimeType: string;
     filename?: string;
+    caption?: string;
   }) {
     if (!myUserId || !id) return;
     setSending(true);
+    setUploadProgress(0);
     try {
+      setUploadProgress(10);
       const bytes = await uriToBytes(args.uri);
+      setUploadProgress(30);
       const { ciphertext, key, nonce } = encryptFileBytes(bytes);
+      setUploadProgress(50);
       const path = await uploadEncryptedAttachment({ chatId: id, ciphertext });
+      setUploadProgress(85);
       const attachment = buildAttachmentInfo({
         path,
         key,
@@ -556,21 +570,22 @@ export default function ChatDetail() {
       await sendMessage({
         chatId: id,
         senderId: myUserId,
-        text: draft.trim() || undefined,
+        text: args.caption?.trim() || undefined,
         attachment,
       });
+      setUploadProgress(100);
       setDraft("");
     } catch (e: any) {
       console.warn("send attachment", e?.message ?? e);
+      Alert.alert("Fout bij versturen", e?.message ?? "Probeer opnieuw.");
     } finally {
       setSending(false);
+      setUploadProgress(null);
     }
   }
 
   async function pickImage() {
     setAttachMenuOpen(false);
-    // Vraag toestemming op — op iOS verschijnt dit als apart dialoog vóór de
-    // foto-picker. Als toestemming al verleend is, doet dit niets.
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -581,10 +596,11 @@ export default function ChatDetail() {
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    await onSendAttachment({
+    setPendingImage({
       uri: asset.uri,
       mimeType: asset.mimeType ?? (asset.type === "video" ? "video/mp4" : "image/jpeg"),
       filename: asset.fileName ?? undefined,
+      caption: "",
     });
   }
 
@@ -1163,6 +1179,95 @@ export default function ChatDetail() {
           </View>
         </KeyboardAvoidingView>
 
+        {/* Foto-preview modal (Telegram-stijl) */}
+        <Modal
+          visible={!!pendingImage}
+          transparent
+          animationType="slide"
+          onRequestClose={() => { if (!sending) setPendingImage(null); }}
+        >
+          <View style={{ flex: 1, backgroundColor: "#000" }}>
+            {/* Sluit-knop */}
+            <SafeAreaView style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 8 }}>
+              <Pressable
+                onPress={() => { if (!sending) setPendingImage(null); }}
+                hitSlop={12}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="close" color="#fff" size={22} />
+              </Pressable>
+            </SafeAreaView>
+
+            {/* Afbeelding preview */}
+            {pendingImage && (
+              <Image
+                source={{ uri: pendingImage.uri }}
+                style={{ flex: 1 }}
+                contentFit="contain"
+              />
+            )}
+
+            {/* Upload voortgang */}
+            {uploadProgress !== null && (
+              <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>
+                <View style={{ height: 3, width: `${uploadProgress}%`, backgroundColor: "#5B8DEF" }} />
+              </View>
+            )}
+
+            {/* Caption + verstuur */}
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+              <View style={{ backgroundColor: "rgba(0,0,0,0.7)", flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
+                <TextInput
+                  value={pendingImage?.caption ?? ""}
+                  onChangeText={(t) => setPendingImage((p) => p ? { ...p, caption: t } : p)}
+                  placeholder="Voeg een onderschrift toe…"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  multiline
+                  maxLength={500}
+                  editable={!sending}
+                  style={{
+                    flex: 1,
+                    color: "#fff",
+                    fontSize: 16,
+                    minHeight: 40,
+                    maxHeight: 100,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    backgroundColor: "rgba(255,255,255,0.12)",
+                    borderRadius: 20,
+                    ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}),
+                  }}
+                />
+                <Pressable
+                  onPress={async () => {
+                    if (!pendingImage || sending) return;
+                    const img = pendingImage;
+                    await onSendAttachment({
+                      uri: img.uri,
+                      mimeType: img.mimeType,
+                      filename: img.filename,
+                      caption: img.caption,
+                    });
+                    setPendingImage(null);
+                  }}
+                  disabled={sending}
+                  style={{
+                    width: 44, height: 44, borderRadius: 22,
+                    backgroundColor: sending ? "#3A3A3A" : "#5B8DEF",
+                    alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {sending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Ionicons name="arrow-up" color="#fff" size={22} />
+                  )}
+                </Pressable>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
+
         <ActionSheet
           visible={attachMenuOpen}
           onClose={() => setAttachMenuOpen(false)}
@@ -1485,16 +1590,6 @@ function MessageBubble({
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
       >
-        {/* Drie-puntjes menu-knop */}
-        {onMenuPress && (
-          <Pressable
-            onPress={onMenuPress}
-            hitSlop={8}
-            className="w-7 h-7 items-center justify-center opacity-50"
-          >
-            <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={16} />
-          </Pressable>
-        )}
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
@@ -1613,6 +1708,16 @@ function MessageBubble({
         )}
       </Pressable>
         </View>
+        {/* Drie-puntjes menu-knop — rechts van de bubble */}
+        {onMenuPress && (
+          <Pressable
+            onPress={onMenuPress}
+            hitSlop={8}
+            className="w-7 h-7 items-center justify-center opacity-50"
+          >
+            <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={16} />
+          </Pressable>
+        )}
       </Animated.View>
       </GestureDetector>
 
