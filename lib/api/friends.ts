@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client";
 import type { Profile } from "./profiles";
+import { createActivityEvent } from "./activity-events";
 
 export type Friendship = {
   id: string;
@@ -28,12 +29,18 @@ export async function sendFriendRequest(
 }
 
 /** Accept a pending friend request you've received. */
-export async function acceptFriendRequest(friendshipId: string): Promise<void> {
+export async function acceptFriendRequest(
+  friendshipId: string,
+  myUserId: string,
+  requesterId: string,
+): Promise<void> {
   const { error } = await supabase
     .from("friendships")
     .update({ status: "accepted", accepted_at: new Date().toISOString() })
     .eq("id", friendshipId);
   if (error) throw error;
+  // Activiteitsmoment — fire-and-forget
+  createActivityEvent({ actorId: myUserId, kind: "friend_accepted", friendId: requesterId }).catch(() => {});
 }
 
 /** Decline (delete) a friend request, or unfriend. */

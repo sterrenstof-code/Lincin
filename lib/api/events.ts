@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { createActivityEvent } from "./activity-events";
 
 export type EventRevealMode = "during" | "after" | "delayed";
 
@@ -128,6 +129,9 @@ export async function createEvent(args: {
   });
   if (memErr && !/duplicate/i.test(memErr.message)) throw memErr;
 
+  // Activiteitsmoment — fire-and-forget
+  createActivityEvent({ actorId: args.hostUserId, kind: "event_created", eventId: data.id }).catch(() => {});
+
   return data as EventRow;
 }
 
@@ -222,7 +226,12 @@ export async function getEvent(eventId: string, myUserId: string): Promise<Event
 export async function joinEventByCode(joinCode: string): Promise<string> {
   const { data, error } = await supabase.rpc("join_event", { p_join_code: joinCode });
   if (error) throw error;
-  return data as string;
+  const eventId = data as string;
+  // Activiteitsmoment — fire-and-forget
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (user) createActivityEvent({ actorId: user.id, kind: "event_joined", eventId }).catch(() => {});
+  });
+  return eventId;
 }
 
 /** Upload a photo to event-photos bucket + insert contribution row. */

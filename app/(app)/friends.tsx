@@ -85,8 +85,8 @@ export default function FriendsScreen() {
     }
   }
 
-  async function onAccept(friendshipId: string) {
-    await acceptFriendRequest(friendshipId);
+  async function onAccept(friendshipId: string, requesterId: string) {
+    await acceptFriendRequest(friendshipId, myUserId, requesterId);
     await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
   }
 
@@ -199,7 +199,7 @@ export default function FriendsScreen() {
                       isLast={i === pendingIncoming.length - 1}
                       onRowPress={() => router.push(`/user/${f.other.username}`)}
                       actions={[
-                        { label: "Link up", onPress: () => onAccept(f.id), primary: true },
+                        { label: "Link up", onPress: () => onAccept(f.id, f.requester_id), primary: true },
                         { label: "Weiger", onPress: () => onDelete(f.id) },
                       ]}
                     />

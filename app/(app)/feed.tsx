@@ -24,33 +24,28 @@ import { EventCard } from "@/components/EventCard";
 import { SafeImage } from "@/components/SafeImage";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonPostCard } from "@/components/Skeleton";
+import { PollCard } from "@/components/PollCard";
+import { CallPlanCard } from "@/components/CallPlanCard";
+import { ActivityCard } from "@/components/ActivityCard";
+import { MemoryCard } from "@/components/MemoryCard";
 import { useAuth } from "@/lib/auth/provider";
-import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
-import { deletePost, updatePostCaption, listFeedPosts, type PostWithAuthor } from "@/lib/api/posts";
+import { listMyEvents } from "@/lib/api/events";
+import { deletePost, updatePostCaption, listUnifiedFeed, type FeedItem, type PostWithAuthor } from "@/lib/api/posts";
 
 export default function FeedScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
   const qc = useQueryClient();
+  const [composeMenuOpen, setComposeMenuOpen] = useState(false);
 
   const feed = useQuery({
-    queryKey: ["feed", myUserId],
-    queryFn: () => listFeedPosts(50),
+    queryKey: ["unified-feed", myUserId],
+    queryFn: () => listUnifiedFeed(myUserId),
   });
-
-  const events = useQuery({
-    queryKey: ["events", myUserId],
-    queryFn: () => listMyEvents(myUserId),
-  });
-
-  const liveEvents = (events.data ?? []).filter(
-    (e) => e.is_active || new Date(e.starts_at).getTime() > Date.now()
-  );
 
   async function onRefresh() {
-    await qc.invalidateQueries({ queryKey: ["feed", myUserId] });
-    await qc.invalidateQueries({ queryKey: ["events", myUserId] });
+    await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
   }
 
   return (
@@ -58,7 +53,7 @@ export default function FeedScreen() {
       <ScreenContainer>
       <FlatList
         data={feed.data ?? []}
-        keyExtractor={(p) => p.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         removeClippedSubviews
         maxToRenderPerBatch={4}
@@ -77,41 +72,41 @@ export default function FeedScreen() {
               Feed
             </Text>
             <Text className="text-cream-soft text-base mb-5">
-              Foto's van jou en je vrienden.
+              Foto's, polls en momenten van jou en je vrienden.
             </Text>
 
             {/* Compose CTA */}
-            <Pressable
-              onPress={() => router.push("/post-compose")}
-              className="bg-flame rounded-3xl p-6 mb-6"
-            >
+            <View className="bg-flame rounded-3xl p-6 mb-6">
               <Text className="text-xs uppercase tracking-wider text-cream/80 mb-1">
                 Deel
               </Text>
               <Text className="text-2xl font-bold tracking-tight text-cream mb-4">
                 Plaats een moment
               </Text>
-              <View className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-5 py-3 self-start">
-                <Ionicons name="add" color="#F5E8D3" size={18} />
-                <Text className="text-cream font-semibold ml-2">Nieuwe foto</Text>
+              <View className="flex-row gap-2 flex-wrap">
+                <Pressable
+                  onPress={() => router.push("/post-compose")}
+                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
+                >
+                  <Ionicons name="image-outline" color="#F5E8D3" size={16} />
+                  <Text className="text-cream font-semibold ml-2 text-sm">Foto</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/poll-compose")}
+                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
+                >
+                  <Ionicons name="bar-chart-outline" color="#F5E8D3" size={16} />
+                  <Text className="text-cream font-semibold ml-2 text-sm">Stemming</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/call-plan-compose")}
+                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
+                >
+                  <Ionicons name="videocam-outline" color="#F5E8D3" size={16} />
+                  <Text className="text-cream font-semibold ml-2 text-sm">Call plannen</Text>
+                </Pressable>
               </View>
-            </Pressable>
-
-            {/* Live/upcoming events — verborgen tot events-feature klaar is.
-                De useQuery hierboven blijft draaien zodat re-enable enkel
-                deze block hoeft te uncommenten. */}
-            {/* {liveEvents.length > 0 && (
-              <View className="mb-6">
-                <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-                  Events
-                </Text>
-                <View className="gap-3">
-                  {liveEvents.slice(0, 3).map((e) => (
-                    <EventCard key={e.id} event={e} compact />
-                  ))}
-                </View>
-              </View>
-            )} */}
+            </View>
 
             <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
               Recent
@@ -133,30 +128,46 @@ export default function FeedScreen() {
                 Nog niks te tonen
               </Text>
               <Text className="text-ink-soft text-sm text-center">
-                Plaats je eerste foto hierboven, of voeg vrienden toe — dan verschijnen hun foto's hier ook.
+                Plaats je eerste foto, poll of call hierboven, of voeg vrienden toe.
               </Text>
             </View>
           )
         }
-        ItemSeparatorComponent={() => <View className="h-4" />}
-        renderItem={useCallback(({ item }: { item: PostWithAuthor }) => (
-          <PostCard
-            post={item}
-            myUserId={myUserId}
-            onPress={() => router.push(`/post/${item.id}`)}
-            onAuthorPress={() =>
-              item.author?.username && router.push(`/user/${item.author.username}`)
-            }
-            onDelete={async () => {
-              await deletePost(item);
-              qc.invalidateQueries({ queryKey: ["feed", myUserId] });
-            }}
-            onEdit={() => {
-              qc.invalidateQueries({ queryKey: ["feed", myUserId] });
-            }}
-          />
+        ItemSeparatorComponent={() => <View className="h-3" />}
+        renderItem={useCallback(({ item }: { item: FeedItem }) => {
+          if (item.type === "memory") {
+            return <MemoryCard post={item.data} />;
+          }
+          if (item.type === "activity") {
+            return <ActivityCard event={item.data} />;
+          }
+          if (item.type === "poll") {
+            return <PollCard poll={item.data} />;
+          }
+          if (item.type === "call_plan") {
+            return <CallPlanCard plan={item.data} />;
+          }
+          // type === "post"
+          const post = item.data as PostWithAuthor;
+          return (
+            <PostCard
+              post={post}
+              myUserId={myUserId}
+              onPress={() => router.push(`/post/${post.id}`)}
+              onAuthorPress={() =>
+                post.author?.username && router.push(`/user/${post.author.username}`)
+              }
+              onDelete={async () => {
+                await deletePost(post);
+                qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+              }}
+              onEdit={() => {
+                qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+              }}
+            />
+          );
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        ), [myUserId])}
+        }, [myUserId])}
       />
       </ScreenContainer>
     </SafeAreaView>
@@ -169,6 +180,7 @@ const PostCard = memo(function PostCard({
   onPress,
   onAuthorPress,
   onDelete,
+  onEdit,
 }: {
   post: PostWithAuthor;
   myUserId: string;
@@ -189,8 +201,6 @@ const PostCard = memo(function PostCard({
   const hasLink = !!post.link_url;
   const hasCaption = !!post.caption && post.caption.trim().length > 0;
 
-  // Natuurlijke aspect ratio — ingesteld via onLoad zodra de afbeelding
-  // geladen is. undefined = nog onbekend, container toont nog niet.
   const [imageRatio, setImageRatio] = useState<number | undefined>(undefined);
 
   return (
@@ -224,8 +234,6 @@ const PostCard = memo(function PostCard({
             cacheKey={post.image_path ?? undefined}
             style={{
               width: "100%",
-              // Cap tussen 9:16 (erg hoog portret) en 2:1 (breed landschap).
-              // Default 1 (vierkant) op native iOS — undefined geeft height 0.
               aspectRatio: imageRatio
                 ? Math.min(Math.max(imageRatio, 9 / 16), 2)
                 : 1,
@@ -258,7 +266,6 @@ const PostCard = memo(function PostCard({
 
       {hasLink && post.link_url && <LinkCard url={post.link_url} />}
 
-      {/* Reacties-footer — altijd zichtbaar, tikt door naar post detail */}
       <Pressable
         onPress={onPress}
         className="flex-row items-center px-4 pb-3 pt-2"
@@ -298,7 +305,6 @@ const PostCard = memo(function PostCard({
         />
       )}
 
-      {/* Edit caption modal */}
       <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}

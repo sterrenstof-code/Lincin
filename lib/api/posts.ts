@@ -1,5 +1,8 @@
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { listFeedPolls, type PollWithDetails } from "./polls";
+import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
+import { listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
 
 export type PostRow = {
   id: string;
@@ -91,6 +94,8 @@ export async function createPost(args: {
     }
     throw insErr;
   }
+  // Activiteitsmoment registreren — fire-and-forget
+  createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as PostRow).id }).catch(() => {});
   return data as PostRow;
 }
 
@@ -166,6 +171,74 @@ export async function deletePost(post: PostRow): Promise<void> {
   if (post.image_path) {
     await supabase.storage.from(POSTS_BUCKET).remove([post.image_path]).catch(() => {});
   }
+}
+
+// -------------------------------------------------------
+// Unified feed
+// -------------------------------------------------------
+
+export type FeedItem =
+  | { type: "post";     id: string; created_at: string; data: PostWithAuthor }
+  | { type: "poll";     id: string; created_at: string; data: PollWithDetails }
+  | { type: "call_plan"; id: string; created_at: string; data: CallPlanWithDetails }
+  | { type: "activity"; id: string; created_at: string; data: ActivityEventWithActor }
+  | { type: "memory";   id: string; created_at: string; data: PostWithAuthor };
+
+export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<FeedItem[]> {
+  const [posts, polls, callPlans, activity, memoryRaw] = await Promise.allSettled([
+    listFeedPosts(limit),
+    listFeedPolls(20),
+    listFeedCallPlans(10),
+    listFeedActivityEvents(30),
+    listMemoryPosts(myUserId),
+  ]);
+
+  const items: FeedItem[] = [];
+
+  if (posts.status === "fulfilled") {
+    for (const p of posts.value) {
+      items.push({ type: "post", id: p.id, created_at: p.created_at, data: p });
+    }
+  }
+  if (polls.status === "fulfilled") {
+    for (const p of polls.value) {
+      items.push({ type: "poll", id: p.id, created_at: p.created_at, data: p });
+    }
+  }
+  if (callPlans.status === "fulfilled") {
+    for (const p of callPlans.value) {
+      items.push({ type: "call_plan", id: p.id, created_at: p.created_at, data: p });
+    }
+  }
+  if (activity.status === "fulfilled") {
+    for (const a of activity.value) {
+      items.push({ type: "activity", id: a.id, created_at: a.created_at, data: a });
+    }
+  }
+
+  // Herinneringen bovenaan plaatsen als aparte kaart (max 1)
+  if (memoryRaw.status === "fulfilled" && memoryRaw.value.length > 0) {
+    const urlByPath = await attachSignedUrls(memoryRaw.value as PostRow[]);
+    const authors = await getProfiles([myUserId]);
+    const author = authors[0] ?? null;
+    const memPost = memoryRaw.value[0] as PostRow;
+    const memItem: PostWithAuthor = {
+      ...memPost,
+      author,
+      image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
+      comment_count: 0,
+    };
+    // Zet herinneringen bovenaan
+    items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });
+  }
+
+  // Sorteer op created_at aflopend (behalve memories die al bovenaan staan)
+  const memories = items.filter((i) => i.type === "memory");
+  const rest = items
+    .filter((i) => i.type !== "memory")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  return [...memories, ...rest];
 }
 
 function cryptoRandomId(): string {

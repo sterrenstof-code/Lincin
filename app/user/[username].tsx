@@ -89,11 +89,11 @@ export default function UserProfileScreen() {
     }
   }
 
-  async function onAccept(friendshipId: string) {
+  async function onAccept(friendshipId: string, requesterId: string) {
     setPendingAction(true);
     setError(null);
     try {
-      await acceptFriendRequest(friendshipId);
+      await acceptFriendRequest(friendshipId, session!.user.id, requesterId);
       await qc.invalidateQueries({ queryKey: ["friendships", session!.user.id] });
     } finally {
       setPendingAction(false);
@@ -183,7 +183,7 @@ export default function UserProfileScreen() {
                   username={username}
                   loading={pendingAction}
                   onSend={onSendRequest}
-                  onAccept={(id) => onAccept(id)}
+                  onAccept={(id) => onAccept(id, profile.data?.id ?? "")}
                   onCancel={(id) => onCancel(id)}
                   onChat={onOpenChat}
                   onLogin={() => router.replace("/(auth)/login")}
@@ -333,7 +333,7 @@ function ActionButton({
       return (
         <>
           <Pressable
-            onPress={() => onAccept(relation.friendshipId)}
+            onPress={() => onAccept(relation.friendshipId, "")}
             disabled={loading}
             className={primaryClass}
           >
