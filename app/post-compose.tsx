@@ -133,7 +133,7 @@ export default function PostComposeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8, alignItems: 'center' }}
         >
           {POST_TYPES.map((t) => {
             const active = postType === t.id;
