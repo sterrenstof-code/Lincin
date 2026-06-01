@@ -132,6 +132,11 @@ export async function listFeedPolls(limit = 30): Promise<PollWithDetails[]> {
   return results.filter((p): p is PollWithDetails => p !== null);
 }
 
+export async function deletePoll(pollId: string): Promise<void> {
+  const { error } = await supabase.from("polls").delete().eq("id", pollId);
+  if (error) throw error;
+}
+
 export async function votePoll(args: {
   optionId: string;
   userId: string;

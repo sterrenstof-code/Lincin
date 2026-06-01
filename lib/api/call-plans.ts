@@ -94,23 +94,42 @@ export async function getCallPlanWithDetails(
   });
 
   const participantIds = Array.from(allVoterIds);
-  const [authors, participants] = await Promise.all([
-    getProfiles([plan.user_id]),
-    participantIds.length > 0 ? getProfiles(participantIds) : Promise.resolve([]),
-  ]);
+
+  // Fetch invitees
+  const { data: inviteRows } = await supabase
+    .from("call_plan_invites")
+    .select("user_id")
+    .eq("call_plan_id", planId);
+  const inviteeIds = (inviteRows ?? []).map((r: any) => r.user_id as string);
+
+  const allProfileIds = Array.from(new Set([plan.user_id, ...participantIds, ...inviteeIds]));
+  const allProfiles = await getProfiles(allProfileIds);
+  const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
 
   return {
     ...(plan as CallPlanRow),
-    author: authors[0] ?? null,
+    author: profileMap[plan.user_id] ?? null,
     slots: mappedSlots,
-    participant_profiles: participants,
+    participant_profiles: participantIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
+    invitee_profiles: inviteeIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
   };
 }
 
 export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const myUserId = user?.id ?? "";
+
+  // Plans I created OR plans I'm invited to
+  const { data: invitedToIds } = await supabase
+    .from("call_plan_invites")
+    .select("call_plan_id")
+    .eq("user_id", myUserId);
+  const invitedIds = (invitedToIds ?? []).map((r: any) => r.call_plan_id as string);
+
   const { data: plans, error } = await supabase
     .from("call_plans")
     .select("id, user_id, title, description, created_at")
+    .or(`user_id.eq.${myUserId}${invitedIds.length > 0 ? `,id.in.(${invitedIds.join(",")})` : ""}`)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

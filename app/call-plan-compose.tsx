@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,9 +14,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
 import { createCallPlan } from "@/lib/api/call-plans";
 import { sendMessage } from "@/lib/api/messages";
+import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 
 type SlotDraft = {
   id: string;
@@ -75,6 +77,14 @@ export default function CallPlanComposeScreen() {
   const [activeSlotId, setActiveSlotId] = useState<string>(slots[0].id);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
+  const [invitedIds, setInvitedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    listMyFriendships(myUserId).then((fs) =>
+      setFriends(fs.filter((f) => f.status === "accepted"))
+    );
+  }, [myUserId]);
 
   const canSubmit = !submitting && title.trim().length > 0 && slots.length > 0;
   const activeSlot = slots.find((s) => s.id === activeSlotId) ?? slots[0];
@@ -107,6 +117,7 @@ export default function CallPlanComposeScreen() {
         title: title.trim(),
         description: description.trim() || null,
         slots: slots.map(slotToDateTimes),
+        inviteeIds: invitedIds.length > 0 ? invitedIds : undefined,
       });
       if (chatId) {
         await sendMessage({ chatId, senderId: myUserId, call_plan_id: plan.id, text: `📅 ${plan.title}` });
@@ -255,6 +266,53 @@ export default function CallPlanComposeScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Uitnodigen — enkel zichtbaar als je vrienden hebt */}
+            {friends.length > 0 && (
+              <View className="mt-5 px-5">
+                <Text className="text-cream-soft text-xs uppercase tracking-wider mb-3">
+                  Uitnodigen
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                  {friends.map((f) => {
+                    const p = f.other;
+                    const selected = invitedIds.includes(p.id);
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() =>
+                          setInvitedIds((prev) =>
+                            selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className="items-center gap-1.5"
+                      >
+                        <View className={`rounded-full p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
+                          <Avatar
+                            name={p.display_name ?? p.username}
+                            avatarUrl={p.avatar_url ?? null}
+                            size="md"
+                          />
+                        </View>
+                        <Text className={`text-[11px] font-semibold max-w-[56px] text-center ${selected ? "text-flame" : "text-cream-soft"}`} numberOfLines={1}>
+                          {p.display_name ?? p.username}
+                        </Text>
+                        {selected && (
+                          <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame rounded-full items-center justify-center">
+                            <Ionicons name="checkmark" color="#F5E8D3" size={10} />
+                          </View>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                {invitedIds.length > 0 && (
+                  <Text className="text-cream-soft text-xs mt-2">
+                    {invitedIds.length} {invitedIds.length === 1 ? "persoon" : "personen"} uitgenodigd · anderen zien deze call niet
+                  </Text>
+                )}
+              </View>
+            )}
 
             {error && <Text className="text-red-400 text-sm px-5 mt-3">{error}</Text>}
           </ScrollView>

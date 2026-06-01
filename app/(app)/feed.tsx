@@ -151,7 +151,12 @@ export default function FeedScreen() {
             return <ActivityCard event={item.data} />;
           }
           if (item.type === "poll") {
-            return <PollCard poll={item.data} />;
+            return (
+              <PollCard
+                poll={item.data}
+                onDeleted={() => qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] })}
+              />
+            );
           }
           if (item.type === "call_plan") {
             return <CallPlanCard plan={item.data} />;

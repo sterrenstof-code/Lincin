@@ -1,19 +1,26 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
-import { votePoll, type PollWithDetails } from "@/lib/api/polls";
+import { ActionSheet } from "./ActionSheet";
+import { votePoll, deletePoll, type PollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
 
 export function PollCard({
   poll,
   onVoted,
+  onDeleted,
 }: {
   poll: PollWithDetails;
   onVoted?: (updatedPoll: PollWithDetails) => void;
+  onDeleted?: () => void;
 }) {
   const { session } = useAuth();
   const myUserId = session!.user.id;
+  const isMine = poll.user_id === myUserId;
   const [voting, setVoting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [localPoll, setLocalPoll] = useState(poll);
 
   const hasVoted = !!localPoll.my_vote_option_id;
@@ -25,7 +32,6 @@ export function PollCard({
     setVoting(true);
     try {
       await votePoll({ optionId, userId: myUserId, pollId: localPoll.id });
-      // Optimistische update — voeg huidige gebruiker toe als voter
       const myProfile = localPoll.author?.id === myUserId ? localPoll.author : null;
       const updated: PollWithDetails = {
         ...localPoll,
@@ -50,6 +56,18 @@ export function PollCard({
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deletePoll(localPoll.id);
+      onDeleted?.();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (deleting) return null;
+
   return (
     <View className="bg-paper-soft rounded-3xl p-4 mb-3">
       {/* Header */}
@@ -68,6 +86,11 @@ export function PollCard({
         <View className="bg-flame/20 rounded-full px-2.5 py-1">
           <Text className="text-flame text-xs font-semibold">Stemming</Text>
         </View>
+        {isMine && (
+          <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} className="w-8 h-8 items-center justify-center">
+            <Ionicons name="ellipsis-horizontal" color="#5A4F40" size={18} />
+          </Pressable>
+        )}
       </View>
 
       {/* Vraag */}
@@ -77,15 +100,17 @@ export function PollCard({
       <View className="gap-2">
         {localPoll.options.map((option) => {
           const pct = localPoll.total_votes > 0
-            ? Math.round((option.vote_count / localPoll.total_votes) * 100)
+            ? Math.round((option.voters.length / localPoll.total_votes) * 100)
             : 0;
           const isMyVote = localPoll.my_vote_option_id === option.id;
 
           if (showResults) {
+            const shownVoters = option.voters.slice(0, 5);
+            const extraVoters = option.voters.length > 5 ? option.voters.length - 5 : 0;
             return (
               <View key={option.id} className="rounded-2xl overflow-hidden">
                 <View
-                  className="px-4 pt-3 pb-2.5"
+                  className="flex-row items-center px-4 py-3 gap-2"
                   style={{ backgroundColor: isMyVote ? "#D4622010" : "#1A160E08" }}
                 >
                   {/* Voortgangsbalk */}
@@ -96,33 +121,33 @@ export function PollCard({
                       backgroundColor: isMyVote ? "#D4622022" : "#1A160E0A",
                     }}
                   />
-                  {/* Label + percentage */}
-                  <View className="flex-row items-center">
-                    <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>
-                      {option.label}
-                    </Text>
-                    <Text className={`text-sm font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>
-                      {pct}%
-                    </Text>
-                  </View>
-                  {/* Voter avatars */}
-                  {option.voters.length > 0 && (
-                    <View className="flex-row items-center gap-1 mt-1.5 flex-wrap">
-                      {option.voters.slice(0, 8).map((voter) => (
-                        <Avatar
-                          key={voter.id}
-                          name={voter.display_name ?? voter.username}
-                          avatarUrl={voter.avatar_url ?? null}
-                          size="xs"
-                        />
+                  {/* Label */}
+                  <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>
+                    {option.label}
+                  </Text>
+                  {/* Overlapping avatars */}
+                  {shownVoters.length > 0 && (
+                    <View className="flex-row items-center" style={{ marginRight: 2 }}>
+                      {shownVoters.map((voter, i) => (
+                        <View key={voter.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: shownVoters.length - i }}>
+                          <Avatar
+                            name={voter.display_name ?? voter.username}
+                            avatarUrl={voter.avatar_url ?? null}
+                            size="xs"
+                          />
+                        </View>
                       ))}
-                      {option.voters.length > 8 && (
-                        <Text className="text-ink-muted text-[10px] ml-0.5">
-                          +{option.voters.length - 8}
-                        </Text>
+                      {extraVoters > 0 && (
+                        <View className="w-6 h-6 rounded-full bg-paper items-center justify-center" style={{ marginLeft: -8, zIndex: 0 }}>
+                          <Text className="text-ink-muted text-[9px] font-bold">+{extraVoters}</Text>
+                        </View>
                       )}
                     </View>
                   )}
+                  {/* Count + % */}
+                  <Text className={`text-xs font-bold tabular-nums ${isMyVote ? "text-flame" : "text-ink-muted"}`}>
+                    {option.voters.length} · {pct}%
+                  </Text>
                 </View>
               </View>
             );
@@ -147,6 +172,22 @@ export function PollCard({
           {localPoll.total_votes} {localPoll.total_votes === 1 ? "stem" : "stemmen"}
         </Text>
       </View>
+
+      {isMine && (
+        <ActionSheet
+          visible={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          title="Stemming"
+          actions={[
+            {
+              label: "Verwijderen",
+              icon: "trash-outline",
+              destructive: true,
+              onPress: () => { setMenuOpen(false); handleDelete(); },
+            },
+          ]}
+        />
+      )}
     </View>
   );
 }
