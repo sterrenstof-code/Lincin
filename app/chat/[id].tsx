@@ -939,7 +939,16 @@ export default function ChatDetail() {
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
                         if (isPending || isFailed) return;
-                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
+                        // Long-press = direct beantwoorden + cursor op input
+                        const name = isMine ? "Jij" : (senderName ?? "Onbekend");
+                        const preview = item.content?.text
+                          ? item.content.text.slice(0, 80)
+                          : item.content?.attachment
+                            ? `[${item.content.attachment.type}]`
+                            : "…";
+                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
+                        setTimeout(() => inputRef.current?.focus(), 50);
+                        setSelectedMsgId(null);
                       }}
 
                       selected={selectedMsgId === item.id}
