@@ -106,74 +106,77 @@ export default function PostComposeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
       <ScreenContainer>
-        {/* Header */}
-        <View className="flex-row items-center px-4 py-3">
-          <Pressable
-            onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="close" color="#1A1714" size={20} />
-          </Pressable>
-          <Text className="flex-1 text-cream text-lg font-semibold ml-3">
-            Nieuwe post
-          </Text>
-          <Pressable
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            className={`rounded-full px-4 py-2 ${canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"}`}
-          >
-            {submitting
-              ? <ActivityIndicator size="small" color="#1A1714" />
-              : <Text className={`font-semibold ${canSubmit ? "text-ink" : "text-cream-muted"}`}>Plaatsen</Text>
-            }
-          </Pressable>
-        </View>
-
-        {/* Type picker — scrollbare pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8, alignItems: 'center' }}
-        >
-          {POST_TYPES.map((t) => {
-            const active = postType === t.id;
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => { setPostType(t.id); setError(null); setMediaUri(null); }}
-                className={`flex-row items-center gap-2 px-4 py-2.5 rounded-full border ${
-                  active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"
-                }`}
-              >
-                <Ionicons name={t.icon} size={16} color={active ? "#1A1714" : "#8A7E6C"} />
-                <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-          {/* Poll + Call plannen als shortcut-pills die doornav */}
-          <Pressable
-            onPress={() => router.replace("/poll-compose")}
-            className="flex-row items-center gap-2 px-4 py-2.5 rounded-full bg-paper-soft border border-paper-soft"
-          >
-            <Ionicons name="bar-chart-outline" size={16} color="#8A7E6C" />
-            <Text className="text-sm font-semibold text-ink-muted">Poll</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.replace("/call-plan-compose")}
-            className="flex-row items-center gap-2 px-4 py-2.5 rounded-full bg-paper-soft border border-paper-soft"
-          >
-            <Ionicons name="videocam-outline" size={16} color="#8A7E6C" />
-            <Text className="text-sm font-semibold text-ink-muted">Call plannen</Text>
-          </Pressable>
-        </ScrollView>
-
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 80 }}
+          >
+            {/* Header */}
+            <View className="flex-row items-center px-4 pt-3 pb-2">
+              <Pressable
+                onPress={() => router.back()}
+                className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+              >
+                <Ionicons name="close" color="#1A1714" size={20} />
+              </Pressable>
+              <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+                Nieuwe post
+              </Text>
+              <Pressable
+                onPress={onSubmit}
+                disabled={!canSubmit}
+                className={`rounded-full px-4 py-2 ${canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"}`}
+              >
+                {submitting
+                  ? <ActivityIndicator size="small" color="#1A1714" />
+                  : <Text className={`font-semibold ${canSubmit ? "text-ink" : "text-cream-muted"}`}>Plaatsen</Text>
+                }
+              </Pressable>
+            </View>
+
+            {/* Type picker — scrollbare pills */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+            >
+              {POST_TYPES.map((t) => {
+                const active = postType === t.id;
+                return (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => { setPostType(t.id); setError(null); setMediaUri(null); }}
+                    className={`flex-row items-center gap-2 px-4 py-2 rounded-full border ${
+                      active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"
+                    }`}
+                  >
+                    <Ionicons name={t.icon} size={15} color={active ? "#1A1714" : "#8A7E6C"} />
+                    <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
+                      {t.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => router.replace("/poll-compose")}
+                className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft"
+              >
+                <Ionicons name="bar-chart-outline" size={15} color="#8A7E6C" />
+                <Text className="text-sm font-semibold text-ink-muted">Poll</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.replace("/call-plan-compose")}
+                className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft"
+              >
+                <Ionicons name="videocam-outline" size={15} color="#8A7E6C" />
+                <Text className="text-sm font-semibold text-ink-muted">Call plannen</Text>
+              </Pressable>
+            </ScrollView>
+
+            <View className="px-5 pt-3">
 
             {/* TEKST */}
             {postType === "tekst" && (
@@ -339,6 +342,7 @@ export default function PostComposeScreen() {
                 </Text>
               </View>
             )}
+            </View>{/* /px-5 pt-3 */}
           </ScrollView>
         </KeyboardAvoidingView>
       </ScreenContainer>
