@@ -2196,7 +2196,26 @@ function ChatCallPlanCard({
           <Text className="text-ink-muted text-xs text-center mt-1">+{plan.slots.length - 4} meer opties</Text>
         )}
       </View>
-      <Text className="text-ink-muted text-[10px] px-4 pb-3">Tik op een tijdstip om beschikbaarheid aan te geven</Text>
+      <View className="flex-row items-center justify-between px-4 pb-3">
+        <Text className="text-ink-muted text-[10px]">Tik om beschikbaarheid aan te geven</Text>
+        {bestSlot && bestSlot.yes_voters.length > 0 && (
+          <Pressable
+            onPress={() => {
+              const { downloadCalendarEvent } = require("@/lib/calendar");
+              downloadCalendarEvent({
+                title: plan.title,
+                description: plan.description ?? undefined,
+                startsAt: new Date(bestSlot.starts_at),
+                endsAt: new Date(bestSlot.ends_at),
+              });
+            }}
+            className="flex-row items-center gap-1 bg-teal-50 border border-teal-200 rounded-full px-2.5 py-1"
+          >
+            <Ionicons name="calendar-outline" color="#0F6E56" size={12} />
+            <Text className="text-teal-700 text-[10px] font-semibold">Agenda</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }

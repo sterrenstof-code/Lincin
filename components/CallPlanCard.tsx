@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
 import { useAuth } from "@/lib/auth/provider";
+import { downloadCalendarEvent } from "@/lib/calendar";
 
 export function CallPlanCard({
   plan,
@@ -117,20 +119,40 @@ export function CallPlanCard({
         })}
       </View>
 
-      {/* Deelnemers */}
-      {localPlan.participant_profiles.length > 0 && (
-        <View className="flex-row items-center gap-1">
-          {localPlan.participant_profiles.slice(0, 5).map((p) => (
-            <Avatar key={p.id} name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
-          ))}
-          {localPlan.participant_profiles.length > 5 && (
-            <Text className="text-ink-muted text-xs ml-1">
-              +{localPlan.participant_profiles.length - 5}
-            </Text>
-          )}
-          <Text className="text-ink-muted text-xs ml-1">hebben gestemd</Text>
-        </View>
-      )}
+      {/* Deelnemers + agenda-knop */}
+      <View className="flex-row items-center gap-2 mt-1">
+        {localPlan.participant_profiles.length > 0 && (
+          <View className="flex-row items-center gap-1 flex-1">
+            {localPlan.participant_profiles.slice(0, 5).map((p) => (
+              <Avatar key={p.id} name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+            ))}
+            {localPlan.participant_profiles.length > 5 && (
+              <Text className="text-ink-muted text-xs ml-1">
+                +{localPlan.participant_profiles.length - 5}
+              </Text>
+            )}
+            <Text className="text-ink-muted text-xs ml-1">gestemd</Text>
+          </View>
+        )}
+
+        {/* Agenda-knop — alleen als er een winnend slot is */}
+        {bestSlot && bestSlot.yes_voters.length > 0 && (
+          <Pressable
+            onPress={() =>
+              downloadCalendarEvent({
+                title: localPlan.title,
+                description: localPlan.description ?? undefined,
+                startsAt: new Date(bestSlot.starts_at),
+                endsAt: new Date(bestSlot.ends_at),
+              })
+            }
+            className="flex-row items-center gap-1.5 bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5"
+          >
+            <Ionicons name="calendar-outline" color="#0F6E56" size={14} />
+            <Text className="text-teal-700 text-xs font-semibold">Agenda</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
