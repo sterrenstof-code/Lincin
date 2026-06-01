@@ -83,37 +83,53 @@ export function CallPlanCard({
             ...localPlan.slots.flatMap((s) => [...s.yes_voters, ...s.no_voters]),
           ]).size;
 
+          const yesProfiles = slot.yes_voters
+            .map((uid) => localPlan.participant_profiles.find((p) => p.id === uid))
+            .filter(Boolean) as typeof localPlan.participant_profiles;
+
           return (
             <Pressable
               key={slot.id}
               onPress={() => toggleSlot(slot.id, myVote)}
               disabled={isSaving}
-              className={`flex-row items-center px-4 py-3 rounded-2xl border ${
-                myVote
-                  ? "bg-teal-50 border-teal-300"
-                  : "bg-paper border-paper"
-              }`}
+              className={`px-4 py-3 rounded-2xl border ${myVote ? "bg-teal-50 border-teal-300" : "bg-paper border-paper"}`}
             >
-              <View className="flex-1">
-                <Text className={`text-sm font-semibold ${myVote ? "text-teal-700" : "text-ink"}`}>
-                  {formatSlotDate(slot.starts_at)}
-                </Text>
-                <Text className={`text-xs mt-0.5 ${myVote ? "text-teal-600" : "text-ink-muted"}`}>
-                  {formatSlotTime(slot.starts_at)} – {formatSlotTime(slot.ends_at)}
-                </Text>
-              </View>
-              {/* Stemteller */}
-              <View className="items-end gap-1">
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-xs font-bold text-teal-600">{slot.yes_voters.length}</Text>
-                  <Text className="text-xs text-ink-muted">/{totalParticipants > 0 ? totalParticipants : "?"} ✓</Text>
+              <View className="flex-row items-center">
+                <View className="flex-1">
+                  <Text className={`text-sm font-semibold ${myVote ? "text-teal-700" : "text-ink"}`}>
+                    {formatSlotDate(slot.starts_at)}
+                  </Text>
+                  <Text className={`text-xs mt-0.5 ${myVote ? "text-teal-600" : "text-ink-muted"}`}>
+                    {formatSlotTime(slot.starts_at)} – {formatSlotTime(slot.ends_at)}
+                  </Text>
                 </View>
-                {isBest && (
-                  <View className="bg-teal-100 rounded-full px-2 py-0.5">
-                    <Text className="text-teal-700 text-[10px] font-semibold">Beste</Text>
+                <View className="items-end gap-1">
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-xs font-bold text-teal-600">{slot.yes_voters.length}</Text>
+                    <Text className="text-xs text-ink-muted">/{totalParticipants > 0 ? totalParticipants : "?"} ✓</Text>
                   </View>
-                )}
+                  {isBest && (
+                    <View className="bg-teal-100 rounded-full px-2 py-0.5">
+                      <Text className="text-teal-700 text-[10px] font-semibold">Beste</Text>
+                    </View>
+                  )}
+                </View>
               </View>
+
+              {/* Wie is er ook */}
+              {yesProfiles.length > 0 && (
+                <View className="flex-row items-center mt-2">
+                  {yesProfiles.slice(0, 6).map((p, i) => (
+                    <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: 6 - i }}>
+                      <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+                    </View>
+                  ))}
+                  {yesProfiles.length > 6 && (
+                    <Text className="text-teal-600 text-[10px] font-semibold ml-1">+{yesProfiles.length - 6}</Text>
+                  )}
+                  <Text className="text-teal-600 text-[10px] ml-1.5">kunnen</Text>
+                </View>
+              )}
             </Pressable>
           );
         })}

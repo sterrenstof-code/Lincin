@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { createNotification } from "./notifications";
 
 export type PollOption = {
   id: string;
@@ -161,4 +162,21 @@ export async function votePoll(args: {
     user_id: args.userId,
   });
   if (error) throw error;
+
+  // Notify poll owner (fire-and-forget)
+  supabase
+    .from("polls")
+    .select("user_id")
+    .eq("id", args.pollId)
+    .single()
+    .then(({ data }) => {
+      if (data?.user_id) {
+        createNotification({
+          userId: data.user_id,
+          actorId: args.userId,
+          type: "vote_on_poll",
+          postId: args.pollId,
+        });
+      }
+    });
 }

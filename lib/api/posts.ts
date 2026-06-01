@@ -3,6 +3,7 @@ import { getProfiles, type Profile } from "./profiles";
 import { listFeedPolls, type PollWithDetails } from "./polls";
 import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
 import { listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
+import { listMySharedLists, type SharedListWithDetails } from "./shared-lists";
 
 export type PostRow = {
   id: string;
@@ -178,19 +179,21 @@ export async function deletePost(post: PostRow): Promise<void> {
 // -------------------------------------------------------
 
 export type FeedItem =
-  | { type: "post";     id: string; created_at: string; data: PostWithAuthor }
-  | { type: "poll";     id: string; created_at: string; data: PollWithDetails }
-  | { type: "call_plan"; id: string; created_at: string; data: CallPlanWithDetails }
-  | { type: "activity"; id: string; created_at: string; data: ActivityEventWithActor }
-  | { type: "memory";   id: string; created_at: string; data: PostWithAuthor };
+  | { type: "post";        id: string; created_at: string; data: PostWithAuthor }
+  | { type: "poll";        id: string; created_at: string; data: PollWithDetails }
+  | { type: "call_plan";   id: string; created_at: string; data: CallPlanWithDetails }
+  | { type: "activity";    id: string; created_at: string; data: ActivityEventWithActor }
+  | { type: "memory";      id: string; created_at: string; data: PostWithAuthor }
+  | { type: "shared_list"; id: string; created_at: string; data: SharedListWithDetails };
 
 export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<FeedItem[]> {
-  const [posts, polls, callPlans, activity, memoryRaw] = await Promise.allSettled([
+  const [posts, polls, callPlans, activity, memoryRaw, sharedLists] = await Promise.allSettled([
     listFeedPosts(limit),
     listFeedPolls(20),
     listFeedCallPlans(10),
     listFeedActivityEvents(30),
     listMemoryPosts(myUserId),
+    listMySharedLists(myUserId),
   ]);
 
   const items: FeedItem[] = [];
@@ -213,6 +216,11 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
   if (activity.status === "fulfilled") {
     for (const a of activity.value) {
       items.push({ type: "activity", id: a.id, created_at: a.created_at, data: a });
+    }
+  }
+  if (sharedLists.status === "fulfilled") {
+    for (const l of sharedLists.value) {
+      items.push({ type: "shared_list", id: l.id, created_at: l.created_at, data: l });
     }
   }
 

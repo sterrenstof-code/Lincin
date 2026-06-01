@@ -11,6 +11,7 @@ import { listMyChats } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
+import { touchLastSeen } from "@/lib/api/profiles";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
@@ -151,6 +152,15 @@ export default function AppLayout() {
   useEffect(() => {
     if (!session || bootstrapping || !hasPassword) return;
     registerPushToken(session.user.id).catch(() => {});
+  }, [session, bootstrapping, hasPassword]);
+
+  // Activiteitsindicator: update last_seen_at bij opstarten + elke 2 min
+  useEffect(() => {
+    if (!session || bootstrapping || !hasPassword) return;
+    const myId = session.user.id;
+    touchLastSeen(myId).catch(() => {});
+    const interval = setInterval(() => touchLastSeen(myId).catch(() => {}), 2 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [session, bootstrapping, hasPassword]);
 
   // Native: expo-notifications tap listener

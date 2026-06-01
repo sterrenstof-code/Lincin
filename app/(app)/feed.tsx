@@ -25,10 +25,12 @@ import { EventCard } from "@/components/EventCard";
 import { SafeImage } from "@/components/SafeImage";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonPostCard } from "@/components/Skeleton";
+import { PostReactions } from "@/components/PostReactions";
 import { PollCard } from "@/components/PollCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { ActivityCard } from "@/components/ActivityCard";
 import { MemoryCard } from "@/components/MemoryCard";
+import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyEvents } from "@/lib/api/events";
 import { deletePost, updatePostCaption, listUnifiedFeed, type FeedItem, type PostWithAuthor } from "@/lib/api/posts";
@@ -114,6 +116,13 @@ export default function FeedScreen() {
                   <Ionicons name="videocam-outline" color="#F5E8D3" size={16} />
                   <Text className="text-cream font-semibold ml-2 text-sm">Call plannen</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() => router.push("/list-compose")}
+                  className="flex-row items-center bg-ink active:bg-ink-soft rounded-full px-4 py-2.5"
+                >
+                  <Ionicons name="checkmark-circle-outline" color="#F5E8D3" size={16} />
+                  <Text className="text-cream font-semibold ml-2 text-sm">Lijst</Text>
+                </Pressable>
               </View>
             </View>
 
@@ -160,6 +169,9 @@ export default function FeedScreen() {
           }
           if (item.type === "call_plan") {
             return <CallPlanCard plan={item.data} />;
+          }
+          if (item.type === "shared_list") {
+            return <SharedListCard list={item.data} />;
           }
           // type === "post"
           const post = item.data as PostWithAuthor;
@@ -279,6 +291,8 @@ const PostCard = memo(function PostCard({
       )}
 
       {hasLink && post.link_url && <LinkCard url={post.link_url} />}
+
+      <PostReactions postId={post.id} />
 
       <Pressable
         onPress={onPress}

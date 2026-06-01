@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { createNotification } from "./notifications";
 
 export type CallPlanSlot = {
   id: string;
@@ -153,4 +154,31 @@ export async function voteCallPlanSlot(args: {
       { onConflict: "call_plan_slot_id,user_id" }
     );
   if (error) throw error;
+
+  // Notify plan owner when someone votes available (fire-and-forget)
+  if (args.available) {
+    supabase
+      .from("call_plan_slots")
+      .select("call_plan_id")
+      .eq("id", args.slotId)
+      .single()
+      .then(({ data: slot }) => {
+        if (!slot) return;
+        supabase
+          .from("call_plans")
+          .select("user_id")
+          .eq("id", slot.call_plan_id)
+          .single()
+          .then(({ data: plan }) => {
+            if (plan?.user_id) {
+              createNotification({
+                userId: plan.user_id,
+                actorId: args.userId,
+                type: "vote_on_call",
+                postId: slot.call_plan_id,
+              });
+            }
+          });
+      });
+  }
 }

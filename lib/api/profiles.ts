@@ -6,6 +6,7 @@ export type Profile = {
   display_name: string | null;
   avatar_url: string | null;
   identity_pubkey: string;
+  last_seen_at?: string | null;
 };
 
 export const USERNAME_REGEX = /^[a-z0-9._]+$/;
@@ -32,7 +33,7 @@ export async function searchProfilesByUsername(
 
   let req = supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
     .ilike("username", `${q}%`)
     .limit(20);
 
@@ -48,7 +49,7 @@ export async function searchProfilesByUsername(
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -60,7 +61,7 @@ export async function getProfileByUsername(
 ): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
     .eq("username", username.toLowerCase())
     .maybeSingle();
   if (error) throw error;
@@ -71,7 +72,7 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
   if (userIds.length === 0) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
     .in("id", userIds);
   if (error) throw error;
   return data ?? [];
@@ -124,7 +125,7 @@ export async function updateMyProfile(
     .from("profiles")
     .update(patch)
     .eq("id", userId)
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
     .single();
 
   if (error) {
@@ -135,4 +136,12 @@ export async function updateMyProfile(
     throw error;
   }
   return data as Profile;
+}
+
+/** Fire-and-forget: update last_seen_at voor de huidige gebruiker. */
+export async function touchLastSeen(userId: string): Promise<void> {
+  await supabase
+    .from("profiles")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", userId);
 }
