@@ -7,6 +7,7 @@ export type PollOption = {
   label: string;
   position: number;
   vote_count: number;
+  voters: Profile[];
 };
 
 export type PollRow = {
@@ -65,7 +66,7 @@ export async function getPollWithDetails(
 
   const { data: options, error: oErr } = await supabase
     .from("poll_options")
-    .select("id, poll_id, label, position, poll_votes(count)")
+    .select("id, poll_id, label, position, poll_votes(count, user_id)")
     .eq("poll_id", pollId)
     .order("position");
   if (oErr) throw oErr;
@@ -77,17 +78,32 @@ export async function getPollWithDetails(
     .in("poll_option_id", (options ?? []).map((o: any) => o.id))
     .maybeSingle();
 
-  const authors = await getProfiles([poll.user_id]);
+  // Collect all voter ids across all options
+  const allVoterIds = Array.from(new Set(
+    (options ?? []).flatMap((o: any) =>
+      (o.poll_votes ?? []).map((v: any) => v.user_id).filter(Boolean)
+    )
+  ));
 
-  const mappedOptions: PollOption[] = (options ?? []).map((o: any) => ({
-    id: o.id,
-    poll_id: o.poll_id,
-    label: o.label,
-    position: o.position,
-    vote_count: (o.poll_votes?.[0]?.count as number) ?? 0,
-  }));
+  const [authors, allVoterProfiles] = await Promise.all([
+    getProfiles([poll.user_id]),
+    allVoterIds.length > 0 ? getProfiles(allVoterIds) : Promise.resolve([]),
+  ]);
+  const voterProfileMap = Object.fromEntries(allVoterProfiles.map((p) => [p.id, p]));
 
-  const totalVotes = mappedOptions.reduce((s, o) => s + o.vote_count, 0);
+  const mappedOptions: PollOption[] = (options ?? []).map((o: any) => {
+    const votes: { user_id: string }[] = o.poll_votes ?? [];
+    return {
+      id: o.id,
+      poll_id: o.poll_id,
+      label: o.label,
+      position: o.position,
+      vote_count: votes.length,
+      voters: votes.map((v) => voterProfileMap[v.user_id]).filter(Boolean) as Profile[],
+    };
+  });
+
+  const totalVotes = mappedOptions.reduce((s, o) => s + o.voters.length, 0);
 
   return {
     ...(poll as PollRow),

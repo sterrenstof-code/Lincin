@@ -20,44 +20,46 @@ import { sendMessage } from "@/lib/api/messages";
 
 type SlotDraft = {
   id: string;
-  dayOffset: number;   // 0 = vandaag, 1 = morgen, 2 = overmorgen, etc.
+  date: Date;       // concrete datum
   startHour: number;
-  endHour: number;
 };
 
-const DAY_OPTIONS = [
-  { offset: 1, label: "Morgen" },
-  { offset: 2, label: "Overmorgen" },
-  { offset: 3, label: "Over 3 dagen" },
-  { offset: 5, label: "Over 5 dagen" },
-  { offset: 7, label: "Over 1 week" },
-  { offset: 14, label: "Over 2 weken" },
-];
-
-const HOUR_OPTIONS = [17, 18, 19, 20, 21, 22];
-
-function newSlot(offset: number = 1): SlotDraft {
-  return {
-    id: Math.random().toString(36).slice(2),
-    dayOffset: offset,
-    startHour: 19,
-    endHour: 21,
-  };
+// Genereer de volgende N dagen als keuze-opties
+function buildDayOptions(n = 28): { date: Date; label: string; short: string }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    d.setHours(0, 0, 0, 0);
+    return {
+      date: new Date(d),
+      label: d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" }),
+      short: d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }),
+    };
+  });
 }
 
-function slotToDate(slot: SlotDraft): { starts_at: Date; ends_at: Date } {
-  const start = new Date();
-  start.setDate(start.getDate() + slot.dayOffset);
+const DAY_OPTIONS = buildDayOptions(28);
+const HOUR_OPTIONS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+
+function newSlot(): SlotDraft {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return { id: Math.random().toString(36).slice(2), date: new Date(d), startHour: 19 };
+}
+
+function slotToDateTimes(slot: SlotDraft): { starts_at: Date; ends_at: Date } {
+  const start = new Date(slot.date);
   start.setHours(slot.startHour, 0, 0, 0);
   const end = new Date(start);
-  end.setHours(slot.endHour, 0, 0, 0);
+  end.setHours(slot.startHour + 1, 0, 0, 0);
   return { starts_at: start, ends_at: end };
 }
 
-function formatSlotLabel(slot: SlotDraft): string {
-  const d = new Date();
-  d.setDate(d.getDate() + slot.dayOffset);
-  return d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "short" });
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
 }
 
 export default function CallPlanComposeScreen() {
@@ -65,31 +67,34 @@ export default function CallPlanComposeScreen() {
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
-  // chatId is optioneel — als het er is sturen we het plan als chat-bericht
   const { chatId } = useLocalSearchParams<{ chatId?: string }>();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [slots, setSlots] = useState<SlotDraft[]>([newSlot(1), newSlot(2)]);
+  const [slots, setSlots] = useState<SlotDraft[]>([newSlot()]);
+  const [activeSlotId, setActiveSlotId] = useState<string>(slots[0].id);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = !submitting && title.trim().length > 0 && slots.length > 0;
+  const activeSlot = slots.find((s) => s.id === activeSlotId) ?? slots[0];
 
   function addSlot() {
     if (slots.length >= 8) return;
-    const usedOffsets = new Set(slots.map((s) => s.dayOffset));
-    const nextOffset = DAY_OPTIONS.find((d) => !usedOffsets.has(d.offset))?.offset ?? slots.length + 1;
-    setSlots([...slots, newSlot(nextOffset)]);
+    const s = newSlot();
+    setSlots([...slots, s]);
+    setActiveSlotId(s.id);
   }
 
   function removeSlot(id: string) {
     if (slots.length <= 1) return;
-    setSlots(slots.filter((s) => s.id !== id));
+    const remaining = slots.filter((s) => s.id !== id);
+    setSlots(remaining);
+    if (activeSlotId === id) setActiveSlotId(remaining[0].id);
   }
 
-  function updateSlot(id: string, patch: Partial<SlotDraft>) {
-    setSlots(slots.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  function updateActive(patch: Partial<SlotDraft>) {
+    setSlots(slots.map((s) => (s.id === activeSlotId ? { ...s, ...patch } : s)));
   }
 
   async function onSubmit() {
@@ -101,22 +106,14 @@ export default function CallPlanComposeScreen() {
         userId: myUserId,
         title: title.trim(),
         description: description.trim() || null,
-        slots: slots.map(slotToDate),
+        slots: slots.map(slotToDateTimes),
       });
-
-      // Als vanuit een chat: stuur het plan als bericht
       if (chatId) {
-        await sendMessage({
-          chatId,
-          senderId: myUserId,
-          call_plan_id: plan.id,
-          text: `📅 ${plan.title}`,
-        });
+        await sendMessage({ chatId, senderId: myUserId, call_plan_id: plan.id, text: `📅 ${plan.title}` });
         await qc.invalidateQueries({ queryKey: ["messages", chatId] });
       } else {
         await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       }
-
       router.back();
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
@@ -127,14 +124,12 @@ export default function CallPlanComposeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScreenContainer>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
+
             {/* Header */}
-            <View className="flex-row items-center justify-between mb-6">
+            <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
               <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
               </Pressable>
@@ -155,114 +150,113 @@ export default function CallPlanComposeScreen() {
               </Pressable>
             </View>
 
-            {/* Onderwerp */}
-            <Text className="text-cream-soft text-xs uppercase tracking-wider mb-2">Onderwerp</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Bijv. Wekelijkse catch-up"
-              placeholderTextColor="#6B5E4E"
-              className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base mb-4"
-              style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-            />
-
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Toelichting (optioneel)"
-              placeholderTextColor="#6B5E4E"
-              multiline
-              className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base mb-6"
-              style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-            />
-
-            {/* Tijdsloten */}
-            <Text className="text-cream-soft text-xs uppercase tracking-wider mb-2">Tijdsloten</Text>
-            <Text className="text-ink-muted text-sm mb-3">
-              Stel meerdere opties in — iedereen stemt op wanneer ze kunnen.
-            </Text>
-
-            <View className="gap-3 mb-3">
-              {slots.map((slot, i) => (
-                <View key={slot.id} className="bg-paper-soft rounded-2xl p-4">
-                  <View className="flex-row items-center justify-between mb-3">
-                    <Text className="text-ink font-semibold text-sm">Optie {i + 1}</Text>
-                    {slots.length > 1 && (
-                      <Pressable onPress={() => removeSlot(slot.id)}>
-                        <Ionicons name="close-circle-outline" color="#8A7E6C" size={20} />
-                      </Pressable>
-                    )}
-                  </View>
-
-                  {/* Dag kiezen */}
-                  <View className="mb-3">
-                    <Text className="text-ink-muted text-xs mb-2">Dag</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                      {DAY_OPTIONS.map((d) => (
-                        <Pressable
-                          key={d.offset}
-                          onPress={() => updateSlot(slot.id, { dayOffset: d.offset })}
-                          className={`px-3 py-1.5 rounded-full ${slot.dayOffset === d.offset ? "bg-flame" : "bg-paper"}`}
-                        >
-                          <Text className={`text-xs font-semibold ${slot.dayOffset === d.offset ? "text-cream" : "text-ink-muted"}`}>
-                            {d.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                    <Text className="text-ink-muted text-xs mt-1.5">{formatSlotLabel(slot)}</Text>
-                  </View>
-
-                  {/* Begintijd */}
-                  <View className="mb-2">
-                    <Text className="text-ink-muted text-xs mb-2">Begintijd</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {HOUR_OPTIONS.map((h) => (
-                        <Pressable
-                          key={h}
-                          onPress={() => updateSlot(slot.id, { startHour: h, endHour: Math.max(h + 1, slot.endHour) })}
-                          className={`px-3 py-1.5 rounded-full ${slot.startHour === h ? "bg-ink" : "bg-paper"}`}
-                        >
-                          <Text className={`text-xs font-semibold ${slot.startHour === h ? "text-cream" : "text-ink-muted"}`}>
-                            {h}:00
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Eindtijd */}
-                  <View>
-                    <Text className="text-ink-muted text-xs mb-2">Eindtijd</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {HOUR_OPTIONS.filter((h) => h > slot.startHour).map((h) => (
-                        <Pressable
-                          key={h}
-                          onPress={() => updateSlot(slot.id, { endHour: h })}
-                          className={`px-3 py-1.5 rounded-full ${slot.endHour === h ? "bg-ink" : "bg-paper"}`}
-                        >
-                          <Text className={`text-xs font-semibold ${slot.endHour === h ? "text-cream" : "text-ink-muted"}`}>
-                            {h}:00
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              ))}
+            <View className="px-5 gap-4">
+              {/* Titel */}
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Onderwerp, bijv. Catch-up"
+                placeholderTextColor="#6B5E4E"
+                className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base"
+                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+              />
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Toelichting (optioneel)"
+                placeholderTextColor="#6B5E4E"
+                multiline
+                className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base"
+                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+              />
             </View>
 
-            {slots.length < 8 && (
-              <Pressable
-                onPress={addSlot}
-                className="flex-row items-center gap-2 py-3 px-4 bg-paper-soft rounded-2xl mb-6"
-              >
-                <Ionicons name="add-circle-outline" color="#8A7E6C" size={18} />
-                <Text className="text-ink-muted text-sm">Tijdslot toevoegen</Text>
-              </Pressable>
-            )}
+            {/* Tijdsloten — tabbladen */}
+            <View className="mt-5 px-5">
+              <Text className="text-cream-soft text-xs uppercase tracking-wider mb-3">Tijdsloten</Text>
 
-            {error && <Text className="text-red-400 text-sm">{error}</Text>}
+              {/* Slot tabs */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+                {slots.map((slot, i) => {
+                  const active = slot.id === activeSlotId;
+                  return (
+                    <Pressable
+                      key={slot.id}
+                      onPress={() => setActiveSlotId(slot.id)}
+                      className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"}`}
+                    >
+                      <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
+                        {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
+                      </Text>
+                      {slots.length > 1 && (
+                        <Pressable onPress={() => removeSlot(slot.id)} hitSlop={8}>
+                          <Ionicons name="close-circle" color={active ? "#5A4F40" : "#8A7E6C"} size={14} />
+                        </Pressable>
+                      )}
+                    </Pressable>
+                  );
+                })}
+                {slots.length < 8 && (
+                  <Pressable onPress={addSlot} className="flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft">
+                    <Ionicons name="add" color="#8A7E6C" size={16} />
+                    <Text className="text-ink-muted text-sm font-semibold">Voeg toe</Text>
+                  </Pressable>
+                )}
+              </ScrollView>
+
+              {/* Datum-grid — volgende 28 dagen */}
+              <View className="bg-paper-soft rounded-3xl p-4 mb-4">
+                <Text className="text-ink-muted text-xs mb-3">Datum</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {DAY_OPTIONS.map((opt) => {
+                    const selected = isSameDay(activeSlot.date, opt.date);
+                    return (
+                      <Pressable
+                        key={opt.date.toISOString()}
+                        onPress={() => updateActive({ date: new Date(opt.date) })}
+                        className={`items-center px-3 py-2 rounded-2xl min-w-[52px] ${selected ? "bg-flame" : "bg-paper"}`}
+                      >
+                        <Text className={`text-[10px] font-semibold uppercase ${selected ? "text-cream/80" : "text-ink-muted"}`}>
+                          {opt.date.toLocaleDateString("nl-NL", { weekday: "short" })}
+                        </Text>
+                        <Text className={`text-base font-bold mt-0.5 ${selected ? "text-cream" : "text-ink"}`}>
+                          {opt.date.getDate()}
+                        </Text>
+                        <Text className={`text-[9px] ${selected ? "text-cream/70" : "text-ink-muted"}`}>
+                          {opt.date.toLocaleDateString("nl-NL", { month: "short" })}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Begintijd */}
+              <View className="bg-paper-soft rounded-3xl p-4">
+                <Text className="text-ink-muted text-xs mb-3">Begintijd</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {HOUR_OPTIONS.map((h) => {
+                    const selected = activeSlot.startHour === h;
+                    return (
+                      <Pressable
+                        key={h}
+                        onPress={() => updateActive({ startHour: h })}
+                        className={`px-4 py-2 rounded-full ${selected ? "bg-ink" : "bg-paper"}`}
+                      >
+                        <Text className={`text-sm font-semibold ${selected ? "text-cream" : "text-ink-muted"}`}>
+                          {h}:00
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                <Text className="text-ink-muted text-xs mt-2">
+                  Duurt 1 uur · eindigt om {activeSlot.startHour + 1}:00
+                </Text>
+              </View>
+            </View>
+
+            {error && <Text className="text-red-400 text-sm px-5 mt-3">{error}</Text>}
           </ScrollView>
         </ScreenContainer>
       </KeyboardAvoidingView>

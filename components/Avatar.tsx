@@ -6,9 +6,10 @@ import { Text, View } from "react-native";
  * Size variants map to the spacing scale in DESIGN.md.
  * Als `avatarUrl` meegegeven wordt, toont het de foto in plaats van initialen.
  */
-export type AvatarSize = "sm" | "md" | "lg" | "hero";
+export type AvatarSize = "xs" | "sm" | "md" | "lg" | "hero";
 
 const SIZE: Record<AvatarSize, { box: string; text: string; px: number }> = {
+  xs:   { box: "w-6 h-6",   text: "text-[9px]", px: 24 },
   sm:   { box: "w-9 h-9",   text: "text-sm",   px: 36 },
   md:   { box: "w-11 h-11", text: "text-base",  px: 44 },
   lg:   { box: "w-14 h-14", text: "text-lg",    px: 56 },

@@ -25,13 +25,22 @@ export function PollCard({
     setVoting(true);
     try {
       await votePoll({ optionId, userId: myUserId, pollId: localPoll.id });
-      // Optimistische update
+      // Optimistische update — voeg huidige gebruiker toe als voter
+      const myProfile = localPoll.author?.id === myUserId ? localPoll.author : null;
       const updated: PollWithDetails = {
         ...localPoll,
         my_vote_option_id: optionId,
         total_votes: localPoll.total_votes + 1,
         options: localPoll.options.map((o) =>
-          o.id === optionId ? { ...o, vote_count: o.vote_count + 1 } : o
+          o.id === optionId
+            ? {
+                ...o,
+                vote_count: o.vote_count + 1,
+                voters: myProfile
+                  ? [...o.voters.filter((v) => v.id !== myUserId), myProfile]
+                  : o.voters,
+              }
+            : o
         ),
       };
       setLocalPoll(updated);
@@ -76,7 +85,7 @@ export function PollCard({
             return (
               <View key={option.id} className="rounded-2xl overflow-hidden">
                 <View
-                  className="flex-row items-center px-4 py-3"
+                  className="px-4 pt-3 pb-2.5"
                   style={{ backgroundColor: isMyVote ? "#D4622010" : "#1A160E08" }}
                 >
                   {/* Voortgangsbalk */}
@@ -87,12 +96,33 @@ export function PollCard({
                       backgroundColor: isMyVote ? "#D4622022" : "#1A160E0A",
                     }}
                   />
-                  <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>
-                    {option.label}
-                  </Text>
-                  <Text className={`text-sm font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>
-                    {pct}%
-                  </Text>
+                  {/* Label + percentage */}
+                  <View className="flex-row items-center">
+                    <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>
+                      {option.label}
+                    </Text>
+                    <Text className={`text-sm font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>
+                      {pct}%
+                    </Text>
+                  </View>
+                  {/* Voter avatars */}
+                  {option.voters.length > 0 && (
+                    <View className="flex-row items-center gap-1 mt-1.5 flex-wrap">
+                      {option.voters.slice(0, 8).map((voter) => (
+                        <Avatar
+                          key={voter.id}
+                          name={voter.display_name ?? voter.username}
+                          avatarUrl={voter.avatar_url ?? null}
+                          size="xs"
+                        />
+                      ))}
+                      {option.voters.length > 8 && (
+                        <Text className="text-ink-muted text-[10px] ml-0.5">
+                          +{option.voters.length - 8}
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             );
