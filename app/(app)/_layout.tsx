@@ -284,16 +284,15 @@ function PaperTabBar({
   return (
     <View className="bg-shell-soft border-t border-line">
       <View
-        className="flex-row items-center py-2 px-3 self-center"
+        className="flex-row items-center pt-2 pb-3 px-2 self-center"
         style={{ width: "100%", maxWidth: 600 }}
       >
-        {tabs.map((tab, index) => {
+        {tabs.map((tab) => {
           const route = state.routes.find((r: any) => r.name === tab.routeName);
           if (!route) return null;
           const isFocused =
             state.index === state.routes.findIndex((r: any) => r.name === tab.routeName);
           const onPress = () => {
-            // Lichte tik-feedback op iOS — subtiel, zoals native apps
             if (Platform.OS === "ios") {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             }
@@ -306,32 +305,34 @@ function PaperTabBar({
               navigation.navigate(route.name);
             }
           };
-          // Per-tab badge: chats = ongelezen berichten, friends = inkomende
-          // friend-requests. Beide gebruiken dezelfde flame-pill styling
-          // (consistente visuele taal voor "er is iets dat aandacht vraagt").
+
           let badge = 0;
           if (tab.routeName === "notifications") badge = unreadNotifications ?? 0;
           else if (tab.routeName === "chats") badge = totalUnread;
           else if (tab.routeName === "friends") badge = pendingFriendRequests ?? 0;
 
+          const activeColor = "#F5E8D3";
+          const inactiveColor = "#6B6259";
+
           return (
             <Pressable
               key={tab.key}
               onPress={onPress}
-              className={`flex-1 items-center justify-center py-2 mx-0.5 rounded-full ${
-                isFocused ? "bg-paper-warm" : ""
-              }`}
+              className="flex-1 items-center gap-1"
+              style={{ paddingVertical: 4, minHeight: 52 }}
             >
               <View>
                 <Ionicons
-                  name={tab.icon}
-                  size={isFocused ? 18 : 20}
-                  color={isFocused ? "#1A1714" : "#8A8275"}
+                  name={isFocused
+                    ? (tab.icon.replace("-outline", "") as any)
+                    : tab.icon}
+                  size={24}
+                  color={isFocused ? activeColor : inactiveColor}
                 />
                 {badge > 0 && (
                   <View
-                    className="bg-flame rounded-full absolute -right-2 -top-1.5 px-1.5"
-                    style={{ minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" }}
+                    className="bg-flame rounded-full absolute -right-2 -top-1.5"
+                    style={{ minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}
                   >
                     <Text className="text-cream text-[9px] font-bold">
                       {badge > 99 ? "99+" : badge}
@@ -339,11 +340,12 @@ function PaperTabBar({
                   </View>
                 )}
               </View>
-              {isFocused && (
-                <Text className="text-ink text-[10px] font-semibold mt-0.5">
-                  {tab.label}
-                </Text>
-              )}
+              <Text
+                style={{ fontSize: 10, fontWeight: isFocused ? "700" : "400", color: isFocused ? activeColor : inactiveColor }}
+                numberOfLines={1}
+              >
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
