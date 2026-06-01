@@ -107,6 +107,7 @@ export default function ChatDetail() {
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [reactionPicker, setReactionPicker] = useState<{ msg: DecryptedMessage; onReply?: () => void; canEdit?: boolean; copyText?: string } | null>(null);
+  const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -774,6 +775,7 @@ export default function ChatDetail() {
               inverted
               contentContainerStyle={{ padding: 16, paddingTop: 28, gap: 6 }}
               keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={() => setSelectedMsgId(null)}
               onScroll={(e) => {
                 // Bij inverted is offset.y=0 = onderaan
                 setShowScrollDown(e.nativeEvent.contentOffset.y > 120);
@@ -937,7 +939,20 @@ export default function ChatDetail() {
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
                         if (isPending || isFailed) return;
-                        // Long-press = direct beantwoorden + cursor op input
+                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
+                      }}
+
+                      selected={selectedMsgId === item.id}
+                      onSelect={!isPending && !isFailed ? () => {
+                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
+                      } : undefined}
+                      onToggleReaction={(emoji) => {
+                        if (!isPending && !isFailed) {
+                          onToggleReaction(item.id, emoji);
+                          setSelectedMsgId(null);
+                        }
+                      }}
+                      onReply={!isPending && !isFailed ? () => {
                         const name = isMine ? "Jij" : (senderName ?? "Onbekend");
                         const preview = item.content?.text
                           ? item.content.text.slice(0, 80)
@@ -945,36 +960,18 @@ export default function ChatDetail() {
                             ? `[${item.content.attachment.type}]`
                             : "…";
                         setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                      }}
-
-                      onToggleReaction={(emoji) =>
-                        !isPending && !isFailed && onToggleReaction(item.id, emoji)
-                      }
-                      onReply={!isPending && !isFailed ? () => {
-                        const name = isMine
-                          ? "Jij"
-                          : (senderName ?? "Onbekend");
-                        const preview = item.content?.text
-                          ? item.content.text.slice(0, 80)
-                          : item.content?.attachment
-                            ? `[${item.content.attachment.type}]`
-                            : "…";
-                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
                         setTimeout(() => inputRef.current?.focus(), 50);
+                        setSelectedMsgId(null);
                       } : undefined}
-                      onMenuPress={!isPending && !isFailed ? () => {
-                        const replyFn = () => {
-                          const name = isMine ? "Jij" : (senderName ?? "Onbekend");
-                          const preview = item.content?.text
-                            ? item.content.text.slice(0, 80)
-                            : item.content?.attachment
-                              ? `[${item.content.attachment.type}]`
-                              : "…";
-                          setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                          setTimeout(() => inputRef.current?.focus(), 50);
-                        };
-                        setReactionPicker({ msg: item, onReply: replyFn, canEdit: isMine && !!item.content?.text, copyText: item.content?.text ?? undefined });
+                      onCopy={item.content?.text ? () => {
+                        Clipboard.setString(item.content!.text!);
+                        setSelectedMsgId(null);
                       } : undefined}
+                      onDelete={isMine && !isPending && !isFailed ? () => {
+                        onDeleteMessage(item.id);
+                        setSelectedMsgId(null);
+                      } : undefined}
+                      onMenuPress={undefined}
                       onReplyQuotePress={(messageId) => {
                         const msgs = messages ?? [];
                         const idx = msgs.findIndex((m) => m.id === messageId);
@@ -1523,9 +1520,13 @@ function MessageBubble({
   onToggleReaction,
   showReadReceipt,
   onReply,
+  onCopy,
+  onDelete,
   onMenuPress,
   onReplyQuotePress,
   onReactionLongPress,
+  selected,
+  onSelect,
 }: {
   msg: DecryptedMessage;
   isMine: boolean;
@@ -1544,9 +1545,13 @@ function MessageBubble({
   onToggleReaction: (emoji: string) => void;
   showReadReceipt?: boolean;
   onReply?: () => void;
+  onCopy?: () => void;
+  onDelete?: () => void;
   onMenuPress?: () => void;
   onReplyQuotePress?: (messageId: string) => void;
   onReactionLongPress?: (emoji: string, userIds: string[]) => void;
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
   const time = new Date(msg.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -1631,10 +1636,10 @@ function MessageBubble({
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
-        onPress={failed && onRetry ? onRetry : undefined}
+        onPress={failed && onRetry ? onRetry : onSelect}
         delayLongPress={300}
         // @ts-ignore — onContextMenu is een web-only prop voor rechtermuisknop
-        onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onLongPress(); } : undefined}
+        onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onSelect?.(); } : undefined}
         style={{
           opacity: pending ? 0.65 : 1,
           ...(bubbleColor && !failed ? { backgroundColor: bubbleColor } : {}),
@@ -1746,15 +1751,31 @@ function MessageBubble({
         )}
       </Pressable>
         </View>
-        {/* Drie-puntjes menu-knop — rechts van de bubble */}
-        {onMenuPress && (
-          <Pressable
-            onPress={onMenuPress}
-            hitSlop={8}
-            className="w-7 h-7 items-center justify-center opacity-50"
-          >
-            <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={16} />
-          </Pressable>
+        {/* Inline actie-iconen — verschijnen bij tik/selectie */}
+        {selected && (
+          <View className={`flex-row items-center gap-0.5 bg-paper rounded-2xl px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}>
+            {onReply && (
+              <Pressable onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
+                <Ionicons name="return-down-back-outline" color="#5B8DEF" size={16} />
+              </Pressable>
+            )}
+            <Pressable onPress={() => onToggleReaction("❤️")} hitSlop={6} className="w-8 h-8 items-center justify-center">
+              <Text style={{ fontSize: 15 }}>❤️</Text>
+            </Pressable>
+            <Pressable onPress={() => onToggleReaction("👍")} hitSlop={6} className="w-8 h-8 items-center justify-center">
+              <Text style={{ fontSize: 15 }}>👍</Text>
+            </Pressable>
+            {onCopy && (
+              <Pressable onPress={onCopy} hitSlop={6} className="w-8 h-8 items-center justify-center">
+                <Ionicons name="copy-outline" color="#8A7E6C" size={15} />
+              </Pressable>
+            )}
+            {onDelete && (
+              <Pressable onPress={onDelete} hitSlop={6} className="w-8 h-8 items-center justify-center">
+                <Ionicons name="trash-outline" color="#B23A1C" size={15} />
+              </Pressable>
+            )}
+          </View>
         )}
       </Animated.View>
       </GestureDetector>
