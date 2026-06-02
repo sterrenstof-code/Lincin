@@ -185,19 +185,23 @@ export function CommentsSection({
 
           {/* Invoerveld */}
           <View className="flex-row items-center gap-2">
-            <TextInput
-              ref={inputRef}
-              value={draft}
-              onChangeText={onChangeText}
-              placeholder="Schrijf een reactie…"
-              placeholderTextColor="#8A7E6C"
-              multiline
-              maxLength={500}
-              returnKeyType="send"
-              onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
-              className="flex-1 bg-paper rounded-2xl px-3 py-2 text-ink text-sm"
-              style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-            />
+            <View className="flex-1">
+              {/* @mention + emoji suggesties worden afgehandeld in SmartTextInput,
+                  maar we renderen die al hierboven — gebruik hier gewoon TextInput */}
+              <TextInput
+                ref={inputRef}
+                value={draft}
+                onChangeText={onChangeText}
+                placeholder="Schrijf een reactie…"
+                placeholderTextColor="#8A7E6C"
+                multiline
+                maxLength={500}
+                returnKeyType="send"
+                onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
+                className="bg-paper rounded-2xl px-3 py-2 text-ink text-sm"
+                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+              />
+            </View>
             <Pressable
               onPress={onSend}
               disabled={!draft.trim() || sending}

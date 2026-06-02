@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { SmartTextInput } from "@/components/SmartTextInput";
 import { useAuth } from "@/lib/auth/provider";
 import { createPost } from "@/lib/api/posts";
 
@@ -174,7 +175,7 @@ export default function PostComposeScreen() {
             {/* TEKST */}
             {postType === "tekst" && (
               <View>
-                <TextInput
+                <SmartTextInput
                   value={caption}
                   onChangeText={setCaption}
                   placeholder="Schrijf iets…"
@@ -182,8 +183,8 @@ export default function PostComposeScreen() {
                   multiline
                   maxLength={1000}
                   autoFocus
-                  className="bg-paper rounded-3xl text-ink text-base px-5 py-4"
-                  style={{ minHeight: 160, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                  inputClassName="bg-paper rounded-3xl text-ink text-base px-5 py-4"
+                  style={{ minHeight: 160, textAlignVertical: "top" }}
                 />
                 <Text className="text-ink-muted text-xs mt-2 text-right px-1">{caption.length}/1000</Text>
               </View>
@@ -219,15 +220,15 @@ export default function PostComposeScreen() {
                     )}
                   </View>
                 )}
-                <TextInput
+                <SmartTextInput
                   value={caption}
                   onChangeText={setCaption}
                   placeholder="Bijschrift (optioneel)…"
                   placeholderTextColor="#8A7E6C"
                   multiline
                   maxLength={500}
-                  className="bg-paper rounded-2xl text-ink text-base px-4 py-3"
-                  style={{ minHeight: 80, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                  inputClassName="bg-paper rounded-2xl text-ink text-base px-4 py-3"
+                  style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
               </View>
             )}
@@ -269,15 +270,15 @@ export default function PostComposeScreen() {
                     )}
                   </View>
                 )}
-                <TextInput
+                <SmartTextInput
                   value={caption}
                   onChangeText={setCaption}
                   placeholder="Bijschrift (optioneel)…"
                   placeholderTextColor="#8A7E6C"
                   multiline
                   maxLength={500}
-                  className="bg-paper rounded-2xl text-ink text-base px-4 py-3"
-                  style={{ minHeight: 80, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                  inputClassName="bg-paper rounded-2xl text-ink text-base px-4 py-3"
+                  style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
               </View>
             )}
@@ -308,15 +309,15 @@ export default function PostComposeScreen() {
                     )}
                   </View>
                 </View>
-                <TextInput
+                <SmartTextInput
                   value={caption}
                   onChangeText={setCaption}
                   placeholder="Toelichting (optioneel)…"
                   placeholderTextColor="#8A7E6C"
                   multiline
                   maxLength={500}
-                  className="bg-paper rounded-3xl text-ink text-base px-5 py-4"
-                  style={{ minHeight: 100, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                  inputClassName="bg-paper rounded-3xl text-ink text-base px-5 py-4"
+                  style={{ minHeight: 100, textAlignVertical: "top" }}
                 />
               </View>
             )}
