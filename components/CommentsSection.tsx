@@ -4,6 +4,7 @@ import {
   Keyboard,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -19,6 +20,8 @@ import {
   type EntityComment,
   type EntityType,
 } from "@/lib/api/entity-comments";
+import { listMyFriendships } from "@/lib/api/friends";
+import { useMentions, type MentionCandidate } from "@/lib/useMentions";
 import { supabase } from "@/lib/supabase/client";
 
 export function CommentsSection({
@@ -43,6 +46,28 @@ export function CommentsSection({
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [friendCandidates, setFriendCandidates] = useState<MentionCandidate[]>([]);
+
+  const { mentionList, onChangeText, applyMention } = useMentions({
+    draft,
+    setDraft,
+    candidates: friendCandidates,
+  });
+
+  useEffect(() => {
+    listMyFriendships(myUserId).then((fs) => {
+      setFriendCandidates(
+        fs
+          .filter((f) => f.status === "accepted")
+          .map((f) => ({
+            id: f.other.id,
+            display: f.other.display_name ?? f.other.username,
+            username: f.other.username,
+            avatarUrl: f.other.avatar_url ?? null,
+          }))
+      );
+    });
+  }, [myUserId]);
 
   // Laad comments als sectie opent
   useEffect(() => {
@@ -139,12 +164,31 @@ export function CommentsSection({
             </View>
           )}
 
+          {/* @mention suggesties */}
+          {mentionList && mentionList.length > 0 && (
+            <View className="bg-paper rounded-2xl overflow-hidden mb-2">
+              {mentionList.map((m, i) => (
+                <Pressable
+                  key={m.username}
+                  onPress={() => applyMention(m.username)}
+                  className={`flex-row items-center px-3 py-2 gap-2 ${i < mentionList.length - 1 ? "border-b border-line-paper/40" : ""}`}
+                >
+                  <Avatar name={m.display} avatarUrl={m.avatarUrl} size="xs" />
+                  <View className="flex-1">
+                    <Text className="text-ink text-sm font-semibold">{m.display}</Text>
+                    <Text className="text-ink-muted text-xs">@{m.username}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
           {/* Invoerveld */}
           <View className="flex-row items-center gap-2">
             <TextInput
               ref={inputRef}
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={onChangeText}
               placeholder="Schrijf een reactie…"
               placeholderTextColor="#8A7E6C"
               multiline

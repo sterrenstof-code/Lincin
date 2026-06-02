@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
-import { inviteToCallPlan, voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
+import { getCallPlanWithDetails, inviteToCallPlan, subscribeToCallPlanVotes, voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
+import { supabase } from "@/lib/supabase/client";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
@@ -21,7 +22,20 @@ export function CallPlanCard({
   const router = useRouter();
   const [localPlan, setLocalPlan] = useState(plan);
   const [saving, setSaving] = useState<string | null>(null);
+
+  // Realtime: herlaad de kaart als iemand stemt
+  useEffect(() => {
+    const channel = subscribeToCallPlanVotes(plan.id, async () => {
+      const fresh = await getCallPlanWithDetails(plan.id);
+      if (fresh) {
+        setLocalPlan(fresh);
+        onUpdated?.(fresh);
+      }
+    });
+    return () => { supabase.removeChannel(channel); };
+  }, [plan.id]);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [showInviteeNames, setShowInviteeNames] = useState(false);
   const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [inviting, setInviting] = useState(false);
@@ -165,18 +179,41 @@ export function CallPlanCard({
 
       {/* Footer: deelnemers + uitnodigen + agenda */}
       <View className="flex-row items-center gap-2 mt-2 flex-wrap">
-        {/* Uitgenodigde + gestemmde avatars */}
+        {/* Uitgenodigde avatars — tik voor namen */}
         {localPlan.invitee_profiles.length > 0 && (
-          <View className="flex-row items-center gap-1 flex-1">
-            {localPlan.invitee_profiles.slice(0, 5).map((p, i) => (
-              <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: 5 - i }}>
-                <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+          <View className="flex-1">
+            <Pressable
+              onPress={() => setShowInviteeNames((v) => !v)}
+              // @ts-ignore web hover
+              onMouseEnter={() => setShowInviteeNames(true)}
+              onMouseLeave={() => setShowInviteeNames(false)}
+              className="flex-row items-center gap-1"
+            >
+              {localPlan.invitee_profiles.slice(0, 5).map((p, i) => (
+                <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: 5 - i }}>
+                  <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+                </View>
+              ))}
+              {localPlan.invitee_profiles.length > 5 && (
+                <Text className="text-ink-muted text-xs ml-1">+{localPlan.invitee_profiles.length - 5}</Text>
+              )}
+              <Text className="text-ink-muted text-xs ml-1">uitgenodigd</Text>
+            </Pressable>
+
+            {/* Naampjes uitklappen */}
+            {showInviteeNames && (
+              <View className="mt-1.5 bg-paper rounded-2xl px-3 py-2 gap-1.5">
+                {localPlan.invitee_profiles.map((p) => (
+                  <View key={p.id} className="flex-row items-center gap-2">
+                    <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+                    <Text className="text-ink text-xs font-medium">
+                      {p.display_name ?? p.username}
+                    </Text>
+                    <Text className="text-ink-muted text-[10px]">@{p.username}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-            {localPlan.invitee_profiles.length > 5 && (
-              <Text className="text-ink-muted text-xs ml-1">+{localPlan.invitee_profiles.length - 5}</Text>
             )}
-            <Text className="text-ink-muted text-xs ml-1">uitgenodigd</Text>
           </View>
         )}
 

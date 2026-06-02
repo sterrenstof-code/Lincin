@@ -45,6 +45,7 @@ import {
   subscribeToChatMemberUpdates,
   type ChatWithMembers,
 } from "@/lib/api/chats";
+import { listMyFriendships } from "@/lib/api/friends";
 import {
   buildAttachmentInfo,
   deleteMessage,
@@ -115,8 +116,11 @@ export default function ChatDetail() {
   // Read receipts: last_read_at per user_id van andere chat-leden.
   const [otherMembersLastRead, setOtherMembersLastRead] = useState<Map<string, string>>(new Map());
   const [mentionList, setMentionList] = useState<
-    { display: string; username: string }[] | null
+    { display: string; username: string; avatarUrl?: string | null }[] | null
   >(null);
+  const [allFriendCandidates, setAllFriendCandidates] = useState<
+    { display: string; username: string; avatarUrl?: string | null }[]
+  >([]);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const [reactionDetail, setReactionDetail] = useState<{ emoji: string; names: string[] } | null>(null);
   const [pendingImage, setPendingImage] = useState<{
@@ -153,6 +157,21 @@ export default function ChatDetail() {
     .reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
 
   // Initial load + realtime
+  // Laad vrienden voor @mention autocomplete
+  useEffect(() => {
+    if (!myUserId) return;
+    listMyFriendships(myUserId).then((fs) => {
+      const candidates = fs
+        .filter((f) => f.status === "accepted")
+        .map((f) => ({
+          display: f.other.display_name ?? f.other.username,
+          username: f.other.username,
+          avatarUrl: f.other.avatar_url ?? null,
+        }));
+      setAllFriendCandidates(candidates);
+    });
+  }, [myUserId]);
+
   useEffect(() => {
     if (!myUserId || !id) return;
     let cancelled = false;
@@ -342,22 +361,23 @@ export default function ChatDetail() {
   }
 
   function updateMentionState(text: string) {
-    // Detecteer of de cursor net na een @-token zit en toon autocomplete
     const match = text.match(/(?:^|\s)@([a-z0-9._]*)$/i);
-    if (!match || !chat || !myUserId) {
-      setMentionList(null);
-      return;
-    }
+    if (!match || !myUserId) { setMentionList(null); return; }
     const query = match[1].toLowerCase();
-    const candidates = chat.members
+
+    // Chat-leden eerst, daarna vrienden — dedupliceer op username
+    const chatCandidates = (chat?.members ?? [])
       .filter((m) => m.id !== myUserId)
-      .filter((m) => !query || m.username.toLowerCase().startsWith(query))
-      .slice(0, 5)
-      .map((m) => ({
-        display: m.display_name ?? m.username,
-        username: m.username,
-      }));
-    setMentionList(candidates.length > 0 ? candidates : null);
+      .map((m) => ({ display: m.display_name ?? m.username, username: m.username, avatarUrl: m.avatar_url ?? null }));
+
+    const seen = new Set(chatCandidates.map((c) => c.username));
+    const friendCandidates = allFriendCandidates.filter((c) => !seen.has(c.username));
+    const all = [...chatCandidates, ...friendCandidates];
+
+    const results = all
+      .filter((c) => !query || c.username.startsWith(query) || c.display.toLowerCase().startsWith(query))
+      .slice(0, 6);
+    setMentionList(results.length > 0 ? results : null);
   }
 
   function applyMention(username: string) {
@@ -1085,7 +1105,7 @@ export default function ChatDetail() {
                         : "border-b border-line-paper/60"
                     }`}
                   >
-                    <Avatar name={m.display} size="sm" />
+                    <Avatar name={m.display} avatarUrl={m.avatarUrl} size="sm" />
                     <View className="flex-1 ml-3">
                       <Text className="text-ink font-semibold">{m.display}</Text>
                       <Text className="text-ink-muted text-xs">@{m.username}</Text>

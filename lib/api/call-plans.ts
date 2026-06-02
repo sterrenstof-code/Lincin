@@ -1,3 +1,4 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
@@ -127,20 +128,10 @@ export async function getCallPlanWithDetails(
 }
 
 export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const myUserId = user?.id ?? "";
-
-  // Plans I created OR plans I'm invited to
-  const { data: invitedToIds } = await supabase
-    .from("call_plan_invites")
-    .select("call_plan_id")
-    .eq("user_id", myUserId);
-  const invitedIds = (invitedToIds ?? []).map((r: any) => r.call_plan_id as string);
-
+  // RLS already filters to creator + friends + invitees — just fetch all visible
   const { data: plans, error } = await supabase
     .from("call_plans")
     .select("id, user_id, title, description, created_at")
-    .or(`user_id.eq.${myUserId}${invitedIds.length > 0 ? `,id.in.(${invitedIds.join(",")})` : ""}`)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -150,6 +141,21 @@ export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails
     (plans as CallPlanRow[]).map((p) => getCallPlanWithDetails(p.id))
   );
   return results.filter((p): p is CallPlanWithDetails => p !== null);
+}
+
+/** Realtime: luister op stemwijzigingen voor een call plan. */
+export function subscribeToCallPlanVotes(
+  planId: string,
+  onChange: () => void
+): RealtimeChannel {
+  return supabase
+    .channel(`call-plan-votes:${planId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "call_plan_votes" },
+      onChange
+    )
+    .subscribe();
 }
 
 export async function inviteToCallPlan(args: {
@@ -188,30 +194,29 @@ export async function voteCallPlanSlot(args: {
     );
   if (error) throw error;
 
-  // Notify plan owner when someone votes available (fire-and-forget)
+  // Notify plan owner (fire-and-forget) — alleen bij "ja"-stem, één keer per persoon
   if (args.available) {
     supabase
       .from("call_plan_slots")
       .select("call_plan_id")
       .eq("id", args.slotId)
       .single()
-      .then(({ data: slot }) => {
+      .then(async ({ data: slot }) => {
         if (!slot) return;
-        supabase
+        const { data: plan } = await supabase
           .from("call_plans")
           .select("user_id")
           .eq("id", slot.call_plan_id)
-          .single()
-          .then(({ data: plan }) => {
-            if (plan?.user_id) {
-              createNotification({
-                userId: plan.user_id,
-                actorId: args.userId,
-                type: "vote_on_call",
-                postId: slot.call_plan_id,
-              });
-            }
+          .single();
+        if (plan?.user_id && plan.user_id !== args.userId) {
+          await createNotification({
+            userId: plan.user_id,
+            actorId: args.userId,
+            type: "vote_on_call",
+            postId: slot.call_plan_id,
           });
-      });
+        }
+      })
+      .catch(() => {});
   }
 }
