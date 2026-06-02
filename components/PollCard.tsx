@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { ActionSheet } from "./ActionSheet";
+import { CommentsSection } from "./CommentsSection";
 import { votePoll, deletePoll, type PollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
 
@@ -193,6 +194,12 @@ export function PollCard({
           <Text className="text-ink-muted text-xs">· tik om te wijzigen</Text>
         )}
       </View>
+
+      <CommentsSection
+        entityType="poll"
+        entityId={localPoll.id}
+        ownerId={localPoll.user_id}
+      />
 
       {isMine && (
         <ActionSheet

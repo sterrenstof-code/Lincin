@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
+import { CommentsSection } from "./CommentsSection";
 import { voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
@@ -169,6 +170,12 @@ export function CallPlanCard({
           </Pressable>
         )}
       </View>
+
+      <CommentsSection
+        entityType="call_plan"
+        entityId={localPlan.id}
+        ownerId={localPlan.user_id}
+      />
     </View>
   );
 }

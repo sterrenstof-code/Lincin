@@ -1,4 +1,5 @@
 {
+  "_comment": "Configuratie wordt beheerd via app.config.ts — dit bestand is een lege stub.",
   "expo": {
     "name": "Lincin",
     "slug": "lincin",

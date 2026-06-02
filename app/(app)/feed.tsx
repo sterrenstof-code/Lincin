@@ -26,6 +26,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SkeletonPostCard } from "@/components/Skeleton";
 import { PostReactions } from "@/components/PostReactions";
+import { CommentsSection } from "@/components/CommentsSection";
 import { PollCard } from "@/components/PollCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { ActivityCard } from "@/components/ActivityCard";
@@ -274,23 +275,12 @@ const PostCard = memo(function PostCard({
 
       <PostReactions postId={post.id} />
 
-      <Pressable
-        onPress={onPress}
-        className="flex-row items-center px-4 pb-3 pt-2"
-      >
-        <Ionicons
-          name={post.comment_count > 0 ? "chatbubble" : "chatbubble-outline"}
-          color="#8C7B6B"
-          size={14}
-        />
-        <Text className="text-ink-muted text-sm ml-2">
-          {post.comment_count === 0
-            ? "Reageer"
-            : post.comment_count === 1
-            ? "1 reactie"
-            : `${post.comment_count} reacties`}
-        </Text>
-      </Pressable>
+      <CommentsSection
+        entityType="post"
+        entityId={post.id}
+        ownerId={post.user_id}
+        initialCount={post.comment_count}
+      />
 
       {isMine && (
         <ActionSheet

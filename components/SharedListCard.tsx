@@ -2,6 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
+import { CommentsSection } from "./CommentsSection";
 import type { SharedListWithDetails } from "@/lib/api/shared-lists";
 
 export function SharedListCard({ list }: { list: SharedListWithDetails }) {
@@ -86,6 +87,12 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
         </Text>
         <Ionicons name="chevron-forward" color="#8A7E6C" size={14} />
       </View>
+
+      <CommentsSection
+        entityType="list"
+        entityId={list.id}
+        ownerId={list.user_id}
+      />
     </Pressable>
   );
 }
