@@ -152,6 +152,29 @@ export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails
   return results.filter((p): p is CallPlanWithDetails => p !== null);
 }
 
+export async function inviteToCallPlan(args: {
+  callPlanId: string;
+  inviterUserId: string;
+  inviteeIds: string[];
+}): Promise<void> {
+  const rows = args.inviteeIds.map((uid) => ({
+    call_plan_id: args.callPlanId,
+    user_id: uid,
+  }));
+  await supabase
+    .from("call_plan_invites")
+    .upsert(rows, { ignoreDuplicates: true });
+
+  for (const uid of args.inviteeIds) {
+    createNotification({
+      userId: uid,
+      actorId: args.inviterUserId,
+      type: "invited_to_call",
+      postId: args.callPlanId,
+    });
+  }
+}
+
 export async function voteCallPlanSlot(args: {
   slotId: string;
   userId: string;

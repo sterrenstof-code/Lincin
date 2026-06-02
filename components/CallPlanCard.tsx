@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
-import { voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
+import { inviteToCallPlan, voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
+import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
 
@@ -20,6 +21,32 @@ export function CallPlanCard({
   const router = useRouter();
   const [localPlan, setLocalPlan] = useState(plan);
   const [saving, setSaving] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [inviting, setInviting] = useState(false);
+
+  const alreadyInvitedIds = new Set(localPlan.invitee_profiles.map((p) => p.id));
+  const isMine = localPlan.user_id === myUserId;
+
+  function openInvite() {
+    listMyFriendships(myUserId).then((fs) => {
+      setFriends(fs.filter((f) => f.status === "accepted" && !alreadyInvitedIds.has(f.other.id)));
+    });
+    setSelectedIds([]);
+    setInviteOpen(true);
+  }
+
+  async function sendInvites() {
+    if (selectedIds.length === 0 || inviting) return;
+    setInviting(true);
+    try {
+      await inviteToCallPlan({ callPlanId: localPlan.id, inviterUserId: myUserId, inviteeIds: selectedIds });
+      setInviteOpen(false);
+    } finally {
+      setInviting(false);
+    }
+  }
 
   async function toggleSlot(slotId: string, currentlyYes: boolean) {
     setSaving(slotId);
@@ -136,40 +163,114 @@ export function CallPlanCard({
         })}
       </View>
 
-      {/* Deelnemers + agenda-knop */}
-      <View className="flex-row items-center gap-2 mt-1">
-        {localPlan.participant_profiles.length > 0 && (
+      {/* Footer: deelnemers + uitnodigen + agenda */}
+      <View className="flex-row items-center gap-2 mt-2 flex-wrap">
+        {/* Uitgenodigde + gestemmde avatars */}
+        {localPlan.invitee_profiles.length > 0 && (
           <View className="flex-row items-center gap-1 flex-1">
-            {localPlan.participant_profiles.slice(0, 5).map((p) => (
-              <Avatar key={p.id} name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+            {localPlan.invitee_profiles.slice(0, 5).map((p, i) => (
+              <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: 5 - i }}>
+                <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
+              </View>
             ))}
-            {localPlan.participant_profiles.length > 5 && (
-              <Text className="text-ink-muted text-xs ml-1">
-                +{localPlan.participant_profiles.length - 5}
-              </Text>
+            {localPlan.invitee_profiles.length > 5 && (
+              <Text className="text-ink-muted text-xs ml-1">+{localPlan.invitee_profiles.length - 5}</Text>
             )}
-            <Text className="text-ink-muted text-xs ml-1">gestemd</Text>
+            <Text className="text-ink-muted text-xs ml-1">uitgenodigd</Text>
           </View>
         )}
 
-        {/* Agenda-knop — alleen als er een winnend slot is */}
-        {bestSlot && bestSlot.yes_voters.length > 0 && (
-          <Pressable
-            onPress={() =>
-              downloadCalendarEvent({
+        <View className="flex-row items-center gap-2 ml-auto">
+          {/* Uitnodigen-knop — alleen voor maker */}
+          {isMine && (
+            <Pressable
+              onPress={openInvite}
+              className="flex-row items-center gap-1.5 bg-paper border border-paper rounded-full px-3 py-1.5"
+            >
+              <Ionicons name="person-add-outline" color="#5A4F40" size={13} />
+              <Text className="text-ink-muted text-xs font-semibold">Uitnodigen</Text>
+            </Pressable>
+          )}
+
+          {/* Agenda-knop */}
+          {bestSlot && bestSlot.yes_voters.length > 0 && (
+            <Pressable
+              onPress={() => downloadCalendarEvent({
                 title: localPlan.title,
                 description: localPlan.description ?? undefined,
                 startsAt: new Date(bestSlot.starts_at),
                 endsAt: new Date(bestSlot.ends_at),
-              })
-            }
-            className="flex-row items-center gap-1.5 bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5"
-          >
-            <Ionicons name="calendar-outline" color="#0F6E56" size={14} />
-            <Text className="text-teal-700 text-xs font-semibold">Agenda</Text>
-          </Pressable>
-        )}
+              })}
+              className="flex-row items-center gap-1.5 bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5"
+            >
+              <Ionicons name="calendar-outline" color="#0F6E56" size={13} />
+              <Text className="text-teal-700 text-xs font-semibold">Agenda</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
+
+      {/* Uitnodigings-modal */}
+      <Modal visible={inviteOpen} transparent animationType="slide" onRequestClose={() => setInviteOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View className="bg-paper rounded-t-3xl px-5 pt-5 pb-10">
+            <View className="flex-row items-center mb-4">
+              <Text className="flex-1 text-ink font-bold text-lg">Uitnodigen</Text>
+              <Pressable onPress={() => setInviteOpen(false)} hitSlop={8}>
+                <Ionicons name="close" color="#8A7E6C" size={22} />
+              </Pressable>
+            </View>
+
+            {friends.length === 0 ? (
+              <Text className="text-ink-muted text-sm py-4 text-center">
+                Alle vrienden zijn al uitgenodigd.
+              </Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingVertical: 8 }}>
+                {friends.map((f) => {
+                  const p = f.other;
+                  const selected = selectedIds.includes(p.id);
+                  return (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => setSelectedIds((prev) =>
+                        selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                      )}
+                      className="items-center gap-1.5"
+                      style={{ width: 60 }}
+                    >
+                      <View className={`rounded-full p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
+                        <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="md" />
+                      </View>
+                      {selected && (
+                        <View className="absolute top-0 right-0 w-4 h-4 bg-flame rounded-full items-center justify-center">
+                          <Ionicons name="checkmark" color="#F5E8D3" size={10} />
+                        </View>
+                      )}
+                      <Text className={`text-[11px] text-center ${selected ? "text-flame font-semibold" : "text-ink-muted"}`} numberOfLines={1}>
+                        {p.display_name ?? p.username}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <Pressable
+              onPress={sendInvites}
+              disabled={selectedIds.length === 0 || inviting}
+              className={`mt-4 rounded-full py-3.5 items-center ${selectedIds.length > 0 ? "bg-flame" : "bg-paper-soft"}`}
+            >
+              {inviting
+                ? <ActivityIndicator size="small" color="#F5E8D3" />
+                : <Text className={`font-semibold ${selectedIds.length > 0 ? "text-cream" : "text-ink-muted"}`}>
+                    {selectedIds.length === 0 ? "Kies wie je uitnodigt" : `${selectedIds.length} uitnodigen`}
+                  </Text>
+              }
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <CommentsSection
         entityType="call_plan"

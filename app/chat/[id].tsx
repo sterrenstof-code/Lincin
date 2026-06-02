@@ -842,6 +842,12 @@ export default function ChatDetail() {
                 // de run en de avatar alleen op de laatste — net als Telegram.
                 const showSenderGap =
                   !prev || prev.sender_id !== item.sender_id;
+
+                // Datum-scheiding: toon wanneer dit bericht van een andere dag is dan het vorige (oudere)
+                const showDateSep =
+                  !prev ||
+                  new Date(item.created_at).toDateString() !==
+                    new Date(prev.created_at).toDateString();
                 const showSenderHeader =
                   isGroup && !isMine && showSenderGap;
                 const showAvatar =
@@ -860,15 +866,28 @@ export default function ChatDetail() {
                 const bubbleColor = isGroup && !isMine ? bubbleColorForSenderId(item.sender_id) : undefined;
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
+                const dateSep = showDateSep ? (
+                  <View className="items-center my-3">
+                    <View className="bg-paper-soft rounded-full px-3 py-1">
+                      <Text className="text-ink-muted text-[11px] font-medium">
+                        {formatChatDate(item.created_at)}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null;
+
                 // Systeemmelding — gecentreerde pill.
                 if (item.content?.system) {
                   return (
-                    <View className="items-center my-2">
-                      <View className="bg-paper-soft rounded-full px-4 py-1.5 flex-row items-center gap-2">
-                        <Ionicons name="camera-outline" color="#8A7E6C" size={13} />
-                        <Text className="text-ink-muted text-xs">
-                          {item.content.system.actorName} heeft de groepsfoto gewijzigd
-                        </Text>
+                    <View>
+                      {dateSep}
+                      <View className="items-center my-2">
+                        <View className="bg-paper-soft rounded-full px-4 py-1.5 flex-row items-center gap-2">
+                          <Ionicons name="camera-outline" color="#8A7E6C" size={13} />
+                          <Text className="text-ink-muted text-xs">
+                            {item.content.system.actorName} heeft de groepsfoto gewijzigd
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   );
@@ -878,6 +897,7 @@ export default function ChatDetail() {
                 if (item.content?.call_plan_id) {
                   return (
                     <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+                      {dateSep}
                       <ChatCallPlanCard
                         callPlanId={item.content.call_plan_id}
                         senderName={senderName}
@@ -891,6 +911,7 @@ export default function ChatDetail() {
                 if (item.content?.poll_id) {
                   return (
                     <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+                      {dateSep}
                       <ChatPollCard
                         pollId={item.content.poll_id}
                         senderName={senderName}
@@ -922,6 +943,7 @@ export default function ChatDetail() {
 
                 return (
                   <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+                    {dateSep}
                     <MessageBubble
                       msg={item}
                       isMine={isMine}
@@ -1478,6 +1500,30 @@ function ReactionPickerModal({
       </Pressable>
     </Modal>
   );
+}
+
+function formatChatDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (sameDay(d, now)) return "Vandaag";
+  if (sameDay(d, yesterday)) return "Gisteren";
+
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (diffDays < 7) {
+    return d.toLocaleDateString("nl-NL", { weekday: "long" });
+  }
+  if (d.getFullYear() === now.getFullYear()) {
+    return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long" });
+  }
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function EditBar({
