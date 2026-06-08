@@ -123,12 +123,13 @@ export default function ChatDetail() {
   >([]);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const [reactionDetail, setReactionDetail] = useState<{ emoji: string; names: string[] } | null>(null);
-  const [pendingImage, setPendingImage] = useState<{
+  const [pendingImages, setPendingImages] = useState<{
     uri: string;
     mimeType: string;
     filename?: string;
-    caption: string;
-  } | null>(null);
+  }[] | null>(null);
+  const [pendingCaption, setPendingCaption] = useState("");
+  const [selectedPendingIdx, setSelectedPendingIdx] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
@@ -615,16 +616,17 @@ export default function ChatDetail() {
       mediaTypes: ["images", "videos"],
       quality: 0.85,
       allowsEditing: false,
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
     });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    setPendingImage({
+    if (result.canceled || !result.assets?.length) return;
+    setPendingImages(result.assets.map((asset) => ({
       uri: asset.uri,
       mimeType: asset.mimeType ?? (asset.type === "video" ? "video/mp4" : "image/jpeg"),
       filename: asset.fileName ?? undefined,
-      caption: "",
-    });
+    })));
+    setPendingCaption("");
+    setSelectedPendingIdx(0);
   }
 
   async function pickFile() {
@@ -1255,29 +1257,38 @@ export default function ChatDetail() {
           </View>
         </KeyboardAvoidingView>
 
-        {/* Foto-preview modal (Telegram-stijl) */}
+        {/* Multi-foto preview modal (Telegram-stijl) */}
         <Modal
-          visible={!!pendingImage}
+          visible={!!pendingImages}
           transparent
           animationType="slide"
-          onRequestClose={() => { if (!sending) setPendingImage(null); }}
+          onRequestClose={() => {
+            if (!sending) { setPendingImages(null); setPendingCaption(""); setSelectedPendingIdx(0); }
+          }}
         >
           <View style={{ flex: 1, backgroundColor: "#000" }}>
-            {/* Sluit-knop */}
+            {/* Sluit-knop + teller */}
             <SafeAreaView style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 8 }}>
               <Pressable
-                onPress={() => { if (!sending) setPendingImage(null); }}
+                onPress={() => { if (!sending) { setPendingImages(null); setPendingCaption(""); setSelectedPendingIdx(0); } }}
                 hitSlop={12}
                 style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}
               >
                 <Ionicons name="close" color="#fff" size={22} />
               </Pressable>
+              {pendingImages && pendingImages.length > 1 && (
+                <View style={{ marginLeft: 10, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>
+                    {selectedPendingIdx + 1} / {pendingImages.length}
+                  </Text>
+                </View>
+              )}
             </SafeAreaView>
 
-            {/* Afbeelding preview */}
-            {pendingImage && (
+            {/* Hoofdafbeelding */}
+            {pendingImages && (
               <Image
-                source={{ uri: pendingImage.uri }}
+                source={{ uri: pendingImages[selectedPendingIdx]?.uri }}
                 style={{ flex: 1 }}
                 contentFit="contain"
               />
@@ -1290,12 +1301,36 @@ export default function ChatDetail() {
               </View>
             )}
 
+            {/* Thumbnail strip (alleen bij meerdere foto's) */}
+            {pendingImages && pendingImages.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 6, gap: 6 }}
+                style={{ backgroundColor: "rgba(0,0,0,0.7)", maxHeight: 84 }}
+              >
+                {pendingImages.map((img, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => setSelectedPendingIdx(i)}
+                    style={{
+                      width: 64, height: 64, borderRadius: 8, overflow: "hidden",
+                      borderWidth: 2,
+                      borderColor: i === selectedPendingIdx ? "#5B8DEF" : "transparent",
+                    }}
+                  >
+                    <Image source={{ uri: img.uri }} style={{ width: 64, height: 64 }} contentFit="cover" />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+
             {/* Caption + verstuur */}
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
               <View style={{ backgroundColor: "rgba(0,0,0,0.7)", flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
                 <TextInput
-                  value={pendingImage?.caption ?? ""}
-                  onChangeText={(t) => setPendingImage((p) => p ? { ...p, caption: t } : p)}
+                  value={pendingCaption}
+                  onChangeText={setPendingCaption}
                   placeholder="Voeg een onderschrift toe…"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   multiline
@@ -1316,15 +1351,20 @@ export default function ChatDetail() {
                 />
                 <Pressable
                   onPress={async () => {
-                    if (!pendingImage || sending) return;
-                    const img = pendingImage;
-                    await onSendAttachment({
-                      uri: img.uri,
-                      mimeType: img.mimeType,
-                      filename: img.filename,
-                      caption: img.caption,
-                    });
-                    setPendingImage(null);
+                    if (!pendingImages?.length || sending) return;
+                    const images = [...pendingImages];
+                    const caption = pendingCaption;
+                    setPendingImages(null);
+                    setPendingCaption("");
+                    setSelectedPendingIdx(0);
+                    for (let i = 0; i < images.length; i++) {
+                      await onSendAttachment({
+                        uri: images[i].uri,
+                        mimeType: images[i].mimeType,
+                        filename: images[i].filename,
+                        caption: i === images.length - 1 ? caption : undefined,
+                      });
+                    }
                   }}
                   disabled={sending}
                   style={{
@@ -1336,7 +1376,15 @@ export default function ChatDetail() {
                   {sending ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Ionicons name="arrow-up" color="#fff" size={22} />
+                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                      {pendingImages && pendingImages.length > 1 ? (
+                        <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+                          {pendingImages.length}
+                        </Text>
+                      ) : (
+                        <Ionicons name="arrow-up" color="#fff" size={22} />
+                      )}
+                    </View>
                   )}
                 </Pressable>
               </View>
