@@ -124,10 +124,13 @@ function NotificationRow({
     item.type === "invited_to_call"   ? `${actorName} nodigde je uit voor een videocall` :
     `${actorName} deed iets`;
 
-  const snippet = item.post_caption
-    ? item.post_caption.length > 60
-      ? item.post_caption.slice(0, 60) + "…"
-      : item.post_caption
+  // Prefer the comment body as snippet (especially useful for emoji-only comments).
+  // Fall back to post caption, then image indicator.
+  const rawSnippet = item.comment_body ?? item.post_caption;
+  const snippet = rawSnippet
+    ? rawSnippet.length > 60
+      ? rawSnippet.slice(0, 60) + "…"
+      : rawSnippet
     : item.post_image_path
     ? "📷 foto"
     : null;

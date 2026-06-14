@@ -17,6 +17,7 @@ export type NotificationWithDetails = NotificationRow & {
   actor: Profile | null;
   post_caption: string | null;
   post_image_path: string | null;
+  comment_body: string | null;
 };
 
 export async function listNotifications(
@@ -52,11 +53,25 @@ export async function listNotifications(
     }
   }
 
+  // Load comment bodies so emoji-only comments show in the snippet
+  const commentIds = Array.from(new Set(rows.map((r) => r.comment_id).filter(Boolean))) as string[];
+  let commentMap: Record<string, { body: string }> = {};
+  if (commentIds.length > 0) {
+    const { data: comments } = await supabase
+      .from("comments")
+      .select("id, body")
+      .in("id", commentIds);
+    for (const c of comments ?? []) {
+      commentMap[c.id] = { body: c.body };
+    }
+  }
+
   return rows.map((r) => ({
     ...r,
     actor: actorMap[r.actor_id] ?? null,
     post_caption: r.post_id ? (postMap[r.post_id]?.caption ?? null) : null,
     post_image_path: r.post_id ? (postMap[r.post_id]?.image_path ?? null) : null,
+    comment_body: r.comment_id ? (commentMap[r.comment_id]?.body ?? null) : null,
   }));
 }
 

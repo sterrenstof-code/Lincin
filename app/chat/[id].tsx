@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { EMOJI_SHORTCODES, emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import { Video, ResizeMode } from "expo-av";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -983,16 +984,11 @@ export default function ChatDetail() {
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
                         if (isPending || isFailed) return;
-                        // Long-press = direct beantwoorden + cursor op input
-                        const name = isMine ? "Jij" : (senderName ?? "Onbekend");
-                        const preview = item.content?.text
-                          ? item.content.text.slice(0, 80)
-                          : item.content?.attachment
-                            ? `[${item.content.attachment.type}]`
-                            : "…";
-                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                        setTimeout(() => inputRef.current?.focus(), 50);
-                        setSelectedMsgId(null);
+                        // Long-press = toon inline actie-toolbar (reply, reactie, kopieer, verwijder)
+                        if (Platform.OS !== "web") {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                        }
+                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
                       }}
 
                       selected={selectedMsgId === item.id}
@@ -1759,7 +1755,7 @@ function MessageBubble({
         <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
-        onPress={failed && onRetry ? onRetry : onSelect}
+        onPress={failed && onRetry ? onRetry : (Platform.OS === "web" ? onSelect : undefined)}
         delayLongPress={300}
         // @ts-ignore — onContextMenu is een web-only prop voor rechtermuisknop
         onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onSelect?.(); } : undefined}
@@ -2132,6 +2128,106 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
   );
 }
 
+/**
+ * Inline video player: toont een thumbnail-achtige preview met play-knop.
+ * Tap opent een fullscreen modal met expo-av Video (native + web).
+ */
+function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { width: screenW, height: screenH } = useWindowDimensions();
+
+  return (
+    <>
+      {/* Thumbnail preview */}
+      <Pressable
+        onPress={() => uri && setOpen(true)}
+        className="overflow-hidden rounded-2xl"
+        style={{ opacity: loading ? 0.6 : 1 }}
+      >
+        <View
+          style={{ width: 240, height: 240 }}
+          className="bg-paper-warm items-center justify-center"
+        >
+          {loading ? (
+            <ActivityIndicator color="#8A7E6C" />
+          ) : uri ? (
+            <>
+              {/* Probeer een stills-preview te tonen als poster */}
+              <Video
+                source={{ uri }}
+                style={{ width: 240, height: 240, position: "absolute" }}
+                resizeMode={ResizeMode.COVER}
+                isMuted
+                shouldPlay={false}
+                useNativeControls={false}
+                isLooping={false}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: "rgba(0,0,0,0.55)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="play" color="#fff" size={26} />
+              </View>
+            </>
+          ) : (
+            <Ionicons name="videocam-outline" color="#5A4F40" size={32} />
+          )}
+        </View>
+      </Pressable>
+
+      {/* Fullscreen player modal */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#000" }}>
+          {/* Sluit-knop */}
+          <SafeAreaView
+            style={{ position: "absolute", top: 0, right: 0, zIndex: 10, padding: 12 }}
+          >
+            <Pressable
+              onPress={() => setOpen(false)}
+              hitSlop={12}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="close" color="#F5E8D3" size={20} />
+            </Pressable>
+          </SafeAreaView>
+
+          {/* Video player */}
+          {uri ? (
+            <Video
+              source={{ uri }}
+              style={{ width: screenW, height: screenH }}
+              resizeMode={ResizeMode.CONTAIN}
+              useNativeControls
+              shouldPlay
+              isLooping={false}
+            />
+          ) : null}
+        </View>
+      </Modal>
+    </>
+  );
+}
+
 function AttachmentView({
   attachment,
   isMine,
@@ -2187,28 +2283,7 @@ function AttachmentView({
   }
 
   if (attachment.type === "video") {
-    // Pure native Video player vraagt expo-av's Video; we tonen voor nu de
-    // poster en een speel-icoon. Een tap opent de URI in browser/native player.
-    return (
-      <View className="overflow-hidden rounded-2xl">
-        <View
-          style={{ width: 240, height: 240 }}
-          className="bg-paper-warm items-center justify-center"
-        >
-          {uri ? (
-            <Pressable
-              onPress={() => uri && Linking.openURL(uri).catch(() => {})}
-              className="items-center"
-            >
-              <Ionicons name="play-circle" color="#1A1714" size={56} />
-              <Text className="text-ink-soft text-xs mt-1">Video — tap om te openen</Text>
-            </Pressable>
-          ) : (
-            <Ionicons name="videocam-outline" color="#5A4F40" size={32} />
-          )}
-        </View>
-      </View>
-    );
+    return <VideoWithPlayer uri={uri} loading={loading} />;
   }
 
   // Generic file
