@@ -20,7 +20,7 @@ export type MessageRow = {
 };
 
 export type AttachmentInfo = {
-  type: "image" | "video" | "file";
+  type: "image" | "video" | "audio" | "file";
   path: string; // {chat_id}/{file_uuid}.bin inside chat-attachments bucket
   key_b64: string; // base64 32-byte symmetric key
   nonce_b64: string; // base64 24-byte nonce
@@ -396,7 +396,7 @@ export function buildAttachmentInfo(args: {
   mimeType: string;
   size: number;
   filename?: string;
-  attachmentType: "image" | "video" | "file";
+  attachmentType: "image" | "video" | "audio" | "file";
 }): AttachmentInfo {
   return {
     type: args.attachmentType,

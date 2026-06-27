@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { EMOJI_SHORTCODES, emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { Video, ResizeMode } from "expo-av";
+import { Audio, Video, ResizeMode } from "expo-av";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -132,6 +132,10 @@ export default function ChatDetail() {
   const [pendingCaption, setPendingCaption] = useState("");
   const [selectedPendingIdx, setSelectedPendingIdx] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0); // seconds
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
@@ -643,6 +647,63 @@ export default function ChatDetail() {
       mimeType: asset.mimeType ?? "application/octet-stream",
       filename: asset.name,
     });
+  }
+
+  async function startRecording() {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) return;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = rec;
+      setRecording(rec);
+      setRecordingDuration(0);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      }
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => d + 1);
+      }, 1000);
+    } catch (e: any) {
+      console.warn("startRecording", e?.message ?? e);
+    }
+  }
+
+  async function stopRecording(send: boolean) {
+    const rec = recordingRef.current;
+    if (!rec) return;
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    recordingRef.current = null;
+    setRecording(null);
+    setRecordingDuration(0);
+    try {
+      await rec.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      if (!send) return;
+      const uri = rec.getURI();
+      if (!uri) return;
+      // Determine MIME type by platform
+      const mimeType =
+        Platform.OS === "ios" ? "audio/m4a" :
+        Platform.OS === "android" ? "audio/3gpp" :
+        "audio/webm";
+      const ext =
+        Platform.OS === "ios" ? "m4a" :
+        Platform.OS === "android" ? "3gpp" :
+        "webm";
+      await onSendAttachment({
+        uri,
+        mimeType,
+        filename: `voice-${Date.now()}.${ext}`,
+      });
+    } catch (e: any) {
+      console.warn("stopRecording", e?.message ?? e);
+    }
   }
 
   async function onToggleReaction(messageId: string, emoji: string) {
@@ -1199,56 +1260,105 @@ export default function ChatDetail() {
             )}
 
             <View className="flex-row items-end gap-2 px-3 py-3">
-              <Pressable
-                onPress={() => setAttachMenuOpen(true)}
-                disabled={sending}
-                className="w-11 h-11 rounded-full bg-paper-warm active:bg-paper items-center justify-center"
-              >
-                <Ionicons name="add" color="#1A1714" size={22} />
-              </Pressable>
-              {/* Emoji-knop — links zodat je de verzendknop niet per ongeluk raakt */}
-              <Pressable
-                onPress={() => {
-                  setShowEmojiPicker((v) => !v);
-                  if (!showEmojiPicker) {
-                    inputRef.current?.blur();
-                  } else {
-                    inputRef.current?.focus();
-                  }
-                }}
-                className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
-              >
-                <Text style={{ fontSize: 20 }}>😊</Text>
-              </Pressable>
-              <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
-                <TextInput
-                  ref={inputRef}
-                  value={draft}
-                  onChangeText={onDraftChange}
-                  onKeyPress={onComposerKeyPress}
-                  onFocus={() => setShowEmojiPicker(false)}
-                  placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
-                  placeholderTextColor="#8A7E6C"
-                  multiline
-                  editable={!sending}
-                  className="text-ink text-base"
-                  style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
-                />
-              </View>
-              <Pressable
-                onPress={onSend}
-                disabled={sending || !draft.trim()}
-                className={`w-13 h-13 rounded-full items-center justify-center ${
-                  sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
-                }`}
-                style={{ width: 52, height: 52 }}
-              >
-                <Ionicons
-                  name="arrow-up"
-                  color={sending || !draft.trim() ? "#5A4F40" : "#F5E8D3"}
-                  size={22}
-                />
-              </Pressable>
+              {!recording && (
+                <Pressable
+                  onPress={() => setAttachMenuOpen(true)}
+                  disabled={sending}
+                  className="w-11 h-11 rounded-full bg-paper-warm active:bg-paper items-center justify-center"
+                >
+                  <Ionicons name="add" color="#1A1714" size={22} />
+                </Pressable>
+              )}
+              {!recording && (
+                <Pressable
+                  onPress={() => {
+                    setShowEmojiPicker((v) => !v);
+                    if (!showEmojiPicker) inputRef.current?.blur();
+                    else inputRef.current?.focus();
+                  }}
+                  className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+                >
+                  <Text style={{ fontSize: 20 }}>😊</Text>
+                </Pressable>
+              )}
+
+              {/* Input area OR recording indicator */}
+              {recording ? (
+                <View className="flex-1 flex-row items-center bg-red-950/30 rounded-3xl border border-red-800/40 px-4 py-3 gap-3">
+                  {/* Pulsing red dot */}
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" }} />
+                  <Text className="text-red-400 font-semibold text-base flex-1">
+                    {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, "0")}
+                  </Text>
+                  {/* Cancel */}
+                  <Pressable
+                    onPress={() => stopRecording(false)}
+                    hitSlop={8}
+                    className="w-7 h-7 rounded-full bg-red-900/40 items-center justify-center"
+                  >
+                    <Ionicons name="trash-outline" color="#EF4444" size={15} />
+                  </Pressable>
+                </View>
+              ) : (
+                <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
+                  <TextInput
+                    ref={inputRef}
+                    value={draft}
+                    onChangeText={onDraftChange}
+                    onKeyPress={onComposerKeyPress}
+                    onFocus={() => setShowEmojiPicker(false)}
+                    placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
+                    placeholderTextColor="#8A7E6C"
+                    multiline
+                    editable={!sending}
+                    className="text-ink text-base"
+                    style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                  />
+                </View>
+              )}
+
+              {/* Send / mic / stop button */}
+              {recording ? (
+                // Recording is active → stop and send
+                <Pressable
+                  onPress={() => stopRecording(true)}
+                  className="bg-red-500 active:bg-red-600 rounded-full items-center justify-center"
+                  style={{ width: 52, height: 52 }}
+                >
+                  <Ionicons name="send" color="#fff" size={20} />
+                </Pressable>
+              ) : draft.trim() || sending ? (
+                // Text is typed → send text button
+                <Pressable
+                  onPress={onSend}
+                  disabled={sending || !draft.trim()}
+                  className={`rounded-full items-center justify-center ${
+                    sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
+                  }`}
+                  style={{ width: 52, height: 52 }}
+                >
+                  <Ionicons
+                    name="arrow-up"
+                    color={sending || !draft.trim() ? "#5A4F40" : "#F5E8D3"}
+                    size={22}
+                  />
+                </Pressable>
+              ) : (
+                // Draft empty → mic button (hold on native, tap on web)
+                <Pressable
+                  onPressIn={Platform.OS !== "web" ? startRecording : undefined}
+                  onPressOut={Platform.OS !== "web" ? () => stopRecording(true) : undefined}
+                  onPress={Platform.OS === "web" ? () => {
+                    if (recording) stopRecording(true);
+                    else startRecording();
+                  } : undefined}
+                  disabled={sending}
+                  className="bg-ink active:bg-ink-soft rounded-full items-center justify-center"
+                  style={{ width: 52, height: 52 }}
+                >
+                  <Ionicons name="mic" color="#F5E8D3" size={22} />
+                </Pressable>
+              )}
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -2128,6 +2238,123 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
   );
 }
 
+/** Formatteert milliseconden als m:ss */
+function fmtMs(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Inline voice message player: play/pause knop + voortgangsbalk + tijd.
+ * Gebruikt expo-av Audio.Sound voor native én web.
+ */
+function VoiceMessageBubble({
+  uri,
+  loading,
+  isMine,
+}: {
+  uri: string | null;
+  loading: boolean;
+  isMine: boolean;
+}) {
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  // Ruim het sound object op bij unmount
+  useEffect(() => {
+    return () => {
+      sound?.unloadAsync().catch(() => {});
+    };
+  }, [sound]);
+
+  async function togglePlay() {
+    if (!uri) return;
+    try {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+      if (!sound) {
+        const { sound: s } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (status) => {
+            if (!status.isLoaded) return;
+            setIsPlaying(status.isPlaying);
+            setPosition(status.positionMillis ?? 0);
+            if (status.durationMillis) setDuration(status.durationMillis);
+            if (status.didJustFinish) {
+              setIsPlaying(false);
+              setPosition(0);
+            }
+          }
+        );
+        setSound(s);
+      } else {
+        const status = await sound.getStatusAsync();
+        if (!status.isLoaded) return;
+        if (status.isPlaying) {
+          await sound.pauseAsync();
+        } else {
+          // Herstart als klaar
+          if (status.didJustFinish || status.positionMillis >= (status.durationMillis ?? 1) - 50) {
+            await sound.setPositionAsync(0);
+          }
+          await sound.playAsync();
+        }
+      }
+    } catch (e: any) {
+      console.warn("VoiceMessageBubble togglePlay", e?.message ?? e);
+    }
+  }
+
+  const progress = duration > 0 ? position / duration : 0;
+
+  return (
+    <View
+      className={`flex-row items-center gap-3 px-3 py-3 rounded-2xl m-1 ${
+        isMine ? "bg-ink/20" : "bg-paper-warm/60"
+      }`}
+      style={{ minWidth: 200, maxWidth: 260 }}
+    >
+      {/* Play / pause */}
+      <Pressable
+        onPress={togglePlay}
+        className={`w-10 h-10 rounded-full items-center justify-center ${
+          isMine ? "bg-cream/20" : "bg-paper-light"
+        }`}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={isMine ? "#F5E8D3" : "#1A1714"} />
+        ) : (
+          <Ionicons
+            name={isPlaying ? "pause" : "play"}
+            color={isMine ? "#F5E8D3" : "#1A1714"}
+            size={18}
+          />
+        )}
+      </Pressable>
+
+      {/* Progress + timer */}
+      <View className="flex-1 gap-1">
+        {/* Track */}
+        <View
+          className={`h-1.5 rounded-full ${isMine ? "bg-cream/20" : "bg-paper-warm"}`}
+        >
+          <View
+            className={`h-1.5 rounded-full ${isMine ? "bg-cream" : "bg-ink-soft"}`}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </View>
+        <Text className={`text-[10px] ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
+          {duration > 0
+            ? `${fmtMs(position)} / ${fmtMs(duration)}`
+            : loading ? "…" : fmtMs(0)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 /**
  * Inline video player: toont een thumbnail-achtige preview met play-knop.
  * Tap opent een fullscreen modal met expo-av Video (native + web).
@@ -2284,6 +2511,10 @@ function AttachmentView({
 
   if (attachment.type === "video") {
     return <VideoWithPlayer uri={uri} loading={loading} />;
+  }
+
+  if (attachment.type === "audio") {
+    return <VoiceMessageBubble uri={uri} loading={loading} isMine={isMine} />;
   }
 
   // Generic file

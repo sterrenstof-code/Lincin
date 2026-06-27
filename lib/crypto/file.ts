@@ -90,8 +90,9 @@ export async function bytesToDisplayUri(
 }
 
 /** MIME-type → eenvoudige attachment-type categorie. */
-export function attachmentTypeFor(mime: string): "image" | "video" | "file" {
+export function attachmentTypeFor(mime: string): "image" | "video" | "audio" | "file" {
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
   return "file";
 }
