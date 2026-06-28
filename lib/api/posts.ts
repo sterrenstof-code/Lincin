@@ -2,7 +2,7 @@ import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { listFeedPolls, type PollWithDetails } from "./polls";
 import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
-import { listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
+import { createActivityEvent, listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
 import { listMySharedLists, type SharedListWithDetails } from "./shared-lists";
 
 export type PostRow = {
