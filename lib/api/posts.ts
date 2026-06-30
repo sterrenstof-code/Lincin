@@ -100,6 +100,28 @@ export async function createPost(args: {
   return data as PostRow;
 }
 
+/**
+ * Telt reacties per post uit de universele `entity_comments` tabel
+ * (entity_type = 'post'). Dit is dezelfde bron die CommentsSection en de
+ * post-detailpagina tonen, zodat het badge-aantal klopt met wat zichtbaar is.
+ */
+async function countCommentsByPost(
+  postIds: string[]
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (postIds.length === 0) return counts;
+  const { data, error } = await supabase
+    .from("entity_comments")
+    .select("entity_id")
+    .eq("entity_type", "post")
+    .in("entity_id", postIds);
+  if (error) throw error;
+  for (const row of (data ?? []) as { entity_id: string }[]) {
+    counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   const paths = rows.map((r) => r.image_path).filter((p): p is string => !!p);
   if (paths.length === 0) return new Map();
@@ -111,50 +133,50 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
 }
 
 export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
-  // comments(count) is een PostgREST embedded aggregate — geeft [{count: N}] per rij.
-  // RLS op comments piggybacks op posts, dus de count respecteert bestaande visibility-regels.
   const { data, error } = await supabase
     .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at, comments(count)")
+    .select("id, user_id, image_path, caption, link_url, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const rows = (data ?? []) as (PostRow & { comments: { count: number }[] })[];
+  const rows = (data ?? []) as PostRow[];
   if (rows.length === 0) return [];
 
   const authorIds = Array.from(new Set(rows.map((r) => r.user_id)));
   const authors = await getProfiles(authorIds);
   const byId = new Map(authors.map((a) => [a.id, a]));
   const urlByPath = await attachSignedUrls(rows);
+  const commentCounts = await countCommentsByPost(rows.map((r) => r.id));
 
   return rows.map((r) => ({
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
-    comment_count: (r.comments?.[0]?.count as number) ?? 0,
+    comment_count: commentCounts.get(r.id) ?? 0,
   }));
 }
 
 export async function listUserPosts(userId: string, limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at, comments(count)")
+    .select("id, user_id, image_path, caption, link_url, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const rows = (data ?? []) as (PostRow & { comments: { count: number }[] })[];
+  const rows = (data ?? []) as PostRow[];
   if (rows.length === 0) return [];
 
   const authors = await getProfiles([userId]);
   const author = authors[0] ?? null;
   const urlByPath = await attachSignedUrls(rows);
+  const commentCounts = await countCommentsByPost(rows.map((r) => r.id));
 
   return rows.map((r) => ({
     ...r,
     author,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
-    comment_count: (r.comments?.[0]?.count as number) ?? 0,
+    comment_count: commentCounts.get(r.id) ?? 0,
   }));
 }
 

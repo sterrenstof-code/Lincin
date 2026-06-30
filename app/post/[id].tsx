@@ -20,12 +20,12 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import {
-  createComment,
-  deleteComment,
-  listPostComments,
-  subscribeToPostComments,
-  type CommentWithAuthor,
-} from "@/lib/api/comments";
+  addEntityComment,
+  deleteEntityComment,
+  listEntityComments,
+  subscribeToEntityComments,
+  type EntityComment,
+} from "@/lib/api/entity-comments";
 import { deletePost, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
@@ -42,7 +42,7 @@ export default function PostDetailScreen() {
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [comments, setComments] = useState<CommentWithAuthor[] | null>(null);
+  const [comments, setComments] = useState<EntityComment[] | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -93,10 +93,10 @@ export default function PostDetailScreen() {
     if (!id) return;
     let cancelled = false;
     (async () => {
-      const list = await listPostComments(id);
+      const list = await listEntityComments("post", id);
       if (!cancelled) setComments(list);
     })();
-    const channel = subscribeToPostComments(id, (c) => {
+    const channel = subscribeToEntityComments("post", id, (c) => {
       setComments((prev) => {
         if (!prev) return [c];
         if (prev.some((x) => x.id === c.id)) return prev;
@@ -160,17 +160,22 @@ export default function PostDetailScreen() {
     // Replies: prefix met @naam
     const body = replyTo ? `@${replyTo.name} ${text}` : text;
     try {
-      const created = await createComment({ postId: id, userId: myUserId, body });
+      const created = await addEntityComment({
+        entityType: "post",
+        entityId: id,
+        userId: myUserId,
+        body,
+        ownerId: post.data?.user_id,
+      });
       setDraft("");
       setReplyTo(null);
       setEmojiList(null);
       setComments((prev) => {
-        if (!prev) return prev;
+        if (!prev) return [created];
         if (prev.some((c) => c.id === created.id)) return prev;
-        return [...prev, { ...created, author: null } as CommentWithAuthor];
+        return [...prev, created];
       });
-      qc.invalidateQueries({ queryKey: ["post-comments", id] });
-      listPostComments(id).then((fresh) => setComments(fresh));
+      qc.invalidateQueries({ queryKey: ["feed", myUserId] });
     } catch (e: any) {
       setCommentError(humanizeCommentError(e));
     } finally {
@@ -181,7 +186,7 @@ export default function PostDetailScreen() {
   async function onDeleteComment(commentId: string) {
     setCommentError(null);
     try {
-      await deleteComment(commentId);
+      await deleteEntityComment(commentId);
       setComments((prev) => prev?.filter((c) => c.id !== commentId) ?? null);
     } catch (e: any) {
       setCommentError(humanizeCommentError(e));
@@ -500,7 +505,7 @@ function CommentRow({
   onAvatarPress,
   onReply,
 }: {
-  comment: CommentWithAuthor;
+  comment: EntityComment;
   isLast: boolean;
   canDelete: boolean;
   onDelete: () => void;
@@ -539,9 +544,9 @@ function humanizeCommentError(err: any): string {
   const code = err?.code ?? "";
   const msg = err?.message ?? String(err ?? "Onbekende fout");
   if (code === "42P01" || /relation .* does not exist/i.test(msg))
-    return "De `comments` tabel bestaat nog niet. Run migratie 0007_comments.sql.";
+    return "De `entity_comments` tabel bestaat nog niet. Run migratie 0038_entity_comments.sql.";
   if (code === "42501" || /row-level security/i.test(msg))
-    return "Server-beveiliging weigerde de reactie. Check migratie 0007.";
+    return "Server-beveiliging weigerde de reactie. Check migratie 0038.";
   if (code === "PGRST116" || code === "PGRST204")
     return "De reactie werd ingevoerd maar de server gaf hem niet terug — waarschijnlijk een RLS-issue.";
   if (/network|fetch/i.test(msg))
