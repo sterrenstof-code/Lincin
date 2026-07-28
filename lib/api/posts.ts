@@ -1,9 +1,45 @@
 import { supabase } from "../supabase/client";
+import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { listFeedPolls, type PollWithDetails } from "./polls";
 import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
 import { createActivityEvent, listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
 import { listMySharedLists, type SharedListWithDetails } from "./shared-lists";
+import type { LinkPreview } from "./unfurl";
+
+/**
+ * Vondsten ("finds") — de inhoud van de feed.
+ *
+ * Een vondst is niet hetzelfde als een post: ze heeft een *bron* naast een
+ * *deler*. Wie het gemaakt heeft (`source_author`, `source_title`) staat los
+ * van wie het meebracht (`user_id`). Dat onderscheid is de hele reden dat de
+ * feed als ontdekplek kan werken in plaats van als etalage.
+ *
+ * De unfurl-metadata wordt bij het plaatsen als momentopname in `meta`
+ * bewaard — zie migratie 0042 voor het waarom.
+ */
+
+export type FindKind =
+  | "note"      // losse gedachte
+  | "image"     // eigen foto
+  | "link"      // artikel, site, repo
+  | "video"     // YouTube, Vimeo, …
+  | "music"     // Spotify, Bandcamp, …
+  | "fragment"  // citaat uit een boek/artikel
+  | "fact"      // weetje
+  | "idea";     // bouw-/ontwerpidee
+
+/** Labels voor de kicker-regel boven elke vondst. */
+export const KIND_LABELS: Record<FindKind, string> = {
+  note: "Notitie",
+  image: "Beeld",
+  link: "Artikel",
+  video: "Video",
+  music: "Muziek",
+  fragment: "Fragment",
+  fact: "Weetje",
+  idea: "Idee",
+};
 
 export type PostRow = {
   id: string;
@@ -12,6 +48,12 @@ export type PostRow = {
   caption: string | null;
   link_url: string | null;
   created_at: string;
+  kind: FindKind;
+  source_title: string | null;
+  source_author: string | null;
+  body_text: string | null;
+  tags: string[];
+  meta: Partial<LinkPreview>;
 };
 
 export type PostWithAuthor = PostRow & {
@@ -23,6 +65,23 @@ export type PostWithAuthor = PostRow & {
 };
 
 const POSTS_BUCKET = "posts";
+
+/** Eén bron van waarheid voor de kolomlijst — anders vergeet je er altijd één. */
+const POST_COLUMNS =
+  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta";
+
+/** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
+function normalizeRow(row: any): PostRow {
+  return {
+    ...row,
+    kind: (row.kind ?? (row.link_url ? "link" : row.image_path ? "image" : "note")) as FindKind,
+    source_title: row.source_title ?? null,
+    source_author: row.source_author ?? null,
+    body_text: row.body_text ?? null,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    meta: row.meta && typeof row.meta === "object" ? row.meta : {},
+  };
+}
 
 function extFromUri(uri: string, fallback = "jpg"): string {
   const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
@@ -46,22 +105,58 @@ function contentTypeForExt(ext: string): string {
   }
 }
 
+/** Normaliseert tags: kleine letters, ontdubbeld, max 6. */
+function normalizeTags(tags?: string[] | null): string[] {
+  if (!tags) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of tags) {
+    const t = raw.trim().toLowerCase().replace(/^#/, "").slice(0, 24);
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+// -------------------------------------------------------
+// Aanmaken
+// -------------------------------------------------------
+
 /**
- * Maak een nieuwe post. Minstens één van imageUri, caption of linkUrl
- * is vereist. Image upload gebeurt cross-platform via blob fetch.
+ * Plaats een vondst. Minstens één van imageUri, caption, linkUrl of bodyText
+ * is vereist.
+ *
+ * Let op de upload: `uriToBytes` in plaats van `fetch(uri).blob()`. Dat laatste
+ * levert op iOS/Android lege bestanden op — dezelfde bug die eerder bij events
+ * is gefixt.
  */
-export async function createPost(args: {
+export async function createFind(args: {
   userId: string;
+  kind?: FindKind;
   imageUri?: string;
   caption?: string | null;
   linkUrl?: string | null;
+  bodyText?: string | null;
+  sourceTitle?: string | null;
+  sourceAuthor?: string | null;
+  tags?: string[] | null;
+  meta?: Partial<LinkPreview> | null;
 }): Promise<PostRow> {
   const caption = args.caption?.trim() || null;
   const linkUrl = args.linkUrl?.trim() || null;
+  const bodyText = args.bodyText?.trim() || null;
+  const sourceTitle = args.sourceTitle?.trim() || null;
+  const sourceAuthor = args.sourceAuthor?.trim() || null;
+  const tags = normalizeTags(args.tags);
 
-  if (!args.imageUri && !caption && !linkUrl) {
-    throw new Error("Lege post — voeg tekst, foto of link toe.");
+  if (!args.imageUri && !caption && !linkUrl && !bodyText) {
+    throw new Error("Lege vondst — voeg tekst, beeld, link of een fragment toe.");
   }
+
+  const kind: FindKind =
+    args.kind ?? (linkUrl ? "link" : args.imageUri ? "image" : bodyText ? "fragment" : "note");
 
   const postId = cryptoRandomId();
   let imagePath: string | null = null;
@@ -69,9 +164,9 @@ export async function createPost(args: {
   if (args.imageUri) {
     const ext = extFromUri(args.imageUri);
     imagePath = `${args.userId}/${postId}.${ext}`;
-    const response = await fetch(args.imageUri);
-    const blob = await response.blob();
-    const contentType = blob.type || contentTypeForExt(ext);
+    const contentType = contentTypeForExt(ext);
+    const bytes = await uriToBytes(args.imageUri);
+    const blob = new Blob([bytes as any], { type: contentType });
     const { error: upErr } = await supabase.storage
       .from(POSTS_BUCKET)
       .upload(imagePath, blob, { contentType, upsert: false });
@@ -86,8 +181,14 @@ export async function createPost(args: {
       image_path: imagePath,
       caption,
       link_url: linkUrl,
+      kind,
+      body_text: bodyText,
+      source_title: sourceTitle,
+      source_author: sourceAuthor,
+      tags,
+      meta: args.meta ?? {},
     })
-    .select("id, user_id, image_path, caption, link_url, created_at")
+    .select(POST_COLUMNS)
     .single();
   if (insErr) {
     if (imagePath) {
@@ -96,9 +197,23 @@ export async function createPost(args: {
     throw insErr;
   }
   // Activiteitsmoment registreren — fire-and-forget
-  createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as PostRow).id }).catch(() => {});
-  return data as PostRow;
+  createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as any).id }).catch(() => {});
+  return normalizeRow(data);
 }
+
+/** @deprecated Gebruik `createFind`. Blijft bestaan voor oudere callers. */
+export async function createPost(args: {
+  userId: string;
+  imageUri?: string;
+  caption?: string | null;
+  linkUrl?: string | null;
+}): Promise<PostRow> {
+  return createFind(args);
+}
+
+// -------------------------------------------------------
+// Lezen
+// -------------------------------------------------------
 
 /**
  * Telt reacties per post uit de universele `entity_comments` tabel
@@ -132,16 +247,8 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   return new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
 }
 
-export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
-  const { data, error } = await supabase
-    .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  const rows = (data ?? []) as PostRow[];
+async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
   if (rows.length === 0) return [];
-
   const authorIds = Array.from(new Set(rows.map((r) => r.user_id)));
   const authors = await getProfiles(authorIds);
   const byId = new Map(authors.map((a) => [a.id, a]));
@@ -156,28 +263,37 @@ export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
   }));
 }
 
+export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(POST_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrate((data ?? []).map(normalizeRow));
+}
+
 export async function listUserPosts(userId: string, limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, user_id, image_path, caption, link_url, created_at")
+    .select(POST_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const rows = (data ?? []) as PostRow[];
-  if (rows.length === 0) return [];
+  return hydrate((data ?? []).map(normalizeRow));
+}
 
-  const authors = await getProfiles([userId]);
-  const author = authors[0] ?? null;
-  const urlByPath = await attachSignedUrls(rows);
-  const commentCounts = await countCommentsByPost(rows.map((r) => r.id));
-
-  return rows.map((r) => ({
-    ...r,
-    author,
-    image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
-    comment_count: commentCounts.get(r.id) ?? 0,
-  }));
+/** Vondsten gefilterd op tag — voert de filterchips bovenaan de feed. */
+export async function listPostsByTag(tag: string, limit = 50): Promise<PostWithAuthor[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(POST_COLUMNS)
+    .contains("tags", [tag.toLowerCase()])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrate((data ?? []).map(normalizeRow));
 }
 
 export async function updatePostCaption(postId: string, caption: string): Promise<void> {
@@ -188,7 +304,12 @@ export async function updatePostCaption(postId: string, caption: string): Promis
   if (error) throw error;
 }
 
-export async function deletePost(post: PostRow): Promise<void> {
+/** Accepteert elk object met minstens id + image_path — callers geven vaak een hele rij mee. */
+export async function deletePost(post: {
+  id: string;
+  image_path?: string | null;
+  [extra: string]: unknown;
+}): Promise<void> {
   const { error } = await supabase.from("posts").delete().eq("id", post.id);
   if (error) throw error;
   if (post.image_path) {
@@ -248,17 +369,16 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
 
   // Herinneringen bovenaan plaatsen als aparte kaart (max 1)
   if (memoryRaw.status === "fulfilled" && memoryRaw.value.length > 0) {
-    const urlByPath = await attachSignedUrls(memoryRaw.value as PostRow[]);
+    const memPost = normalizeRow(memoryRaw.value[0]);
+    const urlByPath = await attachSignedUrls([memPost]);
     const authors = await getProfiles([myUserId]);
     const author = authors[0] ?? null;
-    const memPost = memoryRaw.value[0] as PostRow;
     const memItem: PostWithAuthor = {
       ...memPost,
       author,
       image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
       comment_count: 0,
     };
-    // Zet herinneringen bovenaan
     items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });
   }
 
@@ -269,6 +389,20 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return [...memories, ...rest];
+}
+
+/** Alle tags die in de zichtbare feed voorkomen, op frequentie gesorteerd. */
+export function collectTags(items: FeedItem[]): string[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.type !== "post" && item.type !== "memory") continue;
+    for (const tag of item.data.tags ?? []) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag]) => tag);
 }
 
 function cryptoRandomId(): string {

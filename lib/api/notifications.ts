@@ -6,9 +6,18 @@ export type NotificationRow = {
   id: string;
   user_id: string;
   actor_id: string;
-  type: "comment_on_post" | "comment_on_thread" | "vote_on_poll" | "vote_on_call" | "invited_to_list" | "invited_to_call";
+  type:
+    | "comment_on_post"
+    | "comment_on_thread"
+    | "vote_on_poll"
+    | "vote_on_call"
+    | "invited_to_list"
+    | "invited_to_call"
+    | "event_join"
+    | "event_contribution";
   post_id: string | null;
   comment_id: string | null;
+  event_id: string | null;
   read: boolean;
   created_at: string;
 };
@@ -18,6 +27,7 @@ export type NotificationWithDetails = NotificationRow & {
   post_caption: string | null;
   post_image_path: string | null;
   comment_body: string | null;
+  event_name: string | null;
 };
 
 export async function listNotifications(
@@ -26,7 +36,7 @@ export async function listNotifications(
 ): Promise<NotificationWithDetails[]> {
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, user_id, actor_id, type, post_id, comment_id, read, created_at")
+    .select("id, user_id, actor_id, type, post_id, comment_id, event_id, read, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -66,12 +76,26 @@ export async function listNotifications(
     }
   }
 
+  // Load event names for event notifications
+  const eventIds = Array.from(new Set(rows.map((r) => r.event_id).filter(Boolean))) as string[];
+  let eventMap: Record<string, { name: string }> = {};
+  if (eventIds.length > 0) {
+    const { data: events } = await supabase
+      .from("events")
+      .select("id, name")
+      .in("id", eventIds);
+    for (const e of events ?? []) {
+      eventMap[e.id] = { name: e.name };
+    }
+  }
+
   return rows.map((r) => ({
     ...r,
     actor: actorMap[r.actor_id] ?? null,
     post_caption: r.post_id ? (postMap[r.post_id]?.caption ?? null) : null,
     post_image_path: r.post_id ? (postMap[r.post_id]?.image_path ?? null) : null,
     comment_body: r.comment_id ? (commentMap[r.comment_id]?.body ?? null) : null,
+    event_name: r.event_id ? (eventMap[r.event_id]?.name ?? null) : null,
   }));
 }
 
@@ -107,6 +131,7 @@ export async function createNotification(args: {
   type: NotificationRow["type"];
   postId?: string | null;
   commentId?: string | null;
+  eventId?: string | null;
 }): Promise<void> {
   if (args.userId === args.actorId) return; // nooit aan jezelf
   const { error } = await supabase.from("notifications").insert({
@@ -115,6 +140,7 @@ export async function createNotification(args: {
     type: args.type,
     post_id: args.postId ?? null,
     comment_id: args.commentId ?? null,
+    event_id: args.eventId ?? null,
   });
   if (error) console.warn("createNotification error", error.message);
 }

@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
-import { Avatar } from "./Avatar";
 import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
 
 /**
@@ -38,6 +38,14 @@ export function EventCard({
       onPress={() => router.push(`/event/${event.id}`)}
       className="bg-paper rounded-3xl overflow-hidden"
     >
+      {event.cover_url && !compact && (
+        <Image
+          source={{ uri: event.cover_url }}
+          style={{ width: "100%", height: 130 }}
+          contentFit="cover"
+          transition={150}
+        />
+      )}
       <View className="px-5 pt-5">
         <View className="flex-row items-center mb-3">
           <View className="w-9 h-9 rounded-full bg-flame items-center justify-center mr-3">

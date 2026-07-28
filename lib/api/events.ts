@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
+import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { createActivityEvent } from "./activity-events";
 
@@ -29,6 +30,8 @@ export type EventWithMeta = EventRow & {
   /** Convenience: is this event currently happening? */
   is_active: boolean;
   is_host: boolean;
+  /** Signed URL for the cover image (null if no cover / not readable). */
+  cover_url: string | null;
 };
 
 export type ContributionRow = {
@@ -44,9 +47,13 @@ export type ContributionRow = {
 export type ContributionWithAuthor = ContributionRow & {
   author: Profile | null;
   image_url: string | null;
+  /** "image" | "video" for media, or null for text/link-only contributions. */
+  media_type: "image" | "video" | null;
 };
 
 const EVENT_BUCKET = "event-photos";
+/** Signed-URL lifetime. Long enough that a screen left open doesn't break. */
+const SIGNED_URL_TTL = 60 * 60 * 6; // 6 uur
 
 // ---------- helpers ----------
 
@@ -63,6 +70,20 @@ function randomId(): string {
     hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) +
     "-" + hex.slice(16, 20) + "-" + hex.slice(20)
   );
+}
+
+const VIDEO_EXTS = new Set(["mp4", "mov", "m4v", "webm", "qt"]);
+
+/** Guess whether a stored path points at a video, from its extension. */
+export function isVideoPath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  const m = path.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
+  return m ? VIDEO_EXTS.has(m[1].toLowerCase()) : false;
+}
+
+function mediaTypeFor(path: string | null): "image" | "video" | null {
+  if (!path) return null;
+  return isVideoPath(path) ? "video" : "image";
 }
 
 function isRevealed(event: EventRow, viewerUserId: string): boolean {
@@ -89,9 +110,43 @@ function isActive(event: EventRow): boolean {
   return now >= start && now <= end;
 }
 
+function guessExt(mime: string | undefined, uri: string): string {
+  if (mime) {
+    if (mime.includes("png")) return "png";
+    if (mime.includes("webp")) return "webp";
+    if (mime.includes("heic") || mime.includes("heif")) return "heic";
+    if (mime.includes("quicktime")) return "mov";
+    if (mime.includes("m4v")) return "m4v";
+    if (mime.includes("webm")) return "webm";
+    if (mime.includes("mp4")) return "mp4";
+  }
+  const m = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
+  return m ? m[1].toLowerCase() : "jpg";
+}
+
+/**
+ * Upload een lokale media-URI naar de event-photos bucket op het opgegeven pad.
+ * Leest de bytes cross-platform (native: expo-file-system base64, web: fetch)
+ * zodat de upload ook op iOS/Android betrouwbaar is (een kale fetch(uri).blob()
+ * levert daar vaak lege bestanden op).
+ */
+async function uploadToEventBucket(
+  path: string,
+  uri: string,
+  mimeType: string | undefined
+): Promise<void> {
+  const bytes = await uriToBytes(uri);
+  const contentType = mimeType || "application/octet-stream";
+  const blob = new Blob([bytes as any], { type: contentType });
+  const { error } = await supabase.storage
+    .from(EVENT_BUCKET)
+    .upload(path, blob, { contentType });
+  if (error) throw error;
+}
+
 // ---------- API ----------
 
-/** Maak een nieuw event. Host wordt automatisch als member geinsert via trigger. */
+/** Maak een nieuw event. Host wordt als member geinsert; optioneel met cover. */
 export async function createEvent(args: {
   hostUserId: string;
   name: string;
@@ -101,6 +156,8 @@ export async function createEvent(args: {
   reveal: EventRevealMode;
   revealDelayHours?: number;
   maxGuests?: number;
+  coverUri?: string | null;
+  coverMimeType?: string | null;
 }): Promise<EventRow> {
   const { data, error } = await supabase
     .from("events")
@@ -129,100 +186,104 @@ export async function createEvent(args: {
   });
   if (memErr && !/duplicate/i.test(memErr.message)) throw memErr;
 
+  let coverPath: string | null = null;
+  if (args.coverUri) {
+    try {
+      const ext = guessExt(args.coverMimeType ?? undefined, args.coverUri);
+      coverPath = `${data.id}/cover/${randomId()}.${ext}`;
+      await uploadToEventBucket(coverPath, args.coverUri, args.coverMimeType ?? "image/jpeg");
+      const { error: upErr } = await supabase
+        .from("events")
+        .update({ cover_image_path: coverPath })
+        .eq("id", data.id);
+      if (upErr) throw upErr;
+    } catch (e) {
+      // Cover is optioneel — laat event-creatie niet falen op een cover-fout.
+      console.warn("[events] cover upload failed", e);
+      coverPath = null;
+    }
+  }
+
   // Activiteitsmoment — fire-and-forget
   createActivityEvent({ actorId: args.hostUserId, kind: "event_created", eventId: data.id }).catch(() => {});
 
-  return data as EventRow;
+  return { ...(data as EventRow), cover_image_path: coverPath ?? data.cover_image_path };
 }
 
-/** Events I host or am a member of, with derived state. */
+async function signCoverUrls(
+  paths: (string | null)[]
+): Promise<Map<string, string | null>> {
+  const real = Array.from(new Set(paths.filter((p): p is string => !!p)));
+  if (real.length === 0) return new Map();
+  const { data } = await supabase.storage
+    .from(EVENT_BUCKET)
+    .createSignedUrls(real, SIGNED_URL_TTL);
+  return new Map((data ?? []).map((s) => [s.path ?? "", s.signedUrl]));
+}
+
+/** Events I host or am a member of, with derived state. Counts come from a
+ * SECURITY DEFINER RPC so they stay correct even when contributions are
+ * reveal-gated by RLS. */
 export async function listMyEvents(myUserId: string): Promise<EventWithMeta[]> {
-  // Member-rows for me to get event_ids
-  const { data: myMemberships, error: mErr } = await supabase
-    .from("event_members")
-    .select("event_id")
-    .eq("user_id", myUserId);
-  if (mErr) throw mErr;
-  const eventIds = (myMemberships ?? []).map((m: any) => m.event_id);
-  if (eventIds.length === 0) return [];
-
-  const { data: events, error } = await supabase
-    .from("events")
-    .select(
-      "id, host_user_id, name, description, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, created_at"
-    )
-    .in("id", eventIds)
-    .order("starts_at", { ascending: false });
+  const { data, error } = await supabase.rpc("list_my_events");
   if (error) throw error;
-
-  const rows = (events ?? []) as EventRow[];
+  const rows = (data ?? []) as (EventRow & {
+    members_count: number;
+    contributions_count: number;
+  })[];
   if (rows.length === 0) return [];
 
-  // Bulk counts
-  const { data: memberCounts } = await supabase
-    .from("event_members")
-    .select("event_id")
-    .in("event_id", eventIds);
-  const memberCountByEvent = new Map<string, number>();
-  for (const m of memberCounts ?? []) {
-    const eid = (m as any).event_id;
-    memberCountByEvent.set(eid, (memberCountByEvent.get(eid) ?? 0) + 1);
-  }
-
-  const { data: contribs } = await supabase
-    .from("event_contributions")
-    .select("event_id")
-    .in("event_id", eventIds);
-  const contribCountByEvent = new Map<string, number>();
-  for (const c of contribs ?? []) {
-    const eid = (c as any).event_id;
-    contribCountByEvent.set(eid, (contribCountByEvent.get(eid) ?? 0) + 1);
-  }
+  const coverUrls = await signCoverUrls(rows.map((r) => r.cover_image_path));
 
   return rows.map((e) => ({
     ...e,
-    members_count: memberCountByEvent.get(e.id) ?? 0,
-    contributions_count: contribCountByEvent.get(e.id) ?? 0,
+    members_count: Number(e.members_count ?? 0),
+    contributions_count: Number(e.contributions_count ?? 0),
     is_revealed: isRevealed(e, myUserId),
     is_active: isActive(e),
     is_host: e.host_user_id === myUserId,
+    cover_url: e.cover_image_path ? coverUrls.get(e.cover_image_path) ?? null : null,
   }));
 }
 
-export async function getEvent(eventId: string, myUserId: string): Promise<EventWithMeta | null> {
+export async function getEvent(
+  eventId: string,
+  _myUserId: string
+): Promise<EventWithMeta | null> {
   const { data, error } = await supabase
-    .from("events")
-    .select(
-      "id, host_user_id, name, description, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, created_at"
-    )
-    .eq("id", eventId)
+    .rpc("get_event_meta", { p_event_id: eventId })
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  const event = data as EventRow;
+  const row = data as EventRow & {
+    members_count: number;
+    contributions_count: number;
+    is_revealed: boolean;
+    is_active: boolean;
+    is_host: boolean;
+  };
 
-  const [{ count: membersCount }, { count: contribCount }] = await Promise.all([
-    supabase
-      .from("event_members")
-      .select("user_id", { count: "exact", head: true })
-      .eq("event_id", eventId),
-    supabase
-      .from("event_contributions")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", eventId),
-  ]);
+  let coverUrl: string | null = null;
+  if (row.cover_image_path) {
+    const { data: signed } = await supabase.storage
+      .from(EVENT_BUCKET)
+      .createSignedUrl(row.cover_image_path, SIGNED_URL_TTL);
+    coverUrl = signed?.signedUrl ?? null;
+  }
 
   return {
-    ...event,
-    members_count: membersCount ?? 0,
-    contributions_count: contribCount ?? 0,
-    is_revealed: isRevealed(event, myUserId),
-    is_active: isActive(event),
-    is_host: event.host_user_id === myUserId,
+    ...row,
+    members_count: Number(row.members_count ?? 0),
+    contributions_count: Number(row.contributions_count ?? 0),
+    is_revealed: !!row.is_revealed,
+    is_active: !!row.is_active,
+    is_host: !!row.is_host,
+    cover_url: coverUrl,
   };
 }
 
-/** Join an event by its join_code (from QR or shared link). Returns the event_id. */
+/** Join an event by its join_code (from QR or shared link). Returns the event_id.
+ * The host notification is created server-side inside the join_event RPC. */
 export async function joinEventByCode(joinCode: string): Promise<string> {
   const { data, error } = await supabase.rpc("join_event", { p_join_code: joinCode });
   if (error) throw error;
@@ -234,7 +295,7 @@ export async function joinEventByCode(joinCode: string): Promise<string> {
   return eventId;
 }
 
-/** Upload a photo to event-photos bucket + insert contribution row. */
+/** Upload een foto/video naar de event-photos bucket + insert contribution row. */
 export async function contributeToEvent(args: {
   eventId: string;
   userId: string;
@@ -250,14 +311,7 @@ export async function contributeToEvent(args: {
   if (args.imageUri) {
     const ext = guessExt(args.mimeType, args.imageUri);
     imagePath = `${args.eventId}/${args.userId}/${randomId()}.${ext}`;
-    const response = await fetch(args.imageUri);
-    const blob = await response.blob();
-    const { error: upErr } = await supabase.storage
-      .from(EVENT_BUCKET)
-      .upload(imagePath, blob, {
-        contentType: blob.type || args.mimeType || "image/jpeg",
-      });
-    if (upErr) throw upErr;
+    await uploadToEventBucket(imagePath, args.imageUri, args.mimeType);
   }
 
   if (!imagePath && !caption && !linkUrl) {
@@ -284,17 +338,24 @@ export async function contributeToEvent(args: {
   return data as ContributionRow;
 }
 
-function guessExt(mime: string | undefined, uri: string): string {
-  if (mime) {
-    if (mime.includes("png")) return "png";
-    if (mime.includes("webp")) return "webp";
-    if (mime.includes("heic") || mime.includes("heif")) return "heic";
+/** Verwijder een bijdrage (eigenaar of host, afgedwongen door RLS). Ruimt ook
+ * het opslagbestand op (best-effort). */
+export async function deleteContribution(args: {
+  contributionId: string;
+  imagePath?: string | null;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("event_contributions")
+    .delete()
+    .eq("id", args.contributionId);
+  if (error) throw error;
+  if (args.imagePath) {
+    await supabase.storage.from(EVENT_BUCKET).remove([args.imagePath]).catch(() => {});
   }
-  const m = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
-  return m ? m[1].toLowerCase() : "jpg";
 }
 
-/** List contributions for an event, respecting reveal-rules client-side. */
+/** List contributions for an event. Reveal is enforced server-side by RLS;
+ * `revealed` reflects whether the current viewer may see everyone's content. */
 export async function listEventContributions(
   eventId: string,
   myUserId: string
@@ -302,9 +363,11 @@ export async function listEventContributions(
   const event = await getEvent(eventId, myUserId);
   if (!event) return { contributions: [], revealed: false };
 
-  // Always allow host to see; otherwise honor reveal
-  const canSeeContent = event.is_revealed;
+  const revealed = event.is_revealed;
 
+  // RLS returns only the rows this viewer may see (own always; everyone's once
+  // revealed; host all). Before reveal, non-hosts get just their own rows,
+  // which the UI keeps behind the lock screen anyway.
   const { data, error } = await supabase
     .from("event_contributions")
     .select("id, event_id, user_id, image_path, caption, link_url, created_at")
@@ -313,22 +376,20 @@ export async function listEventContributions(
   if (error) throw error;
   const rows = (data ?? []) as ContributionRow[];
 
-  if (rows.length === 0) return { contributions: [], revealed: canSeeContent };
-
-  // If not revealed yet, return rows BUT strip image_url and content (the
-  // caller can show counts/silhouettes only). For host, we always provide.
-  const visibleRows = canSeeContent ? rows : [];
+  // Only surface everyone's content once revealed (host is always revealed).
+  const visibleRows = revealed ? rows : [];
+  if (visibleRows.length === 0) return { contributions: [], revealed };
 
   const authorIds = Array.from(new Set(visibleRows.map((r) => r.user_id)));
   const authors = await getProfiles(authorIds);
   const byId = new Map(authors.map((a) => [a.id, a]));
 
   const paths = visibleRows.map((r) => r.image_path).filter((p): p is string => !!p);
-  let urlByPath = new Map<string, string>();
+  let urlByPath = new Map<string, string | null>();
   if (paths.length > 0) {
     const { data: signed } = await supabase.storage
       .from(EVENT_BUCKET)
-      .createSignedUrls(paths, 60 * 60);
+      .createSignedUrls(paths, SIGNED_URL_TTL);
     urlByPath = new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
   }
 
@@ -336,9 +397,10 @@ export async function listEventContributions(
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
+    media_type: mediaTypeFor(r.image_path),
   }));
 
-  return { contributions, revealed: canSeeContent };
+  return { contributions, revealed };
 }
 
 /** Subscribe to new contributions on an event (realtime). */

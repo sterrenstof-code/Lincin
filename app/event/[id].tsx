@@ -1,11 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ResizeMode, Video } from "expo-av";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   Text,
@@ -14,22 +14,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import {
   contributeToEvent,
+  deleteContribution,
   eventStatusLabel,
   getEvent,
   listEventContributions,
   subscribeToEventContributions,
   buildEventJoinUrl,
+  type ContributionWithAuthor,
 } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
+import { confirm } from "@/lib/confirm";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
-
-const SCREEN_WIDTH = Math.min(Dimensions.get("window").width, 600);
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -64,6 +64,31 @@ export default function EventDetailScreen() {
       supabase.removeChannel(channel);
     };
   }, [eventId, qc]);
+
+  // Re-fetch when the screen regains focus so signed image URLs are fresh
+  // (they expire) and the reveal state / counts are up to date.
+  useFocusEffect(
+    useCallback(() => {
+      qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
+      qc.invalidateQueries({ queryKey: ["event", eventId] });
+    }, [eventId, qc])
+  );
+
+  async function onDeleteContribution(c: ContributionWithAuthor) {
+    const ok = await confirm(
+      "Bijdrage verwijderen?",
+      "Dit verwijdert de foto of bijdrage definitief.",
+      { affirmativeLabel: "Verwijder", destructive: true }
+    );
+    if (!ok) return;
+    try {
+      await deleteContribution({ contributionId: c.id, imagePath: c.image_path });
+      await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
+      await qc.invalidateQueries({ queryKey: ["event", eventId] });
+    } catch (e: any) {
+      setError(e?.message ?? "Kon bijdrage niet verwijderen.");
+    }
+  }
 
   function onOpenCamera() {
     setAddMenuOpen(false);
@@ -172,6 +197,16 @@ export default function EventDetailScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+          {/* Cover */}
+          {ev.cover_url && (
+            <Image
+              source={{ uri: ev.cover_url }}
+              style={{ width: "100%", height: 160, borderRadius: 24, marginBottom: 12 }}
+              contentFit="cover"
+              transition={150}
+            />
+          )}
+
           {/* Hero */}
           <View className="bg-paper rounded-3xl p-6">
             <Text className="text-4xl font-bold tracking-tight text-ink" numberOfLines={2}>
@@ -242,6 +277,14 @@ export default function EventDetailScreen() {
             )}
           </View>
 
+          {/* Privacy note: event media is not end-to-end encrypted like chats. */}
+          <View className="flex-row items-center justify-center mt-3 px-4">
+            <Ionicons name="information-circle-outline" color="#8A8275" size={13} />
+            <Text className="text-cream-muted text-[11px] ml-1.5 text-center">
+              Event-media is niet end-to-end versleuteld zoals je chats.
+            </Text>
+          </View>
+
           <ActionSheet
             visible={addMenuOpen}
             onClose={() => setAddMenuOpen(false)}
@@ -303,30 +346,12 @@ export default function EventDetailScreen() {
           ) : (
             <View className="mt-5 flex-row flex-wrap" style={{ marginHorizontal: -3 }}>
               {contribs.map((c) => (
-                <View key={c.id} className="w-1/2 p-[3px]">
-                  <View
-                    className="bg-paper-warm overflow-hidden"
-                    style={{ aspectRatio: 1, borderRadius: 18 }}
-                  >
-                    {c.image_url ? (
-                      <Image
-                        source={{ uri: c.image_url }}
-                        style={{ width: "100%", height: "100%" }}
-                        contentFit="cover"
-                        transition={150}
-                      />
-                    ) : (
-                      <View className="flex-1 items-center justify-center p-3">
-                        <Text className="text-ink text-sm" numberOfLines={4}>
-                          {c.caption ?? c.link_url ?? ""}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text className="text-cream-muted text-[11px] mt-1 px-1" numberOfLines={1}>
-                    {c.author?.display_name ?? c.author?.username ?? "Onbekend"}
-                  </Text>
-                </View>
+                <ContributionTile
+                  key={c.id}
+                  contribution={c}
+                  canDelete={c.user_id === myUserId || ev.is_host}
+                  onDelete={() => onDeleteContribution(c)}
+                />
               ))}
             </View>
           )}
@@ -338,16 +363,86 @@ export default function EventDetailScreen() {
 
 function humanizeContributeError(err: any): string {
   const msg = err?.message ?? String(err ?? "Onbekende fout");
+  // Log the technical detail for debugging, but never surface it to users.
+  console.warn("[event] contribute error:", msg);
   if (/row-level security|permission denied/i.test(msg)) {
-    return "Toegang geweigerd. Run migratie 0019_event_storage_repair.sql in Supabase SQL Editor — die fixt de bucket-policies én voegt missing host-memberships toe.";
+    return "Kon je bijdrage niet plaatsen. Controleer of je nog deelnemer bent van dit event en probeer opnieuw.";
   }
   if (/mime type|not supported/i.test(msg)) {
-    return "Bestandstype niet toegelaten. Foto's (JPG/PNG/HEIC/WebP) en video's (MP4/MOV/WebM) werken.";
+    return "Dit bestandstype werkt niet. Gebruik een foto (JPG, PNG, HEIC of WebP) of video (MP4, MOV of WebM).";
   }
   if (/exceeded|too large/i.test(msg)) {
-    return "Bestand te groot. Max 100 MB.";
+    return "Dit bestand is te groot. De limiet is 100 MB.";
   }
-  return msg;
+  return "Er ging iets mis bij het plaatsen. Probeer het opnieuw.";
+}
+
+/**
+ * Eén tegel in de bijdrage-grid: foto, video (met play-badge) of tekst/link.
+ * Toont een verwijder-knopje wanneer de kijker de bijdrage mag verwijderen
+ * (eigen bijdrage of host).
+ */
+function ContributionTile({
+  contribution: c,
+  canDelete,
+  onDelete,
+}: {
+  contribution: ContributionWithAuthor;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <View className="w-1/2 p-[3px]">
+      <View
+        className="bg-paper-warm overflow-hidden"
+        style={{ aspectRatio: 1, borderRadius: 18 }}
+      >
+        {c.media_type === "video" && c.image_url ? (
+          <>
+            <Video
+              source={{ uri: c.image_url }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode={ResizeMode.COVER}
+              useNativeControls
+              isMuted
+            />
+            <View
+              pointerEvents="none"
+              className="absolute top-2 left-2 bg-shell/70 rounded-full px-2 py-0.5 flex-row items-center"
+            >
+              <Ionicons name="videocam" color="#F5E8D3" size={11} />
+            </View>
+          </>
+        ) : c.image_url ? (
+          <Image
+            source={{ uri: c.image_url }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={150}
+          />
+        ) : (
+          <View className="flex-1 items-center justify-center p-3">
+            <Text className="text-ink text-sm" numberOfLines={4}>
+              {c.caption ?? c.link_url ?? ""}
+            </Text>
+          </View>
+        )}
+
+        {canDelete && (
+          <Pressable
+            onPress={onDelete}
+            hitSlop={8}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-shell/70 items-center justify-center"
+          >
+            <Ionicons name="trash-outline" color="#F5E8D3" size={14} />
+          </Pressable>
+        )}
+      </View>
+      <Text className="text-cream-muted text-[11px] mt-1 px-1" numberOfLines={1}>
+        {c.author?.display_name ?? c.author?.username ?? "Onbekend"}
+      </Text>
+    </View>
+  );
 }
 
 function StatRow({

@@ -1,10 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Linking from "expo-linking";
-import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import { memo, useCallback, useState, useEffect } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +10,8 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,28 +19,72 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { Avatar } from "@/components/Avatar";
-import { EventCard } from "@/components/EventCard";
-import { SafeImage } from "@/components/SafeImage";
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { SkeletonPostCard } from "@/components/Skeleton";
-import { PostReactions } from "@/components/PostReactions";
-import { CommentsSection } from "@/components/CommentsSection";
-import { PollCard } from "@/components/PollCard";
-import { CallPlanCard } from "@/components/CallPlanCard";
 import { ActivityCard } from "@/components/ActivityCard";
+import { CallPlanCard } from "@/components/CallPlanCard";
+import { CommentsSection } from "@/components/CommentsSection";
+import {
+  Arrow,
+  Kicker,
+  Masthead,
+  Meta,
+  Rule,
+  SectionHead,
+} from "@/components/Editorial";
+import { FindBody } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
+import { PollCard } from "@/components/PollCard";
+import { PostReactions } from "@/components/PostReactions";
+import { ScreenContainer } from "@/components/ScreenContainer";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
-import { listMyEvents } from "@/lib/api/events";
-import { deletePost, updatePostCaption, listUnifiedFeed, type FeedItem, type PostWithAuthor } from "@/lib/api/posts";
+import { ink, type } from "@/lib/design/type";
+import {
+  collectTags,
+  deletePost,
+  KIND_LABELS,
+  listUnifiedFeed,
+  updatePostCaption,
+  type FeedItem,
+  type PostWithAuthor,
+} from "@/lib/api/posts";
+
+/**
+ * De feed als *gedrukte pagina*.
+ *
+ * Geen zwevende kaartjes met tussenruimte, maar banden die van rand tot rand
+ * lopen en gescheiden worden door haarlijnen — de structuur van een affiche.
+ * Kolomkoppen in 9px-kapitalen dragen de inhoud eronder; de inhoud zelf staat
+ * in een display-serif. Dat schaalcontrast is het hele ontwerp.
+ *
+ * Wat hier bewust NIET staat: een algoritme, een bereikteller, oneindig
+ * scrollen. De feed heeft een einde, en dat einde zegt dat je bij bent.
+ */
+
+type Section = "vandaag" | "week" | "eerder";
+
+const SECTION_LABELS: Record<Section, string> = {
+  vandaag: "Vandaag",
+  week: "Deze week",
+  eerder: "Eerder",
+};
+
+function sectionOf(iso: string): Section {
+  const then = new Date(iso).getTime();
+  const age = Date.now() - then;
+  if (age < 24 * 60 * 60 * 1000) return "vandaag";
+  if (age < 7 * 24 * 60 * 60 * 1000) return "week";
+  return "eerder";
+}
+
+/** Rij + eventueel de rubriekkop die eraan voorafgaat. */
+type Row = { item: FeedItem; section: Section | null };
 
 export default function FeedScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
   const qc = useQueryClient();
-  const [composeMenuOpen, setComposeMenuOpen] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
@@ -49,231 +92,305 @@ export default function FeedScreen() {
     refetchOnWindowFocus: true,
   });
 
-  // Refetch elke keer dat de feed-tab zichtbaar wordt (na terugkeer van compose)
   useFocusEffect(
     useCallback(() => {
       qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
     }, [qc, myUserId])
   );
 
-  async function onRefresh() {
+  const tags = useMemo(() => collectTags(feed.data ?? []).slice(0, 12), [feed.data]);
+
+  /**
+   * Filteren en rubriceren in één pass. De rubriekkop hangt aan de eerste
+   * rij van elke periode, zodat de FlatList plat blijft (geen SectionList —
+   * die breekt de volle-breedte banden).
+   */
+  const rows = useMemo<Row[]>(() => {
+    let items = feed.data ?? [];
+    if (activeTag) {
+      items = items.filter(
+        (i) =>
+          (i.type === "post" || i.type === "memory") &&
+          (i.data.tags ?? []).includes(activeTag)
+      );
+    }
+    let previous: Section | null = null;
+    return items.map((item) => {
+      if (item.type === "memory") return { item, section: null };
+      const section = sectionOf(item.created_at);
+      const head = section === previous ? null : section;
+      previous = section;
+      return { item, section: head };
+    });
+  }, [feed.data, activeTag]);
+
+  const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-  }
+  }, [qc, myUserId]);
+
+  const invalidate = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+  }, [qc, myUserId]);
+
+  const today = useMemo(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item: row }: { item: Row }) => (
+      <View>
+        {row.section ? (
+          <SectionHead label={SECTION_LABELS[row.section]} tone="paper" />
+        ) : (
+          <Rule tone="paper" />
+        )}
+        <FeedRow item={row.item} myUserId={myUserId} onChanged={invalidate} />
+      </View>
+    ),
+    [myUserId, invalidate]
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
-      <ScreenContainer>
-      <FlatList
-        data={feed.data ?? []}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 12, paddingBottom: 60 }}
-        removeClippedSubviews
-        maxToRenderPerBatch={4}
-        windowSize={5}
-        initialNumToRender={5}
-        refreshControl={
-          <RefreshControl
-            refreshing={feed.isFetching && !feed.isLoading}
-            onRefresh={onRefresh}
-            tintColor="#F5E8D3"
-          />
-        }
-        ListHeaderComponent={
-          <View>
-            <Text className="text-2xl font-bold tracking-tight text-cream mb-0.5">
-              Feed
-            </Text>
-            <Text className="text-cream-soft text-sm mb-3">
-              Momenten van jou en je vrienden.
-            </Text>
+      {/* De feed is een papieren kolom op de donkere schil. Op breed scherm
+          blijft de goot donker — dat maakt van de kolom een pagina. */}
+      <ScreenContainer className="bg-paper-light">
+        <FlatList
+          data={rows}
+          keyExtractor={(row) => row.item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 72 }}
+          removeClippedSubviews
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          initialNumToRender={5}
+          refreshControl={
+            <RefreshControl
+              refreshing={feed.isFetching && !feed.isLoading}
+              onRefresh={onRefresh}
+              tintColor={ink.muted}
+            />
+          }
+          ListHeaderComponent={
+            <View>
+              <Masthead
+                tone="paper"
+                columns={[
+                  { label: "Lincin", value: "Vondsten" },
+                  { label: "Van je kring", value: "Niet van een algoritme" },
+                  { label: today },
+                  { label: "Privé" },
+                ]}
+              />
 
-            {/* Compose balk */}
-            <View className="flex-row items-center gap-2 mb-3">
+              {/* Het affiche-moment: één keer groot, daarna nooit meer */}
+              <View className="px-5 pt-7 pb-5">
+                <Text style={[type.display, { color: ink.DEFAULT }]}>Vondsten</Text>
+                <Text style={[type.body, { color: ink.soft, marginTop: 10 }]}>
+                  Wat je vrienden tegenkwamen en de moeite waard vonden om mee
+                  terug te brengen.
+                </Text>
+              </View>
+
+              <Rule tone="paper" strong />
+
+              {/* Delen — een regel, geen invoerveld */}
               <Pressable
                 onPress={() => router.push("/post-compose")}
-                className="flex-1 flex-row items-center bg-paper-soft rounded-full px-4 py-3 gap-3"
+                className="flex-row items-center px-5 py-4 active:bg-paper-warm"
               >
-                <Ionicons name="pencil-outline" color="#8A7E6C" size={16} />
-                <Text className="text-ink-muted text-sm flex-1">Wat wil je delen?</Text>
+                <View className="flex-1 pr-4">
+                  <Text style={[type.headlineSmall, { color: ink.DEFAULT }]}>
+                    Deel een vondst
+                  </Text>
+                  <View className="mt-1">
+                    <Meta tone="paper" dim>
+                      Link · Video · Muziek · Fragment · Weetje · Idee
+                    </Meta>
+                  </View>
+                </View>
+                <Arrow tone="paper" />
               </Pressable>
-              <Pressable onPress={() => router.push("/poll-compose")} className="w-11 h-11 bg-paper-soft rounded-full items-center justify-center">
-                <Ionicons name="bar-chart-outline" color="#5A4F40" size={18} />
-              </Pressable>
-              <Pressable onPress={() => router.push("/call-plan-compose")} className="w-11 h-11 bg-paper-soft rounded-full items-center justify-center">
-                <Ionicons name="videocam-outline" color="#5A4F40" size={18} />
-              </Pressable>
-              <Pressable onPress={() => router.push("/list-compose")} className="w-11 h-11 bg-paper-soft rounded-full items-center justify-center">
-                <Ionicons name="checkmark-circle-outline" color="#5A4F40" size={18} />
-              </Pressable>
-            </View>
+              <Rule tone="paper" />
 
-            <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-              Recent
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          feed.isLoading ? (
-            <View className="gap-4">
-              <SkeletonPostCard />
-              <SkeletonPostCard />
-            </View>
-          ) : (
-            <View className="bg-paper-soft rounded-3xl p-6 items-center">
-              <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="images-outline" color="#1A1714" size={24} />
+              {/* Nevenwegen — klein gezet, want ze zijn niet de hoofdzaak */}
+              <View className="flex-row px-5 py-3">
+                {[
+                  { label: "Poll", route: "/poll-compose" },
+                  { label: "Call", route: "/call-plan-compose" },
+                  { label: "Lijst", route: "/list-compose" },
+                ].map((s, i) => (
+                  <Pressable
+                    key={s.route}
+                    onPress={() => router.push(s.route as any)}
+                    className="flex-row items-center"
+                  >
+                    {i > 0 && (
+                      <Meta tone="paper" dim style={{ marginHorizontal: 8 }}>
+                        /
+                      </Meta>
+                    )}
+                    <Meta tone="paper">{s.label}</Meta>
+                  </Pressable>
+                ))}
               </View>
-              <Text className="text-ink font-semibold text-base mb-1">
-                Nog niks te tonen
-              </Text>
-              <Text className="text-ink-soft text-sm text-center">
-                Plaats je eerste foto, poll of call hierboven, of voeg vrienden toe.
-              </Text>
+              <Rule tone="paper" />
+
+              {tags.length > 0 && (
+                <View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 11 }}
+                  >
+                    <TagChip
+                      label="Alles"
+                      active={activeTag === null}
+                      onPress={() => setActiveTag(null)}
+                    />
+                    {tags.map((t) => (
+                      <TagChip
+                        key={t}
+                        label={t}
+                        active={activeTag === t}
+                        onPress={() => setActiveTag(activeTag === t ? null : t)}
+                      />
+                    ))}
+                  </ScrollView>
+                  <Rule tone="paper" />
+                </View>
+              )}
             </View>
-          )
-        }
-        ItemSeparatorComponent={() => <View className="h-2" />}
-        renderItem={useCallback(({ item }: { item: FeedItem }) => {
-          if (item.type === "memory") {
-            return <MemoryCard post={item.data} />;
           }
-          if (item.type === "activity") {
-            return <ActivityCard event={item.data} />;
+          ListEmptyComponent={
+            feed.isLoading ? (
+              <View className="items-center py-16">
+                <ActivityIndicator color={ink.muted} />
+              </View>
+            ) : (
+              <View className="px-5 py-14">
+                <Text style={[type.headline, { color: ink.DEFAULT }]}>
+                  {activeTag ? "Niks onder deze tag." : "Nog niets gevonden."}
+                </Text>
+                <Text style={[type.body, { color: ink.soft, marginTop: 8 }]}>
+                  {activeTag
+                    ? "Probeer een andere tag, of deel zelf de eerste."
+                    : "Plak een link, tik een citaat over uit wat je aan het lezen bent, of voeg vrienden toe."}
+                </Text>
+              </View>
+            )
           }
-          if (item.type === "poll") {
-            return (
-              <PollCard
-                poll={item.data}
-                onDeleted={() => qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] })}
-              />
-            );
+          ListFooterComponent={
+            rows.length > 0 ? (
+              <View>
+                <Rule tone="paper" strong />
+                <View className="items-center px-5 py-10">
+                  <Text style={[type.headlineSmall, { color: ink.DEFAULT }]}>
+                    Je bent bij.
+                  </Text>
+                  <Text
+                    style={[type.bodySmall, { color: ink.muted, marginTop: 6, textAlign: "center" }]}
+                  >
+                    Geen oneindige stroom. Kom straks terug — of deel zelf iets.
+                  </Text>
+                </View>
+              </View>
+            ) : null
           }
-          if (item.type === "call_plan") {
-            return <CallPlanCard plan={item.data} />;
-          }
-          if (item.type === "shared_list") {
-            return <SharedListCard list={item.data} />;
-          }
-          // type === "post"
-          const post = item.data as PostWithAuthor;
-          return (
-            <PostCard
-              post={post}
-              myUserId={myUserId}
-              onPress={() => router.push(`/post/${post.id}`)}
-              onAuthorPress={() =>
-                post.author?.username && router.push(`/user/${post.author.username}`)
-              }
-              onDelete={async () => {
-                await deletePost(post);
-                qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-              }}
-              onEdit={() => {
-                qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-              }}
-            />
-          );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [myUserId])}
-      />
+        />
       </ScreenContainer>
     </SafeAreaView>
   );
 }
 
-const PostCard = memo(function PostCard({
+// ---------------------------------------------------------------
+// Eén rij
+// ---------------------------------------------------------------
+
+const FeedRow = memo(function FeedRow({
+  item,
+  myUserId,
+  onChanged,
+}: {
+  item: FeedItem;
+  myUserId: string;
+  onChanged: () => void;
+}) {
+  if (item.type === "post") {
+    return <FindRow post={item.data} myUserId={myUserId} onChanged={onChanged} />;
+  }
+
+  // De overige types houden voorlopig hun eigen kaart; ze krijgen wel de
+  // kicker-regel en de inspringing, zodat het ritme klopt.
+  const label =
+    item.type === "poll" ? "Poll"
+    : item.type === "call_plan" ? "Call"
+    : item.type === "shared_list" ? "Lijst"
+    : item.type === "memory" ? "Op deze dag"
+    : "Activiteit";
+
+  return (
+    <View className="pt-3.5 pb-4">
+      <View className="px-5 pb-2.5">
+        <Kicker tone="paper" parts={[label]} />
+      </View>
+      <View className="px-5">
+        {item.type === "poll" && <PollCard poll={item.data} onDeleted={onChanged} />}
+        {item.type === "call_plan" && <CallPlanCard plan={item.data} />}
+        {item.type === "shared_list" && <SharedListCard list={item.data} />}
+        {item.type === "activity" && <ActivityCard event={item.data} />}
+        {item.type === "memory" && <MemoryCard post={item.data} />}
+      </View>
+    </View>
+  );
+});
+
+const FindRow = memo(function FindRow({
   post,
   myUserId,
-  onPress,
-  onAuthorPress,
-  onDelete,
-  onEdit,
+  onChanged,
 }: {
   post: PostWithAuthor;
   myUserId: string;
-  onPress: () => void;
-  onAuthorPress: () => void;
-  onDelete?: () => void;
-  onEdit?: (newCaption: string) => void;
+  onChanged: () => void;
 }) {
-  const isMine = post.user_id === myUserId;
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption ?? "");
   const [saving, setSaving] = useState(false);
-  const authorName =
-    post.author?.display_name ?? post.author?.username ?? "Onbekend";
-  const time = formatPostTime(post.created_at);
-  const hasImage = !!post.image_path;
-  const hasLink = !!post.link_url;
-  const hasCaption = !!post.caption && post.caption.trim().length > 0;
 
-  const [imageRatio, setImageRatio] = useState<number | undefined>(undefined);
+  const isMine = post.user_id === myUserId;
+  const authorName = post.author?.display_name ?? post.author?.username ?? "Onbekend";
+  const kindLabel = KIND_LABELS[post.kind] ?? "Notitie";
 
   return (
-    <View className="bg-paper-soft rounded-2xl overflow-hidden">
-      <Pressable
-        onPress={onAuthorPress}
-        className="flex-row items-center px-3 py-2.5"
-      >
-        <Avatar name={authorName} size="md" tint="warm" />
-        <View className="flex-1 ml-3">
-          <Text className="text-ink font-semibold">{authorName}</Text>
-          <Text className="text-ink-muted text-xs">
-            @{post.author?.username ?? "?"} • {time}
-          </Text>
-        </View>
-        {isMine && (
-          <Pressable
-            onPress={() => setMenuOpen(true)}
-            hitSlop={8}
-            className="w-8 h-8 rounded-full items-center justify-center"
-          >
-            <Ionicons name="ellipsis-horizontal" color="#5A4F40" size={18} />
-          </Pressable>
-        )}
-      </Pressable>
+    <View className="pt-3.5 pb-4">
+      <View className="px-5">
+        <Kicker
+          tone="paper"
+          parts={[kindLabel, authorName, formatPostTime(post.created_at)]}
+          right={
+            isMine ? (
+              <Pressable
+                onPress={() => setMenuOpen(true)}
+                hitSlop={10}
+                className="pl-3 -mr-1"
+              >
+                <Ionicons name="ellipsis-horizontal" color={ink.muted} size={16} />
+              </Pressable>
+            ) : undefined
+          }
+        />
+      </View>
 
-      {hasImage && (
-        <Pressable onPress={onPress} className="bg-shell">
-          <SafeImage
-            uri={post.image_url}
-            cacheKey={post.image_path ?? undefined}
-            style={{
-              width: "100%",
-              aspectRatio: imageRatio
-                ? Math.min(Math.max(imageRatio, 9 / 16), 2)
-                : 1,
-            }}
-            contentFit="cover"
-            transition={150}
-            fallbackIcon="image-outline"
-            onLoad={(e) => {
-              const { width, height } = (e as any).source ?? {};
-              if (width && height) setImageRatio(width / height);
-            }}
-          />
-        </Pressable>
-      )}
+      <FindBody post={post} onPress={() => router.push(`/post/${post.id}`)} />
 
-      {hasCaption && (
-        <Pressable
-          onPress={onPress}
-          className={`px-4 ${hasImage ? "py-3" : "pt-1 pb-3"}`}
-        >
-          <Text
-            className={`text-ink leading-6 ${
-              hasImage ? "text-base" : "text-lg"
-            }`}
-          >
-            {post.caption}
-          </Text>
-        </Pressable>
-      )}
-
-      {hasLink && post.link_url && <LinkCard url={post.link_url} />}
-
-      <PostReactions postId={post.id} />
+      <View className="pt-3">
+        <PostReactions postId={post.id} />
+      </View>
 
       <CommentsSection
         entityType="post"
@@ -286,54 +403,78 @@ const PostCard = memo(function PostCard({
         <ActionSheet
           visible={menuOpen}
           onClose={() => setMenuOpen(false)}
-          title="Bericht"
+          title="Vondst"
           actions={[
             {
-              label: "Bijschrift bewerken",
+              label: "Toelichting bewerken",
               icon: "pencil-outline",
-              onPress: () => { setMenuOpen(false); setEditCaption(post.caption ?? ""); setEditOpen(true); },
+              onPress: () => {
+                setMenuOpen(false);
+                setEditCaption(post.caption ?? "");
+                setEditOpen(true);
+              },
             },
             {
               label: "Verwijderen",
               icon: "trash-outline",
               destructive: true,
-              onPress: () => { setMenuOpen(false); onDelete?.(); },
+              onPress: async () => {
+                setMenuOpen(false);
+                await deletePost(post);
+                onChanged();
+              },
             },
           ]}
         />
       )}
 
-      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
+      <Modal
+        visible={editOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditOpen(false)}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: "rgba(10,10,11,0.6)", justifyContent: "flex-end" }}
         >
-          <View className="bg-paper rounded-t-3xl px-5 pt-5 pb-8">
+          <View className="bg-paper-light px-5 pt-5 pb-8">
             <View className="flex-row items-center mb-4">
-              <Text className="flex-1 text-ink font-bold text-lg">Bijschrift bewerken</Text>
+              <View className="flex-1">
+                <Meta tone="paper">Toelichting bewerken</Meta>
+              </View>
               <Pressable onPress={() => setEditOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color="#8A7E6C" size={22} />
+                <Ionicons name="close" color={ink.muted} size={22} />
               </Pressable>
             </View>
             <TextInput
               value={editCaption}
               onChangeText={setEditCaption}
-              placeholder="Schrijf een bijschrift…"
-              placeholderTextColor="#8A7E6C"
+              placeholder="Schrijf iets…"
+              placeholderTextColor={ink.muted}
               multiline
               autoFocus
               maxLength={1000}
-              className="bg-paper-light text-ink text-base px-4 py-3 rounded-2xl border border-line-paper"
-              style={{ minHeight: 80, maxHeight: 160 }}
+              style={[
+                type.body,
+                {
+                  color: ink.DEFAULT,
+                  minHeight: 90,
+                  maxHeight: 180,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: ink.muted,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                },
+              ]}
             />
-            <Text className="text-ink-muted text-xs mt-1 text-right">{editCaption.length}/1000</Text>
             <Pressable
               onPress={async () => {
                 setSaving(true);
                 try {
                   await updatePostCaption(post.id, editCaption);
-                  onEdit?.(editCaption.trim());
                   setEditOpen(false);
+                  onChanged();
                 } catch (e: any) {
                   console.warn("updatePostCaption", e?.message ?? e);
                 } finally {
@@ -341,11 +482,9 @@ const PostCard = memo(function PostCard({
                 }
               }}
               disabled={saving}
-              className="mt-4 bg-ink active:bg-ink-soft rounded-full py-3.5 items-center"
+              className="mt-4 bg-ink active:bg-ink-soft py-3.5 items-center"
             >
-              <Text className="text-cream font-semibold">
-                {saving ? "Bewaren…" : "Bewaren"}
-              </Text>
+              <Meta tone="shell">{saving ? "Bewaren…" : "Bewaren"}</Meta>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -354,45 +493,43 @@ const PostCard = memo(function PostCard({
   );
 });
 
-function LinkCard({ url }: { url: string }) {
-  let hostname = url;
-  try {
-    hostname = new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    /* ignore */
-  }
+// ---------------------------------------------------------------
+
+function TagChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
-      onPress={() => Linking.openURL(url).catch(() => {})}
-      className="mx-3 mb-3 mt-1 bg-paper-warm active:bg-paper rounded-2xl px-4 py-3 flex-row items-center"
+      onPress={onPress}
+      style={{
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: active ? ink.DEFAULT : ink.muted,
+        backgroundColor: active ? ink.DEFAULT : "transparent",
+        marginRight: 7,
+      }}
+      className="px-3 py-1.5"
     >
-      <View className="w-10 h-10 rounded-full bg-paper-light items-center justify-center">
-        <Ionicons name="link" color="#1A1714" size={18} />
-      </View>
-      <View className="flex-1 ml-3">
-        <Text className="text-ink font-semibold text-sm" numberOfLines={1}>
-          {hostname}
-        </Text>
-        <Text className="text-ink-muted text-xs" numberOfLines={1}>
-          {url}
-        </Text>
-      </View>
-      <Ionicons name="open-outline" color="#5A4F40" size={16} />
+      <Meta tone={active ? "shell" : "paper"} dim={!active}>
+        {label}
+      </Meta>
     </Pressable>
   );
 }
 
-
 function formatPostTime(iso: string): string {
   const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
   if (diffMin < 1) return "net";
   if (diffMin < 60) return `${diffMin} min`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}u`;
+  if (diffHr < 24) return `${diffHr} u`;
   const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d`;
+  if (diffDay < 7) return `${diffDay} d`;
   return date.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
 }

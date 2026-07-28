@@ -51,7 +51,9 @@ export default function NotificationsScreen() {
     if (!item.read) {
       markNotificationRead(item.id);
     }
-    if (item.post_id) {
+    if (item.event_id) {
+      router.push(`/event/${item.event_id}`);
+    } else if (item.post_id) {
       router.push(`/post/${item.post_id}`);
     }
   }
@@ -115,6 +117,7 @@ function NotificationRow({
   const actorName =
     item.actor?.display_name ?? item.actor?.username ?? "Iemand";
 
+  const eventName = item.event_name ? `"${item.event_name}"` : "je event";
   const label =
     item.type === "comment_on_post"   ? `${actorName} reageerde op jouw post` :
     item.type === "comment_on_thread" ? `${actorName} reageerde ook op een post` :
@@ -122,6 +125,8 @@ function NotificationRow({
     item.type === "vote_on_call"      ? `${actorName} koos een tijdslot voor jouw call` :
     item.type === "invited_to_list"   ? `${actorName} nodigde je uit voor een lijst` :
     item.type === "invited_to_call"   ? `${actorName} nodigde je uit voor een videocall` :
+    item.type === "event_join"        ? `${actorName} nam deel aan ${eventName}` :
+    item.type === "event_contribution" ? `${actorName} plaatste iets in ${eventName}` :
     `${actorName} deed iets`;
 
   // Prefer the comment body as snippet (especially useful for emoji-only comments).

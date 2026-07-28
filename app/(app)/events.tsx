@@ -25,6 +25,9 @@ export default function EventsScreen() {
   const events = useQuery({
     queryKey: ["events", myUserId],
     queryFn: () => listMyEvents(myUserId),
+    // Keep "Live"/"Komt eraan" buckets and counts fresh without a manual pull.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   // Log errors zodat we ze in de console kunnen zien tijdens debug

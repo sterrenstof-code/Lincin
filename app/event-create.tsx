@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -43,9 +45,30 @@ export default function EventCreateScreen() {
   const [reveal, setReveal] = useState<EventRevealMode>("after");
   const [delayHours, setDelayHours] = useState("24");
   const [maxGuests, setMaxGuests] = useState("100");
+  const [coverUri, setCoverUri] = useState<string | null>(null);
+  const [coverMime, setCoverMime] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function pickCover() {
+    setError(null);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError("Geen toegang tot je foto's. Geef Lincin permissie in je systeeminstellingen.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [16, 9],
+      selectionLimit: 1,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setCoverUri(result.assets[0].uri);
+    setCoverMime(result.assets[0].mimeType ?? "image/jpeg");
+  }
 
   const trimmedName = name.trim();
   const canSubmit = !submitting && trimmedName.length > 0 && startsAt && endsAt;
@@ -71,6 +94,8 @@ export default function EventCreateScreen() {
         reveal,
         revealDelayHours: reveal === "delayed" ? parseInt(delayHours, 10) || 24 : 0,
         maxGuests: Math.max(1, Math.min(1000, parseInt(maxGuests, 10) || 100)),
+        coverUri,
+        coverMimeType: coverMime,
       });
       await qc.invalidateQueries({ queryKey: ["events", myUserId] });
       router.replace(`/event/${ev.id}`);
@@ -140,6 +165,44 @@ export default function EventCreateScreen() {
                 className="bg-paper-light text-ink text-base px-4 py-3 rounded-2xl border border-line-paper"
                 style={{ minHeight: 72, textAlignVertical: "top" }}
               />
+            </View>
+
+            {/* Cover (optioneel) */}
+            <View className="bg-paper rounded-3xl p-6 mt-4">
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+                Cover (optioneel)
+              </Text>
+              {coverUri ? (
+                <View>
+                  <Image
+                    source={{ uri: coverUri }}
+                    style={{ width: "100%", height: 150, borderRadius: 18 }}
+                    contentFit="cover"
+                  />
+                  <View className="flex-row gap-2 mt-3">
+                    <Pressable
+                      onPress={pickCover}
+                      className="flex-1 border border-line-paper rounded-full py-2.5 items-center"
+                    >
+                      <Text className="text-ink font-semibold text-sm">Vervang</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { setCoverUri(null); setCoverMime(null); }}
+                      className="flex-1 border border-line-paper rounded-full py-2.5 items-center"
+                    >
+                      <Text className="text-ink font-semibold text-sm">Verwijder</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={pickCover}
+                  className="bg-paper-soft active:bg-paper-warm rounded-2xl py-8 items-center justify-center border border-line-paper"
+                >
+                  <Ionicons name="image-outline" color="#5A4F40" size={26} />
+                  <Text className="text-ink-soft text-sm mt-2">Kies een cover-foto</Text>
+                </Pressable>
+              )}
             </View>
 
             {/* Datum en tijd */}

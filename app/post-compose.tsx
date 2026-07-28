@@ -1,34 +1,57 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
-import { Video, ResizeMode } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Arrow, Meta, Rule } from "@/components/Editorial";
+import { SafeImage } from "@/components/SafeImage";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SmartTextInput } from "@/components/SmartTextInput";
 import { useAuth } from "@/lib/auth/provider";
-import { createPost } from "@/lib/api/posts";
+import { ink, type } from "@/lib/design/type";
+import { createFind, type FindKind } from "@/lib/api/posts";
+import {
+  findUrl,
+  formatDuration,
+  formatReadingTime,
+  hostnameOf,
+  isBareUrl,
+  unfurl,
+  type LinkPreview,
+} from "@/lib/api/unfurl";
 
-type PostType = "tekst" | "foto" | "video" | "link";
+/**
+ * De vondst-composer.
+ *
+ * Eén principe: **plakken moet genoeg zijn.** Wie een link plakt krijgt
+ * binnen een seconde titel, beeld en bron te zien zonder iets in te vullen.
+ * Wie een lap tekst plakt, krijgt de vraag of het een fragment is. Alles wat
+ * daarna nog ingevuld kan worden is optioneel — want een curatie-app die om
+ * formulieren vraagt, wordt niet gebruikt.
+ */
 
-const POST_TYPES: { id: PostType; label: string; icon: any }[] = [
-  { id: "tekst",  label: "Tekst",      icon: "text-outline" },
-  { id: "foto",   label: "Afbeelding", icon: "image-outline" },
-  { id: "video",  label: "Video",      icon: "videocam-outline" },
-  { id: "link",   label: "Link",       icon: "link-outline" },
+type ComposeKind = "link" | "fragment" | "fact" | "idea" | "image" | "note";
+
+const KINDS: { id: ComposeKind; label: string }[] = [
+  { id: "link", label: "Link" },
+  { id: "fragment", label: "Fragment" },
+  { id: "fact", label: "Weetje" },
+  { id: "idea", label: "Idee" },
+  { id: "image", label: "Beeld" },
+  { id: "note", label: "Notitie" },
 ];
 
 export default function PostComposeScreen() {
@@ -37,51 +60,163 @@ export default function PostComposeScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
 
-  const [postType, setPostType] = useState<PostType>("tekst");
-  const [mediaUri, setMediaUri] = useState<string | null>(null);
-  const [mediaIsVideo, setMediaIsVideo] = useState(false);
-  const [caption, setCaption] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
+  const [kind, setKind] = useState<ComposeKind>("link");
+  const [url, setUrl] = useState("");
+  const [body, setBody] = useState("");
+  const [note, setNote] = useState("");
+  const [sourceAuthor, setSourceAuthor] = useState("");
+  const [sourceTitle, setSourceTitle] = useState("");
+  const [tagsRaw, setTagsRaw] = useState("");
+  const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const [preview, setPreview] = useState<LinkPreview | null>(null);
+  const [unfurling, setUnfurling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const lastUnfurled = useRef<string>("");
+
+  // -------------------------------------------------------------
+  // Binnenkomend vanuit het deelmenu
+  // -------------------------------------------------------------
+  //
+  // Web: de PWA staat als Web Share Target in `public/manifest.json` en
+  // krijgt title/text/url als querystring binnen op /post-compose.
+  // Native: `expo-share-intent` levert dezelfde drie velden aan (zie
+  // SHARE_TARGET.md) — daarom lezen we ze hier op één plek uit.
+  //
+  // De praktijk is rommelig: Android zet de URL vaak in `text`, iOS stuurt
+  // soms tekst mét een URL erin. Daarom vissen we de URL eruit en houden we
+  // de rest over als toelichting.
+  const shared = useLocalSearchParams<{ title?: string; text?: string; url?: string }>();
+  const sharedHandled = useRef(false);
+
+  useEffect(() => {
+    if (sharedHandled.current) return;
+    const rawText = typeof shared.text === "string" ? shared.text : "";
+    const rawUrl = typeof shared.url === "string" ? shared.url : "";
+    const rawTitle = typeof shared.title === "string" ? shared.title : "";
+    if (!rawText && !rawUrl && !rawTitle) return;
+    sharedHandled.current = true;
+
+    const detected = rawUrl || findUrl(rawText) || "";
+
+    if (detected) {
+      setKind("link");
+      setUrl(detected);
+      // Wat er naast de link stond is de toelichting, niet de link zelf.
+      const rest = rawText.replace(detected, "").trim();
+      if (rest) setNote(rest);
+      else if (rawTitle && rawTitle !== detected) setSourceTitle(rawTitle);
+      return;
+    }
+
+    if (rawText.length > 280) {
+      setKind("fragment");
+      setBody(rawText);
+      if (rawTitle) setSourceTitle(rawTitle);
+      return;
+    }
+
+    if (rawText) {
+      setKind("note");
+      setNote(rawText);
+    }
+  }, [shared.text, shared.url, shared.title]);
+
+  // -------------------------------------------------------------
+  // Automatisch unfurlen zodra de URL er compleet uitziet
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const candidate = url.trim();
+    if (!candidate || !isBareUrl(candidate)) {
+      if (!candidate) setPreview(null);
+      return;
+    }
+    if (candidate === lastUnfurled.current) return;
+
+    const timer = setTimeout(async () => {
+      lastUnfurled.current = candidate;
+      setUnfurling(true);
+      const result = await unfurl(candidate);
+      setUnfurling(false);
+      if (result) {
+        setPreview(result);
+        // De bron zelf invullen als de gebruiker dat nog niet deed
+        setSourceTitle((prev) => prev || result.title || "");
+        setSourceAuthor((prev) => prev || result.author || "");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [url]);
+
+  /**
+   * Plakt iemand een kale URL in een tekstveld, dan is het een link —
+   * niet een notitie die toevallig een URL bevat.
+   */
+  const handleTextPaste = useCallback(
+    (value: string, setter: (v: string) => void) => {
+      if (isBareUrl(value) && !url) {
+        setKind("link");
+        setUrl(value.trim());
+        return;
+      }
+      setter(value);
+    },
+    [url]
+  );
+
+  /** Lange geplakte tekst → waarschijnlijk een fragment. */
+  const onNoteChange = useCallback(
+    (value: string) => {
+      if (kind === "note" && value.length > 280 && !body) {
+        setKind("fragment");
+        setBody(value);
+        setNote("");
+        return;
+      }
+      handleTextPaste(value, setNote);
+    },
+    [kind, body, handleTextPaste]
+  );
+
+  async function pickImage(fromCamera: boolean) {
+    setError(null);
+    const perm = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError(fromCamera ? "Geen camera-toegang." : "Geen toegang tot je mediabibliotheek.");
+      return;
+    }
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85 })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          quality: 0.85,
+          selectionLimit: 1,
+        });
+    if (result.canceled || !result.assets[0]) return;
+    setImageUri(result.assets[0].uri);
+  }
+
   const canSubmit = !submitting && (() => {
-    switch (postType) {
-      case "tekst":  return caption.trim().length > 0;
-      case "foto":   return !!mediaUri && !mediaIsVideo;
-      case "video":  return !!mediaUri && mediaIsVideo;
-      case "link":   return linkUrl.trim().length > 0;
+    switch (kind) {
+      case "link": return url.trim().length > 3;
+      case "fragment":
+      case "fact":
+      case "idea": return body.trim().length > 0;
+      case "image": return !!imageUri;
+      case "note": return note.trim().length > 0;
     }
   })();
 
-  async function pickMedia(type: "foto" | "video") {
-    setError(null);
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { setError("Geen toegang tot je mediabibliotheek."); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: type === "video" ? ["videos"] : ["images"],
-      quality: type === "video" ? 0.7 : 0.85,
-      allowsEditing: false,
-      selectionLimit: 1,
-      videoMaxDuration: 120,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    setMediaUri(result.assets[0].uri);
-    setMediaIsVideo(result.assets[0].type === "video");
-  }
-
-  async function takeMedia(type: "foto" | "video") {
-    setError(null);
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { setError("Geen camera-toegang."); return; }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: type === "video" ? ["videos"] : ["images"],
-      quality: type === "video" ? 0.7 : 0.85,
-      videoMaxDuration: 120,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    setMediaUri(result.assets[0].uri);
-    setMediaIsVideo(result.assets[0].type === "video");
+  /** Een link wordt video of muziek zodra de unfurl dat zegt. */
+  function resolveKind(): FindKind {
+    if (kind !== "link") return kind as FindKind;
+    if (preview?.kind === "video") return "video";
+    if (preview?.kind === "music") return "music";
+    return "link";
   }
 
   async function onSubmit() {
@@ -89,254 +224,327 @@ export default function PostComposeScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      await createPost({
+      await createFind({
         userId: myUserId,
-        imageUri: mediaUri ?? undefined,
-        caption: caption.trim() || null,
-        linkUrl: postType === "link" ? linkUrl.trim() || null : null,
+        kind: resolveKind(),
+        imageUri: imageUri ?? undefined,
+        linkUrl: url.trim() || null,
+        caption: note.trim() || null,
+        bodyText: ["fragment", "fact", "idea"].includes(kind) ? body.trim() || null : null,
+        sourceTitle: sourceTitle.trim() || null,
+        sourceAuthor: sourceAuthor.trim() || null,
+        tags: tagsRaw
+          .split(/[,\s]+/)
+          .map((t) => t.trim())
+          .filter(Boolean),
+        meta: preview ?? null,
       });
       await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       router.back();
     } catch (e: any) {
-      setError(humanizePostError(e));
+      setError(humanizeError(e));
     } finally {
       setSubmitting(false);
     }
   }
 
+  const showSource = ["fragment", "fact", "idea"].includes(kind);
+
   return (
     <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
-      <ScreenContainer>
+      {/* Papieren kolom op de donkere schil — op breed scherm blijft de
+          goot donker, wat de pagina echt als *pagina* laat lezen. */}
+      <ScreenContainer className="bg-paper-light">
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 80 }}
-          >
-            {/* Header */}
-            <View className="flex-row items-center px-4 pt-2 pb-1.5">
-              <Pressable
-                onPress={() => router.back()}
-                className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
-              >
-                <Ionicons name="close" color="#1A1714" size={20} />
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 90 }}>
+            {/* Kop */}
+            <View className="flex-row items-center px-5 pt-3 pb-3">
+              <Pressable onPress={() => router.back()} hitSlop={10}>
+                <Ionicons name="close" color={ink.DEFAULT} size={22} />
               </Pressable>
-              <Text className="flex-1 text-cream text-lg font-semibold ml-3">
-                Nieuwe post
-              </Text>
+              <View className="flex-1 ml-4">
+                <Meta tone="paper">Nieuwe vondst</Meta>
+              </View>
               <Pressable
                 onPress={onSubmit}
                 disabled={!canSubmit}
-                className={`rounded-full px-4 py-2 ${canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"}`}
+                style={{
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: canSubmit ? ink.DEFAULT : ink.muted,
+                  backgroundColor: canSubmit ? ink.DEFAULT : "transparent",
+                }}
+                className="px-4 py-2.5"
               >
-                {submitting
-                  ? <ActivityIndicator size="small" color="#1A1714" />
-                  : <Text className={`font-semibold ${canSubmit ? "text-ink" : "text-cream-muted"}`}>Plaatsen</Text>
-                }
+                {submitting ? (
+                  <ActivityIndicator size="small" color={ink.muted} />
+                ) : (
+                  <Meta tone={canSubmit ? "shell" : "paper"} dim={!canSubmit}>
+                    Plaatsen
+                  </Meta>
+                )}
               </Pressable>
             </View>
 
-            {/* Type picker — scrollbare pills */}
+            <Rule tone="paper" strong />
+
+            {/* Soort — kapitalen, geen pillen */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 13 }}
             >
-              {POST_TYPES.map((t) => {
-                const active = postType === t.id;
+              {KINDS.map((k, i) => {
+                const active = kind === k.id;
                 return (
                   <Pressable
-                    key={t.id}
-                    onPress={() => { setPostType(t.id); setError(null); setMediaUri(null); }}
-                    className={`flex-row items-center gap-2 px-4 py-2 rounded-full border ${
-                      active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"
-                    }`}
+                    key={k.id}
+                    onPress={() => { setKind(k.id); setError(null); }}
+                    className="flex-row items-center"
                   >
-                    <Ionicons name={t.icon} size={15} color={active ? "#1A1714" : "#8A7E6C"} />
-                    <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
-                      {t.label}
-                    </Text>
+                    {i > 0 && (
+                      <Meta tone="paper" dim style={{ marginHorizontal: 9 }}>
+                        /
+                      </Meta>
+                    )}
+                    <View
+                      style={
+                        active
+                          ? { borderBottomWidth: 1.5, borderBottomColor: ink.DEFAULT, paddingBottom: 2 }
+                          : { paddingBottom: 2 }
+                      }
+                    >
+                      <Meta tone="paper" dim={!active}>
+                        {k.label}
+                      </Meta>
+                    </View>
                   </Pressable>
                 );
               })}
-              <Pressable
-                onPress={() => router.replace("/list-compose")}
-                className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft"
-              >
-                <Ionicons name="checkmark-circle-outline" size={15} color="#8A7E6C" />
-                <Text className="text-sm font-semibold text-ink-muted">Lijst</Text>
-              </Pressable>
             </ScrollView>
 
-            <View className="px-5 pt-3">
+            <Rule tone="paper" />
 
-            {/* TEKST */}
-            {postType === "tekst" && (
+            {/* ---------------- LINK ---------------- */}
+            {kind === "link" && (
               <View>
-                <SmartTextInput
-                  value={caption}
-                  onChangeText={setCaption}
-                  placeholder="Schrijf iets…"
-                  placeholderTextColor="#8A7E6C"
+                <View className="px-5 pt-5">
+                  <Meta tone="paper" dim>Adres</Meta>
+                  <TextInput
+                    value={url}
+                    onChangeText={(v) => { setUrl(v); setError(null); }}
+                    placeholder="Plak een link…"
+                    placeholderTextColor={ink.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    autoFocus
+                    style={[
+                      type.headlineSmall,
+                      { color: ink.DEFAULT, paddingVertical: 10 },
+                      Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                    ]}
+                  />
+                  <Rule tone="paper" />
+                </View>
+
+                {unfurling && (
+                  <View className="flex-row items-center px-5 py-5">
+                    <ActivityIndicator size="small" color={ink.muted} />
+                    <View className="ml-3">
+                      <Meta tone="paper" dim>Bron ophalen…</Meta>
+                    </View>
+                  </View>
+                )}
+
+                {preview && !unfurling && <PreviewBand preview={preview} />}
+              </View>
+            )}
+
+            {/* ---------------- FRAGMENT / WEETJE / IDEE ---------------- */}
+            {showSource && (
+              <View className="px-5 pt-5">
+                <Meta tone="paper" dim>
+                  {kind === "fragment" ? "Het fragment" : kind === "fact" ? "Het weetje" : "Het idee"}
+                </Meta>
+                <TextInput
+                  value={body}
+                  onChangeText={setBody}
+                  placeholder={
+                    kind === "fragment"
+                      ? "Tik over of plak wat je las…"
+                      : kind === "fact"
+                      ? "Wat wist je nog niet?"
+                      : "Wat zou je willen maken?"
+                  }
+                  placeholderTextColor={ink.muted}
                   multiline
-                  maxLength={1000}
                   autoFocus
-                  inputClassName="bg-paper rounded-3xl text-ink text-base px-5 py-4"
-                  style={{ minHeight: 160, textAlignVertical: "top" }}
+                  maxLength={2000}
+                  style={[
+                    type.quote,
+                    { color: ink.DEFAULT, paddingVertical: 12, minHeight: 130, textAlignVertical: "top" },
+                    Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                  ]}
                 />
-                <Text className="text-ink-muted text-xs mt-2 text-right px-1">{caption.length}/1000</Text>
+                <Rule tone="paper" />
               </View>
             )}
 
-            {/* FOTO */}
-            {postType === "foto" && (
-              <View>
-                {mediaUri && !mediaIsVideo ? (
-                  <View className="rounded-3xl overflow-hidden bg-shell mb-3">
-                    <Image source={{ uri: mediaUri }} style={{ width: "100%", aspectRatio: 1 }} contentFit="cover" />
-                    <View className="flex-row gap-2 p-3">
-                      <Pressable onPress={() => pickMedia("foto")} className="flex-1 flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
-                        <Ionicons name="images-outline" color="#1A1714" size={16} />
-                        <Text className="text-ink font-semibold ml-2 text-sm">Wijzig</Text>
-                      </Pressable>
-                      <Pressable onPress={() => setMediaUri(null)} className="flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
-                        <Ionicons name="trash-outline" color="#B23A1C" size={16} />
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <View className="flex-row gap-3 mb-4">
-                    <Pressable onPress={() => pickMedia("foto")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
-                      <Ionicons name="images-outline" color="#8A7E6C" size={32} />
-                      <Text className="text-ink-muted font-semibold text-sm">Kies foto</Text>
-                    </Pressable>
-                    {Platform.OS !== "web" && (
-                      <Pressable onPress={() => takeMedia("foto")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
-                        <Ionicons name="camera-outline" color="#8A7E6C" size={32} />
-                        <Text className="text-ink-muted font-semibold text-sm">Camera</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                )}
-                <SmartTextInput
-                  value={caption}
-                  onChangeText={setCaption}
-                  placeholder="Bijschrift (optioneel)…"
-                  placeholderTextColor="#8A7E6C"
-                  multiline
-                  maxLength={500}
-                  inputClassName="bg-paper rounded-2xl text-ink text-base px-4 py-3"
-                  style={{ minHeight: 80, textAlignVertical: "top" }}
-                />
-              </View>
-            )}
-
-            {/* VIDEO */}
-            {postType === "video" && (
-              <View>
-                {mediaUri && mediaIsVideo ? (
-                  <View className="rounded-3xl overflow-hidden bg-shell mb-3">
-                    <Video
-                      source={{ uri: mediaUri }}
-                      style={{ width: "100%", aspectRatio: 16 / 9 }}
-                      resizeMode={ResizeMode.CONTAIN}
-                      useNativeControls
-                      isLooping={false}
+            {/* ---------------- BEELD ---------------- */}
+            {kind === "image" && (
+              <View className="pt-4">
+                {imageUri ? (
+                  <View>
+                    <SafeImage
+                      uri={imageUri}
+                      style={{ width: "100%", aspectRatio: 1 }}
+                      contentFit="cover"
+                      fallbackBg="bg-paper-warm"
+                      fallbackColor="#5A4F40"
                     />
-                    <View className="flex-row gap-2 p-3">
-                      <Pressable onPress={() => pickMedia("video")} className="flex-1 flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
-                        <Ionicons name="videocam-outline" color="#1A1714" size={16} />
-                        <Text className="text-ink font-semibold ml-2 text-sm">Andere video</Text>
+                    <View className="flex-row px-5 py-3">
+                      <Pressable onPress={() => pickImage(false)}>
+                        <Meta tone="paper">Wijzig</Meta>
                       </Pressable>
-                      <Pressable onPress={() => setMediaUri(null)} className="flex-row items-center justify-center bg-paper-warm rounded-full px-4 py-2.5">
-                        <Ionicons name="trash-outline" color="#B23A1C" size={16} />
+                      <Meta tone="paper" dim style={{ marginHorizontal: 9 }}>/</Meta>
+                      <Pressable onPress={() => setImageUri(null)}>
+                        <Meta tone="paper" dim>Verwijder</Meta>
                       </Pressable>
                     </View>
+                    <Rule tone="paper" />
                   </View>
                 ) : (
-                  <View className="flex-row gap-3 mb-4">
-                    <Pressable onPress={() => pickMedia("video")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
-                      <Ionicons name="film-outline" color="#8A7E6C" size={32} />
-                      <Text className="text-ink-muted font-semibold text-sm">Kies video</Text>
-                      <Text className="text-ink-muted text-xs">max. 2 min</Text>
+                  <View>
+                    <Pressable
+                      onPress={() => pickImage(false)}
+                      className="flex-row items-center px-5 py-4 active:bg-paper-warm"
+                    >
+                      <Text style={[type.headlineSmall, { color: ink.DEFAULT, flex: 1 }]}>
+                        Kies uit je bibliotheek
+                      </Text>
+                      <Arrow tone="paper" />
                     </Pressable>
+                    <Rule tone="paper" />
                     {Platform.OS !== "web" && (
-                      <Pressable onPress={() => takeMedia("video")} className="flex-1 items-center justify-center bg-paper-soft rounded-3xl py-10 gap-2">
-                        <Ionicons name="videocam-outline" color="#8A7E6C" size={32} />
-                        <Text className="text-ink-muted font-semibold text-sm">Opnemen</Text>
-                      </Pressable>
+                      <View>
+                        <Pressable
+                          onPress={() => pickImage(true)}
+                          className="flex-row items-center px-5 py-4 active:bg-paper-warm"
+                        >
+                          <Text style={[type.headlineSmall, { color: ink.DEFAULT, flex: 1 }]}>
+                            Maak een foto
+                          </Text>
+                          <Arrow tone="paper" />
+                        </Pressable>
+                        <Rule tone="paper" />
+                      </View>
                     )}
                   </View>
                 )}
-                <SmartTextInput
-                  value={caption}
-                  onChangeText={setCaption}
-                  placeholder="Bijschrift (optioneel)…"
-                  placeholderTextColor="#8A7E6C"
-                  multiline
-                  maxLength={500}
-                  inputClassName="bg-paper rounded-2xl text-ink text-base px-4 py-3"
-                  style={{ minHeight: 80, textAlignVertical: "top" }}
-                />
               </View>
             )}
 
-            {/* LINK */}
-            {postType === "link" && (
-              <View className="gap-4">
-                <View className="bg-paper rounded-3xl p-5">
-                  <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3">URL</Text>
-                  <View className="flex-row items-center bg-paper-light rounded-2xl border border-line-paper px-4">
-                    <Ionicons name="link" color="#8A7E6C" size={16} />
+            {/* ---------------- NOTITIE ---------------- */}
+            {kind === "note" && (
+              <View className="px-5 pt-5">
+                <Meta tone="paper" dim>Gedachte</Meta>
+                <SmartTextInput
+                  value={note}
+                  onChangeText={onNoteChange}
+                  placeholder="Schrijf iets…"
+                  placeholderTextColor={ink.muted}
+                  multiline
+                  autoFocus
+                  maxLength={1000}
+                  style={{ minHeight: 130, textAlignVertical: "top", ...type.quote, color: ink.DEFAULT, paddingVertical: 12 }}
+                />
+                <Rule tone="paper" />
+              </View>
+            )}
+
+            {/* ---------------- Bron ---------------- */}
+            {(showSource || kind === "link") && (
+              <View className="px-5 pt-6">
+                <Meta tone="paper" dim>
+                  {kind === "fragment" ? "Bron — boek, artikel, wie het schreef" : "Bron"}
+                </Meta>
+                <View className="flex-row mt-1">
+                  <View className="flex-1 pr-3">
                     <TextInput
-                      value={linkUrl}
-                      onChangeText={setLinkUrl}
-                      placeholder="https://…"
-                      placeholderTextColor="#8A7E6C"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="url"
-                      autoFocus
-                      className="flex-1 text-ink text-base py-3 pl-2"
-                      style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+                      value={sourceAuthor}
+                      onChangeText={setSourceAuthor}
+                      placeholder="Auteur"
+                      placeholderTextColor={ink.muted}
+                      style={[
+                        type.body,
+                        { color: ink.DEFAULT, paddingVertical: 9 },
+                        Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                      ]}
                     />
-                    {linkUrl.length > 0 && (
-                      <Pressable onPress={() => setLinkUrl("")} className="p-1">
-                        <Ionicons name="close-circle" color="#8A7E6C" size={18} />
-                      </Pressable>
-                    )}
+                    <Rule tone="paper" />
+                  </View>
+                  <View className="flex-1">
+                    <TextInput
+                      value={sourceTitle}
+                      onChangeText={setSourceTitle}
+                      placeholder="Titel"
+                      placeholderTextColor={ink.muted}
+                      style={[
+                        type.body,
+                        { color: ink.DEFAULT, paddingVertical: 9 },
+                        Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                      ]}
+                    />
+                    <Rule tone="paper" />
                   </View>
                 </View>
+              </View>
+            )}
+
+            {/* ---------------- Toelichting ---------------- */}
+            {kind !== "note" && (
+              <View className="px-5 pt-6">
+                <Meta tone="paper" dim>Waarom deel je dit?</Meta>
                 <SmartTextInput
-                  value={caption}
-                  onChangeText={setCaption}
-                  placeholder="Toelichting (optioneel)…"
-                  placeholderTextColor="#8A7E6C"
+                  value={note}
+                  onChangeText={onNoteChange}
+                  placeholder="Optioneel — één zin is genoeg."
+                  placeholderTextColor={ink.muted}
                   multiline
                   maxLength={500}
-                  inputClassName="bg-paper rounded-3xl text-ink text-base px-5 py-4"
-                  style={{ minHeight: 100, textAlignVertical: "top" }}
+                  style={{ minHeight: 64, textAlignVertical: "top", ...type.body, color: ink.soft, paddingVertical: 10 }}
                 />
+                <Rule tone="paper" />
               </View>
             )}
+
+            {/* ---------------- Tags ---------------- */}
+            <View className="px-5 pt-6">
+              <Meta tone="paper" dim>Tags — gescheiden door spaties</Meta>
+              <TextInput
+                value={tagsRaw}
+                onChangeText={setTagsRaw}
+                placeholder="muziek bouwen design lezen"
+                placeholderTextColor={ink.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  type.body,
+                  { color: ink.DEFAULT, paddingVertical: 10 },
+                  Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                ]}
+              />
+              <Rule tone="paper" />
+            </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
-                <Text className="text-red-800 text-sm">{error}</Text>
+              <View className="mx-5 mt-6 px-4 py-3" style={{ borderLeftWidth: 2, borderLeftColor: "#B23A1C" }}>
+                <Text style={[type.bodySmall, { color: "#B23A1C" }]}>{error}</Text>
               </View>
             )}
-
-            {submitting && (
-              <View className="items-center mt-6">
-                <ActivityIndicator color="#F5E8D3" />
-                <Text className="text-cream-soft text-xs mt-2">
-                  {mediaUri ? "Media wordt geüpload…" : "Bezig…"}
-                </Text>
-              </View>
-            )}
-            </View>{/* /px-5 pt-3 */}
           </ScrollView>
         </KeyboardAvoidingView>
       </ScreenContainer>
@@ -344,16 +552,72 @@ export default function PostComposeScreen() {
   );
 }
 
-function humanizePostError(err: any): string {
+// ---------------------------------------------------------------
+// Wat de unfurl vond — zoals het in de feed zal staan
+// ---------------------------------------------------------------
+
+function PreviewBand({ preview }: { preview: LinkPreview }) {
+  const extra = [
+    preview.site_name ?? hostnameOf(preview.url),
+    preview.author,
+    formatDuration(preview.duration_s) ?? formatReadingTime(preview.word_count),
+  ]
+    .filter(Boolean)
+    .join("  ·  ");
+
+  return (
+    <View className="mt-5">
+      <Rule tone="paper" strong />
+      {preview.image_url ? (
+        <SafeImage
+          uri={preview.image_url}
+          style={{ width: "100%", aspectRatio: 2 }}
+          contentFit="cover"
+          fallbackBg="bg-paper-warm"
+          fallbackColor="#5A4F40"
+        />
+      ) : null}
+      <View className="px-5 py-4">
+        <Meta tone="paper" dim>{extra}</Meta>
+        {preview.title ? (
+          <Text style={[type.headline, { color: ink.DEFAULT, marginTop: 6 }]}>
+            {preview.title}
+          </Text>
+        ) : null}
+        {preview.description ? (
+          <Text style={[type.bodySmall, { color: ink.muted, marginTop: 6 }]} numberOfLines={3}>
+            {preview.description}
+          </Text>
+        ) : null}
+        {preview.kind !== "link" ? (
+          <View className="mt-3">
+            <Meta tone="paper" dim>
+              {preview.kind === "video" ? "Speelt af in de feed" : "Luistert in de feed"}
+            </Meta>
+          </View>
+        ) : null}
+      </View>
+      <Rule tone="paper" strong />
+    </View>
+  );
+}
+
+function humanizeError(err: any): string {
   const msg = err?.message ?? String(err ?? "Onbekende fout");
   if (/schema is invalid|schema is incompatible/i.test(msg)) {
     return "Supabase Storage gaf een schema-fout. Run `0003_storage_repair.sql` en probeer opnieuw.";
   }
   if (/row-level security|permission denied/i.test(msg)) {
-    return "Toegang geweigerd. Run de storage-repair migratie.";
+    return "Toegang geweigerd — controleer of de migratie is toegepast.";
+  }
+  if (/violates check constraint "posts_kind_check"/i.test(msg)) {
+    return "Migratie 0042 is nog niet toegepast in Supabase.";
+  }
+  if (/column .* does not exist/i.test(msg)) {
+    return "Migratie 0042 is nog niet toegepast in Supabase.";
   }
   if (/mime type/i.test(msg)) {
-    return "Dit bestandstype is niet toegelaten. Gebruik JPG, PNG, WebP, HEIC of MP4.";
+    return "Dit bestandstype is niet toegelaten. Gebruik JPG, PNG, WebP of HEIC.";
   }
   return msg;
 }

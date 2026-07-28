@@ -276,8 +276,7 @@ function PaperTabBar({
   }> = [
     { key: "notifications", routeName: "notifications", icon: "notifications-outline", label: "Meldingen" },
     { key: "feed", routeName: "feed", icon: "images-outline", label: "Feed" },
-    // Events-tab tijdelijk verborgen tot de feature productie-klaar is.
-    // { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
+    { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
     { key: "chats", routeName: "chats", icon: "chatbubbles-outline", label: "Chats" },
     { key: "friends", routeName: "friends", icon: "people-outline", label: "Vrienden" },
     { key: "profile", routeName: "profile", icon: "person-outline", label: "Profiel" },
