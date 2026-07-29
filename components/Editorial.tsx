@@ -59,7 +59,9 @@ export function Sheet({
     <View
       style={{
         width: "100%",
-        maxWidth: wide ? 1240 : 720,
+        // 1180 = 210 etiketkolom + ~970 inhoud. Precies vol, zodat er rechts
+        // geen dode zone tussen de inhoud en het einde van de haarlijn valt.
+        maxWidth: wide ? 1180 : 720,
         alignSelf: "center",
         ...(flex ? { flex: 1 } : null),
       }}

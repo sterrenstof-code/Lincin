@@ -314,7 +314,10 @@ function Band({
     return (
       <View style={{ flexDirection: "row", paddingTop: 28, paddingBottom: 36 }}>
         <View style={{ width: 210, paddingHorizontal: 24 }}>{head}</View>
-        <View style={{ flex: 1, maxWidth: 780 }}>{children}</View>
+        {/* Geen maxWidth: de inhoud loopt door tot het einde van de
+            haarlijn, zoals de rijen op het affiche. Tekst houdt zijn eigen
+            marge via de px-6 binnen FindBody. */}
+        <View style={{ flex: 1 }}>{children}</View>
       </View>
     );
   }

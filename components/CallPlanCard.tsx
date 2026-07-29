@@ -94,25 +94,25 @@ export function CallPlanCard({
   )[0];
 
   return (
-    <View className="bg-paper-soft rounded-2xl p-3">
+    <View className="py-1">
       {/* Header */}
       <View className="flex-row items-center gap-2 mb-2">
         <Avatar name={localPlan.author?.display_name ?? localPlan.author?.username} avatarUrl={localPlan.author?.avatar_url ?? null} size="sm" />
         <View className="flex-1">
-          <Text className="text-ink font-semibold text-sm">
+          <Text className="text-carbon font-semibold text-sm">
             {localPlan.author?.display_name ?? localPlan.author?.username ?? "Onbekend"}
           </Text>
-          <Text className="text-ink-muted text-xs">{formatRelativeTime(localPlan.created_at)}</Text>
+          <Text className="text-carbon-muted text-xs">{formatRelativeTime(localPlan.created_at)}</Text>
         </View>
-        <View className="bg-blue-100 rounded-full px-2.5 py-1">
-          <Text className="text-blue-700 text-xs font-semibold">Videocall</Text>
+        <View className="bg-page-alt px-2.5 py-1">
+          <Text className="text-carbon text-xs font-semibold">Videocall</Text>
         </View>
       </View>
 
       {/* Titel */}
-      <Text className="text-ink text-base font-semibold mb-1">{localPlan.title}</Text>
+      <Text className="text-carbon text-base font-semibold mb-1">{localPlan.title}</Text>
       {localPlan.description ? (
-        <Text className="text-ink-muted text-sm mb-3">{localPlan.description}</Text>
+        <Text className="text-carbon-muted text-sm mb-3">{localPlan.description}</Text>
       ) : null}
 
       {/* Tijdsloten */}
@@ -134,25 +134,25 @@ export function CallPlanCard({
               key={slot.id}
               onPress={() => toggleSlot(slot.id, myVote)}
               disabled={isSaving}
-              className={`px-4 py-3 rounded-2xl border ${myVote ? "bg-teal-50 border-teal-300" : "bg-paper border-paper"}`}
+              className={`px-4 py-3 border ${myVote ? "bg-page-alt border-carbon" : "bg-page-alt border-page-alt"}`}
             >
               <View className="flex-row items-center">
                 <View className="flex-1">
-                  <Text className={`text-sm font-semibold ${myVote ? "text-teal-700" : "text-ink"}`}>
+                  <Text className={`text-sm font-semibold ${myVote ? "text-carbon" : "text-carbon"}`}>
                     {formatSlotDate(slot.starts_at)}
                   </Text>
-                  <Text className={`text-xs mt-0.5 ${myVote ? "text-teal-600" : "text-ink-muted"}`}>
+                  <Text className={`text-xs mt-0.5 ${myVote ? "text-carbon" : "text-carbon-muted"}`}>
                     {formatSlotTime(slot.starts_at)} – {formatSlotTime(slot.ends_at)}
                   </Text>
                 </View>
                 <View className="items-end gap-1">
                   <View className="flex-row items-center gap-1">
-                    <Text className="text-xs font-bold text-teal-600">{slot.yes_voters.length}</Text>
-                    <Text className="text-xs text-ink-muted">/{totalParticipants > 0 ? totalParticipants : "?"} ✓</Text>
+                    <Text className="text-xs font-bold text-carbon">{slot.yes_voters.length}</Text>
+                    <Text className="text-xs text-carbon-muted">/{totalParticipants > 0 ? totalParticipants : "?"} ✓</Text>
                   </View>
                   {isBest && (
-                    <View className="bg-teal-100 rounded-full px-2 py-0.5">
-                      <Text className="text-teal-700 text-[10px] font-semibold">Beste</Text>
+                    <View className="bg-page-alt px-2 py-0.5">
+                      <Text className="text-carbon text-[10px] font-semibold">Beste</Text>
                     </View>
                   )}
                 </View>
@@ -167,9 +167,9 @@ export function CallPlanCard({
                     </View>
                   ))}
                   {yesProfiles.length > 6 && (
-                    <Text className="text-teal-600 text-[10px] font-semibold ml-1">+{yesProfiles.length - 6}</Text>
+                    <Text className="text-carbon text-[10px] font-semibold ml-1">+{yesProfiles.length - 6}</Text>
                   )}
-                  <Text className="text-teal-600 text-[10px] ml-1.5">kunnen</Text>
+                  <Text className="text-carbon text-[10px] ml-1.5">kunnen</Text>
                 </View>
               )}
             </Pressable>
@@ -195,21 +195,21 @@ export function CallPlanCard({
                 </View>
               ))}
               {localPlan.invitee_profiles.length > 5 && (
-                <Text className="text-ink-muted text-xs ml-1">+{localPlan.invitee_profiles.length - 5}</Text>
+                <Text className="text-carbon-muted text-xs ml-1">+{localPlan.invitee_profiles.length - 5}</Text>
               )}
-              <Text className="text-ink-muted text-xs ml-1">uitgenodigd</Text>
+              <Text className="text-carbon-muted text-xs ml-1">uitgenodigd</Text>
             </Pressable>
 
             {/* Naampjes uitklappen */}
             {showInviteeNames && (
-              <View className="mt-1.5 bg-paper rounded-2xl px-3 py-2 gap-1.5">
+              <View className="mt-1.5 bg-page-alt px-3 py-2 gap-1.5">
                 {localPlan.invitee_profiles.map((p) => (
                   <View key={p.id} className="flex-row items-center gap-2">
                     <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="xs" />
-                    <Text className="text-ink text-xs font-medium">
+                    <Text className="text-carbon text-xs font-medium">
                       {p.display_name ?? p.username}
                     </Text>
-                    <Text className="text-ink-muted text-[10px]">@{p.username}</Text>
+                    <Text className="text-carbon-muted text-[10px]">@{p.username}</Text>
                   </View>
                 ))}
               </View>
@@ -222,10 +222,10 @@ export function CallPlanCard({
           {isMine && (
             <Pressable
               onPress={openInvite}
-              className="flex-row items-center gap-1.5 bg-paper border border-paper rounded-full px-3 py-1.5"
+              className="flex-row items-center gap-1.5 bg-page-alt border border-page-alt px-3 py-1.5"
             >
-              <Ionicons name="person-add-outline" color="#5A4F40" size={13} />
-              <Text className="text-ink-muted text-xs font-semibold">Uitnodigen</Text>
+              <Ionicons name="person-add-outline" color="#55534E" size={13} />
+              <Text className="text-carbon-muted text-xs font-semibold">Uitnodigen</Text>
             </Pressable>
           )}
 
@@ -238,10 +238,10 @@ export function CallPlanCard({
                 startsAt: new Date(bestSlot.starts_at),
                 endsAt: new Date(bestSlot.ends_at),
               })}
-              className="flex-row items-center gap-1.5 bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5"
+              className="flex-row items-center gap-1.5 bg-page-alt border border-carbon px-3 py-1.5"
             >
               <Ionicons name="calendar-outline" color="#0F6E56" size={13} />
-              <Text className="text-teal-700 text-xs font-semibold">Agenda</Text>
+              <Text className="text-carbon text-xs font-semibold">Agenda</Text>
             </Pressable>
           )}
         </View>
@@ -250,16 +250,16 @@ export function CallPlanCard({
       {/* Uitnodigings-modal */}
       <Modal visible={inviteOpen} transparent animationType="slide" onRequestClose={() => setInviteOpen(false)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-          <View className="bg-paper rounded-t-3xl px-5 pt-5 pb-10">
+          <View className="bg-page-alt px-5 pt-5 pb-10">
             <View className="flex-row items-center mb-4">
-              <Text className="flex-1 text-ink font-bold text-lg">Uitnodigen</Text>
+              <Text className="flex-1 text-carbon font-bold text-lg">Uitnodigen</Text>
               <Pressable onPress={() => setInviteOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color="#8A7E6C" size={22} />
+                <Ionicons name="close" color="#8E8C86" size={22} />
               </Pressable>
             </View>
 
             {friends.length === 0 ? (
-              <Text className="text-ink-muted text-sm py-4 text-center">
+              <Text className="text-carbon-muted text-sm py-4 text-center">
                 Alle vrienden zijn al uitgenodigd.
               </Text>
             ) : (
@@ -276,15 +276,15 @@ export function CallPlanCard({
                       className="items-center gap-1.5"
                       style={{ width: 60 }}
                     >
-                      <View className={`rounded-full p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
+                      <View className={`p-0.5 ${selected ? "bg-carbon" : "bg-transparent"}`}>
                         <Avatar name={p.display_name ?? p.username} avatarUrl={p.avatar_url ?? null} size="md" />
                       </View>
                       {selected && (
-                        <View className="absolute top-0 right-0 w-4 h-4 bg-flame rounded-full items-center justify-center">
-                          <Ionicons name="checkmark" color="#F5E8D3" size={10} />
+                        <View className="absolute top-0 right-0 w-4 h-4 bg-carbon items-center justify-center">
+                          <Ionicons name="checkmark" color="#F2F1EE" size={10} />
                         </View>
                       )}
-                      <Text className={`text-[11px] text-center ${selected ? "text-flame font-semibold" : "text-ink-muted"}`} numberOfLines={1}>
+                      <Text className={`text-[11px] text-center ${selected ? "text-carbon font-semibold" : "text-carbon-muted"}`} numberOfLines={1}>
                         {p.display_name ?? p.username}
                       </Text>
                     </Pressable>
@@ -296,11 +296,11 @@ export function CallPlanCard({
             <Pressable
               onPress={sendInvites}
               disabled={selectedIds.length === 0 || inviting}
-              className={`mt-4 rounded-full py-3.5 items-center ${selectedIds.length > 0 ? "bg-flame" : "bg-paper-soft"}`}
+              className={`mt-4 py-3.5 items-center ${selectedIds.length > 0 ? "bg-carbon" : "bg-page-alt"}`}
             >
               {inviting
-                ? <ActivityIndicator size="small" color="#F5E8D3" />
-                : <Text className={`font-semibold ${selectedIds.length > 0 ? "text-cream" : "text-ink-muted"}`}>
+                ? <ActivityIndicator size="small" color="#F2F1EE" />
+                : <Text className={`font-semibold ${selectedIds.length > 0 ? "text-page" : "text-carbon-muted"}`}>
                     {selectedIds.length === 0 ? "Kies wie je uitnodigt" : `${selectedIds.length} uitnodigen`}
                   </Text>
               }

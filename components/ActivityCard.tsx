@@ -6,9 +6,9 @@ import type { ActivityEventWithActor } from "@/lib/api/activity-events";
 
 const KIND_ICON: Record<string, { name: any; color: string }> = {
   friend_accepted: { name: "person-add-outline", color: "#5B8DEF" },
-  post_created:    { name: "image-outline",       color: "#D46220" },
-  event_created:   { name: "calendar-outline",    color: "#2CA87F" },
-  event_joined:    { name: "enter-outline",       color: "#2CA87F" },
+  post_created:    { name: "image-outline",       color: "#12110F" },
+  event_created:   { name: "calendar-outline",    color: "#12110F" },
+  event_joined:    { name: "enter-outline",       color: "#12110F" },
 };
 
 function activityLabel(event: ActivityEventWithActor): string {
@@ -31,7 +31,7 @@ function activityLabel(event: ActivityEventWithActor): string {
 
 export function ActivityCard({ event }: { event: ActivityEventWithActor }) {
   const router = useRouter();
-  const icon = KIND_ICON[event.kind] ?? { name: "flash-outline", color: "#8A7E6C" };
+  const icon = KIND_ICON[event.kind] ?? { name: "flash-outline", color: "#8E8C86" };
 
   function handlePress() {
     if (event.kind === "post_created" && event.post_id) {
@@ -46,7 +46,7 @@ export function ActivityCard({ event }: { event: ActivityEventWithActor }) {
   return (
     <Pressable
       onPress={handlePress}
-      className="flex-row items-center gap-3 px-4 py-3 bg-paper/50 rounded-2xl mb-2 active:bg-paper"
+      className="flex-row items-center gap-3 py-3 mb-2 active:bg-page-alt"
     >
       {/* Avatar */}
       <Avatar
@@ -55,13 +55,13 @@ export function ActivityCard({ event }: { event: ActivityEventWithActor }) {
         size="sm"
       />
       {/* Tekst */}
-      <Text className="flex-1 text-ink text-sm leading-snug">
+      <Text className="flex-1 text-carbon text-sm leading-snug">
         {activityLabel(event)}
       </Text>
       {/* Icoontje + tijd */}
       <View className="items-end gap-1">
         <Ionicons name={icon.name} size={16} color={icon.color} />
-        <Text className="text-ink-muted text-[10px]">{formatRelativeTime(event.created_at)}</Text>
+        <Text className="text-carbon-muted text-[10px]">{formatRelativeTime(event.created_at)}</Text>
       </View>
     </Pressable>
   );

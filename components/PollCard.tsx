@@ -83,32 +83,32 @@ export function PollCard({
   if (deleting) return null;
 
   return (
-    <View className="bg-paper-soft rounded-2xl p-3">
+    <View className="py-1">
       {/* Header */}
       <View className="flex-row items-center gap-2 mb-3">
         <Avatar name={localPoll.author?.display_name ?? localPoll.author?.username} avatarUrl={localPoll.author?.avatar_url ?? null} size="sm" />
         <View className="flex-1">
-          <Text className="text-ink font-semibold text-sm">
+          <Text className="text-carbon font-semibold text-sm">
             {localPoll.author?.display_name ?? localPoll.author?.username ?? "Onbekend"}
           </Text>
-          <Text className="text-ink-muted text-xs">
+          <Text className="text-carbon-muted text-xs">
             {formatRelativeTime(localPoll.created_at)}
             {localPoll.ends_at && !isExpired ? ` · eindigt ${formatRelativeTime(localPoll.ends_at)}` : ""}
             {isExpired ? " · gesloten" : ""}
           </Text>
         </View>
-        <View className="bg-flame/20 rounded-full px-2.5 py-1">
-          <Text className="text-flame text-xs font-semibold">Stemming</Text>
+        <View className="bg-page-alt px-2.5 py-1">
+          <Text className="text-carbon text-xs font-semibold">Stemming</Text>
         </View>
         {isMine && (
           <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} className="w-8 h-8 items-center justify-center">
-            <Ionicons name="ellipsis-horizontal" color="#5A4F40" size={18} />
+            <Ionicons name="ellipsis-horizontal" color="#55534E" size={18} />
           </Pressable>
         )}
       </View>
 
       {/* Vraag */}
-      <Text className="text-ink text-base font-semibold mb-3">{localPoll.question}</Text>
+      <Text className="text-carbon text-base font-semibold mb-3">{localPoll.question}</Text>
 
       {/* Opties */}
       <View className="gap-2">
@@ -126,22 +126,22 @@ export function PollCard({
                 key={option.id}
                 onPress={() => canChange ? handleVote(option.id) : undefined}
                 disabled={!canChange || isMyVote}
-                className="rounded-2xl overflow-hidden"
+                className="overflow-hidden"
               >
                 <View
                   className="flex-row items-center px-4 py-3 gap-2"
-                  style={{ backgroundColor: isMyVote ? "#D4622010" : "#1A160E08" }}
+                  style={{ backgroundColor: isMyVote ? "#12110F10" : "#12110F08" }}
                 >
                   {/* Voortgangsbalk */}
                   <View
-                    className="absolute left-0 top-0 bottom-0 rounded-2xl"
+                    className="absolute left-0 top-0 bottom-0"
                     style={{
                       width: `${pct}%`,
-                      backgroundColor: isMyVote ? "#D4622022" : "#1A160E0A",
+                      backgroundColor: isMyVote ? "#12110F22" : "#12110F0A",
                     }}
                   />
                   {/* Label */}
-                  <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>
+                  <Text className={`flex-1 text-sm font-medium ${isMyVote ? "text-carbon" : "text-carbon"}`}>
                     {option.label}
                   </Text>
                   {/* Overlapping avatars */}
@@ -157,14 +157,14 @@ export function PollCard({
                         </View>
                       ))}
                       {extraVoters > 0 && (
-                        <View className="w-6 h-6 rounded-full bg-paper items-center justify-center" style={{ marginLeft: -8, zIndex: 0 }}>
-                          <Text className="text-ink-muted text-[9px] font-bold">+{extraVoters}</Text>
+                        <View className="w-6 h-6 bg-page-alt items-center justify-center" style={{ marginLeft: -8, zIndex: 0 }}>
+                          <Text className="text-carbon-muted text-[9px] font-bold">+{extraVoters}</Text>
                         </View>
                       )}
                     </View>
                   )}
                   {/* Count + % */}
-                  <Text className={`text-xs font-bold tabular-nums ${isMyVote ? "text-flame" : "text-ink-muted"}`}>
+                  <Text className={`text-xs font-bold tabular-nums ${isMyVote ? "text-carbon" : "text-carbon-muted"}`}>
                     {option.voters.length} · {pct}%
                   </Text>
                 </View>
@@ -176,9 +176,9 @@ export function PollCard({
             <Pressable
               key={option.id}
               onPress={() => handleVote(option.id)}
-              className="border border-paper rounded-2xl px-4 py-3 active:bg-paper"
+              className="border border-page-alt px-4 py-3 active:bg-page-alt"
             >
-              <Text className="text-ink text-sm font-medium">{option.label}</Text>
+              <Text className="text-carbon text-sm font-medium">{option.label}</Text>
             </Pressable>
           );
         })}
@@ -186,12 +186,12 @@ export function PollCard({
 
       {/* Footer */}
       <View className="flex-row items-center mt-3 gap-2">
-        {voting && <ActivityIndicator size="small" color="#D46220" />}
-        <Text className="text-ink-muted text-xs">
+        {voting && <ActivityIndicator size="small" color="#12110F" />}
+        <Text className="text-carbon-muted text-xs">
           {localPoll.total_votes} {localPoll.total_votes === 1 ? "stem" : "stemmen"}
         </Text>
         {canChange && !voting && (
-          <Text className="text-ink-muted text-xs">· tik om te wijzigen</Text>
+          <Text className="text-carbon-muted text-xs">· tik om te wijzigen</Text>
         )}
       </View>
 

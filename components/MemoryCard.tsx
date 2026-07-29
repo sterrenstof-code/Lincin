@@ -10,7 +10,7 @@ export function MemoryCard({ post }: { post: PostWithAuthor }) {
   return (
     <Pressable
       onPress={() => router.push(`/post/${post.id}` as any)}
-      className="bg-flame rounded-3xl overflow-hidden mb-3"
+      className="bg-carbon overflow-hidden mb-3"
     >
       {post.image_url && (
         <Image
@@ -21,19 +21,19 @@ export function MemoryCard({ post }: { post: PostWithAuthor }) {
       )}
       <View className="p-4">
         <View className="flex-row items-center gap-2 mb-1">
-          <Text className="text-cream/80 text-xs uppercase tracking-wider font-semibold">
+          <Text className="text-page text-xs uppercase tracking-wider font-semibold">
             Op deze dag
           </Text>
-          <View className="bg-cream/20 rounded-full px-2 py-0.5">
-            <Text className="text-cream text-xs font-bold">{yearsAgo} jaar geleden</Text>
+          <View className="bg-page-alt px-2 py-0.5">
+            <Text className="text-page text-xs font-bold">{yearsAgo} jaar geleden</Text>
           </View>
         </View>
         {post.caption ? (
-          <Text className="text-cream text-sm" numberOfLines={2}>{post.caption}</Text>
+          <Text className="text-page text-sm" numberOfLines={2}>{post.caption}</Text>
         ) : (
-          <Text className="text-cream/70 text-sm italic">Geen bijschrift</Text>
+          <Text className="text-page text-sm italic">Geen bijschrift</Text>
         )}
-        <Text className="text-cream/60 text-xs mt-1">
+        <Text className="text-page text-xs mt-1">
           {new Date(post.created_at).toLocaleDateString("nl-NL", {
             day: "numeric",
             month: "long",

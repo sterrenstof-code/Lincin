@@ -15,7 +15,7 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
   return (
     <Pressable
       onPress={() => router.push(`/list/${list.id}`)}
-      className="bg-paper-soft rounded-2xl p-3 active:bg-paper"
+      className="py-1 active:bg-page-alt"
     >
       {/* Header */}
       <View className="flex-row items-center gap-2 mb-3">
@@ -25,21 +25,21 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
           size="sm"
         />
         <View className="flex-1">
-          <Text className="text-ink font-semibold text-sm">
+          <Text className="text-carbon font-semibold text-sm">
             {list.author?.display_name ?? list.author?.username ?? "Onbekend"}
           </Text>
-          <Text className="text-ink-muted text-xs">{formatRelativeTime(list.created_at)}</Text>
+          <Text className="text-carbon-muted text-xs">{formatRelativeTime(list.created_at)}</Text>
         </View>
-        <View className="bg-paper rounded-full px-2.5 py-1 flex-row items-center gap-1">
-          <Ionicons name="checkmark-circle-outline" color="#5A4F40" size={12} />
-          <Text className="text-ink-muted text-xs font-semibold">Lijst</Text>
+        <View className="bg-page-alt px-2.5 py-1 flex-row items-center gap-1">
+          <Ionicons name="checkmark-circle-outline" color="#55534E" size={12} />
+          <Text className="text-carbon-muted text-xs font-semibold">Lijst</Text>
         </View>
       </View>
 
       {/* Title */}
       <View className="flex-row items-center gap-2 mb-3">
         <Text style={{ fontSize: 20 }}>{list.emoji}</Text>
-        <Text className="text-ink text-base font-semibold flex-1">{list.title}</Text>
+        <Text className="text-carbon text-base font-semibold flex-1">{list.title}</Text>
       </View>
 
       {/* Preview items */}
@@ -47,16 +47,16 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
         <View className="gap-1.5 mb-3">
           {preview.map((item) => (
             <View key={item.id} className="flex-row items-center gap-2">
-              <View className={`w-4 h-4 rounded-full border items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
+              <View className={`w-4 h-4 border items-center justify-center ${item.checked ? "bg-carbon border-carbon" : "border-carbon-muted"}`}>
                 {item.checked && <Ionicons name="checkmark" color="#fff" size={10} />}
               </View>
-              <Text className={`text-sm flex-1 ${item.checked ? "text-ink-muted line-through" : "text-ink"}`} numberOfLines={1}>
+              <Text className={`text-sm flex-1 ${item.checked ? "text-carbon-muted line-through" : "text-carbon"}`} numberOfLines={1}>
                 {item.text}
               </Text>
             </View>
           ))}
           {total > 3 && (
-            <Text className="text-ink-muted text-xs ml-6">
+            <Text className="text-carbon-muted text-xs ml-6">
               +{total - 3} meer…
             </Text>
           )}
@@ -65,9 +65,9 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
 
       {/* Progress bar */}
       {total > 0 && (
-        <View className="h-1.5 bg-paper rounded-full overflow-hidden mb-3">
+        <View className="h-1.5 bg-page-alt overflow-hidden mb-3">
           <View
-            className="h-full bg-teal-500 rounded-full"
+            className="h-full bg-carbon"
             style={{ width: `${pct}%` }}
           />
         </View>
@@ -82,10 +82,10 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
             </View>
           ))}
         </View>
-        <Text className="text-ink-muted text-xs">
+        <Text className="text-carbon-muted text-xs">
           {done}/{total} gedaan
         </Text>
-        <Ionicons name="chevron-forward" color="#8A7E6C" size={14} />
+        <Ionicons name="chevron-forward" color="#8E8C86" size={14} />
       </View>
 
       <CommentsSection

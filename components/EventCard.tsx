@@ -36,7 +36,7 @@ export function EventCard({
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
-      className="bg-paper rounded-3xl overflow-hidden"
+      className="bg-page-alt overflow-hidden"
     >
       {event.cover_url && !compact && (
         <Image
@@ -48,72 +48,72 @@ export function EventCard({
       )}
       <View className="px-5 pt-5">
         <View className="flex-row items-center mb-3">
-          <View className="w-9 h-9 rounded-full bg-flame items-center justify-center mr-3">
-            <Ionicons name="sparkles" color="#F5E8D3" size={16} />
+          <View className="w-9 h-9 bg-carbon items-center justify-center mr-3">
+            <Ionicons name="sparkles" color="#F2F1EE" size={16} />
           </View>
-          <Text className="text-xs uppercase tracking-wider text-ink-muted flex-1">
+          <Text className="text-xs uppercase tracking-wider text-carbon-muted flex-1">
             Event
           </Text>
-          <View className={`rounded-full px-2.5 py-0.5 ${
-            event.is_active ? "bg-ink" : "bg-paper-warm"
+          <View className={`px-2.5 py-0.5 ${
+            event.is_active ? "bg-carbon" : "bg-page-alt"
           }`}>
             <Text className={`text-[10px] font-bold uppercase tracking-wider ${
-              event.is_active ? "text-cream" : "text-ink"
+              event.is_active ? "text-page" : "text-carbon"
             }`}>
               {event.is_active ? "Live" : status.split(" ")[0]}
             </Text>
           </View>
         </View>
 
-        <Text className="text-3xl font-bold tracking-tight text-ink mb-1" numberOfLines={2}>
+        <Text className="text-3xl font-bold tracking-tight text-carbon mb-1" numberOfLines={2}>
           {event.name}
         </Text>
 
         {!compact && event.description && (
-          <Text className="text-ink-soft text-sm leading-5 mb-3" numberOfLines={2}>
+          <Text className="text-carbon-soft text-sm leading-5 mb-3" numberOfLines={2}>
             {event.description}
           </Text>
         )}
 
         <View className="flex-row items-center gap-4 mt-2">
           <View className="flex-row items-center">
-            <Ionicons name="time-outline" color="#5A4F40" size={14} />
-            <Text className="text-ink-soft text-xs ml-1.5">{status}</Text>
+            <Ionicons name="time-outline" color="#55534E" size={14} />
+            <Text className="text-carbon-soft text-xs ml-1.5">{status}</Text>
           </View>
           <View className="flex-row items-center">
-            <Ionicons name="people-outline" color="#5A4F40" size={14} />
-            <Text className="text-ink-soft text-xs ml-1.5">
+            <Ionicons name="people-outline" color="#55534E" size={14} />
+            <Text className="text-carbon-soft text-xs ml-1.5">
               {event.members_count} {event.members_count === 1 ? "gast" : "gasten"}
             </Text>
           </View>
           <View className="flex-row items-center">
-            <Ionicons name="images-outline" color="#5A4F40" size={14} />
-            <Text className="text-ink-soft text-xs ml-1.5">
+            <Ionicons name="images-outline" color="#55534E" size={14} />
+            <Text className="text-carbon-soft text-xs ml-1.5">
               {event.contributions_count}
             </Text>
           </View>
         </View>
       </View>
 
-      <View className="bg-paper-soft mt-4 px-5 py-3 flex-row items-center">
+      <View className="bg-page-alt mt-4 px-5 py-3 flex-row items-center">
         <View className="flex-1">
-          <Text className="text-ink-muted text-[10px] uppercase tracking-wider">
+          <Text className="text-carbon-muted text-[10px] uppercase tracking-wider">
             {dateLabel}
           </Text>
-          <Text className="text-ink font-semibold text-sm">{timeLabel}</Text>
+          <Text className="text-carbon font-semibold text-sm">{timeLabel}</Text>
         </View>
         {event.is_host && (
-          <View className="bg-paper-warm rounded-full px-2.5 py-0.5 mr-2">
-            <Text className="text-ink text-[10px] font-bold uppercase tracking-wider">
+          <View className="bg-page-alt px-2.5 py-0.5 mr-2">
+            <Text className="text-carbon text-[10px] font-bold uppercase tracking-wider">
               Host
             </Text>
           </View>
         )}
-        <View className="bg-ink rounded-full px-4 py-2 flex-row items-center">
-          <Text className="text-cream text-xs font-semibold mr-1">
+        <View className="bg-carbon px-4 py-2 flex-row items-center">
+          <Text className="text-page text-xs font-semibold mr-1">
             {event.is_active ? "Open" : event.is_revealed ? "Bekijk" : "Open"}
           </Text>
-          <Ionicons name="arrow-forward" color="#F5E8D3" size={12} />
+          <Ionicons name="arrow-forward" color="#F2F1EE" size={12} />
         </View>
       </View>
     </Pressable>
