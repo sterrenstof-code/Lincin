@@ -145,7 +145,15 @@ export default function FeedScreen() {
       {/* Kop — merk links, één knop rechts. Verder niets. */}
       <View className="bg-page">
         <Sheet>
-          <View className="flex-row items-center justify-between px-6 py-4">
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 24,
+              paddingVertical: 16,
+            }}
+          >
             <Logo />
             <BoxButton
               label="Iets delen"
@@ -295,25 +303,25 @@ function Band({
   wide: boolean;
   children: React.ReactNode;
 }) {
+  const head = kicker ?? (label ? <Meta strong>{label}</Meta> : null);
+
+  // Let op: de richting staat bewust in `style`, niet in een `flex-row`-class.
+  // Een View is in React Native standaard een kolom, dus als NativeWind om
+  // welke reden dan ook niet meedoet (stale CSS na een config-wijziging,
+  // Metro-cache), zou de hele tweekolomsstructuur stilletjes terugvallen op
+  // één kolom. Dit is te belangrijk om van een class af te laten hangen.
   if (wide) {
     return (
-      <View className="flex-row pt-7 pb-9">
-        <View style={{ width: 210 }} className="px-6">
-          {kicker ?? (label ? <Meta strong>{label}</Meta> : null)}
-        </View>
+      <View style={{ flexDirection: "row", paddingTop: 28, paddingBottom: 36 }}>
+        <View style={{ width: 210, paddingHorizontal: 24 }}>{head}</View>
         <View style={{ flex: 1, maxWidth: 780 }}>{children}</View>
       </View>
     );
   }
+
   return (
-    <View className="pt-4 pb-6">
-      {kicker ? (
-        <View className="px-6">{kicker}</View>
-      ) : label ? (
-        <View className="px-6">
-          <Meta strong>{label}</Meta>
-        </View>
-      ) : null}
+    <View style={{ paddingTop: 16, paddingBottom: 24 }}>
+      {head ? <View style={{ paddingHorizontal: 24 }}>{head}</View> : null}
       {children}
     </View>
   );
