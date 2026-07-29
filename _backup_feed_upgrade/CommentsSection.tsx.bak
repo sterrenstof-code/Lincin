@@ -118,7 +118,7 @@ export function CommentsSection({
   }
 
   return (
-    <View className="border-t border-page-alt mt-1">
+    <View className="border-t border-paper mt-1">
       {/* Toggle knop */}
       <Pressable
         onPress={() => {
@@ -129,10 +129,10 @@ export function CommentsSection({
       >
         <Ionicons
           name={open ? "chatbubble" : "chatbubble-outline"}
-          color="#8E8C86"
+          color="#8A7E6C"
           size={14}
         />
-        <Text className="text-carbon-muted text-sm">
+        <Text className="text-ink-muted text-sm">
           {count === 0 ? "Reageer" : count === 1 ? "1 reactie" : `${count} reacties`}
         </Text>
       </Pressable>
@@ -141,7 +141,7 @@ export function CommentsSection({
         <View className="px-3 pb-3">
           {/* Bestaande reacties */}
           {loading ? (
-            <ActivityIndicator size="small" color="#8E8C86" style={{ marginVertical: 8 }} />
+            <ActivityIndicator size="small" color="#8A7E6C" style={{ marginVertical: 8 }} />
           ) : (
             <View className="gap-2 mb-2">
               {comments.map((c) => (
@@ -157,7 +157,7 @@ export function CommentsSection({
                 />
               ))}
               {comments.length === 0 && (
-                <Text className="text-carbon-muted text-xs py-1">
+                <Text className="text-ink-muted text-xs py-1">
                   Nog geen reacties. Wees de eerste!
                 </Text>
               )}
@@ -166,17 +166,17 @@ export function CommentsSection({
 
           {/* @mention suggesties */}
           {mentionList && mentionList.length > 0 && (
-            <View className="bg-page-alt overflow-hidden mb-2">
+            <View className="bg-paper rounded-2xl overflow-hidden mb-2">
               {mentionList.map((m, i) => (
                 <Pressable
                   key={m.username}
                   onPress={() => applyMention(m.username)}
-                  className={`flex-row items-center px-3 py-2 gap-2 ${i < mentionList.length - 1 ? "border-b border-page-alt" : ""}`}
+                  className={`flex-row items-center px-3 py-2 gap-2 ${i < mentionList.length - 1 ? "border-b border-line-paper/40" : ""}`}
                 >
                   <Avatar name={m.display} avatarUrl={m.avatarUrl} size="xs" />
                   <View className="flex-1">
-                    <Text className="text-carbon text-sm font-semibold">{m.display}</Text>
-                    <Text className="text-carbon-muted text-xs">@{m.username}</Text>
+                    <Text className="text-ink text-sm font-semibold">{m.display}</Text>
+                    <Text className="text-ink-muted text-xs">@{m.username}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -193,28 +193,28 @@ export function CommentsSection({
                 value={draft}
                 onChangeText={onChangeText}
                 placeholder="Schrijf een reactie…"
-                placeholderTextColor="#8E8C86"
+                placeholderTextColor="#8A7E6C"
                 multiline
                 maxLength={500}
                 returnKeyType="send"
                 onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
-                className="bg-page-alt px-3 py-2 text-carbon text-sm"
+                className="bg-paper rounded-2xl px-3 py-2 text-ink text-sm"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
               />
             </View>
             <Pressable
               onPress={onSend}
               disabled={!draft.trim() || sending}
-              className={`w-9 h-9 items-center justify-center ${
-                draft.trim() ? "bg-carbon" : "bg-page-alt"
+              className={`w-9 h-9 rounded-full items-center justify-center ${
+                draft.trim() ? "bg-flame" : "bg-paper"
               }`}
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#F2F1EE" />
+                <ActivityIndicator size="small" color="#F5E8D3" />
               ) : (
                 <Ionicons
                   name="arrow-up"
-                  color={draft.trim() ? "#F2F1EE" : "#8E8C86"}
+                  color={draft.trim() ? "#F5E8D3" : "#8A7E6C"}
                   size={16}
                 />
               )}
@@ -246,11 +246,11 @@ function CommentRow({
         avatarUrl={comment.author?.avatar_url ?? null}
         size="xs"
       />
-      <View className="flex-1 bg-page-alt px-3 py-2">
+      <View className="flex-1 bg-paper rounded-2xl rounded-tl-sm px-3 py-2">
         <View className="flex-row items-center justify-between mb-0.5">
-          <Text className="text-carbon text-xs font-semibold">{name}</Text>
+          <Text className="text-ink text-xs font-semibold">{name}</Text>
           <View className="flex-row items-center gap-2">
-            <Text className="text-carbon-muted text-[10px]">{time}</Text>
+            <Text className="text-ink-muted text-[10px]">{time}</Text>
             {isMine && (
               <Pressable onPress={onDelete} hitSlop={8}>
                 <Ionicons name="trash-outline" color="#B23A1C" size={12} />
@@ -258,7 +258,7 @@ function CommentRow({
             )}
           </View>
         </View>
-        <Text className="text-carbon text-sm leading-5">{comment.body}</Text>
+        <Text className="text-ink text-sm leading-5">{comment.body}</Text>
       </View>
     </View>
   );

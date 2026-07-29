@@ -1,0 +1,156 @@
+import { Platform, type TextStyle } from "react-native";
+
+/**
+ * Typografisch systeem — editorial / Zwitsers.
+ *
+ * Geïnspireerd op museumaffiches (Fondation Phi): brutaal schaalcontrast
+ * tussen een hoog-contrast display-serif en piepkleine, wijd gespatieerde
+ * kapitalen. De metadata fluistert, de inhoud schreeuwt. Daartussen zit
+ * bijna niets — dat gat *is* het ontwerp.
+ *
+ * Fonts: voorlopig de platform-serif (Georgia/Times), zodat dit werkt
+ * zonder extra dependency. Voor de echte Didone-look staat hieronder één
+ * plek om te wisselen naar bv. Playfair Display of Bodoni Moda via
+ * expo-font — verander alleen DISPLAY_FAMILY en laad het font in _layout.
+ */
+
+export const DISPLAY_FAMILY = Platform.select({
+  ios: "Georgia",
+  android: "serif",
+  default: "Georgia, 'Times New Roman', Times, serif",
+}) as string;
+
+export const DISPLAY_FAMILY_ITALIC = Platform.select({
+  ios: "Georgia-Italic",
+  android: "serif",
+  default: "Georgia, 'Times New Roman', Times, serif",
+}) as string;
+
+export const SANS_FAMILY = Platform.select({
+  ios: "Helvetica Neue",
+  android: "sans-serif",
+  default: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+}) as string;
+
+/**
+ * `type.x` geeft een kant-en-klare TextStyle. Gebruik dit voor alles wat
+ * met de editorial-laag te maken heeft; NativeWind-classes blijven voor
+ * kleur, spacing en layout.
+ */
+export const type = {
+  /** Het affiche-moment. Eén per scherm, hooguit. */
+  display: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.4,
+    fontWeight: "400",
+  } as TextStyle,
+
+  /** Kop van een vondst: artikeltitel, videotitel. */
+  headline: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 22,
+    lineHeight: 27,
+    letterSpacing: -0.4,
+    fontWeight: "400",
+  } as TextStyle,
+
+  headlineSmall: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    fontWeight: "400",
+  } as TextStyle,
+
+  /** Het citaat zelf — het hart van een fragment. */
+  quote: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 21,
+    lineHeight: 31,
+    letterSpacing: -0.3,
+    fontWeight: "400",
+  } as TextStyle,
+
+  quoteLarge: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 26,
+    lineHeight: 36,
+    letterSpacing: -0.4,
+    fontWeight: "400",
+  } as TextStyle,
+
+  /** Bronvermelding, onderschrift bij beeld. */
+  caption: {
+    fontFamily: DISPLAY_FAMILY_ITALIC,
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: "italic",
+  } as TextStyle,
+
+  /**
+   * De fluistering: 9px kapitalen, wijd gespatieerd. Rubrieklabels,
+   * kolomkoppen, soort-aanduiding. Altijd in hoofdletters zetten via
+   * `toUpperCase()` — niet via CSS, want RN's textTransform is traag.
+   */
+  meta: {
+    fontFamily: SANS_FAMILY,
+    fontSize: 9,
+    lineHeight: 13,
+    letterSpacing: 1.3,
+    fontWeight: "600",
+  } as TextStyle,
+
+  metaLarge: {
+    fontFamily: SANS_FAMILY,
+    fontSize: 10.5,
+    lineHeight: 15,
+    letterSpacing: 1.5,
+    fontWeight: "600",
+  } as TextStyle,
+
+  /** Lopende tekst in de toelichting van de deler. */
+  body: {
+    fontFamily: SANS_FAMILY,
+    fontSize: 14.5,
+    lineHeight: 22,
+    letterSpacing: -0.1,
+  } as TextStyle,
+
+  bodySmall: {
+    fontFamily: SANS_FAMILY,
+    fontSize: 12.5,
+    lineHeight: 18,
+  } as TextStyle,
+
+  /**
+   * Boek-alinea: eerste regel ingesprongen, geen witruimte ertussen.
+   * Zoals de slottekst op het affiche.
+   */
+  proseIndent: {
+    fontFamily: SANS_FAMILY,
+    fontSize: 13.5,
+    lineHeight: 21,
+  } as TextStyle,
+} as const;
+
+/** Kleurwaarden die als *prop* moeten (Ionicons, tintColor) — geen classes. */
+export const ink = {
+  DEFAULT: "#1A1714",
+  soft: "#5A4F40",
+  muted: "#8A7E6C",
+} as const;
+
+export const cream = {
+  DEFAULT: "#F5E8D3",
+  soft: "#C7BBA9",
+  muted: "#8A8275",
+} as const;
+
+export const line = {
+  shell: "#2A2620",
+  paper: "#D8C29B",
+} as const;
+
+export const flame = "#E66B3F";

@@ -3,32 +3,31 @@ import { Platform, type TextStyle } from "react-native";
 /**
  * Typografisch systeem — editorial / Zwitsers.
  *
- * Geïnspireerd op museumaffiches (Fondation Phi): brutaal schaalcontrast
- * tussen een hoog-contrast display-serif en piepkleine, wijd gespatieerde
- * kapitalen. De metadata fluistert, de inhoud schreeuwt. Daartussen zit
- * bijna niets — dat gat *is* het ontwerp.
+ * Naar de affiche-site van Fondation Phi (Yoko Ono, *Liberté Conquérante*):
+ * gebroken wit vlak, zwarte inkt, haarlijnen van rand tot rand, en een
+ * groot schaalverschil tussen een hoog-contrast display-serif en een
+ * neutrale grotesk op labelformaat.
+ *
+ * Twee dingen die het rustiger en moderner maken dan de vorige versie:
+ * de labels staan in **zinsvorm**, niet in kapitalen (de referentie doet
+ * dat ook — "Events", "Featured Content"), en ze zijn 11px in plaats van
+ * 9px. Kapitalen bestaan nog, maar als uitzondering: `<Meta caps>`.
  *
  * ---------------------------------------------------------------
  * FONTS — er wordt bewust géén fontbestand meegeleverd.
  * ---------------------------------------------------------------
- * iOS      Didot. Zit ingebouwd in het systeem, is een échte Didone en
- *          dus precies de referentie. Nul bytes in de bundle.
+ * iOS      Didot. Ingebouwd, een échte Didone, nul bytes in de bundle.
  * Web      Bodoni Moda (display) + Playfair Display (tekst), opgehaald
  *          door de browser via de stylesheet in `app/+html.tsx`.
- * Android  Valt terug op `serif` (Noto Serif). Er is geen Didone op
- *          Android zonder een bestand mee te leveren.
+ * Android  Valt terug op `serif` (Noto Serif).
  *
  * Android gelijktrekken is één commando en één regel:
  *   npx expo install @expo-google-fonts/bodoni-moda expo-font
- * en dan hieronder de `android`-tak naar "BodoniModa_400Regular" wijzen
- * plus het font laden in `app/_layout.tsx`. Verder verandert er niets —
- * alle componenten lezen uitsluitend uit dit bestand.
- *
- * Twee serif-rollen, want een Didone op 44px en op 17px vragen om een
- * andere snit: DISPLAY voor het affiche-moment, SERIF voor leesmaten.
+ * en dan hieronder de `android`-tak omzetten plus het font laden in
+ * `app/_layout.tsx`. Alle componenten lezen uitsluitend uit dit bestand.
  */
 
-/** Alleen voor `type.display` — de grootst mogelijke maat. */
+/** Alleen voor de grootste maten. */
 export const DISPLAY_FAMILY = Platform.select({
   ios: "Didot",
   android: "serif",
@@ -48,40 +47,53 @@ export const SERIF_FAMILY_ITALIC = Platform.select({
   default: "'Playfair Display', Didot, Georgia, 'Times New Roman', serif",
 }) as string;
 
+/** Neutrale grotesk voor alles wat geen inhoud is. */
 export const SANS_FAMILY = Platform.select({
   ios: "Helvetica Neue",
   android: "sans-serif",
   default: "'Helvetica Neue', Helvetica, Arial, sans-serif",
 }) as string;
 
-/**
- * `type.x` geeft een kant-en-klare TextStyle. Gebruik dit voor alles wat
- * met de editorial-laag te maken heeft; NativeWind-classes blijven voor
- * kleur, spacing en layout.
- */
 export const type = {
-  /** Het affiche-moment. Eén per scherm, hooguit. */
+  /** Het affiche-moment. Zeldzaam. */
   display: {
     fontFamily: DISPLAY_FAMILY,
-    fontSize: 44,
-    lineHeight: 48,
-    letterSpacing: -1.2,
+    fontSize: 46,
+    lineHeight: 50,
+    letterSpacing: -1.4,
     fontWeight: "400",
   } as TextStyle,
 
-  /** Kop van een vondst: artikeltitel, videotitel. */
+  /** Wordmark in de kop. */
+  wordmark: {
+    fontFamily: DISPLAY_FAMILY,
+    fontSize: 21,
+    lineHeight: 25,
+    letterSpacing: -0.3,
+    fontWeight: "400",
+  } as TextStyle,
+
+  /** Kop van een vondst. Op desktop een maat groter, zie `headlineWide`. */
   headline: {
     fontFamily: SERIF_FAMILY,
     fontSize: 22,
-    lineHeight: 28,
+    lineHeight: 29,
     letterSpacing: -0.3,
+    fontWeight: "400",
+  } as TextStyle,
+
+  headlineWide: {
+    fontFamily: SERIF_FAMILY,
+    fontSize: 27,
+    lineHeight: 34,
+    letterSpacing: -0.4,
     fontWeight: "400",
   } as TextStyle,
 
   headlineSmall: {
     fontFamily: SERIF_FAMILY,
     fontSize: 17,
-    lineHeight: 23,
+    lineHeight: 24,
     letterSpacing: -0.1,
     fontWeight: "400",
   } as TextStyle,
@@ -90,15 +102,15 @@ export const type = {
   quote: {
     fontFamily: SERIF_FAMILY,
     fontSize: 21,
-    lineHeight: 32,
+    lineHeight: 33,
     letterSpacing: -0.2,
     fontWeight: "400",
   } as TextStyle,
 
   quoteLarge: {
     fontFamily: SERIF_FAMILY,
-    fontSize: 26,
-    lineHeight: 37,
+    fontSize: 27,
+    lineHeight: 40,
     letterSpacing: -0.3,
     fontWeight: "400",
   } as TextStyle,
@@ -106,58 +118,73 @@ export const type = {
   /** Bronvermelding, onderschrift bij beeld. */
   caption: {
     fontFamily: SERIF_FAMILY_ITALIC,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 13.5,
+    lineHeight: 20,
     fontStyle: "italic",
   } as TextStyle,
 
   /**
-   * De fluistering: 9px kapitalen, wijd gespatieerd. Rubrieklabels,
-   * kolomkoppen, soort-aanduiding. Altijd in hoofdletters zetten via
-   * `toUpperCase()` — niet via CSS, want RN's textTransform is traag.
+   * De labellaag. Zinsvorm, 11px, nauwelijks gespatieerd — rustiger en
+   * beter leesbaar dan de kapitalen van de vorige versie.
    */
   meta: {
     fontFamily: SANS_FAMILY,
-    fontSize: 9,
-    lineHeight: 13,
-    letterSpacing: 1.3,
-    fontWeight: "600",
+    fontSize: 11,
+    lineHeight: 16,
+    letterSpacing: 0.1,
+    fontWeight: "500",
   } as TextStyle,
 
-  metaLarge: {
+  /** Kapitalen als uitzondering: rubrieken die echt moeten opvallen. */
+  metaCaps: {
     fontFamily: SANS_FAMILY,
-    fontSize: 10.5,
-    lineHeight: 15,
-    letterSpacing: 1.5,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1.4,
     fontWeight: "600",
   } as TextStyle,
 
-  /** Lopende tekst in de toelichting van de deler. */
+  /** Lopende tekst: de toelichting van de deler. */
   body: {
     fontFamily: SANS_FAMILY,
-    fontSize: 14.5,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
     letterSpacing: -0.1,
   } as TextStyle,
 
   bodySmall: {
     fontFamily: SANS_FAMILY,
-    fontSize: 12.5,
-    lineHeight: 18,
-  } as TextStyle,
-
-  /**
-   * Boek-alinea: eerste regel ingesprongen, geen witruimte ertussen.
-   * Zoals de slottekst op het affiche.
-   */
-  proseIndent: {
-    fontFamily: SANS_FAMILY,
-    fontSize: 13.5,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 20,
   } as TextStyle,
 } as const;
 
-/** Kleurwaarden die als *prop* moeten (Ionicons, tintColor) — geen classes. */
+// ---------------------------------------------------------------
+// Kleurwaarden die als *prop* moeten (Ionicons, tintColor, borderColor
+// in een style-object). Voor achtergronden gebruik je de Tailwind-tokens.
+// ---------------------------------------------------------------
+
+/** Het editorial-palet — feed en composer. */
+export const carbon = {
+  DEFAULT: "#12110F",
+  soft: "#55534E",
+  muted: "#8E8C86",
+} as const;
+
+export const page = {
+  DEFAULT: "#F2F1EE",
+  alt: "#E9E8E4",
+  sheet: "#FFFFFF",
+} as const;
+
+/** Twee lijngewichten: zwart voor rubrieken, grijs tussen rijen. */
+export const rule = {
+  strong: "#12110F",
+  soft: "#CFCDC7",
+  onDark: "#3A3936",
+} as const;
+
+/** Het oudere warme palet — nog in gebruik door de niet-gemigreerde schermen. */
 export const ink = {
   DEFAULT: "#1A1714",
   soft: "#5A4F40",
@@ -176,3 +203,6 @@ export const line = {
 } as const;
 
 export const flame = "#E66B3F";
+
+/** Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat. */
+export const WIDE_BREAKPOINT = 900;

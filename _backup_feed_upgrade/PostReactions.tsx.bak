@@ -64,12 +64,12 @@ export function PostReactions({ postId }: { postId: string }) {
           <Pressable
             key={g.emoji}
             onPress={() => handleReaction(g.emoji)}
-            className={`flex-row items-center gap-1 px-2.5 py-1 border ${
-              g.mine ? "bg-transparent border-carbon" : "bg-page-alt border-page-alt"
+            className={`flex-row items-center gap-1 px-2.5 py-1 rounded-full border ${
+              g.mine ? "bg-flame/10 border-flame/30" : "bg-paper border-paper"
             }`}
           >
             <Text style={{ fontSize: 13 }}>{g.emoji}</Text>
-            <Text className={`text-xs font-semibold ${g.mine ? "text-carbon" : "text-carbon-muted"}`}>
+            <Text className={`text-xs font-semibold ${g.mine ? "text-flame" : "text-ink-muted"}`}>
               {g.count}
             </Text>
           </Pressable>
@@ -78,16 +78,16 @@ export function PostReactions({ postId }: { postId: string }) {
         {/* Add reaction button */}
         <Pressable
           onPress={() => setPickerOpen((p) => !p)}
-          className="flex-row items-center gap-1 px-2.5 py-1 border border-page-alt bg-page-alt"
+          className="flex-row items-center gap-1 px-2.5 py-1 rounded-full border border-paper bg-paper"
         >
           <Text style={{ fontSize: 13 }}>😊</Text>
-          <Text className="text-carbon-muted text-xs font-semibold">+</Text>
+          <Text className="text-ink-muted text-xs font-semibold">+</Text>
         </Pressable>
       </View>
 
       {/* Emoji picker */}
       {pickerOpen && (
-        <View className="flex-row flex-wrap gap-2 mt-2 bg-page-alt px-3 py-2">
+        <View className="flex-row flex-wrap gap-2 mt-2 bg-paper rounded-2xl px-3 py-2">
           {QUICK_REACTIONS.map((emoji) => (
             <Pressable key={emoji} onPress={() => handleReaction(emoji)} className="p-1">
               <Text style={{ fontSize: 22 }}>{emoji}</Text>

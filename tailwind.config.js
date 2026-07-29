@@ -9,46 +9,62 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ---- Shell (dark outer background) ----
+        // =========================================================
+        // EDITORIAL NEUTRALS — de Fondation Phi / Yoko Ono palet.
+        // Gebroken wit, zwarte inkt, zwarte haarlijnen. Dit is het
+        // palet van de feed en de composer.
+        // =========================================================
+        page: {
+          DEFAULT: "#F2F1EE", // gebroken wit — de pagina zelf
+          alt: "#E9E8E4",     // lichtgrijze band, voor afwisseling
+        },
+        sheet: "#FFFFFF",     // zuiver wit vlak, voor beeldkaders
+        carbon: {
+          DEFAULT: "#12110F", // bijna-zwart — tekst, voetbalk, gevulde knop
+          soft: "#55534E",    // secundaire tekst
+          muted: "#8E8C86",   // labels, metadata
+        },
+
+        // =========================================================
+        // SHELL / PAPER — het oudere warme systeem. Nog in gebruik
+        // door chats, vrienden, profiel, events en auth. Zie
+        // DESIGN.md §10 voor de migratievolgorde.
+        // =========================================================
         shell: {
           DEFAULT: "#0A0A0B",
           soft: "#15141A",
         },
-        // ---- Paper (warm content surfaces) ----
         paper: {
-          DEFAULT: "#F0D5B0", // peach (primary card)
-          soft: "#EFE2CD",     // cream (subtle card)
-          warm: "#D4C4A8",     // sand (group / sidebar)
-          light: "#F5EFE2",    // ivory (body-text panel)
+          DEFAULT: "#F0D5B0",
+          soft: "#EFE2CD",
+          warm: "#D4C4A8",
+          light: "#F5EFE2",
         },
-        // ---- Ink (text on paper) ----
         ink: {
           DEFAULT: "#1A1714",
           soft: "#5A4F40",
           muted: "#8A7E6C",
         },
-        // ---- Cream (text on shell) ----
         cream: {
           DEFAULT: "#F5E8D3",
           soft: "#C7BBA9",
           muted: "#8A8275",
         },
-        // ---- Brand & accents ----
-        brand: "#5B8DEF",   // Lincin blue — logo / e2e badge only
-        flame: "#E66B3F",   // warm orange — highlight CTA card
-        // ---- Lines ----
+        brand: "#5B8DEF",   // Lincin-blauw — logo / e2e-badge only
+        flame: "#E66B3F",   // warm oranje — hooguit één accent per scherm
         line: {
-          DEFAULT: "#2A2620",  // borders on shell
-          paper: "#D8C29B",    // borders on paper
+          DEFAULT: "#2A2620",
+          paper: "#D8C29B",
         },
-        // ---- Legacy aliases (kept for backwards compat) ----
+
+        // ---- Legacy aliases (uitfaseren) ----
         bg: {
           DEFAULT: "#0A0A0B",
           soft: "#15141A",
-          card: "#EFE2CD", // legacy "bg-card" now maps to paper-soft
+          card: "#EFE2CD",
         },
         accent: {
-          DEFAULT: "#1A1714",  // primary CTA = ink
+          DEFAULT: "#1A1714",
           soft: "#2A2620",
         },
         muted: "#8A7E6C",

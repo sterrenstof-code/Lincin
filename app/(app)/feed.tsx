@@ -23,21 +23,22 @@ import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import {
-  Arrow,
+  BoxButton,
   Kicker,
-  Masthead,
+  Logo,
   Meta,
   Rule,
   SectionHead,
+  Sheet,
+  useWide,
 } from "@/components/Editorial";
 import { FindBody } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
-import { ScreenContainer } from "@/components/ScreenContainer";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
-import { ink, type } from "@/lib/design/type";
+import { carbon, page, type } from "@/lib/design/type";
 import {
   collectTags,
   deletePost,
@@ -49,15 +50,18 @@ import {
 } from "@/lib/api/posts";
 
 /**
- * De feed als *gedrukte pagina*.
+ * De feed als gedrukte pagina.
  *
- * Geen zwevende kaartjes met tussenruimte, maar banden die van rand tot rand
- * lopen en gescheiden worden door haarlijnen — de structuur van een affiche.
- * Kolomkoppen in 9px-kapitalen dragen de inhoud eronder; de inhoud zelf staat
- * in een display-serif. Dat schaalcontrast is het hele ontwerp.
+ * Bovenaan staat alleen het merk en één knop. Geen scherm-titel, geen
+ * ondertitel, geen kolommenkop — de inhoud is de titel. Daaronder banden
+ * die van rand tot rand lopen, gescheiden door haarlijnen.
  *
- * Wat hier bewust NIET staat: een algoritme, een bereikteller, oneindig
- * scrollen. De feed heeft een einde, en dat einde zegt dat je bij bent.
+ * Op desktop klapt elke band open naar de tweekolomsstructuur van het
+ * affiche: etiket links, inhoud rechts. Op telefoon staat het etiket
+ * gewoon boven de inhoud.
+ *
+ * Wat hier bewust niet staat: een algoritme, een bereikteller, oneindig
+ * scrollen. De pagina eindigt, en dat einde is een zwarte voet.
  */
 
 type Section = "vandaag" | "week" | "eerder";
@@ -69,14 +73,12 @@ const SECTION_LABELS: Record<Section, string> = {
 };
 
 function sectionOf(iso: string): Section {
-  const then = new Date(iso).getTime();
-  const age = Date.now() - then;
+  const age = Date.now() - new Date(iso).getTime();
   if (age < 24 * 60 * 60 * 1000) return "vandaag";
   if (age < 7 * 24 * 60 * 60 * 1000) return "week";
   return "eerder";
 }
 
-/** Rij + eventueel de rubriekkop die eraan voorafgaat. */
 type Row = { item: FeedItem; section: Section | null };
 
 export default function FeedScreen() {
@@ -84,6 +86,7 @@ export default function FeedScreen() {
   const myUserId = session!.user.id;
   const router = useRouter();
   const qc = useQueryClient();
+  const wide = useWide();
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const feed = useQuery({
@@ -100,11 +103,6 @@ export default function FeedScreen() {
 
   const tags = useMemo(() => collectTags(feed.data ?? []).slice(0, 12), [feed.data]);
 
-  /**
-   * Filteren en rubriceren in één pass. De rubriekkop hangt aan de eerste
-   * rij van elke periode, zodat de FlatList plat blijft (geen SectionList —
-   * die breekt de volle-breedte banden).
-   */
   const rows = useMemo<Row[]>(() => {
     let items = feed.data ?? [];
     if (activeTag) {
@@ -132,36 +130,39 @@ export default function FeedScreen() {
     qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
   }, [qc, myUserId]);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
-  }, []);
-
   const renderItem = useCallback(
     ({ item: row }: { item: Row }) => (
       <View>
-        {row.section ? (
-          <SectionHead label={SECTION_LABELS[row.section]} tone="paper" />
-        ) : (
-          <Rule tone="paper" />
-        )}
-        <FeedRow item={row.item} myUserId={myUserId} onChanged={invalidate} />
+        {row.section ? <SectionHead label={SECTION_LABELS[row.section]} /> : <Rule />}
+        <FeedRow item={row.item} myUserId={myUserId} onChanged={invalidate} wide={wide} />
       </View>
     ),
-    [myUserId, invalidate]
+    [myUserId, invalidate, wide]
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
-      {/* De feed is een papieren kolom op de donkere schil. Op breed scherm
-          blijft de goot donker — dat maakt van de kolom een pagina. */}
-      <ScreenContainer className="bg-paper-light">
+    <SafeAreaView className="flex-1 bg-page" edges={["top"]}>
+      {/* Kop — merk links, één knop rechts. Verder niets. */}
+      <View className="bg-page">
+        <Sheet>
+          <View className="flex-row items-center justify-between px-6 py-4">
+            <Logo />
+            <BoxButton
+              label="Iets delen"
+              filled
+              onPress={() => router.push("/post-compose")}
+            />
+          </View>
+        </Sheet>
+        <Rule strong />
+      </View>
+
+      <Sheet flex>
         <FlatList
           data={rows}
           keyExtractor={(row) => row.item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 72 }}
+          contentContainerStyle={{ paddingBottom: 0 }}
           removeClippedSubviews
           maxToRenderPerBatch={4}
           windowSize={5}
@@ -170,114 +171,48 @@ export default function FeedScreen() {
             <RefreshControl
               refreshing={feed.isFetching && !feed.isLoading}
               onRefresh={onRefresh}
-              tintColor={ink.muted}
+              tintColor={carbon.muted}
             />
           }
           ListHeaderComponent={
-            <View>
-              <Masthead
-                tone="paper"
-                columns={[
-                  { label: "Lincin", value: "Vondsten" },
-                  { label: "Van je kring", value: "Niet van een algoritme" },
-                  { label: today },
-                  { label: "Privé" },
-                ]}
-              />
-
-              {/* Het affiche-moment: één keer groot, daarna nooit meer */}
-              <View className="px-5 pt-7 pb-5">
-                <Text style={[type.display, { color: ink.DEFAULT }]}>Vondsten</Text>
-                <Text style={[type.body, { color: ink.soft, marginTop: 10 }]}>
-                  Wat je vrienden tegenkwamen en de moeite waard vonden om mee
-                  terug te brengen.
-                </Text>
-              </View>
-
-              <Rule tone="paper" strong />
-
-              {/* Delen — een regel, geen invoerveld */}
-              <Pressable
-                onPress={() => router.push("/post-compose")}
-                className="flex-row items-center px-5 py-4 active:bg-paper-warm"
-              >
-                <View className="flex-1 pr-4">
-                  <Text style={[type.headlineSmall, { color: ink.DEFAULT }]}>
-                    Deel een vondst
-                  </Text>
-                  <View className="mt-1">
-                    <Meta tone="paper" dim>
-                      Link · Video · Muziek · Fragment · Weetje · Idee
-                    </Meta>
-                  </View>
-                </View>
-                <Arrow tone="paper" />
-              </Pressable>
-              <Rule tone="paper" />
-
-              {/* Nevenwegen — klein gezet, want ze zijn niet de hoofdzaak */}
-              <View className="flex-row px-5 py-3">
-                {[
-                  { label: "Poll", route: "/poll-compose" },
-                  { label: "Call", route: "/call-plan-compose" },
-                  { label: "Lijst", route: "/list-compose" },
-                ].map((s, i) => (
-                  <Pressable
-                    key={s.route}
-                    onPress={() => router.push(s.route as any)}
-                    className="flex-row items-center"
-                  >
-                    {i > 0 && (
-                      <Meta tone="paper" dim style={{ marginHorizontal: 8 }}>
-                        /
-                      </Meta>
-                    )}
-                    <Meta tone="paper">{s.label}</Meta>
-                  </Pressable>
-                ))}
-              </View>
-              <Rule tone="paper" />
-
-              {tags.length > 0 && (
-                <View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 11 }}
-                  >
+            tags.length > 0 ? (
+              <View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 13 }}
+                >
+                  <TagChip
+                    label="Alles"
+                    active={activeTag === null}
+                    onPress={() => setActiveTag(null)}
+                  />
+                  {tags.map((t) => (
                     <TagChip
-                      label="Alles"
-                      active={activeTag === null}
-                      onPress={() => setActiveTag(null)}
+                      key={t}
+                      label={t}
+                      active={activeTag === t}
+                      onPress={() => setActiveTag(activeTag === t ? null : t)}
                     />
-                    {tags.map((t) => (
-                      <TagChip
-                        key={t}
-                        label={t}
-                        active={activeTag === t}
-                        onPress={() => setActiveTag(activeTag === t ? null : t)}
-                      />
-                    ))}
-                  </ScrollView>
-                  <Rule tone="paper" />
-                </View>
-              )}
-            </View>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             feed.isLoading ? (
-              <View className="items-center py-16">
-                <ActivityIndicator color={ink.muted} />
+              <View className="items-center py-24">
+                <ActivityIndicator color={carbon.muted} />
               </View>
             ) : (
-              <View className="px-5 py-14">
-                <Text style={[type.headline, { color: ink.DEFAULT }]}>
-                  {activeTag ? "Niks onder deze tag." : "Nog niets gevonden."}
+              <View className="px-6 py-20">
+                <Text style={[type.headline, { color: carbon.DEFAULT }]}>
+                  {activeTag ? "Niets onder deze tag." : "Nog niets gedeeld."}
                 </Text>
-                <Text style={[type.body, { color: ink.soft, marginTop: 8 }]}>
+                <Text style={[type.body, { color: carbon.soft, marginTop: 10, maxWidth: 460 }]}>
                   {activeTag
                     ? "Probeer een andere tag, of deel zelf de eerste."
-                    : "Plak een link, tik een citaat over uit wat je aan het lezen bent, of voeg vrienden toe."}
+                    : "Plak een link, tik een zin over uit wat je aan het lezen bent, of voeg vrienden toe."}
                 </Text>
               </View>
             )
@@ -285,45 +220,46 @@ export default function FeedScreen() {
           ListFooterComponent={
             rows.length > 0 ? (
               <View>
-                <Rule tone="paper" strong />
-                <View className="items-center px-5 py-10">
-                  <Text style={[type.headlineSmall, { color: ink.DEFAULT }]}>
-                    Je bent bij.
-                  </Text>
-                  <Text
-                    style={[type.bodySmall, { color: ink.muted, marginTop: 6, textAlign: "center" }]}
-                  >
-                    Geen oneindige stroom. Kom straks terug — of deel zelf iets.
-                  </Text>
+                <Rule strong />
+                {/* De zwarte voet — de pagina houdt op. */}
+                <View className="bg-carbon px-6 py-14 items-center">
+                  <Text style={[type.headline, { color: page.DEFAULT }]}>Je bent bij.</Text>
+                  <View className="mt-3 max-w-[380px]">
+                    <Meta tone="dark" dim style={{ textAlign: "center" }}>
+                      Geen oneindige stroom. Kom straks terug, of deel zelf iets.
+                    </Meta>
+                  </View>
                 </View>
               </View>
             ) : null
           }
         />
-      </ScreenContainer>
+      </Sheet>
     </SafeAreaView>
   );
 }
 
 // ---------------------------------------------------------------
-// Eén rij
+// Eén band
 // ---------------------------------------------------------------
 
 const FeedRow = memo(function FeedRow({
   item,
   myUserId,
   onChanged,
+  wide,
 }: {
   item: FeedItem;
   myUserId: string;
   onChanged: () => void;
+  wide: boolean;
 }) {
   if (item.type === "post") {
-    return <FindRow post={item.data} myUserId={myUserId} onChanged={onChanged} />;
+    return (
+      <FindRow post={item.data} myUserId={myUserId} onChanged={onChanged} wide={wide} />
+    );
   }
 
-  // De overige types houden voorlopig hun eigen kaart; ze krijgen wel de
-  // kicker-regel en de inspringing, zodat het ritme klopt.
   const label =
     item.type === "poll" ? "Poll"
     : item.type === "call_plan" ? "Call"
@@ -332,29 +268,67 @@ const FeedRow = memo(function FeedRow({
     : "Activiteit";
 
   return (
-    <View className="pt-3.5 pb-4">
-      <View className="px-5 pb-2.5">
-        <Kicker tone="paper" parts={[label]} />
-      </View>
-      <View className="px-5">
+    <Band label={label} wide={wide}>
+      <View className="px-6">
         {item.type === "poll" && <PollCard poll={item.data} onDeleted={onChanged} />}
         {item.type === "call_plan" && <CallPlanCard plan={item.data} />}
         {item.type === "shared_list" && <SharedListCard list={item.data} />}
         {item.type === "activity" && <ActivityCard event={item.data} />}
         {item.type === "memory" && <MemoryCard post={item.data} />}
       </View>
-    </View>
+    </Band>
   );
 });
+
+/**
+ * De tweekolomsstructuur van het affiche: etiket links, inhoud rechts.
+ * Op telefoon vouwt dat samen tot etiket-boven-inhoud.
+ */
+function Band({
+  label,
+  kicker,
+  wide,
+  children,
+}: {
+  label?: string;
+  kicker?: React.ReactNode;
+  wide: boolean;
+  children: React.ReactNode;
+}) {
+  if (wide) {
+    return (
+      <View className="flex-row pt-7 pb-9">
+        <View style={{ width: 210 }} className="px-6">
+          {kicker ?? (label ? <Meta strong>{label}</Meta> : null)}
+        </View>
+        <View style={{ flex: 1, maxWidth: 780 }}>{children}</View>
+      </View>
+    );
+  }
+  return (
+    <View className="pt-4 pb-6">
+      {kicker ? (
+        <View className="px-6">{kicker}</View>
+      ) : label ? (
+        <View className="px-6">
+          <Meta strong>{label}</Meta>
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
 
 const FindRow = memo(function FindRow({
   post,
   myUserId,
   onChanged,
+  wide,
 }: {
   post: PostWithAuthor;
   myUserId: string;
   onChanged: () => void;
+  wide: boolean;
 }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -366,29 +340,26 @@ const FindRow = memo(function FindRow({
   const authorName = post.author?.display_name ?? post.author?.username ?? "Onbekend";
   const kindLabel = KIND_LABELS[post.kind] ?? "Notitie";
 
-  return (
-    <View className="pt-3.5 pb-4">
-      <View className="px-5">
-        <Kicker
-          tone="paper"
-          parts={[kindLabel, authorName, formatPostTime(post.created_at)]}
-          right={
-            isMine ? (
-              <Pressable
-                onPress={() => setMenuOpen(true)}
-                hitSlop={10}
-                className="pl-3 -mr-1"
-              >
-                <Ionicons name="ellipsis-horizontal" color={ink.muted} size={16} />
-              </Pressable>
-            ) : undefined
-          }
-        />
-      </View>
+  const menuButton = isMine ? (
+    <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} className={wide ? "" : "pl-3 -mr-1"}>
+      <Ionicons name="ellipsis-horizontal" color={carbon.muted} size={16} />
+    </Pressable>
+  ) : undefined;
 
+  return (
+    <Band
+      wide={wide}
+      kicker={
+        <Kicker
+          stacked={wide}
+          parts={[kindLabel, authorName, formatPostTime(post.created_at)]}
+          right={menuButton}
+        />
+      }
+    >
       <FindBody post={post} onPress={() => router.push(`/post/${post.id}`)} />
 
-      <View className="pt-3">
+      <View className="pt-4">
         <PostReactions postId={post.id} />
       </View>
 
@@ -436,36 +407,37 @@ const FindRow = memo(function FindRow({
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1, backgroundColor: "rgba(10,10,11,0.6)", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: "rgba(18,17,15,0.55)", justifyContent: "flex-end" }}
         >
-          <View className="bg-paper-light px-5 pt-5 pb-8">
+          <View className="bg-page px-6 pt-6 pb-9">
             <View className="flex-row items-center mb-4">
               <View className="flex-1">
-                <Meta tone="paper">Toelichting bewerken</Meta>
+                <Meta strong>Toelichting bewerken</Meta>
               </View>
               <Pressable onPress={() => setEditOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color={ink.muted} size={22} />
+                <Ionicons name="close" color={carbon.DEFAULT} size={22} />
               </Pressable>
             </View>
             <TextInput
               value={editCaption}
               onChangeText={setEditCaption}
               placeholder="Schrijf iets…"
-              placeholderTextColor={ink.muted}
+              placeholderTextColor={carbon.muted}
               multiline
               autoFocus
               maxLength={1000}
               style={[
                 type.body,
                 {
-                  color: ink.DEFAULT,
-                  minHeight: 90,
-                  maxHeight: 180,
+                  color: carbon.DEFAULT,
+                  minHeight: 96,
+                  maxHeight: 190,
                   borderWidth: StyleSheet.hairlineWidth,
-                  borderColor: ink.muted,
+                  borderColor: carbon.muted,
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                 },
+                Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
               ]}
             />
             <Pressable
@@ -482,14 +454,14 @@ const FindRow = memo(function FindRow({
                 }
               }}
               disabled={saving}
-              className="mt-4 bg-ink active:bg-ink-soft py-3.5 items-center"
+              className="mt-4 bg-carbon active:bg-carbon-soft py-4 items-center"
             >
-              <Meta tone="shell">{saving ? "Bewaren…" : "Bewaren"}</Meta>
+              <Meta tone="dark" strong>{saving ? "Bewaren…" : "Bewaren"}</Meta>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </Band>
   );
 });
 
@@ -509,15 +481,15 @@ function TagChip({
       onPress={onPress}
       style={{
         borderWidth: StyleSheet.hairlineWidth,
-        borderColor: active ? ink.DEFAULT : ink.muted,
-        backgroundColor: active ? ink.DEFAULT : "transparent",
-        marginRight: 7,
+        borderColor: active ? carbon.DEFAULT : "#CFCDC7",
+        backgroundColor: active ? carbon.DEFAULT : "transparent",
+        marginRight: 8,
       }}
-      className="px-3 py-1.5"
+      className="px-3.5 py-2"
     >
-      <Meta tone={active ? "shell" : "paper"} dim={!active}>
+      <Text style={[type.meta, { color: active ? page.DEFAULT : carbon.soft }]}>
         {label}
-      </Meta>
+      </Text>
     </Pressable>
   );
 }
