@@ -54,6 +54,185 @@ export const SANS_FAMILY = Platform.select({
   default: "'Helvetica Neue', Helvetica, Arial, sans-serif",
 }) as string;
 
+// ===============================================================
+// FEED V3 — het lavendel/plum-systeem. ALLEEN het feed-scherm.
+//
+// Dit blok staat náást het serif-systeem hierboven, dat overal
+// elders in de app live blijft. De feed is bewust sans-only: ook
+// de brontitel krijgt hier géén serif. Dat is een afwijking van
+// DESIGN.md §1.4, en die afwijking stopt bij de feed.
+// ===============================================================
+
+/**
+ * Inter — de grotesk van het feed-systeem.
+ *
+ * Er wordt bewust géén fontbestand meegeleverd, exact zoals bij de
+ * serifs hierboven:
+ *   Web      Inter 400–900, opgehaald via de stylesheet in `app/+html.tsx`.
+ *   iOS      San Francisco. Een neutrale grotesk met vrijwel dezelfde
+ *            proporties als Inter (Inter is er letterlijk op gebaseerd),
+ *            nul bytes in de bundle.
+ *   Android  Roboto.
+ *
+ * Écht Inter op native is één commando en één regel:
+ *   npx expo install @expo-google-fonts/inter
+ * daarna hieronder de ios/android-takken op "Inter_400Regular" e.d.
+ * zetten en de snitten laden in `app/_layout.tsx`. Dat kost ~6 snitten
+ * in de native bundle — vandaar dat het niet de standaard is.
+ */
+export const INTER_FAMILY = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default: "Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+}) as string;
+
+/**
+ * Kaderdikte van het hele feed-systeem. Geen haarlijn: dit ontwerp
+ * leest als een gedrukt raster met échte kaders, niet als de
+ * rand-tot-rand haarlijnen van het affiche-systeem.
+ */
+export const FEED_BORDER = 1.5;
+
+export const feedType = {
+  /** Kop van de hero-post. */
+  hero: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 44,
+    lineHeight: 47,
+    letterSpacing: -1.6,
+    fontWeight: "800",
+  } as TextStyle,
+
+  heroSmall: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 30,
+    lineHeight: 33,
+    letterSpacing: -1,
+    fontWeight: "800",
+  } as TextStyle,
+
+  /** De tagline-kop in rij C van de gekaderde kop. */
+  tagline: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.3,
+    fontWeight: "700",
+  } as TextStyle,
+
+  taglineSmall: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 18,
+    lineHeight: 23,
+    letterSpacing: -0.2,
+    fontWeight: "700",
+  } as TextStyle,
+
+  /** De grote kapitalenkop van de cover-band. */
+  cover: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 34,
+    lineHeight: 36,
+    letterSpacing: -1.1,
+    fontWeight: "800",
+  } as TextStyle,
+
+  coverSmall: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 24,
+    lineHeight: 26,
+    letterSpacing: -0.8,
+    fontWeight: "800",
+  } as TextStyle,
+
+  /** Kop binnen een tegel. */
+  tile: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 17,
+    lineHeight: 21,
+    letterSpacing: -0.4,
+    fontWeight: "700",
+  } as TextStyle,
+
+  /** Het citaat in de brede quote-band. */
+  pull: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: -0.7,
+    fontWeight: "500",
+  } as TextStyle,
+
+  pullSmall: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 19,
+    lineHeight: 26,
+    letterSpacing: -0.4,
+    fontWeight: "500",
+  } as TextStyle,
+
+  /** Het grote cijfer van de stat-tegel. */
+  numeral: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 52,
+    lineHeight: 54,
+    letterSpacing: -2.4,
+    fontWeight: "800",
+  } as TextStyle,
+
+  /** De (06)-index naast een cover-kop. */
+  index: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 15,
+    lineHeight: 18,
+    letterSpacing: -0.2,
+    fontWeight: "500",
+  } as TextStyle,
+
+  /** Kicker boven een kop — klein, kapitaal, in flame-deep. */
+  kicker: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1.5,
+    fontWeight: "700",
+  } as TextStyle,
+
+  /** De labellaag: tabs, metadata, knoplabels. */
+  label: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 0.2,
+    fontWeight: "600",
+  } as TextStyle,
+
+  /** Nog kleiner: de micro-utilityregel bovenaan de kop. */
+  micro: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.3,
+    fontWeight: "500",
+  } as TextStyle,
+
+  /** Lopende tekst in een tegel of onder een kop. */
+  body: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 13.5,
+    lineHeight: 20,
+    letterSpacing: -0.1,
+    fontWeight: "400",
+  } as TextStyle,
+
+  caption: {
+    fontFamily: INTER_FAMILY,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: "400",
+  } as TextStyle,
+} as const;
+
 export const type = {
   /** Het affiche-moment. Zeldzaam. */
   display: {
@@ -204,5 +383,42 @@ export const line = {
 
 export const flame = "#E66B3F";
 
+/** Klein-tekst-veilige variant van flame: kickers, categoriekleur. */
+export const flameDeep = "#C4491F";
+
 /** Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat. */
 export const WIDE_BREAKPOINT = 900;
+
+// ---------------------------------------------------------------
+// FEED V3 — kleurwaarden die als *prop* moeten. Voor achtergronden
+// gebruik je de `feed-*` Tailwind-tokens.
+// ---------------------------------------------------------------
+
+export const feed = {
+  /** Paginavlak van de feed. */
+  lav: "#CDBEE3",
+  /** Tekst én kaders. Kaders altijd op FEED_BORDER (1.5px). */
+  ink: "#0B0A0C",
+  /** Secundaire tekst op `lav` — inkt op 58%. */
+  inkDim: "rgba(11,10,12,0.58)",
+  /** Enkel het zijbalk-paneel. Nadrukkelijk NIET voor posts. */
+  panel: "#EFE9F5",
+  /** Élk post-oppervlak: cover-band, tegels, quote-band. */
+  post: "#2E2138",
+  /** Primaire tekst op `post`. */
+  text: "#F3EDE4",
+  /** Bijschrift/metadata op `post`. */
+  textDim: "rgba(243,237,228,0.62)",
+  /** Lijn binnen een post-oppervlak — licht, want op donker. */
+  postRule: "rgba(243,237,228,0.22)",
+  /** Secundaire accenten, opgehelderd zodat ze op `post` overeind blijven. */
+  teal: "#4FBDB0",
+  gold: "#E3A84B",
+} as const;
+
+/**
+ * Breekpunt waarop de feed van twee kolommen (zijbalk + hoofdkolom)
+ * naar één gestapelde kolom valt. Lager dan `WIDE_BREAKPOINT`, want
+ * de zijbalk is smal genoeg om al vanaf 800px naast de inhoud te passen.
+ */
+export const FEED_BREAKPOINT = 800;

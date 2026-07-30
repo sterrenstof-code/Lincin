@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+
+import { carbon, feed, page } from "@/lib/design/type";
+import type { Tone } from "@/components/Editorial";
 import {
   QUICK_REACTIONS,
   groupPostReactions,
@@ -10,7 +13,43 @@ import {
 } from "@/lib/api/post-reactions";
 import { supabase } from "@/lib/supabase/client";
 
-export function PostReactions({ postId }: { postId: string }) {
+/**
+ * Reactiepillen onder een vondst.
+ *
+ * `tone` bepaalt op welk vlak dit staat. De standaard blijft `page`
+ * (inkt op gebroken wit) zodat `app/post/[id].tsx` en alle andere
+ * aanroepers ongewijzigd blijven; de feed geeft `feed` of `post` mee.
+ */
+type Palette = {
+  /** Tekst en rand van een pil die ík heb gezet. */
+  strong: string;
+  /** Tekst van een pil van iemand anders. */
+  dim: string;
+  /** Vulling van een niet-gekozen pil. */
+  fill: string;
+};
+
+function paletteFor(tone: Tone): Palette {
+  switch (tone) {
+    case "feed":
+      return { strong: feed.ink, dim: feed.inkDim, fill: "rgba(11,10,12,0.08)" };
+    case "post":
+      return { strong: feed.text, dim: feed.textDim, fill: "rgba(243,237,228,0.10)" };
+    case "dark":
+      return { strong: page.DEFAULT, dim: "#8E8C86", fill: "rgba(242,241,238,0.10)" };
+    default:
+      return { strong: carbon.DEFAULT, dim: carbon.muted, fill: "#E9E8E4" };
+  }
+}
+
+export function PostReactions({
+  postId,
+  tone = "page",
+}: {
+  postId: string;
+  tone?: Tone;
+}) {
+  const c = paletteFor(tone);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [grouped, setGrouped] = useState<GroupedPostReaction[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -64,12 +103,17 @@ export function PostReactions({ postId }: { postId: string }) {
           <Pressable
             key={g.emoji}
             onPress={() => handleReaction(g.emoji)}
-            className={`flex-row items-center gap-1 px-2.5 py-1 border ${
-              g.mine ? "bg-transparent border-carbon" : "bg-page-alt border-page-alt"
-            }`}
+            style={{
+              borderWidth: 1,
+              borderColor: g.mine ? c.strong : c.fill,
+              backgroundColor: g.mine ? "transparent" : c.fill,
+            }}
+            className="flex-row items-center gap-1 px-2.5 py-1"
           >
             <Text style={{ fontSize: 13 }}>{g.emoji}</Text>
-            <Text className={`text-xs font-semibold ${g.mine ? "text-carbon" : "text-carbon-muted"}`}>
+            <Text
+              style={{ fontSize: 12, fontWeight: "600", color: g.mine ? c.strong : c.dim }}
+            >
               {g.count}
             </Text>
           </Pressable>
@@ -77,17 +121,21 @@ export function PostReactions({ postId }: { postId: string }) {
 
         {/* Add reaction button */}
         <Pressable
-          onPress={() => setPickerOpen((p) => !p)}
-          className="flex-row items-center gap-1 px-2.5 py-1 border border-page-alt bg-page-alt"
+          onPress={() => setPickerOpen((prev) => !prev)}
+          style={{ borderWidth: 1, borderColor: c.fill, backgroundColor: c.fill }}
+          className="flex-row items-center gap-1 px-2.5 py-1"
         >
           <Text style={{ fontSize: 13 }}>😊</Text>
-          <Text className="text-carbon-muted text-xs font-semibold">+</Text>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: c.dim }}>+</Text>
         </Pressable>
       </View>
 
       {/* Emoji picker */}
       {pickerOpen && (
-        <View className="flex-row flex-wrap gap-2 mt-2 bg-page-alt px-3 py-2">
+        <View
+          style={{ backgroundColor: c.fill }}
+          className="flex-row flex-wrap gap-2 mt-2 px-3 py-2"
+        >
           {QUICK_REACTIONS.map((emoji) => (
             <Pressable key={emoji} onPress={() => handleReaction(emoji)} className="p-1">
               <Text style={{ fontSize: 22 }}>{emoji}</Text>

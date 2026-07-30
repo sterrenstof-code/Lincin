@@ -10,7 +10,17 @@ import {
   type TextStyle,
 } from "react-native";
 
-import { carbon, page, rule, type, WIDE_BREAKPOINT } from "@/lib/design/type";
+import {
+  carbon,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  page,
+  rule,
+  type,
+  WIDE_BREAKPOINT,
+} from "@/lib/design/type";
 
 /**
  * Editorial-primitieven.
@@ -19,16 +29,33 @@ import { carbon, page, rule, type, WIDE_BREAKPOINT } from "@/lib/design/type";
  * door haarlijnen die van rand tot rand lopen — niet door zwevende kaarten
  * met tussenruimte. Dat is het verschil tussen een affiche en een tijdlijn.
  *
- * Twee tonen, meer niet:
+ * Twee tonen dragen het affiche-systeem:
  *   page  — gebroken wit vlak, zwarte tekst   (de standaard)
  *   dark  — zwart vlak, gebroken witte tekst  (de omkering: één per scherm)
+ *
+ * Daar staan twee tonen naast die enkel het feed-v3-scherm bedienen:
+ *   feed  — inkt op het lavendel paginavlak (`feed-lav`)
+ *   post  — `feed-text` op een post-oppervlak (`feed-post`)
+ *
+ * Bestaande aanroepers noemen `tone` niet en houden dus `page` — de twee
+ * nieuwe tonen veranderen niets aan chat, vrienden, profiel, events of auth.
  */
 
-export type Tone = "page" | "dark";
+export type Tone = "page" | "dark" | "feed" | "post";
 
 function textColor(tone: Tone, dim: boolean): string {
   if (tone === "dark") return dim ? "#8E8C86" : page.DEFAULT;
+  if (tone === "feed") return dim ? feed.inkDim : feed.ink;
+  if (tone === "post") return dim ? feed.textDim : feed.text;
   return dim ? carbon.muted : carbon.soft;
+}
+
+/** De volle tekstkleur van een toon — voor `strong` en voor kaders. */
+function edgeColor(tone: Tone): string {
+  if (tone === "dark") return page.DEFAULT;
+  if (tone === "feed") return feed.ink;
+  if (tone === "post") return feed.text;
+  return carbon.DEFAULT;
 }
 
 // ---------------------------------------------------------------
@@ -83,12 +110,23 @@ export function Rule({
   tone?: Tone;
   strong?: boolean;
 }) {
+  const backgroundColor =
+    tone === "dark" ? rule.onDark
+    : tone === "post" ? feed.postRule
+    : tone === "feed" ? (strong ? feed.ink : "rgba(11,10,12,0.25)")
+    : strong ? rule.strong
+    : rule.soft;
+
   return (
     <View
       style={{
-        height: strong ? 1 : StyleSheet.hairlineWidth,
-        backgroundColor:
-          tone === "dark" ? rule.onDark : strong ? rule.strong : rule.soft,
+        // De feed-tonen tekenen een échte 1.5px-lijn: dit systeem leest als
+        // een gedrukt raster met kaders, niet als losse haarlijnen.
+        height:
+          tone === "feed" && strong ? 1.5
+          : strong ? 1
+          : StyleSheet.hairlineWidth,
+        backgroundColor,
       }}
     />
   );
@@ -120,14 +158,14 @@ export function Meta({
   style?: TextStyle;
   numberOfLines?: number;
 }) {
-  const color = strong
-    ? tone === "dark" ? page.DEFAULT : carbon.DEFAULT
-    : textColor(tone, dim);
+  const color = strong ? edgeColor(tone) : textColor(tone, dim);
+  // De feed-tonen zetten in Inter, de affiche-tonen in de bestaande grotesk.
+  const base =
+    tone === "feed" || tone === "post"
+      ? caps ? feedType.kicker : feedType.label
+      : caps ? type.metaCaps : type.meta;
   return (
-    <Text
-      numberOfLines={numberOfLines}
-      style={[caps ? type.metaCaps : type.meta, { color }, style]}
-    >
+    <Text numberOfLines={numberOfLines} style={[base, { color }, style]}>
       {caps ? children.toUpperCase() : children}
     </Text>
   );
@@ -281,6 +319,10 @@ export function ArrowRow({
 /**
  * Rechthoekige knop. Gevuld = primair, omlijnd = secundair.
  * Geen pillen — dat is het hele punt.
+ *
+ * De feed-tonen gebruiken dezelfde component met andere kleuren en een
+ * 1.5px-kader in plaats van een haarlijn; er is bewust geen tweede
+ * knopcomponent voor het feed-scherm.
  */
 export function BoxButton({
   label,
@@ -288,35 +330,49 @@ export function BoxButton({
   tone = "page",
   filled = false,
   disabled = false,
+  block = false,
 }: {
   label: string;
   onPress: () => void;
   tone?: Tone;
   filled?: boolean;
   disabled?: boolean;
+  /** Volle breedte — de "Iets delen"-knop in de feed-zijbalk. */
+  block?: boolean;
 }) {
-  const edge = tone === "dark" ? page.DEFAULT : carbon.DEFAULT;
+  const isFeed = tone === "feed" || tone === "post";
+  const edge = edgeColor(tone);
+  /** Kleur van de tekst óp een gevulde knop. */
+  const onFilled =
+    tone === "dark" ? carbon.DEFAULT
+    : tone === "feed" ? feed.text
+    : tone === "post" ? feed.post
+    : page.DEFAULT;
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={{
-        borderWidth: StyleSheet.hairlineWidth,
+      style={({ pressed }) => ({
+        borderWidth: isFeed ? FEED_BORDER : StyleSheet.hairlineWidth,
         borderColor: disabled ? carbon.muted : edge,
-        backgroundColor: filled && !disabled ? edge : "transparent",
-      }}
-      className="px-4 py-2.5"
+        backgroundColor:
+          filled && !disabled
+            // De ingedrukte staat van een gevulde feed-knop is flame-deep —
+            // de web-mockup doet dat op :hover, native heeft alleen :active.
+            ? isFeed && pressed ? flameDeep : edge
+            : "transparent",
+        ...(isFeed
+          ? { paddingVertical: 12, paddingHorizontal: 16 }
+          : { paddingVertical: 10, paddingHorizontal: 16 }),
+        ...(block ? { width: "100%" as const, alignItems: "center" as const } : null),
+      })}
     >
       <Text
         style={[
-          type.meta,
-          {
-            color: disabled
-              ? carbon.muted
-              : filled
-              ? tone === "dark" ? carbon.DEFAULT : page.DEFAULT
-              : edge,
-          },
+          isFeed ? feedType.label : type.meta,
+          isFeed ? { fontSize: 13, fontWeight: "700" as const } : null,
+          { color: disabled ? carbon.muted : filled ? onFilled : edge },
         ]}
       >
         {label}

@@ -4,16 +4,15 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,77 +21,147 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
-import {
-  BoxButton,
-  Kicker,
-  Logo,
-  Meta,
-  Rule,
-  SectionHead,
-  Sheet,
-  useWide,
-} from "@/components/Editorial";
-import { FindBody } from "@/components/FindBody";
+import { Meta } from "@/components/Editorial";
+import { FeedHeader, FeedRail, Frame } from "@/components/FeedChrome";
+import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
+import { LogoMark } from "@/components/LogoMark";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
-import { carbon, page, type } from "@/lib/design/type";
+import {
+  feed as feedColor,
+  FEED_BORDER,
+  FEED_BREAKPOINT,
+  feedType,
+} from "@/lib/design/type";
+import { getProfiles } from "@/lib/api/profiles";
 import {
   collectTags,
   deletePost,
-  KIND_LABELS,
   listUnifiedFeed,
   updatePostCaption,
   type FeedItem,
+  type FindKind,
   type PostWithAuthor,
 } from "@/lib/api/posts";
 
 /**
- * De feed als gedrukte pagina.
+ * De feed als website-uitgave. Zie `feed-v3-merged.html` voor de
+ * pixelreferentie en `DESIGN_V3_FEED.md` voor het ontwerpverslag.
  *
- * Bovenaan staat alleen het merk en één knop. Geen scherm-titel, geen
- * ondertitel, geen kolommenkop — de inhoud is de titel. Daaronder banden
- * die van rand tot rand lopen, gescheiden door haarlijnen.
+ * Een gekaderde kop met de tabstrip, daaronder de woordmerk-plaat, en dan
+ * één gedeeld kader met twee zones: een smalle zijbalk (alleen "iets delen"
+ * plus wie je bent — de navigatie zit al in de kop) en de hoofdkolom met een
+ * uitgelichte vondst van ~88vh, gevolgd door de compacte sectie met
+ * wisselend grote tegels. Onder 800px stapelt alles.
  *
- * Op desktop klapt elke band open naar de tweekolomsstructuur van het
- * affiche: etiket links, inhoud rechts. Op telefoon staat het etiket
- * gewoon boven de inhoud.
+ * Wat hier bewust NIET staat, en ook niet moet komen: een algoritme, een
+ * bereikteller, sortering of tegelgrootte op basis van reacties. Je vrienden
+ * zijn het algoritme.
  *
- * Wat hier bewust niet staat: een algoritme, een bereikteller, oneindig
- * scrollen. De pagina eindigt, en dat einde is een zwarte voet.
+ * Scope: dit scherm draait op het lavendel/plum-systeem (`feed-*` tokens,
+ * Inter, 1.5px kaders). Chat, vrienden, profiel, events en auth staan nog op
+ * het warme shell/paper-systeem en worden hier niet aangeraakt.
  */
 
-type Section = "vandaag" | "week" | "eerder";
+/** Paginabreedte van de uitgave. */
+const PAGE_MAX = 1280;
 
-const SECTION_LABELS: Record<Section, string> = {
-  vandaag: "Vandaag",
-  week: "Deze week",
-  eerder: "Eerder",
+/**
+ * Het vaste ritme van de compacte sectie: één cover-band, een rij van vier
+ * tegels, één citaatband. Daarna herhaalt het.
+ */
+const TILE_CYCLE: TileVariant[] = ["cover", "tall", "text", "stat", "caption", "quote"];
+
+/**
+ * Welk soort vondst het béste in welke maat past. Dit is de "soort"-helft
+ * van de hybride toewijzing: binnen elk blok van zes krijgt elke plek eerst
+ * een passend soort aangeboden, en valt hij anders terug op het vaste ritme
+ * hierboven. Zo staat een fragment in de citaatband en een video in de hoge
+ * beeldtegel, zónder dat een vondst ooit kan blijven wachten op een plek.
+ *
+ * Dit is nadrukkelijk géén ranking: de volgorde van de blokken blijft
+ * chronologisch, en er wordt alleen bínnen een blok van zes geschoven.
+ */
+const SLOT_PREFERENCE: Record<TileVariant, FindKind[]> = {
+  cover: ["link", "video", "image"],
+  tall: ["video", "image"],
+  text: ["link", "note"],
+  stat: ["fact", "idea"],
+  caption: ["image", "music"],
+  quote: ["fragment", "fact", "idea"],
 };
 
-function sectionOf(iso: string): Section {
-  const age = Date.now() - new Date(iso).getTime();
-  if (age < 24 * 60 * 60 * 1000) return "vandaag";
-  if (age < 7 * 24 * 60 * 60 * 1000) return "week";
-  return "eerder";
-}
+type Slot = { variant: TileVariant; item: FeedItem; index: number };
 
-type Row = { item: FeedItem; section: Section | null };
+/**
+ * Deelt de resterende feed op in blokken van zes en wijst binnen elk blok
+ * de plekken toe: eerst op soort, dan op volgorde.
+ *
+ * Niet-posts (herinnering, poll, call, lijst, activiteit) doen niet mee aan
+ * de tegeltoewijzing — die houden hun eigen kaart en krijgen een eigen band.
+ */
+function assignSlots(items: FeedItem[]): Slot[] {
+  const out: Slot[] = [];
+  let counter = 0;
+  let window: FeedItem[] = [];
+
+  const flush = () => {
+    if (window.length === 0) return;
+    const remaining = [...window];
+    for (const variant of TILE_CYCLE) {
+      if (remaining.length === 0) break;
+      const prefs = SLOT_PREFERENCE[variant];
+      let pick = remaining.findIndex(
+        (i) => i.type === "post" && prefs.includes(i.data.kind ?? "note")
+      );
+      // Geen passend soort in dit blok? Dan gewoon de volgende op volgorde.
+      if (pick === -1) pick = 0;
+      const [item] = remaining.splice(pick, 1);
+      counter += 1;
+      out.push({ variant, item, index: counter });
+    }
+    window = [];
+  };
+
+  for (const item of items) {
+    if (item.type !== "post") {
+      // De band van een niet-post breekt het blok niet open: we plaatsen hem
+      // op zijn chronologische plek en gaan daarna verder met het ritme.
+      flush();
+      counter += 1;
+      out.push({ variant: "text", item, index: counter });
+      continue;
+    }
+    window.push(item);
+    if (window.length === TILE_CYCLE.length) flush();
+  }
+  flush();
+  return out;
+}
 
 export default function FeedScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
   const qc = useQueryClient();
-  const wide = useWide();
+  const { width, height } = useWindowDimensions();
+  const wide = width >= FEED_BREAKPOINT;
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
     queryFn: () => listUnifiedFeed(myUserId),
     refetchOnWindowFocus: true,
+  });
+
+  // Eigen profiel voor het account-kaartje in de zijbalk.
+  const me = useQuery({
+    queryKey: ["profile", myUserId],
+    queryFn: async () => (await getProfiles([myUserId]))[0] ?? null,
+    staleTime: 5 * 60_000,
   });
 
   useFocusEffect(
@@ -103,7 +172,16 @@ export default function FeedScreen() {
 
   const tags = useMemo(() => collectTags(feed.data ?? []).slice(0, 12), [feed.data]);
 
-  const rows = useMemo<Row[]>(() => {
+  /**
+   * De hero is de meest recente échte vondst. Niet-posts (herinneringen,
+   * polls, calls, lijsten, activiteit) slaan we over: die zijn niet gemaakt
+   * om op affiche-formaat te staan, en een herinnering staat bovendien altijd
+   * bovenaan de lijst, dus die zou de hero permanent bezetten.
+   *
+   * Geen ranking: `listUnifiedFeed` sorteert al aflopend op `created_at` en
+   * wij nemen daar simpelweg de eerste post uit.
+   */
+  const { hero, slots } = useMemo(() => {
     let items = feed.data ?? [];
     if (activeTag) {
       items = items.filter(
@@ -112,14 +190,12 @@ export default function FeedScreen() {
           (i.data.tags ?? []).includes(activeTag)
       );
     }
-    let previous: Section | null = null;
-    return items.map((item) => {
-      if (item.type === "memory") return { item, section: null };
-      const section = sectionOf(item.created_at);
-      const head = section === previous ? null : section;
-      previous = section;
-      return { item, section: head };
-    });
+    const heroIndex = items.findIndex((i) => i.type === "post");
+    if (heroIndex === -1) return { hero: null, slots: assignSlots(items) };
+    return {
+      hero: items[heroIndex] as Extract<FeedItem, { type: "post" }>,
+      slots: assignSlots(items.filter((_, i) => i !== heroIndex)),
+    };
   }, [feed.data, activeTag]);
 
   const onRefresh = useCallback(async () => {
@@ -130,141 +206,306 @@ export default function FeedScreen() {
     qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
   }, [qc, myUserId]);
 
-  const renderItem = useCallback(
-    ({ item: row }: { item: Row }) => (
-      <View>
-        {row.section ? <SectionHead label={SECTION_LABELS[row.section]} /> : <Rule />}
-        <FeedRow item={row.item} myUserId={myUserId} onChanged={invalidate} wide={wide} />
-      </View>
-    ),
-    [myUserId, invalidate, wide]
-  );
+  const empty = !hero && slots.length === 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-page" edges={["top"]}>
-      {/* Kop — merk links, één knop rechts. Verder niets. */}
-      <View className="bg-page">
-        <Sheet>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={feed.isFetching && !feed.isLoading}
+            onRefresh={onRefresh}
+            tintColor={feedColor.ink}
+          />
+        }
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: PAGE_MAX,
+            alignSelf: "center",
+            paddingHorizontal: wide ? 24 : 16,
+            paddingTop: wide ? 20 : 16,
+          }}
+        >
+          <FeedHeader wide={wide} />
+
+          <View style={{ marginTop: 16 }}>
+            <LogoMark size="plate" />
+          </View>
+
+          {/* Eén gedeeld kader om zijbalk én hoofdkolom, zoals de mockup:
+              de zijbalk heeft een scheidingslijn rechts, geen eigen doos.
+
+              De richting staat bewust in `style` en niet in een `flex-row`-
+              class: als NativeWind niet meedoet (stale CSS, Metro-cache) zou
+              de hele pagina anders stilletjes op één kolom terugvallen. */}
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: 24,
-              paddingVertical: 16,
+              flexDirection: wide ? "row" : "column",
+              alignItems: "stretch",
+              marginTop: 16,
+              borderWidth: FEED_BORDER,
+              borderColor: feedColor.ink,
             }}
           >
-            <Logo />
-            <BoxButton
-              label="Iets delen"
-              filled
-              onPress={() => router.push("/post-compose")}
-            />
-          </View>
-        </Sheet>
-        <Rule strong />
-      </View>
+            <View
+              style={
+                wide && Platform.OS === "web"
+                  ? // `position: sticky` bestaat alleen op web. Op native
+                    // scrollt de zijbalk mee; dat is daar het verwachte gedrag.
+                    ({ position: "sticky", top: 16, alignSelf: "flex-start" } as any)
+                  : undefined
+              }
+            >
+              <FeedRail
+                wide={wide}
+                displayName={me.data?.display_name ?? me.data?.username ?? "Jij"}
+                avatarUrl={me.data?.avatar_url ?? null}
+                onShare={() => router.push("/post-compose")}
+                onProfile={() => router.push("/profile")}
+              />
+            </View>
 
-      <Sheet flex>
-        <FlatList
-          data={rows}
-          keyExtractor={(row) => row.item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 0 }}
-          removeClippedSubviews
-          maxToRenderPerBatch={4}
-          windowSize={5}
-          initialNumToRender={5}
-          refreshControl={
-            <RefreshControl
-              refreshing={feed.isFetching && !feed.isLoading}
-              onRefresh={onRefresh}
-              tintColor={carbon.muted}
-            />
-          }
-          ListHeaderComponent={
-            tags.length > 0 ? (
-              <View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 13 }}
-                >
-                  <TagChip
-                    label="Alles"
-                    active={activeTag === null}
-                    onPress={() => setActiveTag(null)}
-                  />
-                  {tags.map((t) => (
-                    <TagChip
-                      key={t}
-                      label={t}
-                      active={activeTag === t}
-                      onPress={() => setActiveTag(activeTag === t ? null : t)}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            feed.isLoading ? (
-              <View className="items-center py-24">
-                <ActivityIndicator color={carbon.muted} />
-              </View>
-            ) : (
-              <View className="px-6 py-20">
-                <Text style={[type.headline, { color: carbon.DEFAULT }]}>
-                  {activeTag ? "Niets onder deze tag." : "Nog niets gedeeld."}
-                </Text>
-                <Text style={[type.body, { color: carbon.soft, marginTop: 10, maxWidth: 460 }]}>
-                  {activeTag
-                    ? "Probeer een andere tag, of deel zelf de eerste."
-                    : "Plak een link, tik een zin over uit wat je aan het lezen bent, of voeg vrienden toe."}
-                </Text>
-              </View>
-            )
-          }
-          ListFooterComponent={
-            rows.length > 0 ? (
-              <View>
-                <Rule strong />
-                {/* De zwarte voet — de pagina houdt op. */}
-                <View className="bg-carbon px-6 py-14 items-center">
-                  <Text style={[type.headline, { color: page.DEFAULT }]}>Je bent bij.</Text>
-                  <View className="mt-3 max-w-[380px]">
-                    <Meta tone="dark" dim style={{ textAlign: "center" }}>
-                      Geen oneindige stroom. Kom straks terug, of deel zelf iets.
-                    </Meta>
-                  </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              {feed.isLoading ? (
+                <View className="items-center py-24">
+                  <ActivityIndicator color={feedColor.ink} />
                 </View>
-              </View>
-            ) : null
-          }
-        />
-      </Sheet>
+              ) : empty ? (
+                <EmptyState activeTag={activeTag} wide={wide} />
+              ) : (
+                <>
+                  {hero ? (
+                    <HeroBlock
+                      post={hero.data}
+                      myUserId={myUserId}
+                      wide={wide}
+                      minHeight={Math.round(height * (wide ? 0.88 : 0.7))}
+                      onChanged={invalidate}
+                    />
+                  ) : null}
+
+                  <View
+                    style={{
+                      paddingHorizontal: wide ? 32 : 18,
+                      paddingTop: 48,
+                      paddingBottom: 80,
+                    }}
+                  >
+                    <Text
+                      style={[
+                        feedType.kicker,
+                        { color: "#3A3540", letterSpacing: 0.55, marginBottom: 22 },
+                      ]}
+                    >
+                      MEER VONDSTEN DEZE WEEK
+                    </Text>
+
+                    {tags.length > 0 ? (
+                      <TagStrip
+                        tags={tags}
+                        active={activeTag}
+                        onPick={(t) => setActiveTag(t === activeTag ? null : t)}
+                      />
+                    ) : null}
+
+                    <CompactSection
+                      slots={slots}
+                      wide={wide}
+                      myUserId={myUserId}
+                      onChanged={invalidate}
+                    />
+
+                    <Colophon />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
+          <View style={{ height: wide ? 24 : 16 }} />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 // ---------------------------------------------------------------
-// Eén band
+// De uitgelichte vondst
 // ---------------------------------------------------------------
 
-const FeedRow = memo(function FeedRow({
-  item,
+const HeroBlock = memo(function HeroBlock({
+  post,
+  myUserId,
+  wide,
+  minHeight,
+  onChanged,
+}: {
+  post: PostWithAuthor;
+  myUserId: string;
+  wide: boolean;
+  minHeight: number;
+  onChanged: () => void;
+}) {
+  const router = useRouter();
+  const menu = usePostMenu(post, myUserId, onChanged);
+
+  return (
+    <View>
+      <FindHero
+        post={post}
+        wide={wide}
+        minHeight={minHeight}
+        onPress={() => router.push(`/post/${post.id}`)}
+        onMenu={menu.isMine ? menu.open : undefined}
+      />
+      <View style={{ paddingHorizontal: wide ? 24 : 10, paddingTop: 12 }}>
+        <PostReactions postId={post.id} tone="feed" />
+        <CommentsSection
+          entityType="post"
+          entityId={post.id}
+          ownerId={post.user_id}
+          initialCount={post.comment_count}
+          tone="feed"
+        />
+      </View>
+      {menu.element}
+    </View>
+  );
+});
+
+// ---------------------------------------------------------------
+// De compacte sectie
+// ---------------------------------------------------------------
+
+/**
+ * Cover-band en citaatband lopen over de volle breedte; de vier tegels
+ * staan in één rij met gedeelde kaders (vier kolommen op desktop, twee
+ * daaronder), precies zoals de `.tilerow` in de mockup.
+ */
+function CompactSection({
+  slots,
+  wide,
   myUserId,
   onChanged,
-  wide,
 }: {
-  item: FeedItem;
+  slots: Slot[];
+  wide: boolean;
   myUserId: string;
   onChanged: () => void;
-  wide: boolean;
 }) {
+  const rows = useMemo(() => {
+    const out: Slot[][] = [];
+    let buffer: Slot[] = [];
+    const perRow = wide ? 4 : 2;
+    for (const s of slots) {
+      const isBand =
+        s.item.type !== "post" || s.variant === "cover" || s.variant === "quote";
+      if (isBand) {
+        if (buffer.length) out.push(buffer);
+        buffer = [];
+        out.push([s]);
+      } else {
+        buffer.push(s);
+        if (buffer.length === perRow) {
+          out.push(buffer);
+          buffer = [];
+        }
+      }
+    }
+    if (buffer.length) out.push(buffer);
+    return out;
+  }, [slots, wide]);
+
+  return (
+    <View>
+      {rows.map((row, ri) => {
+        const band = row.length === 1 && (
+          row[0].item.type !== "post" ||
+          row[0].variant === "cover" ||
+          row[0].variant === "quote"
+        );
+
+        if (band) {
+          return (
+            <View key={`band-${ri}`} style={{ marginTop: ri === 0 ? 0 : 16 }}>
+              <CompactItem
+                slot={row[0]}
+                wide={wide}
+                myUserId={myUserId}
+                onChanged={onChanged}
+              />
+            </View>
+          );
+        }
+
+        // De tegelrij: één kader eromheen, scheidingslijnen ertussen.
+        return (
+          <View
+            key={`row-${ri}`}
+            style={{
+              flexDirection: "row",
+              flexWrap: wide ? "nowrap" : "wrap",
+              marginTop: ri === 0 ? 0 : 16,
+              borderWidth: FEED_BORDER,
+              borderColor: feedColor.ink,
+              backgroundColor: feedColor.post,
+            }}
+          >
+            {row.map((s, ci) => (
+              <View
+                key={s.item.id}
+                style={{
+                  ...(wide
+                    ? { flex: 1 }
+                    : { width: "50%" as const }),
+                  ...(ci < row.length - 1
+                    ? { borderRightWidth: FEED_BORDER, borderRightColor: feedColor.ink }
+                    : null),
+                }}
+              >
+                <CompactItem
+                  slot={s}
+                  wide={wide}
+                  myUserId={myUserId}
+                  onChanged={onChanged}
+                />
+              </View>
+            ))}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const CompactItem = memo(function CompactItem({
+  slot,
+  wide,
+  myUserId,
+  onChanged,
+}: {
+  slot: Slot;
+  wide: boolean;
+  myUserId: string;
+  onChanged: () => void;
+}) {
+  const router = useRouter();
+  const { item, variant, index } = slot;
+
   if (item.type === "post") {
     return (
-      <FindRow post={item.data} myUserId={myUserId} onChanged={onChanged} wide={wide} />
+      <PostTile
+        post={item.data}
+        variant={variant}
+        index={index}
+        wide={wide}
+        myUserId={myUserId}
+        onChanged={onChanged}
+        onPress={() => router.push(`/post/${item.data.id}`)}
+      />
     );
   }
 
@@ -275,140 +516,109 @@ const FeedRow = memo(function FeedRow({
     : item.type === "memory" ? "Op deze dag"
     : "Activiteit";
 
+  // Deze kaarten draaien nog op het warme shell/paper-palet en zijn nog niet
+  // herstijld — ze staan daarom in een licht paneel met een etiket erboven,
+  // net zoals in het vorige feed-ontwerp. Zie DESIGN.md §10.
   return (
-    <Band label={label} wide={wide}>
-      <View className="px-6">
-        {item.type === "poll" && <PollCard poll={item.data} onDeleted={onChanged} />}
-        {item.type === "call_plan" && <CallPlanCard plan={item.data} />}
-        {item.type === "shared_list" && <SharedListCard list={item.data} />}
-        {item.type === "activity" && <ActivityCard event={item.data} />}
-        {item.type === "memory" && <MemoryCard post={item.data} />}
+    <Frame filled style={{ padding: 12 }}>
+      <View style={{ marginBottom: 8 }}>
+        <Meta tone="feed" caps>
+          {label}
+        </Meta>
       </View>
-    </Band>
+      {item.type === "poll" && <PollCard poll={item.data} onDeleted={onChanged} />}
+      {item.type === "call_plan" && <CallPlanCard plan={item.data} />}
+      {item.type === "shared_list" && <SharedListCard list={item.data} />}
+      {item.type === "activity" && <ActivityCard event={item.data} />}
+      {item.type === "memory" && <MemoryCard post={item.data} />}
+    </Frame>
   );
 });
 
-/**
- * De tweekolomsstructuur van het affiche: etiket links, inhoud rechts.
- * Op telefoon vouwt dat samen tot etiket-boven-inhoud.
- */
-function Band({
-  label,
-  kicker,
+function PostTile({
+  post,
+  variant,
+  index,
   wide,
-  children,
+  myUserId,
+  onChanged,
+  onPress,
 }: {
-  label?: string;
-  kicker?: React.ReactNode;
+  post: PostWithAuthor;
+  variant: TileVariant;
+  index: number;
   wide: boolean;
-  children: React.ReactNode;
+  myUserId: string;
+  onChanged: () => void;
+  onPress: () => void;
 }) {
-  const head = kicker ?? (label ? <Meta strong>{label}</Meta> : null);
-
-  // Let op: de richting staat bewust in `style`, niet in een `flex-row`-class.
-  // Een View is in React Native standaard een kolom, dus als NativeWind om
-  // welke reden dan ook niet meedoet (stale CSS na een config-wijziging,
-  // Metro-cache), zou de hele tweekolomsstructuur stilletjes terugvallen op
-  // één kolom. Dit is te belangrijk om van een class af te laten hangen.
-  if (wide) {
-    return (
-      <View style={{ flexDirection: "row", paddingTop: 28, paddingBottom: 36 }}>
-        <View style={{ width: 210, paddingHorizontal: 24 }}>{head}</View>
-        {/* Geen maxWidth: de inhoud loopt door tot het einde van de
-            haarlijn, zoals de rijen op het affiche. Tekst houdt zijn eigen
-            marge via de px-6 binnen FindBody. */}
-        <View style={{ flex: 1 }}>{children}</View>
-      </View>
-    );
-  }
+  const menu = usePostMenu(post, myUserId, onChanged);
 
   return (
-    <View style={{ paddingTop: 16, paddingBottom: 24 }}>
-      {head ? <View style={{ paddingHorizontal: 24 }}>{head}</View> : null}
-      {children}
+    <View style={{ flex: 1 }}>
+      {/* Lang indrukken opent hetzelfde menu als "Delen ↗" op de hero, zodat
+          je een eigen vondst ook vanuit een tegel kunt bewerken of wissen. */}
+      <Pressable
+        onLongPress={menu.isMine ? menu.open : undefined}
+        delayLongPress={350}
+        style={{ flex: 1 }}
+      >
+        <FindTile
+          post={post}
+          variant={variant}
+          index={index}
+          wide={wide}
+          onPress={onPress}
+        />
+      </Pressable>
+      {menu.element}
     </View>
   );
 }
 
-const FindRow = memo(function FindRow({
-  post,
-  myUserId,
-  onChanged,
-  wide,
-}: {
-  post: PostWithAuthor;
-  myUserId: string;
-  onChanged: () => void;
-  wide: boolean;
-}) {
-  const router = useRouter();
+// ---------------------------------------------------------------
+// Menu voor een eigen vondst — gedeeld door hero en tegel
+// ---------------------------------------------------------------
+
+function usePostMenu(
+  post: PostWithAuthor,
+  myUserId: string,
+  onChanged: () => void
+) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption ?? "");
   const [saving, setSaving] = useState(false);
-
   const isMine = post.user_id === myUserId;
-  const authorName = post.author?.display_name ?? post.author?.username ?? "Onbekend";
-  const kindLabel = KIND_LABELS[post.kind] ?? "Notitie";
 
-  const menuButton = isMine ? (
-    <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} className={wide ? "" : "pl-3 -mr-1"}>
-      <Ionicons name="ellipsis-horizontal" color={carbon.muted} size={16} />
-    </Pressable>
-  ) : undefined;
-
-  return (
-    <Band
-      wide={wide}
-      kicker={
-        <Kicker
-          stacked={wide}
-          parts={[kindLabel, authorName, formatPostTime(post.created_at)]}
-          right={menuButton}
-        />
-      }
-    >
-      <FindBody post={post} onPress={() => router.push(`/post/${post.id}`)} />
-
-      <View className="pt-4">
-        <PostReactions postId={post.id} />
-      </View>
-
-      <CommentsSection
-        entityType="post"
-        entityId={post.id}
-        ownerId={post.user_id}
-        initialCount={post.comment_count}
+  const element = isMine ? (
+    <>
+      <ActionSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title="Vondst"
+        actions={[
+          {
+            label: "Toelichting bewerken",
+            icon: "pencil-outline",
+            onPress: () => {
+              setMenuOpen(false);
+              setEditCaption(post.caption ?? "");
+              setEditOpen(true);
+            },
+          },
+          {
+            label: "Verwijderen",
+            icon: "trash-outline",
+            destructive: true,
+            onPress: async () => {
+              setMenuOpen(false);
+              await deletePost(post);
+              onChanged();
+            },
+          },
+        ]}
       />
-
-      {isMine && (
-        <ActionSheet
-          visible={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          title="Vondst"
-          actions={[
-            {
-              label: "Toelichting bewerken",
-              icon: "pencil-outline",
-              onPress: () => {
-                setMenuOpen(false);
-                setEditCaption(post.caption ?? "");
-                setEditOpen(true);
-              },
-            },
-            {
-              label: "Verwijderen",
-              icon: "trash-outline",
-              destructive: true,
-              onPress: async () => {
-                setMenuOpen(false);
-                await deletePost(post);
-                onChanged();
-              },
-            },
-          ]}
-        />
-      )}
 
       <Modal
         visible={editOpen}
@@ -418,33 +628,42 @@ const FindRow = memo(function FindRow({
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1, backgroundColor: "rgba(18,17,15,0.55)", justifyContent: "flex-end" }}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(11,10,12,0.55)",
+            justifyContent: "flex-end",
+          }}
         >
-          <View className="bg-page px-6 pt-6 pb-9">
+          <View
+            style={{ borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }}
+            className="bg-feed-panel px-6 pt-6 pb-9"
+          >
             <View className="flex-row items-center mb-4">
               <View className="flex-1">
-                <Meta strong>Toelichting bewerken</Meta>
+                <Meta tone="feed" strong>
+                  Toelichting bewerken
+                </Meta>
               </View>
               <Pressable onPress={() => setEditOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color={carbon.DEFAULT} size={22} />
+                <Ionicons name="close" color={feedColor.ink} size={22} />
               </Pressable>
             </View>
             <TextInput
               value={editCaption}
               onChangeText={setEditCaption}
               placeholder="Schrijf iets…"
-              placeholderTextColor={carbon.muted}
+              placeholderTextColor={feedColor.inkDim}
               multiline
               autoFocus
               maxLength={1000}
               style={[
-                type.body,
+                feedType.body,
                 {
-                  color: carbon.DEFAULT,
+                  color: feedColor.ink,
                   minHeight: 96,
                   maxHeight: 190,
-                  borderWidth: StyleSheet.hairlineWidth,
-                  borderColor: carbon.muted,
+                  borderWidth: FEED_BORDER,
+                  borderColor: feedColor.ink,
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                 },
@@ -465,18 +684,49 @@ const FindRow = memo(function FindRow({
                 }
               }}
               disabled={saving}
-              className="mt-4 bg-carbon active:bg-carbon-soft py-4 items-center"
+              className="mt-4 bg-feed-ink py-4 items-center"
             >
-              <Meta tone="dark" strong>{saving ? "Bewaren…" : "Bewaren"}</Meta>
+              <Text style={[feedType.label, { color: feedColor.text }]}>
+                {saving ? "Bewaren…" : "Bewaren"}
+              </Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </Band>
-  );
-});
+    </>
+  ) : null;
+
+  return { isMine, open: () => setMenuOpen(true), element };
+}
 
 // ---------------------------------------------------------------
+// Klein spul
+// ---------------------------------------------------------------
+
+function TagStrip({
+  tags,
+  active,
+  onPick,
+}: {
+  tags: string[];
+  active: string | null;
+  onPick: (tag: string | null) => void;
+}) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 2 }}
+      >
+        <TagChip label="Alles" active={active === null} onPress={() => onPick(null)} />
+        {tags.map((t) => (
+          <TagChip key={t} label={t} active={active === t} onPress={() => onPick(t)} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
 
 function TagChip({
   label,
@@ -491,28 +741,78 @@ function TagChip({
     <Pressable
       onPress={onPress}
       style={{
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: active ? carbon.DEFAULT : "#CFCDC7",
-        backgroundColor: active ? carbon.DEFAULT : "transparent",
+        borderWidth: FEED_BORDER,
+        borderColor: feedColor.ink,
+        backgroundColor: active ? feedColor.ink : "transparent",
         marginRight: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
       }}
-      className="px-3.5 py-2"
     >
-      <Text style={[type.meta, { color: active ? page.DEFAULT : carbon.soft }]}>
+      <Text
+        style={[feedType.label, { color: active ? feedColor.lav : feedColor.ink }]}
+      >
         {label}
       </Text>
     </Pressable>
   );
 }
 
-function formatPostTime(iso: string): string {
-  const date = new Date(iso);
-  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (diffMin < 1) return "net";
-  if (diffMin < 60) return `${diffMin} min`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr} u`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay} d`;
-  return date.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
+function EmptyState({
+  activeTag,
+  wide,
+}: {
+  activeTag: string | null;
+  wide: boolean;
+}) {
+  return (
+    <View style={{ paddingHorizontal: wide ? 32 : 18, paddingVertical: 80 }}>
+      <Text style={[feedType.heroSmall, { color: feedColor.ink }]}>
+        {activeTag ? "Niets onder deze tag." : "Nog niets gedeeld."}
+      </Text>
+      <Text
+        style={[
+          feedType.body,
+          { color: feedColor.inkDim, marginTop: 10, maxWidth: 460 },
+        ]}
+      >
+        {activeTag
+          ? "Probeer een andere tag, of deel zelf de eerste."
+          : "Plak een link, tik een zin over uit wat je aan het lezen bent, of voeg vrienden toe."}
+      </Text>
+    </View>
+  );
+}
+
+/** De voet: de uitgave houdt op. Geen oneindige stroom. */
+function Colophon() {
+  return (
+    <View
+      style={{
+        borderWidth: FEED_BORDER,
+        borderColor: feedColor.ink,
+        backgroundColor: feedColor.ink,
+        marginTop: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 44,
+        alignItems: "center",
+      }}
+    >
+      <Text style={[feedType.cover, { color: feedColor.text }]}>Je bent bij.</Text>
+      <Text
+        style={[
+          feedType.body,
+          {
+            color: feedColor.textDim,
+            marginTop: 10,
+            maxWidth: 380,
+            textAlign: "center",
+          },
+        ]}
+      >
+        Geen oneindige stroom, geen ranking, geen tellers. Kom straks terug, of
+        deel zelf iets.
+      </Text>
+    </View>
+  );
 }

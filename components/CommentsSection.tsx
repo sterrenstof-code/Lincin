@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
+import type { Tone } from "@/components/Editorial";
+import { carbon, feed, page } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   addEntityComment,
@@ -24,18 +26,74 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { useMentions, type MentionCandidate } from "@/lib/useMentions";
 import { supabase } from "@/lib/supabase/client";
 
+/**
+ * Kleuren per toon. De standaard blijft `page` (inkt op gebroken wit),
+ * zodat `app/post/[id].tsx` en de andere aanroepers niet verschuiven; de
+ * feed geeft `feed` (op lavendel) of `post` (op het plum-vlak) mee.
+ */
+type Palette = {
+  text: string;
+  dim: string;
+  /** Vlak van een reactiebubbel en het invoerveld. */
+  fill: string;
+  /** De scheidingslijn bovenaan de sectie. */
+  rule: string;
+  /** Tekstkleur óp de gevulde verzendknop. */
+  onSend: string;
+};
+
+function paletteFor(tone: Tone): Palette {
+  switch (tone) {
+    case "feed":
+      return {
+        text: feed.ink,
+        dim: feed.inkDim,
+        fill: "rgba(11,10,12,0.07)",
+        rule: "rgba(11,10,12,0.22)",
+        onSend: feed.text,
+      };
+    case "post":
+      return {
+        text: feed.text,
+        dim: feed.textDim,
+        fill: "rgba(243,237,228,0.09)",
+        rule: feed.postRule,
+        onSend: feed.post,
+      };
+    case "dark":
+      return {
+        text: page.DEFAULT,
+        dim: "#8E8C86",
+        fill: "rgba(242,241,238,0.10)",
+        rule: "#3A3936",
+        onSend: carbon.DEFAULT,
+      };
+    default:
+      return {
+        text: carbon.DEFAULT,
+        dim: carbon.muted,
+        fill: "#E9E8E4",
+        rule: "#E9E8E4",
+        onSend: page.DEFAULT,
+      };
+  }
+}
+
 export function CommentsSection({
   entityType,
   entityId,
   ownerId,
   initialCount = 0,
+  tone = "page",
 }: {
   entityType: EntityType;
   entityId: string;
   /** user_id van de eigenaar, voor notificaties */
   ownerId?: string;
   initialCount?: number;
+  tone?: Tone;
 }) {
+  const c = paletteFor(tone);
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const inputRef = useRef<TextInput>(null);
@@ -118,7 +176,7 @@ export function CommentsSection({
   }
 
   return (
-    <View className="border-t border-page-alt mt-1">
+    <View style={{ borderTopWidth: 1, borderTopColor: c.rule }} className="mt-1">
       {/* Toggle knop */}
       <Pressable
         onPress={() => {
@@ -129,10 +187,10 @@ export function CommentsSection({
       >
         <Ionicons
           name={open ? "chatbubble" : "chatbubble-outline"}
-          color="#8E8C86"
+          color={c.dim}
           size={14}
         />
-        <Text className="text-carbon-muted text-sm">
+        <Text style={{ fontSize: 14, color: c.dim }}>
           {count === 0 ? "Reageer" : count === 1 ? "1 reactie" : `${count} reacties`}
         </Text>
       </Pressable>
@@ -141,23 +199,24 @@ export function CommentsSection({
         <View className="px-3 pb-3">
           {/* Bestaande reacties */}
           {loading ? (
-            <ActivityIndicator size="small" color="#8E8C86" style={{ marginVertical: 8 }} />
+            <ActivityIndicator size="small" color={c.dim} style={{ marginVertical: 8 }} />
           ) : (
             <View className="gap-2 mb-2">
-              {comments.map((c) => (
+              {comments.map((row) => (
                 <CommentRow
-                  key={c.id}
-                  comment={c}
-                  isMine={c.user_id === myUserId}
+                  key={row.id}
+                  comment={row}
+                  palette={c}
+                  isMine={row.user_id === myUserId}
                   onDelete={() => {
-                    deleteEntityComment(c.id);
-                    setComments((prev) => prev.filter((x) => x.id !== c.id));
+                    deleteEntityComment(row.id);
+                    setComments((prev) => prev.filter((x) => x.id !== row.id));
                     setCount((n) => Math.max(0, n - 1));
                   }}
                 />
               ))}
               {comments.length === 0 && (
-                <Text className="text-carbon-muted text-xs py-1">
+                <Text style={{ fontSize: 12, color: c.dim }} className="py-1">
                   Nog geen reacties. Wees de eerste!
                 </Text>
               )}
@@ -166,17 +225,24 @@ export function CommentsSection({
 
           {/* @mention suggesties */}
           {mentionList && mentionList.length > 0 && (
-            <View className="bg-page-alt overflow-hidden mb-2">
+            <View style={{ backgroundColor: c.fill }} className="overflow-hidden mb-2">
               {mentionList.map((m, i) => (
                 <Pressable
                   key={m.username}
                   onPress={() => applyMention(m.username)}
-                  className={`flex-row items-center px-3 py-2 gap-2 ${i < mentionList.length - 1 ? "border-b border-page-alt" : ""}`}
+                  style={
+                    i < mentionList.length - 1
+                      ? { borderBottomWidth: 1, borderBottomColor: c.rule }
+                      : undefined
+                  }
+                  className="flex-row items-center px-3 py-2 gap-2"
                 >
                   <Avatar name={m.display} avatarUrl={m.avatarUrl} size="xs" />
                   <View className="flex-1">
-                    <Text className="text-carbon text-sm font-semibold">{m.display}</Text>
-                    <Text className="text-carbon-muted text-xs">@{m.username}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: c.text }}>
+                      {m.display}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: c.dim }}>@{m.username}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -193,28 +259,30 @@ export function CommentsSection({
                 value={draft}
                 onChangeText={onChangeText}
                 placeholder="Schrijf een reactie…"
-                placeholderTextColor="#8E8C86"
+                placeholderTextColor={c.dim}
                 multiline
                 maxLength={500}
                 returnKeyType="send"
                 onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
-                className="bg-page-alt px-3 py-2 text-carbon text-sm"
-                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
+                className="px-3 py-2 text-sm"
+                style={[
+                  { backgroundColor: c.fill, color: c.text },
+                  Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                ]}
               />
             </View>
             <Pressable
               onPress={onSend}
               disabled={!draft.trim() || sending}
-              className={`w-9 h-9 items-center justify-center ${
-                draft.trim() ? "bg-carbon" : "bg-page-alt"
-              }`}
+              style={{ backgroundColor: draft.trim() ? c.text : c.fill }}
+              className="w-9 h-9 items-center justify-center"
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#F2F1EE" />
+                <ActivityIndicator size="small" color={c.onSend} />
               ) : (
                 <Ionicons
                   name="arrow-up"
-                  color={draft.trim() ? "#F2F1EE" : "#8E8C86"}
+                  color={draft.trim() ? c.onSend : c.dim}
                   size={16}
                 />
               )}
@@ -230,10 +298,12 @@ function CommentRow({
   comment,
   isMine,
   onDelete,
+  palette,
 }: {
   comment: EntityComment;
   isMine: boolean;
   onDelete: () => void;
+  palette: Palette;
 }) {
   const name =
     comment.author?.display_name ?? comment.author?.username ?? "Onbekend";
@@ -246,11 +316,13 @@ function CommentRow({
         avatarUrl={comment.author?.avatar_url ?? null}
         size="xs"
       />
-      <View className="flex-1 bg-page-alt px-3 py-2">
+      <View style={{ backgroundColor: palette.fill }} className="flex-1 px-3 py-2">
         <View className="flex-row items-center justify-between mb-0.5">
-          <Text className="text-carbon text-xs font-semibold">{name}</Text>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: palette.text }}>
+            {name}
+          </Text>
           <View className="flex-row items-center gap-2">
-            <Text className="text-carbon-muted text-[10px]">{time}</Text>
+            <Text style={{ fontSize: 10, color: palette.dim }}>{time}</Text>
             {isMine && (
               <Pressable onPress={onDelete} hitSlop={8}>
                 <Ionicons name="trash-outline" color="#B23A1C" size={12} />
@@ -258,7 +330,9 @@ function CommentRow({
             )}
           </View>
         </View>
-        <Text className="text-carbon text-sm leading-5">{comment.body}</Text>
+        <Text style={{ fontSize: 14, lineHeight: 20, color: palette.text }}>
+          {comment.body}
+        </Text>
       </View>
     </View>
   );

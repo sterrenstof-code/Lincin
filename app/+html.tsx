@@ -47,12 +47,16 @@ export default function Root({ children }: PropsWithChildren) {
             web bestaat dat font niet, dus halen we hier de twee snitten op.
             Bodoni Moda voor affiche-maten, Playfair Display voor leesmaten.
             `display=swap` zodat tekst meteen zichtbaar is in de fallback.
+            Inter erbij draagt het feed-v3-systeem (lib/design/type.ts →
+            INTER_FAMILY). Op iOS/Android valt dat terug op de ingebouwde
+            grotesk, dus enkel web haalt de échte snitten op — 400 t/m 900,
+            want de logo-plaat staat op 900 en de kickers op 700.
             --------------------------------------------------------------- */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap"
         />
 
         {/* ScrollViewStyleReset verwijdert de default body-scroll-styling. */}
