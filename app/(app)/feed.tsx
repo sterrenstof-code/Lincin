@@ -38,6 +38,7 @@ import {
   flameDeep,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
+import { useSeenPosts } from "@/lib/read-state";
 import { getProfiles } from "@/lib/api/profiles";
 import {
   collectTags,
@@ -68,8 +69,10 @@ import {
  * het warme shell/paper-systeem en worden hier niet aangeraakt.
  */
 
-/** Paginabreedte van de uitgave. */
-const PAGE_MAX = 1280;
+/**
+ * De uitgave loopt tot de schermrand. Geen maximumbreedte: op een breed
+ * scherm hoort hier beeld te staan, geen lavendel goot.
+ */
 
 /**
  * ---------------------------------------------------------------
@@ -212,6 +215,15 @@ export default function FeedScreen() {
   const { width, height } = useWindowDimensions();
   const wide = width >= FEED_BREAKPOINT;
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  /**
+   * Hoe de hele feed geordend is. `thematic` groepeert in rubrieken (zie
+   * SECTIONS); `chrono` gooit alles op één hoop, nieuwste eerst. Bewust
+   * een keuze van de lezer en niet iets wat de app voor je beslist.
+   */
+  const [sort, setSort] = useState<"thematic" | "chrono">("thematic");
+  /** Al bekeken vondsten worden gedimd. Lokaal, zie lib/read-state.ts. */
+  const [dimSeen, setDimSeen] = useState(true);
+  const { seen } = useSeenPosts();
   // De kop staat buiten de ScrollView; deze hook koppelt de scrollstand
   // aan de inklap-animatie van de woordmerk-plaat.
   const chrome = useChromeScroll();
@@ -256,16 +268,29 @@ export default function FeedScreen() {
       );
     }
     const heroIndex = items.findIndex((i) => i.type === "post");
-    if (heroIndex === -1) {
-      const built = buildSections(items);
-      return { hero: null, ...built };
+    const rest = heroIndex === -1 ? items : items.filter((_, i) => i !== heroIndex);
+    const hero =
+      heroIndex === -1
+        ? null
+        : (items[heroIndex] as Extract<FeedItem, { type: "post" }>);
+
+    // Chronologisch: geen rubrieken, alles op volgorde in het vaste ritme.
+    if (sort === "chrono") {
+      let n = 0;
+      const flat: Slot[] = rest.map((item) => {
+        n += 1;
+        return {
+          variant:
+            item.type !== "post" ? "text" : TILE_CYCLE[(n - 1) % TILE_CYCLE.length],
+          item,
+          index: n,
+        };
+      });
+      return { hero, sections: [] as Section[], leftovers: flat };
     }
-    const rest = items.filter((_, i) => i !== heroIndex);
-    return {
-      hero: items[heroIndex] as Extract<FeedItem, { type: "post" }>,
-      ...buildSections(rest),
-    };
-  }, [feed.data, activeTag]);
+
+    return { hero, ...buildSections(rest) };
+  }, [feed.data, activeTag, sort]);
 
   const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -287,6 +312,8 @@ export default function FeedScreen() {
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         gutter={false}
+        actionLabel="Iets delen"
+        onAction={() => router.push("/post-compose")}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}
@@ -298,8 +325,7 @@ export default function FeedScreen() {
         <View
           style={{
             width: "100%",
-            maxWidth: PAGE_MAX,
-            alignSelf: "center",
+            alignSelf: "stretch",
             paddingHorizontal: wide ? 24 : 16,
             paddingTop: 0,
           }}
@@ -363,6 +389,59 @@ export default function FeedScreen() {
                       paddingBottom: 80,
                     }}
                   >
+                    {/* Ordening + leesstatus. Twee schakelaars, geen
+                        instellingenscherm: dit is iets wat je terwijl je
+                        leest wil kunnen omzetten. */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        marginBottom: 22,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          borderWidth: FEED_BORDER,
+                          borderColor: feedColor.ink,
+                          marginRight: 12,
+                        }}
+                      >
+                        <SortTab
+                          label="Thematisch"
+                          active={sort === "thematic"}
+                          onPress={() => setSort("thematic")}
+                        />
+                        <SortTab
+                          label="Chronologisch"
+                          active={sort === "chrono"}
+                          onPress={() => setSort("chrono")}
+                          divider
+                        />
+                      </View>
+
+                      <Pressable
+                        onPress={() => setDimSeen((v) => !v)}
+                        style={{
+                          borderWidth: FEED_BORDER,
+                          borderColor: feedColor.ink,
+                          paddingHorizontal: 12,
+                          paddingVertical: 9,
+                          backgroundColor: dimSeen ? feedColor.ink : "transparent",
+                        }}
+                      >
+                        <Text
+                          style={[
+                            feedType.label,
+                            { color: dimSeen ? feedColor.lav : feedColor.ink },
+                          ]}
+                        >
+                          Gelezen dimmen
+                        </Text>
+                      </Pressable>
+                    </View>
+
                     {tags.length > 0 ? (
                       <TagStrip
                         tags={tags}
@@ -387,6 +466,7 @@ export default function FeedScreen() {
                             wide={wide}
                             myUserId={myUserId}
                             onChanged={invalidate}
+                            dimmed={dimSeen ? seen : null}
                           />
                         ) : (
                           <CompactSection
@@ -394,6 +474,7 @@ export default function FeedScreen() {
                             wide={wide}
                             myUserId={myUserId}
                             onChanged={invalidate}
+                            dimmed={dimSeen ? seen : null}
                           />
                         )}
                       </View>
@@ -414,6 +495,7 @@ export default function FeedScreen() {
                           wide={wide}
                           myUserId={myUserId}
                           onChanged={invalidate}
+                          dimmed={dimSeen ? seen : null}
                         />
                       </View>
                     ) : null}
@@ -490,11 +572,14 @@ function CompactSection({
   wide,
   myUserId,
   onChanged,
+  dimmed,
 }: {
   slots: Slot[];
   wide: boolean;
   myUserId: string;
   onChanged: () => void;
+  /** Al geziene id's; `null` als dimmen uitstaat. */
+  dimmed?: Set<string> | null;
 }) {
   const rows = useMemo(() => {
     const out: Slot[][] = [];
@@ -536,6 +621,7 @@ function CompactSection({
                 wide={wide}
                 myUserId={myUserId}
                 onChanged={onChanged}
+                dimmed={dimmed}
               />
             </View>
           );
@@ -571,6 +657,7 @@ function CompactSection({
                   wide={wide}
                   myUserId={myUserId}
                   onChanged={onChanged}
+                  dimmed={dimmed}
                 />
               </View>
             ))}
@@ -586,17 +673,24 @@ const CompactItem = memo(function CompactItem({
   wide,
   myUserId,
   onChanged,
+  dimmed,
 }: {
   slot: Slot;
   wide: boolean;
   myUserId: string;
   onChanged: () => void;
+  dimmed?: Set<string> | null;
 }) {
   const router = useRouter();
   const { item, variant, index } = slot;
+  // Gedimd = al bekeken. Geen aparte kleur maar minder dekking: de tegel
+  // blijft leesbaar, hij vraagt alleen geen aandacht meer.
+  const isDim = !!dimmed?.has(item.id);
+  const dimStyle = isDim ? { opacity: 0.42 } : null;
 
   if (item.type === "post") {
     return (
+      <View style={[{ flex: 1 }, dimStyle]}>
       <PostTile
         post={item.data}
         variant={variant}
@@ -608,6 +702,7 @@ const CompactItem = memo(function CompactItem({
           withHeroTransition(() => router.push(`/post/${item.data.id}`))
         }
       />
+      </View>
     );
   }
 
@@ -622,7 +717,7 @@ const CompactItem = memo(function CompactItem({
   // herstijld — ze staan daarom in een licht paneel met een etiket erboven,
   // net zoals in het vorige feed-ontwerp. Zie DESIGN.md §10.
   return (
-    <Frame filled style={{ padding: 12 }}>
+    <Frame filled style={{ padding: 12, ...(dimStyle ?? {}) }}>
       <View style={{ marginBottom: 8 }}>
         <Meta tone="feed" caps>
           {label}
@@ -932,11 +1027,13 @@ function MosaicGrid({
   wide,
   myUserId,
   onChanged,
+  dimmed,
 }: {
   slots: Slot[];
   wide: boolean;
   myUserId: string;
   onChanged: () => void;
+  dimmed?: Set<string> | null;
 }) {
   if (slots.length === 0) return null;
   const [lead, ...rest] = slots;
@@ -960,7 +1057,7 @@ function MosaicGrid({
             : { borderBottomWidth: FEED_BORDER, borderBottomColor: feedColor.ink }),
         }}
       >
-        <CompactItem slot={lead} wide={wide} myUserId={myUserId} onChanged={onChanged} />
+        <CompactItem slot={lead} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
       </View>
 
       {/* De kleinere cellen rechts, twee per rij. */}
@@ -976,10 +1073,43 @@ function MosaicGrid({
               borderColor: feedColor.ink,
             }}
           >
-            <CompactItem slot={slot} wide={wide} myUserId={myUserId} onChanged={onChanged} />
+            <CompactItem slot={slot} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
           </View>
         ))}
       </View>
     </View>
+  );
+}
+
+/** Eén cel van de ordening-schakelaar. */
+function SortTab({
+  label,
+  active,
+  onPress,
+  divider = false,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  divider?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        backgroundColor: active ? feedColor.ink : "transparent",
+        ...(divider
+          ? { borderLeftWidth: FEED_BORDER, borderLeftColor: feedColor.ink }
+          : null),
+      }}
+    >
+      <Text
+        style={[feedType.label, { color: active ? feedColor.lav : feedColor.ink }]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }

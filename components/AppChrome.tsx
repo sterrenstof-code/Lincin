@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { LogoMark } from "@/components/LogoMark";
-import { announce, feed, FEED_BORDER, feedType } from "@/lib/design/type";
+import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 
 /**
  * De chrome die op ÉLK tabblad staat: aankondigingsbalk, gekaderde kop met
@@ -45,8 +45,13 @@ import { announce, feed, FEED_BORDER, feedType } from "@/lib/design/type";
  * `useNativeDriver` staat uit omdat we `height` animeren, en dat kan de
  * native driver niet.
  */
-/** Breedte van de bladspiegel. Geen telefoonkolom van 600px meer. */
-export const PAGE_MAX = 1280;
+/**
+ * De bladspiegel loopt tot de schermrand. Er is bewust geen maximum meer:
+ * dit ontwerp is een affiche, geen leeskolom, en een cap van 1280 liet op
+ * een breed scherm alleen lavendel goot over. Losse tekstblokken houden hun
+ * eigen leesmaat via `maxWidth` op de tekst zelf — daar hoort regellengte.
+ */
+export const PAGE_MAX: number | undefined = undefined;
 
 export function useChromeScroll() {
   const progress = useRef(new Animated.Value(0)).current;
@@ -162,12 +167,16 @@ export function AppHeader({
   progress,
   backLabel,
   onBack,
+  actionLabel,
+  onAction,
 }: {
   wide: boolean;
   /** 0 = groot, 1 = compact. De taglineregel vouwt mee dicht. */
   progress?: Animated.Value;
   backLabel?: string;
   onBack?: () => void;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -235,15 +244,33 @@ export function AppHeader({
       {/* Rij B — de navigatie. Blijft altijd staan, ook in de compacte
           stand: dit is het enige wat dan nog over is naast de plaat. */}
       {onBack ? (
-        <Pressable
-          onPress={onBack}
-          style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}
-          className="py-3"
-        >
-          <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>
-            {`← ${backLabel ?? "Terug"}`}
-          </Text>
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+          <Pressable
+            onPress={onBack}
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}
+            className="py-3"
+          >
+            <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>
+              {`← ${backLabel ?? "Terug"}`}
+            </Text>
+          </Pressable>
+          {actionLabel && onAction ? (
+            <Pressable
+              onPress={onAction}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? flameDeep : feed.ink,
+                borderLeftWidth: FEED_BORDER,
+                borderLeftColor: feed.ink,
+                paddingHorizontal: 16,
+                justifyContent: "center",
+              })}
+            >
+              <Text style={[feedType.label, { fontSize: 12, color: feed.text }]}>
+                {actionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : (
       <View style={{ flexDirection: "row" }}>
         {TABS.map((tab, i) => {
@@ -272,6 +299,24 @@ export function AppHeader({
             </Pressable>
           );
         })}
+        {/* De primaire actie sluit de navigatierij af, zodat hij in de
+            compacte stand mee naar de hoek verhuist. */}
+        {actionLabel && onAction ? (
+          <Pressable
+            onPress={onAction}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? flameDeep : feed.ink,
+              borderLeftWidth: FEED_BORDER,
+              borderLeftColor: feed.ink,
+              paddingHorizontal: 16,
+              justifyContent: "center",
+            })}
+          >
+            <Text style={[feedType.label, { fontSize: 12, color: feed.text }]}>
+              {actionLabel}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       )}
 
@@ -366,6 +411,8 @@ export function AppChrome({
   onAnnouncementPress,
   backLabel,
   onBack,
+  actionLabel,
+  onAction,
 }: {
   wide: boolean;
   progress: Animated.Value;
@@ -378,7 +425,25 @@ export function AppChrome({
    */
   backLabel?: string;
   onBack?: () => void;
+  /** Primaire actie rechts in de navigatierij, bijv. "Iets delen". */
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
+  /**
+   * De beschikbare breedte, gemeten in plaats van geraden: een Animated-
+   * interpolatie kan geen "100%" naar een getal animeren — begin- en
+   * eindwaarde moeten hetzelfde type zijn.
+   */
+  const [fullWidth, setFullWidth] = useState(0);
+
+  /** Waar de kop naartoe krimpt: een blok in de linkerbovenhoek. */
+  const COMPACT_W = wide ? 640 : 0;
+  const targetW = COMPACT_W > 0 && fullWidth > COMPACT_W ? COMPACT_W : fullWidth;
+  const shellWidth =
+    fullWidth > 0
+      ? progress.interpolate({ inputRange: [0, 1], outputRange: [fullWidth, targetW] })
+      : undefined;
+
   // De aankondigingsbalk vouwt mee dicht: in de compacte stand hoort er
   // zo min mogelijk ruimte op te gaan aan chrome.
   const bannerHeight = progress.interpolate({
@@ -394,33 +459,47 @@ export function AppChrome({
   const padBottom = progress.interpolate({ inputRange: [0, 1], outputRange: [4, 6] });
 
   return (
-    <View style={{ backgroundColor: feed.lav }}>
+    <View>
       <Animated.View
         style={{ height: bannerHeight, opacity: bannerOpacity, overflow: "hidden" }}
       >
         <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
       </Animated.View>
-      {/* Zelfde bladspiegel als de inhoud eronder: `PAGE_MAX` én dezelfde
-          zijmarge. Zonder de maxWidth liep de kop door tot de vensterrand
-          terwijl de inhoud op 1280 werd afgekapt — dan staan de twee
-          blokken zichtbaar niet onder elkaar. */}
+
+      {/* Buitenste View meet de volle breedte; het krimpende blok zit
+          erbinnen en is links uitgelijnd, zodat de kop bij het scrollen
+          naar de hoek trekt in plaats van alleen platter te worden. */}
       <Animated.View
         style={{
           width: "100%",
-          maxWidth: PAGE_MAX,
-          alignSelf: "center",
           paddingHorizontal: wide ? 24 : 16,
           paddingTop: padTop,
           paddingBottom: padBottom,
+          alignItems: "flex-start",
+        }}
+        onLayout={(e) => {
+          const w = e.nativeEvent.layout.width - (wide ? 48 : 32);
+          setFullWidth((prev) => (w > prev ? w : prev));
         }}
       >
-        <AppHeader
-          wide={wide}
-          progress={progress}
-          backLabel={backLabel}
-          onBack={onBack}
-        />
-        <LogoPlate progress={progress} />
+        <Animated.View
+          style={{
+            width: shellWidth ?? "100%",
+            // Het paginavlak zit op dit blok en niet op de buitenste View,
+            // zodat rechts van de gekrompen kop de pagina zichtbaar blijft.
+            backgroundColor: feed.lav,
+          }}
+        >
+          <AppHeader
+            wide={wide}
+            progress={progress}
+            backLabel={backLabel}
+            onBack={onBack}
+            actionLabel={actionLabel}
+            onAction={onAction}
+          />
+          <LogoPlate progress={progress} />
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -463,6 +542,8 @@ export function PageScroll({
   gutter = true,
   backLabel,
   onBack,
+  actionLabel,
+  onAction,
 }: {
   children: React.ReactNode;
   wide: boolean;
@@ -477,6 +558,9 @@ export function PageScroll({
   /** Detailpagina: toon een terug-knop i.p.v. de tabstrip. */
   backLabel?: string;
   onBack?: () => void;
+  /** Primaire actie in de kop, bijv. "Iets delen". */
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   // Hoogte van de kop in zijn UITGEKLAPTE stand. We meten één keer en
   // houden de grootste waarde vast: tijdens het inklappen krimpt de kop,
@@ -495,8 +579,7 @@ export function PageScroll({
         <View
           style={{
             width: "100%",
-            maxWidth: PAGE_MAX,
-            alignSelf: "center",
+            alignSelf: "stretch",
             ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
             ...contentStyle,
           }}
@@ -519,6 +602,8 @@ export function PageScroll({
           announcement={announcement}
           backLabel={backLabel}
           onBack={onBack}
+          actionLabel={actionLabel}
+          onAction={onAction}
         />
       </View>
     </View>

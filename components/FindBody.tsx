@@ -13,6 +13,7 @@ import {
 
 import { Embed } from "@/components/Embed";
 import { SafeImage } from "@/components/SafeImage";
+import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
 import {
   carbon,
@@ -645,55 +646,72 @@ export function FindHero({
 }: {
   post: PostWithAuthor;
   wide: boolean;
-  /** ~88% van de vensterhoogte — de hero vult bijna het scherm. */
+  /** Wordt gebruikt als het tweeluik terugvalt op één kolom. */
   minHeight: number;
   onPress?: () => void;
   onMenu?: () => void;
 }) {
   const p = partsOf(post);
 
+  const media = (
+    <Pressable onPress={onPress} style={{ flex: 1 }}>
+      <SafeImage
+        uri={p.image}
+        cacheKey={p.imageKey}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        transition={150}
+        fallbackIcon="sparkles-outline"
+        fallbackBg="bg-feed-post"
+        fallbackColor={feed.textDim}
+      />
+      {post.caption?.trim() ? (
+        <Text
+          style={{
+            position: "absolute",
+            left: 20,
+            bottom: 20,
+            right: 20,
+            fontFamily: feedType.caption.fontFamily,
+            fontSize: 13,
+            fontStyle: "italic",
+            color: "rgba(255,255,255,0.88)",
+          }}
+          numberOfLines={3}
+        >
+          {`“${post.caption.trim()}”`}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+
   return (
     <View
       style={{
-        minHeight,
-        paddingHorizontal: wide ? 32 : 18,
-        paddingTop: 28,
-        paddingBottom: 32,
         borderBottomWidth: FEED_BORDER,
         borderBottomColor: feed.ink,
       }}
     >
-      <View
-        style={{
-          flexDirection: wide ? "row" : "column",
-          justifyContent: "space-between",
-          alignItems: wide ? "flex-start" : "stretch",
-          marginBottom: 22,
-        }}
-      >
-        {/* Links — kicker + kop */}
-        <Pressable onPress={onPress} style={wide ? { flex: 1, maxWidth: 640, paddingRight: 24 } : undefined}>
+      <StickySpread media={media} stickyTop={0} ratio={1.15}>
+        {/* Blok 1 — de kop */}
+        <SpreadBlock>
           <Text
             style={[
               feedType.kicker,
-              { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: 10 },
+              { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: 12 },
             ]}
           >
-            {`Vondst · ${p.kicker}`}
+            {`VONDST · ${p.kicker.toUpperCase()}`}
           </Text>
-          <Text style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}>
-            {p.title}
-          </Text>
-        </Pressable>
+          <Pressable onPress={onPress}>
+            <Text style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}>
+              {p.title}
+            </Text>
+          </Pressable>
+        </SpreadBlock>
 
-        {/* Rechts — deler, tijd, bron, en de deelknop */}
-        <View
-          style={
-            wide
-              ? { alignItems: "flex-end", paddingTop: 4 }
-              : { marginTop: 18, alignItems: "flex-start" }
-          }
-        >
+        {/* Blok 2 — wie en wanneer */}
+        <SpreadBlock>
           <Text
             style={[
               feedType.label,
@@ -703,20 +721,12 @@ export function FindHero({
           >
             {p.sharer}
           </Text>
-          <Text
-            style={[
-              feedType.label,
-              { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
-            ]}
-          >
+          <Text style={[feedType.label, { color: "#3A3540", lineHeight: 17 }]}>
             {`Gedeeld · ${p.time}`}
           </Text>
           {p.host || p.source || p.reading ? (
             <Text
-              style={[
-                feedType.label,
-                { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
-              ]}
+              style={[feedType.label, { color: "#3A3540", lineHeight: 17 }]}
               numberOfLines={1}
             >
               {[p.source ?? p.host, p.reading].filter(Boolean).join(" · ")}
@@ -725,61 +735,28 @@ export function FindHero({
           <Pressable
             onPress={onMenu ?? onPress}
             style={{
-              marginTop: 14,
+              marginTop: 16,
               borderWidth: FEED_BORDER,
               borderColor: feed.ink,
-              paddingVertical: 6,
-              paddingHorizontal: 12,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              alignSelf: "flex-start",
             }}
           >
             <Text style={[feedType.kicker, { color: feed.ink, letterSpacing: 0.55 }]}>
               Delen ↗
             </Text>
           </Pressable>
-        </View>
-      </View>
+        </SpreadBlock>
 
-      {/* Beeld — vult de rest van de hero. */}
-      <Pressable
-        onPress={onPress}
-        style={{
-          flex: 1,
-          minHeight: 220,
-          borderWidth: FEED_BORDER,
-          borderColor: feed.ink,
-          backgroundColor: feed.post,
-          // Ankerpunt van de morph naar de detailpagina.
-          ...heroTag(post.id),
-        }}
-      >
-        <SafeImage
-          uri={p.image}
-          cacheKey={p.imageKey}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={150}
-          fallbackIcon="sparkles-outline"
-          fallbackBg="bg-feed-post"
-          fallbackColor={feed.textDim}
-        />
-        {post.caption?.trim() ? (
-          <Text
-            style={{
-              position: "absolute",
-              left: 16,
-              bottom: 16,
-              right: 16,
-              fontFamily: feedType.caption.fontFamily,
-              fontSize: 12,
-              fontStyle: "italic",
-              color: "rgba(255,255,255,0.85)",
-            }}
-            numberOfLines={2}
-          >
-            {`“${post.caption.trim()}”`}
-          </Text>
+        {/* Blok 3 — de tekst van de vondst zelf, op plum zodat de kolom
+            niet als één egale lap leest. */}
+        {p.body ? (
+          <SpreadBlock filled last>
+            <Text style={[feedType.pullSmall, { color: feed.text }]}>{p.body}</Text>
+          </SpreadBlock>
         ) : null}
-      </Pressable>
+      </StickySpread>
     </View>
   );
 }

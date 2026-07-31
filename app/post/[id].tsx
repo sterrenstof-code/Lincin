@@ -33,6 +33,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { heroTag } from "@/lib/hero-transition";
+import { markSeen } from "@/lib/read-state";
 import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
 
@@ -40,10 +41,17 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
+
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const myUserId = session?.user.id;
+
+  // Zodra je een vondst opent telt hij als gezien; de feed dimt hem daarna.
+  // Lokaal opgeslagen — zie lib/read-state.ts voor waarom niet op de server.
+  useEffect(() => {
+    if (id) markSeen(String(id));
+  }, [id]);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
