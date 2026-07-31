@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { AppChrome, PAGE_MAX, useChromeScroll } from "@/components/AppChrome";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import {
   contributeToEvent,
@@ -185,16 +185,17 @@ export default function EventDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      <ScrollView
-        stickyHeaderIndices={[0]}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        backLabel="Alle events"
+        onBack={() => safeBack(router, "/(app)/events")}
+        gutter={false}
+        contentStyle={{ paddingBottom: 100 }}
       >
-        <AppChrome wide={wide} progress={chrome.progress} />
-
-        <View style={{ width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }}>
+        <View>
           {/* ============ HERO ============
               Zelfde opbouw als de uitgelichte vondst in de feed: kicker en
               kop links, de feiten rechts, en het beeld eronder dat de rest
@@ -418,7 +419,7 @@ export default function EventDetailScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </PageScroll>
     </SafeAreaView>
   );
 }

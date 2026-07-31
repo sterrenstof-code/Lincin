@@ -235,14 +235,12 @@ export default function AppLayout() {
           lineHeight: 18,
         },
       }}
-      tabBar={(props) => (
-        <PaperTabBar
-          {...props}
-          totalUnread={totalUnread}
-          pendingFriendRequests={pendingIncoming}
-          unreadNotifications={unreadNotifCount}
-        />
-      )}
+      // De navigatie zit sinds de v3-uitrol in de kop (`AppChrome`), op elk
+      // tabblad. Een tweede navigatiebalk onderaan zou hetzelfde nog eens
+      // zeggen én ruimte kosten die de pagina zelf nodig heeft. De Tabs-
+      // navigator blijft wél staan: die regelt de routes en het behouden
+      // van scrollpositie per tab.
+      tabBar={() => null}
     >
       <Tabs.Screen name="notifications" />
       <Tabs.Screen name="feed" />

@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -35,46 +34,37 @@ import { announce, feed, FEED_BORDER, feedType } from "@/lib/design/type";
 
 /**
  * Levert de `progress`-waarde (0 = groot, 1 = compact) plus de scroll-props
- * die je op de ScrollView of FlatList van het scherm zet.
+ * die je op de scroller van het scherm zet.
  *
- * Gedrag zoals gevraagd: de kop begint groot, klapt in zodra je voorbij
- * één schermhoogte (100vh) naar beneden scrolt, en gaat weer open zodra je
- * omhoog scrolt of terug boven die grens komt.
+ * De kop klapt **meteen** in — al na een tiental pixels — en gaat pas weer
+ * open als je helemaal terug bovenaan bent. Dat is bewust anders dan de
+ * eerdere 100vh-drempel: die maakte dat je op korte pagina's de compacte
+ * stand nooit te zien kreeg, en dat het op lange pagina's voelde alsof er
+ * niets gebeurde tot je een heel scherm ver was.
  *
  * `useNativeDriver` staat uit omdat we `height` animeren, en dat kan de
- * native driver niet. Het is één animatie van 260ms op een handvol views,
- * dus dat is hier geen probleem.
+ * native driver niet.
  */
 export function useChromeScroll() {
-  const { height } = useWindowDimensions();
   const progress = useRef(new Animated.Value(0)).current;
   const collapsed = useRef(false);
-  const lastY = useRef(0);
+  /** Voorbij deze scrollafstand is de kop compact. */
+  const THRESHOLD = 12;
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
-      // Kleine dode zone: anders flikkert de stand bij micro-bewegingen
-      // en bij de veer-terugslag boven de nullijn.
-      const down = y > lastY.current + 4;
-      const up = y < lastY.current - 4;
-      lastY.current = y;
-
-      let next = collapsed.current;
-      if (!collapsed.current && down && y > height) next = true;
-      else if (collapsed.current && (up || y <= height)) next = false;
-
-      if (next !== collapsed.current) {
-        collapsed.current = next;
-        Animated.timing(progress, {
-          toValue: next ? 1 : 0,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }).start();
-      }
+      const next = y > THRESHOLD;
+      if (next === collapsed.current) return;
+      collapsed.current = next;
+      Animated.timing(progress, {
+        toValue: next ? 1 : 0,
+        duration: 190,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
     },
-    [height, progress]
+    [progress]
   );
 
   return { progress, onScroll, scrollEventThrottle: 16 };
@@ -167,10 +157,14 @@ function Divider() {
 export function AppHeader({
   wide,
   progress,
+  backLabel,
+  onBack,
 }: {
   wide: boolean;
   /** 0 = groot, 1 = compact. De taglineregel vouwt mee dicht. */
   progress?: Animated.Value;
+  backLabel?: string;
+  onBack?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -235,7 +229,19 @@ export function AppHeader({
       <Divider />
       </Animated.View>
 
-      {/* Rij B — de tabstrip. Blijft altijd staan: dit IS de navigatie. */}
+      {/* Rij B — de navigatie. Blijft altijd staan, ook in de compacte
+          stand: dit is het enige wat dan nog over is naast de plaat. */}
+      {onBack ? (
+        <Pressable
+          onPress={onBack}
+          style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}
+          className="py-3"
+        >
+          <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>
+            {`← ${backLabel ?? "Terug"}`}
+          </Text>
+        </Pressable>
+      ) : (
       <View style={{ flexDirection: "row" }}>
         {TABS.map((tab, i) => {
           const active = pathname === tab.href;
@@ -264,6 +270,7 @@ export function AppHeader({
           );
         })}
       </View>
+      )}
 
       {/* Rij C — de tagline. Vouwt dicht zodra de kop compact wordt. */}
       <Animated.View style={{ height: taglineHeight, opacity: taglineOpacity, overflow: "hidden" }}>
@@ -354,19 +361,57 @@ export function AppChrome({
   progress,
   announcement,
   onAnnouncementPress,
+  backLabel,
+  onBack,
 }: {
   wide: boolean;
   progress: Animated.Value;
   announcement?: string | null;
   onAnnouncementPress?: () => void;
+  /**
+   * Zet dit op een detailpagina. De tabstrip maakt dan plaats voor een
+   * terug-knop, zodat zo'n pagina aanvoelt als een eigen pagina binnen
+   * dezelfde site in plaats van als een zesde tabblad.
+   */
+  backLabel?: string;
+  onBack?: () => void;
 }) {
+  // De aankondigingsbalk vouwt mee dicht: in de compacte stand hoort er
+  // zo min mogelijk ruimte op te gaan aan chrome.
+  const bannerHeight = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [36, 0],
+  });
+  const bannerOpacity = progress.interpolate({
+    inputRange: [0, 0.4],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const padTop = progress.interpolate({ inputRange: [0, 1], outputRange: [12, 6] });
+  const padBottom = progress.interpolate({ inputRange: [0, 1], outputRange: [4, 6] });
+
   return (
     <View style={{ backgroundColor: feed.lav }}>
-      <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
-      <View style={{ paddingHorizontal: wide ? 24 : 16, paddingTop: 12, paddingBottom: 4 }}>
-        <AppHeader wide={wide} progress={progress} />
+      <Animated.View
+        style={{ height: bannerHeight, opacity: bannerOpacity, overflow: "hidden" }}
+      >
+        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
+      </Animated.View>
+      <Animated.View
+        style={{
+          paddingHorizontal: wide ? 24 : 16,
+          paddingTop: padTop,
+          paddingBottom: padBottom,
+        }}
+      >
+        <AppHeader
+          wide={wide}
+          progress={progress}
+          backLabel={backLabel}
+          onBack={onBack}
+        />
         <LogoPlate progress={progress} />
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -379,19 +424,24 @@ export function AppChrome({
 export const PAGE_MAX = 1280;
 
 /**
- * De scroller van een heel scherm.
+ * De scroller van een heel scherm, met de kop erboven.
  *
- * Belangrijk verschil met de vorige opzet: de kop staat NIET meer boven een
- * eigen, apart scrollend vak. Er is een scroller voor de hele pagina, en de
- * kop is daarvan het eerste kind met `stickyHeaderIndices={[0]}`. Daardoor
- * scrollt de pagina als een document -- zoals een website -- terwijl de kop
- * bovenaan blijft plakken.
+ * ---------------------------------------------------------------
+ * WAAROM NIET `stickyHeaderIndices`
+ * ---------------------------------------------------------------
+ * De vorige opzet zette de kop als eerste kind ín de ScrollView met
+ * `stickyHeaderIndices={[0]}`. Op native werkt dat, maar op
+ * react-native-web 0.21 pakt het niet betrouwbaar: de kop scrolde
+ * gewoon mee het beeld uit. Vandaar deze opzet.
  *
- * `stickyHeaderIndices` werkt op native en op react-native-web (daar wordt
- * het `position: sticky`), dus dit is een implementatie voor beide.
+ * Nu staat de kop **buiten** de scroller, absoluut bovenaan verankerd.
+ * Hij hoort dus niet bij de scrollende inhoud en kan per definitie niet
+ * wegscrollen — geen platformafhankelijk gedrag, geen sticky-quirks.
  *
- * De oude `ScreenContainer` (max 600px) hoort hier niet meer omheen: dit
- * ontwerp is redactioneel en gebruikt de volle breedte tot `PAGE_MAX`.
+ * De inhoud krijgt bovenaan evenveel opvulling als de kop hoog is. Die
+ * hoogte meten we met `onLayout` in plaats van hem te hardcoderen: hij
+ * verschilt per breedte, per modus (tabs of terug-knop) en met het al dan
+ * niet tonen van de aankondigingsbalk.
  */
 export function PageScroll({
   children,
@@ -403,40 +453,66 @@ export function PageScroll({
   announcement,
   contentStyle,
   gutter = true,
+  backLabel,
+  onBack,
 }: {
   children: React.ReactNode;
   wide: boolean;
   progress: Animated.Value;
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle: number;
-  /** Zelfde type als ScrollView verwacht -- niet de kale ReactElement. */
   refreshControl?: React.ComponentProps<typeof ScrollView>["refreshControl"];
   announcement?: string | null;
   contentStyle?: ViewStyle;
   /** Zet uit als de inhoud zelf tot de rand moet lopen (volvlak-beeld). */
   gutter?: boolean;
+  /** Detailpagina: toon een terug-knop i.p.v. de tabstrip. */
+  backLabel?: string;
+  onBack?: () => void;
 }) {
+  // Hoogte van de kop in zijn UITGEKLAPTE stand. We meten één keer en
+  // houden de grootste waarde vast: tijdens het inklappen krimpt de kop,
+  // en als we die kleinere waarde zouden overnemen springt de inhoud.
+  const [headerHeight, setHeaderHeight] = useState(0);
+
   return (
-    <ScrollView
-      stickyHeaderIndices={[0]}
-      onScroll={onScroll}
-      scrollEventThrottle={scrollEventThrottle}
-      refreshControl={refreshControl}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ minHeight: "100%" }}
-    >
-      <AppChrome wide={wide} progress={progress} announcement={announcement} />
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        refreshControl={refreshControl}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: headerHeight, minHeight: "100%" }}
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: PAGE_MAX,
+            alignSelf: "center",
+            ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
+            ...contentStyle,
+          }}
+        >
+          {children}
+        </View>
+      </ScrollView>
+
+      {/* De kop. Absoluut verankerd, dus altijd bovenaan het scherm. */}
       <View
-        style={{
-          width: "100%",
-          maxWidth: PAGE_MAX,
-          alignSelf: "center",
-          ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
-          ...contentStyle,
+        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          setHeaderHeight((prev) => (h > prev ? h : prev));
         }}
       >
-        {children}
+        <AppChrome
+          wide={wide}
+          progress={progress}
+          announcement={announcement}
+          backLabel={backLabel}
+          onBack={onBack}
+        />
       </View>
-    </ScrollView>
+    </View>
   );
 }

@@ -22,7 +22,7 @@ import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { Meta } from "@/components/Editorial";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { FeedRail, Frame } from "@/components/FeedChrome";
 import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
@@ -214,13 +214,14 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* De kop is het eerste kind van DEZE scroller en plakt via
-          stickyHeaderIndices. Zo scrollt de pagina als een geheel. */}
-      <ScrollView
-        stickyHeaderIndices={[0]}
+      {/* De kop staat buiten deze scroller en is absoluut verankerd —
+          zie PageScroll voor waarom stickyHeaderIndices hier niet volstaat. */}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        showsVerticalScrollIndicator={false}
+        gutter={false}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}
@@ -229,8 +230,6 @@ export default function FeedScreen() {
           />
         }
       >
-        <AppChrome wide={wide} progress={chrome.progress} />
-
         <View
           style={{
             width: "100%",
@@ -332,7 +331,7 @@ export default function FeedScreen() {
 
           <View style={{ height: wide ? 24 : 16 }} />
         </View>
-      </ScrollView>
+      </PageScroll>
     </SafeAreaView>
   );
 }

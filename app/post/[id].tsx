@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { useWide } from "@/components/Editorial";
-import { AppChrome, PAGE_MAX, useChromeScroll } from "@/components/AppChrome";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
@@ -266,25 +266,20 @@ export default function PostDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        {/* Zelfde plakkende kop als de tabbladen: een detailpagina is
-            geen los venster maar een pagina van dezelfde site. */}
-        <ScrollView
-          stickyHeaderIndices={[0]}
+        {/* Detailpagina: dezelfde kop, maar met een terug-knop in plaats van
+            de tabstrip. Zo voelt dit als een eigen pagina binnen dezelfde
+            site, en niet als een zesde tabblad. */}
+        <PageScroll
+          wide={wide}
+          progress={chrome.progress}
           onScroll={chrome.onScroll}
           scrollEventThrottle={chrome.scrollEventThrottle}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          backLabel="Terug naar de feed"
+          onBack={() => safeBack(router, "/(app)/feed")}
+          contentStyle={{ padding: 20, paddingBottom: 40 }}
+          gutter={false}
         >
-          <AppChrome wide={wide} progress={chrome.progress} />
-          <View
-            style={{
-              width: "100%",
-              maxWidth: PAGE_MAX,
-              alignSelf: "center",
-              padding: 20,
-              paddingBottom: 40,
-            }}
-          >
+          <View>
           {/* Post card */}
           {post.isLoading || !post.data ? (
             <View className="bg-paper-soft  overflow-hidden">
@@ -441,7 +436,7 @@ export default function PostDetailScreen() {
             </View>
           )}
           </View>
-        </ScrollView>
+        </PageScroll>
 
         {commentError && (
           <View className="bg-red-100 border border-red-300  mx-5 mb-2 px-4 py-3">
