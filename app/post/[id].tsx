@@ -10,6 +10,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,6 +42,7 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
+  const { height: windowHeight } = useWindowDimensions();
 
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -236,23 +238,8 @@ export default function PostDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      <View className="flex-row items-center px-4 py-3">
-        <Pressable
-          onPress={() => safeBack(router, "/(app)/feed")}
-          className="w-9 h-9 bg-paper-soft items-center justify-center"
-        >
-          <Ionicons name="chevron-back" color={feed.ink} size={20} />
-        </Pressable>
-        <Text className="flex-1 text-ink text-lg font-semibold ml-3">Foto</Text>
-        {canModerate && (
-          <Pressable
-            onPress={() => setMenuOpen(true)}
-            className="w-9 h-9 bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="ellipsis-horizontal" color={feed.ink} size={20} />
-          </Pressable>
-        )}
-      </View>
+      {/* De oude kopregel is weg: terug-knop en optiemenu zitten nu
+          in de compacte chrome hierboven. */}
 
       {deleteError && (
         <View className="bg-red-100 border border-red-300  mx-5 mt-2 px-4 py-3">
@@ -282,8 +269,11 @@ export default function PostDetailScreen() {
           progress={chrome.progress}
           onScroll={chrome.onScroll}
           scrollEventThrottle={chrome.scrollEventThrottle}
+          compact
           backLabel="Terug naar de feed"
           onBack={() => safeBack(router, "/(app)/feed")}
+          actionLabel={canModerate ? "Opties" : undefined}
+          onAction={canModerate ? () => setMenuOpen(true) : undefined}
           contentStyle={{ padding: 20, paddingBottom: 40 }}
           gutter={false}
         >
@@ -310,7 +300,14 @@ export default function PostDetailScreen() {
               <View
                 style={{
                   width: "100%",
-                  aspectRatio: post.data.image_url ? 4 / 5 : undefined,
+                  // Het doel van de morph: een plaat over de volle breedte,
+                  // bijna schermhoog. De tegel in de feed is klein en staat
+                  // ergens in het raster; die groeit hier naartoe. Zonder
+                  // deze maat is er niets om naartoe te groeien en leest de
+                  // overgang als een gewone paginawissel.
+                  height: post.data.image_url
+                    ? Math.round(windowHeight * (wide ? 0.82 : 0.62))
+                    : undefined,
                   backgroundColor: feed.post,
                   justifyContent: "flex-end",
                   // Zelfde naam als de tegel in de feed: de browser morpht

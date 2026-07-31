@@ -16,35 +16,24 @@ import { LogoMark } from "@/components/LogoMark";
 import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 
 /**
- * De chrome die op ÉLK tabblad staat: aankondigingsbalk, gekaderde kop met
- * de tabstrip, en daaronder de woordmerk-plaat.
+ * De chrome die boven élke pagina staat.
  *
- * Waarom hier en niet per scherm: feed, events, chats, vrienden en profiel
- * deelden eerst alleen een tabbalk onderin. Nu is de kop de navigatie, dus
- * hij hoort één keer te bestaan en niet vijf keer overgetypt te worden.
+ * Er zijn **twee standen**, en ze zijn bewust verschillend van vorm — niet
+ * dezelfde kop die alleen krimpt:
  *
- * De chrome staat BUITEN de scrollende inhoud van een scherm. Dat is nodig
- * voor de inklap-animatie: als de plaat gewoon meescrolt is hij al van het
- * scherm af voordat je hem ziet krimpen.
+ *   GROOT     aankondigingsbalk · micro-utilityregel · tabstrip ·
+ *             taglinekop · brede woordmerk-plaat
+ *   COMPACT   één zwarte balk: klein LINCIN links, de navigatie erín,
+ *             en rechts de primaire actie
+ *
+ * Bovenaan de pagina staat de grote stand; zodra je scrolt kruisvervaagt
+ * hij naar de compacte balk, die ook naar de linkerhoek krimpt. Detailpagina's
+ * (`/post/[id]`, `/event/[id]`, `/user/[…]`) beginnen meteen in de compacte
+ * stand — daar is de grote kop alleen maar ruimte die het onderwerp afpakt.
+ *
+ * De chrome staat BUITEN de scrollende inhoud van een scherm; zie PageScroll.
  */
 
-// ---------------------------------------------------------------
-// Scrollpositie → inklapstand
-// ---------------------------------------------------------------
-
-/**
- * Levert de `progress`-waarde (0 = groot, 1 = compact) plus de scroll-props
- * die je op de scroller van het scherm zet.
- *
- * De kop klapt **meteen** in — al na een tiental pixels — en gaat pas weer
- * open als je helemaal terug bovenaan bent. Dat is bewust anders dan de
- * eerdere 100vh-drempel: die maakte dat je op korte pagina's de compacte
- * stand nooit te zien kreeg, en dat het op lange pagina's voelde alsof er
- * niets gebeurde tot je een heel scherm ver was.
- *
- * `useNativeDriver` staat uit omdat we `height` animeren, en dat kan de
- * native driver niet.
- */
 /**
  * De bladspiegel loopt tot de schermrand. Er is bewust geen maximum meer:
  * dit ontwerp is een affiche, geen leeskolom, en een cap van 1280 liet op
@@ -53,10 +42,36 @@ import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/t
  */
 export const PAGE_MAX: number | undefined = undefined;
 
+/** Hoogte van de compacte balk. */
+const BAR_H = 58;
+
+/** De échte routes uit `app/(app)/_layout.tsx` — geen verzonnen navigatie. */
+const TABS: { href: string; label: string }[] = [
+  { href: "/feed", label: "Feed" },
+  { href: "/events", label: "Events" },
+  { href: "/chats", label: "Chats" },
+  { href: "/friends", label: "Vrienden" },
+  { href: "/profile", label: "Profiel" },
+];
+
+// ---------------------------------------------------------------
+// Scrollpositie → inklapstand
+// ---------------------------------------------------------------
+
+/**
+ * Levert `progress` (0 = groot, 1 = compact) plus de scroll-props voor de
+ * scroller van het scherm.
+ *
+ * De kop klapt **meteen** in — na een tiental pixels — en gaat pas weer open
+ * als je helemaal terug bovenaan bent. De eerdere drempel van 100vh maakte
+ * dat je op korte pagina's de compacte stand nooit te zien kreeg.
+ *
+ * `useNativeDriver` staat uit omdat we hoogtes animeren; dat kan de native
+ * driver niet.
+ */
 export function useChromeScroll() {
   const progress = useRef(new Animated.Value(0)).current;
   const collapsed = useRef(false);
-  /** Voorbij deze scrollafstand is de kop compact. */
   const THRESHOLD = 12;
 
   const onScroll = useCallback(
@@ -83,18 +98,10 @@ export function useChromeScroll() {
 // ---------------------------------------------------------------
 
 /**
- * De oranje balk bovenaan.
- *
- * Dit is de énige plek in de app waar het warme oranje (`announce`,
- * #E66B3F) nog voorkomt. Alle andere accenten — citaatteken, indexcijfer,
- * kickers, lijnwerk — staan in het scherpe rood (`flame`, #E63329). Die
- * twee hebben daarom een eigen tokennaam, zodat een latere zoek-vervang op
- * het rood deze balk niet meeneemt.
- *
- * Er staat bewust een echte, wegklikbare boodschap in plaats van een
- * versielabel — een balk die niets zegt is alleen maar kleur. Geef `message`
- * mee vanuit een scherm, of pas de constante hieronder aan zodra er een
- * echte aankondigingsbron is.
+ * De oranje balk bovenaan — de énige plek waar het warme oranje
+ * (`announce`) nog voorkomt. Alle andere accenten staan in het rood
+ * (`flame`). Twee tokennamen, zodat een zoek-vervang op het rood deze balk
+ * niet meeneemt.
  */
 const DEFAULT_ANNOUNCEMENT = "Nieuw: deel een vondst rechtstreeks vanuit een andere app ↗";
 
@@ -145,34 +152,23 @@ export function AnnouncementBar({
 }
 
 // ---------------------------------------------------------------
-// De gekaderde kop
+// De compacte balk
 // ---------------------------------------------------------------
 
-/** De échte routes uit `app/(app)/_layout.tsx` — geen verzonnen navigatie. */
-const TABS: { href: string; label: string }[] = [
-  { href: "/feed", label: "Feed" },
-  { href: "/events", label: "Events" },
-  { href: "/chats", label: "Chats" },
-  { href: "/friends", label: "Vrienden" },
-  { href: "/profile", label: "Profiel" },
-];
-
-/** Horizontale scheiding binnen het kader — zelfde dikte als het kader. */
-function Divider() {
-  return <View style={{ height: FEED_BORDER, backgroundColor: feed.ink }} />;
-}
-
-export function AppHeader({
-  wide,
-  progress,
+/**
+ * Alles in één zwarte balk: klein LINCIN links, de paginanavigatie erín,
+ * rechts de primaire actie.
+ *
+ * De navigatie staat hier ín de plaat en niet erboven — dat is precies het
+ * verschil met de grote stand, waar de tabstrip een eigen lavendel rij is.
+ * Zo blijft de compacte kop één ding in plaats van twee gestapelde balkjes.
+ */
+function CompactBar({
   backLabel,
   onBack,
   actionLabel,
   onAction,
 }: {
-  wide: boolean;
-  /** 0 = groot, 1 = compact. De taglineregel vouwt mee dicht. */
-  progress?: Animated.Value;
   backLabel?: string;
   onBack?: () => void;
   actionLabel?: string;
@@ -180,80 +176,183 @@ export function AppHeader({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const p = progress ?? new Animated.Value(0);
-
-  // Ingeklapt blijft ALLEEN de tabstrip over, plus de woordmerk-plaat in
-  // zijn compacte maat. De micro-utilityregel (rij A) en de tagline (rij C)
-  // vouwen allebei dicht — dat is wat "heel klein" hier betekent.
-  const utilityHeight = p.interpolate({
-    inputRange: [0, 1],
-    outputRange: [38, 0],
-  });
-  const utilityOpacity = p.interpolate({
-    inputRange: [0, 0.4],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  const taglineHeight = p.interpolate({
-    inputRange: [0, 1],
-    outputRange: [wide ? 96 : 118, 0],
-  });
-  const taglineOpacity = p.interpolate({
-    inputRange: [0, 0.5],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
 
   return (
-    <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-      {/* Rij A — micro-utility. Vouwt dicht zodra de kop compact wordt. */}
-      <Animated.View
-        style={{ height: utilityHeight, opacity: utilityOpacity, overflow: "hidden" }}
+    <View
+      style={{
+        height: BAR_H,
+        flexDirection: "row",
+        alignItems: "stretch",
+        backgroundColor: "#17181B",
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        overflow: "hidden",
+      }}
+    >
+      {/* Het merk, klein. */}
+      <Pressable
+        onPress={() => router.push("/feed" as never)}
+        style={{ justifyContent: "center", paddingHorizontal: 16 }}
       >
-      <View style={{ flexDirection: "row" }}>
-        <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-          <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
-            Lincin
-          </Text>
-        </View>
-        <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-          {wide ? (
-            <Text style={[feedType.label, { color: "#3A3540", textAlign: "center" }]}>
-              Voor je vrienden.
-            </Text>
-          ) : null}
-        </View>
-        <View
-          style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}
-          className="px-3.5 py-2.5"
+        <Text
+          allowFontScaling={false}
+          style={{
+            fontFamily: feedType.hero.fontFamily,
+            fontWeight: "900",
+            fontSize: 19,
+            letterSpacing: -0.4,
+            color: "#FAF8F5",
+            transform: [{ scaleX: 0.84 }],
+          }}
         >
-          <Pressable onPress={() => router.push("/profile-edit")} hitSlop={6}>
-            <Text style={[feedType.label, { color: feed.ink }]}>Instellingen</Text>
-          </Pressable>
-          <Text style={[feedType.label, { color: feed.ink, marginHorizontal: 5 }]}>·</Text>
-          {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
-              verouderd en kennen /notifications niet. */}
-          <Pressable onPress={() => router.push("/notifications" as never)} hitSlop={6}>
-            <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
-          </Pressable>
-        </View>
-      </View>
-      <Divider />
-      </Animated.View>
+          LINCIN
+        </Text>
+      </Pressable>
 
-      {/* Rij B — de navigatie. Blijft altijd staan, ook in de compacte
-          stand: dit is het enige wat dan nog over is naast de plaat. */}
+      <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
+
+      {/* Op een detailpagina vervangt de terug-knop de navigatie. */}
       {onBack ? (
-        <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-          <Pressable
-            onPress={onBack}
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}
-            className="py-3"
-          >
-            <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>
-              {`← ${backLabel ?? "Terug"}`}
+        <Pressable
+          onPress={onBack}
+          style={{ flex: 1, justifyContent: "center", paddingHorizontal: 16 }}
+        >
+          <Text style={[feedType.label, { fontSize: 12, color: "#FAF8F5" }]} numberOfLines={1}>
+            {`← ${backLabel ?? "Terug"}`}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={{ flex: 1, flexDirection: "row" }}>
+          {TABS.map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Pressable
+                key={tab.href}
+                onPress={() => {
+                  if (!active) router.push(tab.href as never);
+                }}
+                style={{
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  // De actieve pagina keert om binnen de zwarte balk.
+                  backgroundColor: active ? "#FAF8F5" : "transparent",
+                }}
+              >
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {actionLabel && onAction ? (
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => ({
+            justifyContent: "center",
+            paddingHorizontal: 18,
+            backgroundColor: pressed ? flameDeep : "#E63329",
+          })}
+        >
+          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: "#FFFFFF" }]}>
+            {actionLabel}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// De grote kop
+// ---------------------------------------------------------------
+
+function Divider() {
+  return <View style={{ height: FEED_BORDER, backgroundColor: feed.ink }} />;
+}
+
+function FullHeader({
+  wide,
+  actionLabel,
+  onAction,
+}: {
+  wide: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  return (
+    <View>
+      <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
+        {/* Rij A — micro-utility. */}
+        <View style={{ flexDirection: "row" }}>
+          <View style={{ flex: 1 }} className="px-3.5 py-2.5">
+            <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
+              Lincin
             </Text>
-          </Pressable>
+          </View>
+          <View style={{ flex: 1 }} className="px-3.5 py-2.5">
+            {wide ? (
+              <Text style={[feedType.label, { color: "#3A3540", textAlign: "center" }]}>
+                Voor je vrienden.
+              </Text>
+            ) : null}
+          </View>
+          <View
+            style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}
+            className="px-3.5 py-2.5"
+          >
+            <Pressable onPress={() => router.push("/profile-edit")} hitSlop={6}>
+              <Text style={[feedType.label, { color: feed.ink }]}>Instellingen</Text>
+            </Pressable>
+            <Text style={[feedType.label, { color: feed.ink, marginHorizontal: 5 }]}>·</Text>
+            {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
+                verouderd en kennen /notifications niet. */}
+            <Pressable onPress={() => router.push("/notifications" as never)} hitSlop={6}>
+              <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <Divider />
+
+        {/* Rij B — de tabstrip als eigen rij. */}
+        <View style={{ flexDirection: "row" }}>
+          {TABS.map((tab, i) => {
+            const active = pathname === tab.href;
+            return (
+              <Pressable
+                key={tab.href}
+                onPress={() => {
+                  if (!active) router.push(tab.href as never);
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: active ? feed.ink : "transparent",
+                  borderRightWidth: FEED_BORDER,
+                  borderRightColor: i < TABS.length - 1 ? feed.ink : "transparent",
+                }}
+                className="py-3 px-2 items-center"
+              >
+                <Text
+                  style={[feedType.label, { fontSize: 12, color: active ? feed.lav : feed.ink }]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
           {actionLabel && onAction ? (
             <Pressable
               onPress={onAction}
@@ -271,63 +370,12 @@ export function AppHeader({
             </Pressable>
           ) : null}
         </View>
-      ) : (
-      <View style={{ flexDirection: "row" }}>
-        {TABS.map((tab, i) => {
-          const active = pathname === tab.href;
-          return (
-            <Pressable
-              key={tab.href}
-              onPress={() => {
-                if (!active) router.push(tab.href as never);
-              }}
-              style={{
-                flex: 1,
-                backgroundColor: active ? feed.ink : "transparent",
-                ...(i < TABS.length - 1
-                  ? { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }
-                  : null),
-              }}
-              className="py-3 px-2 items-center"
-            >
-              <Text
-                style={[feedType.label, { fontSize: 12, color: active ? feed.lav : feed.ink }]}
-                numberOfLines={1}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-        {/* De primaire actie sluit de navigatierij af, zodat hij in de
-            compacte stand mee naar de hoek verhuist. */}
-        {actionLabel && onAction ? (
-          <Pressable
-            onPress={onAction}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? flameDeep : feed.ink,
-              borderLeftWidth: FEED_BORDER,
-              borderLeftColor: feed.ink,
-              paddingHorizontal: 16,
-              justifyContent: "center",
-            })}
-          >
-            <Text style={[feedType.label, { fontSize: 12, color: feed.text }]}>
-              {actionLabel}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-      )}
 
-      {/* Rij C — de tagline. Vouwt dicht zodra de kop compact wordt. */}
-      <Animated.View style={{ height: taglineHeight, opacity: taglineOpacity, overflow: "hidden" }}>
         <Divider />
+
+        {/* Rij C — de taglinekop. */}
         <View
           style={{
-            flexDirection: wide ? "row" : "column",
-            justifyContent: "space-between",
-            alignItems: wide ? "flex-end" : "flex-start",
             paddingHorizontal: 18,
             paddingTop: 20,
             paddingBottom: 22,
@@ -336,56 +384,19 @@ export function AppHeader({
           <Text
             style={[
               wide ? feedType.tagline : feedType.taglineSmall,
-              { color: feed.ink, maxWidth: 520 },
+              { color: feed.ink, maxWidth: 620 },
             ]}
           >
             Ontdekkingen van je vrienden — links, fragmenten, muziek en ideeën.
           </Text>
         </View>
-      </Animated.View>
-    </View>
-  );
-}
+      </View>
 
-// ---------------------------------------------------------------
-// De woordmerk-plaat
-// ---------------------------------------------------------------
-
-/**
- * De plaat krimpt van 150px naar 56px. In plaats van de letterzetting te
- * schalen (waarbij het ankerpunt en de korrel gaan zwemmen) kruisvervagen
- * we tussen de twee maten die `LogoMark` al kent. Dat leest als een
- * bedoelde overgang in plaats van als een transform-artefact, en het werkt
- * identiek op web en native.
- */
-export function LogoPlate({ progress }: { progress: Animated.Value }) {
-  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [150, 56] });
-  const plateOpacity = progress.interpolate({
-    inputRange: [0, 0.55],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  const compactOpacity = progress.interpolate({
-    inputRange: [0.45, 1],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  return (
-    <Animated.View style={{ height, marginTop: 12, overflow: "hidden" }}>
-      <Animated.View
-        pointerEvents="none"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, opacity: plateOpacity }}
-      >
+      {/* De brede woordmerk-plaat. */}
+      <View style={{ marginTop: 12 }}>
         <LogoMark size="plate" />
-      </Animated.View>
-      <Animated.View
-        pointerEvents="none"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, opacity: compactOpacity }}
-      >
-        <LogoMark size="compact" />
-      </Animated.View>
-    </Animated.View>
+      </View>
+    </View>
   );
 }
 
@@ -393,17 +404,6 @@ export function LogoPlate({ progress }: { progress: Animated.Value }) {
 // Alles samen
 // ---------------------------------------------------------------
 
-/**
- * Zet dit boven de scrollende inhoud van een tabblad, en geef de
- * `onScroll`/`scrollEventThrottle` uit `useChromeScroll()` door aan die
- * ScrollView of FlatList.
- *
- *   const chrome = useChromeScroll();
- *   …
- *   <AppChrome wide={wide} progress={chrome.progress} />
- *   <ScrollView onScroll={chrome.onScroll}
- *               scrollEventThrottle={chrome.scrollEventThrottle}>
- */
 export function AppChrome({
   wide,
   progress,
@@ -413,50 +413,82 @@ export function AppChrome({
   onBack,
   actionLabel,
   onAction,
+  compact = false,
 }: {
   wide: boolean;
   progress: Animated.Value;
   announcement?: string | null;
   onAnnouncementPress?: () => void;
-  /**
-   * Zet dit op een detailpagina. De tabstrip maakt dan plaats voor een
-   * terug-knop, zodat zo'n pagina aanvoelt als een eigen pagina binnen
-   * dezelfde site in plaats van als een zesde tabblad.
-   */
+  /** Detailpagina: terug-knop i.p.v. de navigatie. */
   backLabel?: string;
   onBack?: () => void;
-  /** Primaire actie rechts in de navigatierij, bijv. "Iets delen". */
+  /** Primaire actie rechts, bijv. "Iets delen". */
   actionLabel?: string;
   onAction?: () => void;
+  /**
+   * Altijd de compacte balk, ongeacht de scrollstand. Voor detailpagina's:
+   * daar hoort het onderwerp bovenaan te staan, niet het merk.
+   */
+  compact?: boolean;
 }) {
   /**
-   * De beschikbare breedte, gemeten in plaats van geraden: een Animated-
+   * De volle breedte, gemeten in plaats van geraden: een Animated-
    * interpolatie kan geen "100%" naar een getal animeren — begin- en
    * eindwaarde moeten hetzelfde type zijn.
    */
   const [fullWidth, setFullWidth] = useState(0);
+  /** Hoogte van de grote stand; gemeten zodat de kruisvervaging klopt. */
+  const [stackHeight, setStackHeight] = useState(0);
+
+  // In de compacte modus staat alles vast: geen interpolaties, geen
+  // gemeten hoogtes die nog moeten binnenkomen.
+  if (compact) {
+    return (
+      <View style={{ paddingHorizontal: wide ? 24 : 16, paddingTop: 10, paddingBottom: 8 }}>
+        <View style={{ width: "100%", maxWidth: 900 }}>
+          <CompactBar
+            backLabel={backLabel}
+            onBack={onBack}
+            actionLabel={actionLabel}
+            onAction={onAction}
+          />
+        </View>
+      </View>
+    );
+  }
 
   /** Waar de kop naartoe krimpt: een blok in de linkerbovenhoek. */
-  const COMPACT_W = wide ? 640 : 0;
+  const COMPACT_W = wide ? 900 : 0;
   const targetW = COMPACT_W > 0 && fullWidth > COMPACT_W ? COMPACT_W : fullWidth;
   const shellWidth =
     fullWidth > 0
       ? progress.interpolate({ inputRange: [0, 1], outputRange: [fullWidth, targetW] })
       : undefined;
 
-  // De aankondigingsbalk vouwt mee dicht: in de compacte stand hoort er
-  // zo min mogelijk ruimte op te gaan aan chrome.
-  const bannerHeight = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [36, 0],
-  });
+  const bannerHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [36, 0] });
   const bannerOpacity = progress.interpolate({
     inputRange: [0, 0.4],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
-  const padTop = progress.interpolate({ inputRange: [0, 1], outputRange: [12, 6] });
-  const padBottom = progress.interpolate({ inputRange: [0, 1], outputRange: [4, 6] });
+
+  // De grote stand vouwt dicht, de balk vouwt open. Ze wisselen elkaar af
+  // in plaats van dat de ene in de andere krimpt.
+  const stackH = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [stackHeight || 300, 0],
+  });
+  const stackOpacity = progress.interpolate({
+    inputRange: [0, 0.55],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const barH = progress.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H] });
+  const barOpacity = progress.interpolate({
+    inputRange: [0.45, 1],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
 
   return (
     <View>
@@ -466,15 +498,12 @@ export function AppChrome({
         <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
       </Animated.View>
 
-      {/* Buitenste View meet de volle breedte; het krimpende blok zit
-          erbinnen en is links uitgelijnd, zodat de kop bij het scrollen
-          naar de hoek trekt in plaats van alleen platter te worden. */}
       <Animated.View
         style={{
           width: "100%",
           paddingHorizontal: wide ? 24 : 16,
-          paddingTop: padTop,
-          paddingBottom: padBottom,
+          paddingTop: 10,
+          paddingBottom: 8,
           alignItems: "flex-start",
         }}
         onLayout={(e) => {
@@ -482,23 +511,30 @@ export function AppChrome({
           setFullWidth((prev) => (w > prev ? w : prev));
         }}
       >
-        <Animated.View
-          style={{
-            width: shellWidth ?? "100%",
-            // Het paginavlak zit op dit blok en niet op de buitenste View,
-            // zodat rechts van de gekrompen kop de pagina zichtbaar blijft.
-            backgroundColor: feed.lav,
-          }}
-        >
-          <AppHeader
-            wide={wide}
-            progress={progress}
-            backLabel={backLabel}
-            onBack={onBack}
-            actionLabel={actionLabel}
-            onAction={onAction}
-          />
-          <LogoPlate progress={progress} />
+        <Animated.View style={{ width: shellWidth ?? "100%" }}>
+          {/* Grote stand */}
+          <Animated.View
+            style={{ height: stackH, opacity: stackOpacity, overflow: "hidden" }}
+          >
+            <View
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                setStackHeight((prev) => (h > prev ? h : prev));
+              }}
+            >
+              <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
+            </View>
+          </Animated.View>
+
+          {/* Compacte balk */}
+          <Animated.View style={{ height: barH, opacity: barOpacity, overflow: "hidden" }}>
+            <CompactBar
+              backLabel={backLabel}
+              onBack={onBack}
+              actionLabel={actionLabel}
+              onAction={onAction}
+            />
+          </Animated.View>
         </Animated.View>
       </Animated.View>
     </View>
@@ -509,26 +545,18 @@ export function AppChrome({
 // De pagina zelf
 // ---------------------------------------------------------------
 
-
 /**
  * De scroller van een heel scherm, met de kop erboven.
  *
- * ---------------------------------------------------------------
- * WAAROM NIET `stickyHeaderIndices`
- * ---------------------------------------------------------------
- * De vorige opzet zette de kop als eerste kind ín de ScrollView met
- * `stickyHeaderIndices={[0]}`. Op native werkt dat, maar op
- * react-native-web 0.21 pakt het niet betrouwbaar: de kop scrolde
- * gewoon mee het beeld uit. Vandaar deze opzet.
- *
- * Nu staat de kop **buiten** de scroller, absoluut bovenaan verankerd.
- * Hij hoort dus niet bij de scrollende inhoud en kan per definitie niet
- * wegscrollen — geen platformafhankelijk gedrag, geen sticky-quirks.
+ * De kop staat **buiten** de scroller en is absoluut verankerd. Eerder stond
+ * hij als eerste kind ín de ScrollView met `stickyHeaderIndices={[0]}`; dat
+ * werkt op native, maar op react-native-web 0.21 pakt het niet betrouwbaar
+ * en scrolde de kop gewoon weg.
  *
  * De inhoud krijgt bovenaan evenveel opvulling als de kop hoog is. Die
  * hoogte meten we met `onLayout` in plaats van hem te hardcoderen: hij
- * verschilt per breedte, per modus (tabs of terug-knop) en met het al dan
- * niet tonen van de aankondigingsbalk.
+ * verschilt per breedte, per stand en met het al dan niet tonen van de
+ * aankondigingsbalk.
  */
 export function PageScroll({
   children,
@@ -544,6 +572,7 @@ export function PageScroll({
   onBack,
   actionLabel,
   onAction,
+  compact = false,
 }: {
   children: React.ReactNode;
   wide: boolean;
@@ -555,16 +584,13 @@ export function PageScroll({
   contentStyle?: ViewStyle;
   /** Zet uit als de inhoud zelf tot de rand moet lopen (volvlak-beeld). */
   gutter?: boolean;
-  /** Detailpagina: toon een terug-knop i.p.v. de tabstrip. */
   backLabel?: string;
   onBack?: () => void;
-  /** Primaire actie in de kop, bijv. "Iets delen". */
   actionLabel?: string;
   onAction?: () => void;
+  /** Detailpagina: altijd de compacte balk. */
+  compact?: boolean;
 }) {
-  // Hoogte van de kop in zijn UITGEKLAPTE stand. We meten één keer en
-  // houden de grootste waarde vast: tijdens het inklappen krimpt de kop,
-  // en als we die kleinere waarde zouden overnemen springt de inhoud.
   const [headerHeight, setHeaderHeight] = useState(0);
 
   return (
@@ -588,7 +614,6 @@ export function PageScroll({
         </View>
       </ScrollView>
 
-      {/* De kop. Absoluut verankerd, dus altijd bovenaan het scherm. */}
       <View
         style={{ position: "absolute", top: 0, left: 0, right: 0 }}
         onLayout={(e) => {
@@ -599,11 +624,12 @@ export function PageScroll({
         <AppChrome
           wide={wide}
           progress={progress}
-          announcement={announcement}
+          announcement={compact ? null : announcement}
           backLabel={backLabel}
           onBack={onBack}
           actionLabel={actionLabel}
           onAction={onAction}
+          compact={compact}
         />
       </View>
     </View>

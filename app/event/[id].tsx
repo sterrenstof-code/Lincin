@@ -190,6 +190,7 @@ export default function EventDetailScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
         backLabel="Alle events"
         onBack={() => safeBack(router, "/(app)/events")}
         gutter={false}

@@ -137,6 +137,9 @@ export default function UserProfileScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
+        backLabel="Terug"
+        onBack={() => safeBack(router, "/(app)/feed")}
         contentStyle={{ paddingVertical: 24, paddingBottom: 80 }}
       >
         <Pressable

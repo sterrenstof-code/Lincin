@@ -1152,7 +1152,12 @@ function MosaicTile({
   onPress?: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, backgroundColor: feed.post }}>
+    <Pressable
+      onPress={onPress}
+      // Ankerpunt van de morph naar de detailpagina — ook de mozaïekcellen
+      // groeien uit tot de volledige plaat.
+      style={{ flex: 1, backgroundColor: feed.post, ...heroTag(post.id) }}
+    >
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
         <SafeImage
           uri={p.image}
