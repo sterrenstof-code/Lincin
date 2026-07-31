@@ -11,13 +11,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
+import { AppChrome, useChromeScroll } from "@/components/AppChrome";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyEvents } from "@/lib/api/events";
 
 export default function EventsScreen() {
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -127,9 +131,14 @@ export default function EventsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
+          ScreenContainer omdat hij op volle breedte hoort. */}
+      <AppChrome wide={wide} progress={chrome.progress} />
       <ScreenContainer>
         <FlatList
+          onScroll={chrome.onScroll}
+          scrollEventThrottle={chrome.scrollEventThrottle}
           data={[] as never[]}
           keyExtractor={() => "_"}
           renderItem={null as never}

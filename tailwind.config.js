@@ -10,36 +10,71 @@ module.exports = {
     extend: {
       colors: {
         // =========================================================
-        // EDITORIAL NEUTRALS — de Fondation Phi / Yoko Ono palet.
-        // Gebroken wit, zwarte inkt, zwarte haarlijnen. Dit is het
-        // palet van de composer en de nog niet omgezette feed-delen.
+        // HET SYSTEEM — lavendel / plum / inkt, met één rood accent.
+        //
+        // Sinds de v3-uitrol is dit het palet van de HELE app, niet
+        // meer alleen de feed. De semantische namen hieronder
+        // (shell/paper/ink/cream/page/carbon) zijn bewust blijven
+        // bestaan: ~1000 klassegebruiken in 37 schermen wijzen
+        // ernaar, en door de wáárden te herwijzen schuift alles in
+        // één keer mee zonder die schermen aan te raken.
+        //
+        // De oude warme waarden staan in `_backup_feed_v3/` en in
+        // git-historie als je wil vergelijken.
         // =========================================================
+
+        // ---- Vlakken ----
         page: {
-          DEFAULT: "#F2F1EE", // gebroken wit — de pagina zelf
-          alt: "#E9E8E4",     // lichtgrijze band, voor afwisseling
+          DEFAULT: "#CDBEE3", // lavendel — het paginavlak
+          alt: "#EFE9F5",     // lichter paneel, voor afwisseling
         },
-        sheet: "#FFFFFF",     // zuiver wit vlak, voor beeldkaders
-        carbon: {
-          DEFAULT: "#12110F", // bijna-zwart — tekst, voetbalk, gevulde knop
-          soft: "#55534E",    // secundaire tekst
-          muted: "#8E8C86",   // labels, metadata
+        sheet: "#EFE9F5",     // licht vlak, voor beeldkaders
+        paper: {
+          DEFAULT: "#CDBEE3", // lavendel
+          soft: "#EFE9F5",    // paneel
+          warm: "#BFACDB",    // iets dieper lavendel, voor banden
+          light: "#F5F1FA",   // bijna wit met een lila zweem
+        },
+        shell: {
+          DEFAULT: "#0B0A0C", // inkt — de donkere app-omlijsting
+          soft: "#2E2138",    // plum — élk donker kaart-oppervlak
         },
 
-        // =========================================================
-        // FEED V3 — lavendel / plum. ALLEEN het feed-scherm.
-        //
-        // Bewust een eigen `feed-`namespace: het oudere warme palet
-        // gebruikt `ink` en `paper` al voor heel andere waarden, en
-        // die schermen (chat, vrienden, profiel, events, auth) mogen
-        // hier niet door verschuiven. Zie DESIGN.md §10.
-        //
-        //   feed-lav    (--lav)            paginavlak van de feed
-        //   feed-ink    (--ink)            tekst + kaders, altijd 1.5px
-        //   feed-panel  (--paper-150)      enkel het zijbalk-paneel
-        //   feed-post   (--post-bg)        élk post-oppervlak
-        //   feed-text   (--post-text)      tekst op feed-post
-        //   feed-dim    (--post-text-dim)  bijschrift op feed-post
-        // =========================================================
+        // ---- Tekst ----
+        ink: {
+          DEFAULT: "#0B0A0C", // op lavendel
+          soft: "#3A3540",
+          muted: "#6B6474",
+        },
+        carbon: {
+          DEFAULT: "#0B0A0C",
+          soft: "#3A3540",
+          muted: "#6B6474",
+        },
+        cream: {
+          DEFAULT: "#F3EDE4", // op inkt of plum
+          soft: "#D9D2E4",
+          muted: "#A79FB5",
+        },
+
+        // ---- Accent ----
+        // Het scherpe drukwerk-rood uit de referenties. Vervangt het
+        // oude warme oranje (#E66B3F) overal; `bg-flame` en
+        // `text-flame` blijven dus werken en worden alleen roder.
+        // `deep` is de variant die klein gezet nog leest op lavendel —
+        // de DEFAULT haalt op die achtergrond geen 4.5:1.
+        flame: {
+          DEFAULT: "#E63329", // citaten, indexcijfers, vullingen, lijnwerk
+          deep: "#A81C13",    // kickers, categorielabels, kleine tekst
+        },
+
+        // Het warme oranje van de aankondigingsbalk. Dat is de ENIGE plek
+        // waar het nog voorkomt — het rood hierboven draagt alle andere
+        // accenten. Bewust een eigen naam, zodat een latere zoek-vervang op
+        // `flame` de balk niet per ongeluk meeneemt.
+        announce: "#E66B3F",
+
+        // ---- Feed-specifiek (ongewijzigd) ----
         feed: {
           lav: "#CDBEE3",
           ink: "#0B0A0C",
@@ -49,61 +84,28 @@ module.exports = {
           dim: "rgba(243,237,228,0.62)",
         },
 
-        // Secundaire accenten van de feed. Opgehelderd t.o.v. de
-        // oorspronkelijke waarden (#1E7A72 / #B8862E) omdat die enkel
-        // op wit werkten — op `feed-post` zakken ze weg.
+        // Secundaire accenten. Enkel voor de tegels in de feed —
+        // buiten de feed draagt het rood het accent alleen.
         teal: "#4FBDB0",
         gold: "#E3A84B",
 
-        // =========================================================
-        // SHELL / PAPER — het oudere warme systeem. Nog in gebruik
-        // door chats, vrienden, profiel, events en auth. Zie
-        // DESIGN.md §10 voor de migratievolgorde.
-        // =========================================================
-        shell: {
-          DEFAULT: "#0A0A0B",
-          soft: "#15141A",
-        },
-        paper: {
-          DEFAULT: "#F0D5B0",
-          soft: "#EFE2CD",
-          warm: "#D4C4A8",
-          light: "#F5EFE2",
-        },
-        ink: {
-          DEFAULT: "#1A1714",
-          soft: "#5A4F40",
-          muted: "#8A7E6C",
-        },
-        cream: {
-          DEFAULT: "#F5E8D3",
-          soft: "#C7BBA9",
-          muted: "#8A8275",
-        },
         brand: "#5B8DEF",   // Lincin-blauw — logo / e2e-badge only
-        // `flame` was een losse string; nu een object zodat `bg-flame`
-        // exact hetzelfde blijft en `flame-deep` erbij kan. Deep is de
-        // variant die klein gezet nog leesbaar is (kickers, categorie).
-        flame: {
-          DEFAULT: "#E66B3F", // warm oranje — hooguit één accent per scherm
-          deep: "#C4491F",    // klein-tekst-veilig
-        },
         line: {
-          DEFAULT: "#2A2620",
-          paper: "#D8C29B",
+          DEFAULT: "#0B0A0C",
+          paper: "rgba(11,10,12,0.25)",
         },
 
         // ---- Legacy aliases (uitfaseren) ----
         bg: {
-          DEFAULT: "#0A0A0B",
-          soft: "#15141A",
-          card: "#EFE2CD",
+          DEFAULT: "#0B0A0C",
+          soft: "#2E2138",
+          card: "#EFE9F5",
         },
         accent: {
-          DEFAULT: "#1A1714",
-          soft: "#2A2620",
+          DEFAULT: "#0B0A0C",
+          soft: "#3A3540",
         },
-        muted: "#8A7E6C",
+        muted: "#6B6474",
       },
     },
   },

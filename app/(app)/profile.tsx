@@ -7,7 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { Avatar } from "@/components/Avatar";
+import { AppChrome, useChromeScroll } from "@/components/AppChrome";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { useWide } from "@/components/Editorial";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
@@ -26,6 +28,8 @@ import { buildAddFriendUrl, copyToClipboard, shareText } from "@/lib/share";
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
   const myUserId = session!.user.id;
 
@@ -160,9 +164,16 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
+          ScreenContainer omdat hij op volle breedte hoort. */}
+      <AppChrome wide={wide} progress={chrome.progress} />
       <ScreenContainer>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      <ScrollView
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+      >
         {/* ---- Hero on shell ---- */}
         <View className="items-center mt-2 mb-6">
           <Pressable onPress={onPickAvatar} className="relative">

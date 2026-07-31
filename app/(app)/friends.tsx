@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
+import { AppChrome, useChromeScroll } from "@/components/AppChrome";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { useWide } from "@/components/Editorial";
 import { SkeletonListCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -30,6 +32,8 @@ export default function FriendsScreen() {
   const myUserId = session!.user.id;
   const qc = useQueryClient();
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
 
   const [query, setQuery] = useState("");
 
@@ -96,9 +100,14 @@ export default function FriendsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
+          ScreenContainer omdat hij op volle breedte hoort. */}
+      <AppChrome wide={wide} progress={chrome.progress} />
       <ScreenContainer>
       <FlatList
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
         data={[]}
         keyExtractor={() => "_"}
         renderItem={null as never}

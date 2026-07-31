@@ -22,9 +22,9 @@ import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { Meta } from "@/components/Editorial";
-import { FeedHeader, FeedRail, Frame } from "@/components/FeedChrome";
+import { AppChrome, useChromeScroll } from "@/components/AppChrome";
+import { FeedRail, Frame } from "@/components/FeedChrome";
 import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
-import { LogoMark } from "@/components/LogoMark";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
@@ -150,6 +150,9 @@ export default function FeedScreen() {
   const { width, height } = useWindowDimensions();
   const wide = width >= FEED_BREAKPOINT;
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  // De kop staat buiten de ScrollView; deze hook koppelt de scrollstand
+  // aan de inklap-animatie van de woordmerk-plaat.
+  const chrome = useChromeScroll();
 
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
@@ -210,7 +213,11 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      <AppChrome wide={wide} progress={chrome.progress} />
+
       <ScrollView
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -226,15 +233,9 @@ export default function FeedScreen() {
             maxWidth: PAGE_MAX,
             alignSelf: "center",
             paddingHorizontal: wide ? 24 : 16,
-            paddingTop: wide ? 20 : 16,
+            paddingTop: 0,
           }}
         >
-          <FeedHeader wide={wide} />
-
-          <View style={{ marginTop: 16 }}>
-            <LogoMark size="plate" />
-          </View>
-
           {/* Eén gedeeld kader om zijbalk én hoofdkolom, zoals de mockup:
               de zijbalk heeft een scheidingslijn rechts, geen eigen doos.
 

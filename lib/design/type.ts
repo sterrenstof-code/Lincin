@@ -381,10 +381,25 @@ export const line = {
   paper: "#D8C29B",
 } as const;
 
-export const flame = "#E66B3F";
+/**
+ * Het scherpe drukwerk-rood. Draagt ALLE redactionele accenten:
+ * citaattekens, indexcijfers, kickers, lijnwerk, gevulde knoppen.
+ * Moet gelijk blijven aan `flame.DEFAULT` in tailwind.config.js.
+ */
+export const flame = "#E63329";
 
-/** Klein-tekst-veilige variant van flame: kickers, categoriekleur. */
-export const flameDeep = "#C4491F";
+/**
+ * Klein-tekst-veilige variant. De DEFAULT haalt op lavendel geen 4.5:1,
+ * dus alles onder ~16px gebruikt deze: kickers, categorielabels.
+ */
+export const flameDeep = "#A81C13";
+
+/**
+ * Het warme oranje van de aankondigingsbalk — en van niets anders.
+ * Bewust een eigen naam zodat het rood hierboven vrij te vervangen is
+ * zonder de balk mee te nemen.
+ */
+export const announce = "#E66B3F";
 
 /** Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat. */
 export const WIDE_BREAKPOINT = 900;
