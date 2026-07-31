@@ -87,6 +87,7 @@ import {
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
+import { feed, flame } from "@/lib/design/type";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -749,12 +750,12 @@ export default function ChatDetail() {
           <View className="flex-row items-center px-3 py-3 gap-2">
             <Pressable
               onPress={() => safeBack(router, "/(app)/chats")}
-              className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
+              className="w-9 h-9 bg-paper-warm items-center justify-center"
             >
-              <Ionicons name="chevron-back" color="#1A1714" size={20} />
+              <Ionicons name="chevron-back" color={feed.ink} size={20} />
               {otherUnread > 0 && (
                 <View
-                  className="bg-flame rounded-full absolute -right-1 -top-1 px-1"
+                  className="bg-flame absolute -right-1 -top-1 px-1"
                   style={{
                     minWidth: 16,
                     height: 16,
@@ -816,16 +817,16 @@ export default function ChatDetail() {
                   }
                 }
               }}
-              className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
+              className="w-9 h-9 bg-paper-warm items-center justify-center"
             >
-              <Ionicons name="videocam-outline" color="#1A1714" size={18} />
+              <Ionicons name="videocam-outline" color={feed.ink} size={18} />
             </Pressable>
             {chat?.type === "group" && (
               <Pressable
                 onPress={() => router.push(`/group/${id}`)}
-                className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center"
+                className="w-9 h-9 bg-paper-warm items-center justify-center"
               >
-                <Ionicons name="information-circle-outline" color="#1A1714" size={20} />
+                <Ionicons name="information-circle-outline" color={feed.ink} size={20} />
               </Pressable>
             )}
           </View>
@@ -840,13 +841,13 @@ export default function ChatDetail() {
             <View className="flex-1 px-4 pt-4 gap-3">
               <View className="self-start max-w-[60%]">
                 <Skeleton
-                  className="bg-paper-soft rounded-2xl rounded-bl-md"
+                  className="bg-paper-soft"
                   style={{ height: 38, width: 200 }}
                 />
               </View>
               <View className="self-end max-w-[60%]">
                 <Skeleton
-                  className="bg-ink/40 rounded-2xl rounded-br-md"
+                  className="bg-ink/40"
                   style={{ height: 38, width: 160 }}
                 />
               </View>
@@ -882,7 +883,7 @@ export default function ChatDetail() {
                   {/* Laad-indicator voor oudere berichten */}
                   {loadingEarlier && (
                     <View className="items-center py-3">
-                      <ActivityIndicator color="#8A7E6C" size="small" />
+                      <ActivityIndicator color={feed.inkDim} size="small" />
                     </View>
                   )}
                   {/* Melding als alle geschiedenis geladen is */}
@@ -893,7 +894,7 @@ export default function ChatDetail() {
                   )}
                   {/* Banner: berichten worden nog opnieuw versleuteld (re-keying bezig) */}
                   {messages.some((m) => m.pendingRekey) && (
-                    <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
+                    <View className="bg-paper-warm px-4 py-3 mb-3 flex-row items-start gap-3">
                       <ActivityIndicator size="small" color="#8C7B6B" style={{ marginTop: 1 }} />
                       <Text className="text-ink-soft text-xs leading-5 flex-1">
                         Oudere berichten worden op de achtergrond ontsleuteld voor je. Scroll omhoog om ze te laden.
@@ -902,7 +903,7 @@ export default function ChatDetail() {
                   )}
                   {/* Banner: berichten permanent onleesbaar (auth-tag mismatch, ander device) */}
                   {messages.some((m) => m.content === null && !m.pendingRekey) && (
-                    <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3 flex-row items-start gap-3">
+                    <View className="bg-paper-warm px-4 py-3 mb-3 flex-row items-start gap-3">
                       <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
                       <Text className="text-ink-soft text-xs leading-5 flex-1">
                         Sommige berichten zijn versleuteld met de sleutel van een
@@ -952,7 +953,7 @@ export default function ChatDetail() {
                 const isFailed = failedMessages.has(item.id);
                 const dateSep = showDateSep ? (
                   <View className="items-center my-3">
-                    <View className="bg-paper-soft rounded-full px-3 py-1">
+                    <View className="bg-paper-soft px-3 py-1">
                       <Text className="text-ink-muted text-[11px] font-medium">
                         {formatChatDate(item.created_at)}
                       </Text>
@@ -966,8 +967,8 @@ export default function ChatDetail() {
                     <View>
                       {dateSep}
                       <View className="items-center my-2">
-                        <View className="bg-paper-soft rounded-full px-4 py-1.5 flex-row items-center gap-2">
-                          <Ionicons name="camera-outline" color="#8A7E6C" size={13} />
+                        <View className="bg-paper-soft px-4 py-1.5 flex-row items-center gap-2">
+                          <Ionicons name="camera-outline" color={feed.inkDim} size={13} />
                           <Text className="text-ink-muted text-xs">
                             {item.content.system.actorName} heeft de groepsfoto gewijzigd
                           </Text>
@@ -1106,7 +1107,7 @@ export default function ChatDetail() {
               }}
               ListEmptyComponent={
                 <View className="py-16 items-center">
-                  <View className="bg-paper-soft rounded-3xl p-6 max-w-[280px]">
+                  <View className="bg-paper-soft p-6 max-w-[280px]">
                     <Text className="text-ink font-semibold text-center mb-1">
                       Nog geen berichten
                     </Text>
@@ -1140,7 +1141,7 @@ export default function ChatDetail() {
                   <Pressable
                     key={name}
                     onPress={() => applyEmoji(name, emoji)}
-                    className="bg-paper rounded-2xl px-3 py-2 flex-row items-center gap-2"
+                    className="bg-paper px-3 py-2 flex-row items-center gap-2"
                   >
                     <Text style={{ fontSize: 20 }}>{emoji}</Text>
                     <Text className="text-ink-muted text-xs">:{name}</Text>
@@ -1153,7 +1154,7 @@ export default function ChatDetail() {
           {/* Mention autocomplete */}
           {mentionList && mentionList.length > 0 && (
             <View className="px-3 pb-1">
-              <View className="bg-paper rounded-2xl overflow-hidden">
+              <View className="bg-paper overflow-hidden">
                 {mentionList.map((m, i) => (
                   <Pressable
                     key={m.username}
@@ -1187,7 +1188,7 @@ export default function ChatDetail() {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: "#1A1714",
+                backgroundColor: feed.ink,
                 alignItems: "center",
                 justifyContent: "center",
                 shadowColor: "#000",
@@ -1197,7 +1198,7 @@ export default function ChatDetail() {
                 elevation: 4,
               }}
             >
-              <Ionicons name="chevron-down" color="#F5E8D3" size={20} />
+              <Ionicons name="chevron-down" color={feed.text} size={20} />
             </Pressable>
           )}
 
@@ -1214,7 +1215,7 @@ export default function ChatDetail() {
             {/* Reply preview bar */}
             {replyTo && (
               <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3">
-                <View className="w-0.5 self-stretch bg-brand rounded-full" />
+                <View className="w-0.5 self-stretch bg-brand" />
                 <View className="flex-1">
                   <Text className="text-brand text-xs font-semibold" numberOfLines={1}>
                     {replyTo.senderName}
@@ -1226,9 +1227,9 @@ export default function ChatDetail() {
                 <Pressable
                   onPress={() => setReplyTo(null)}
                   hitSlop={8}
-                  className="w-6 h-6 rounded-full bg-paper-warm items-center justify-center"
+                  className="w-6 h-6 bg-paper-warm items-center justify-center"
                 >
-                  <Ionicons name="close" color="#8A7E6C" size={14} />
+                  <Ionicons name="close" color={feed.inkDim} size={14} />
                 </Pressable>
               </View>
             )}
@@ -1264,9 +1265,9 @@ export default function ChatDetail() {
                 <Pressable
                   onPress={() => setAttachMenuOpen(true)}
                   disabled={sending}
-                  className="w-11 h-11 rounded-full bg-paper-warm active:bg-paper items-center justify-center"
+                  className="w-11 h-11 bg-paper-warm active:bg-paper items-center justify-center"
                 >
-                  <Ionicons name="add" color="#1A1714" size={22} />
+                  <Ionicons name="add" color={feed.ink} size={22} />
                 </Pressable>
               )}
               {!recording && (
@@ -1276,7 +1277,7 @@ export default function ChatDetail() {
                     if (!showEmojiPicker) inputRef.current?.blur();
                     else inputRef.current?.focus();
                   }}
-                  className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+                  className="w-11 h-11 bg-paper-warm items-center justify-center"
                 >
                   <Text style={{ fontSize: 20 }}>😊</Text>
                 </Pressable>
@@ -1284,7 +1285,7 @@ export default function ChatDetail() {
 
               {/* Input area OR recording indicator */}
               {recording ? (
-                <View className="flex-1 flex-row items-center bg-red-950/30 rounded-3xl border border-red-800/40 px-4 py-3 gap-3">
+                <View className="flex-1 flex-row items-center bg-red-950/30 border border-red-800/40 px-4 py-3 gap-3">
                   {/* Pulsing red dot */}
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" }} />
                   <Text className="text-red-400 font-semibold text-base flex-1">
@@ -1294,13 +1295,13 @@ export default function ChatDetail() {
                   <Pressable
                     onPress={() => stopRecording(false)}
                     hitSlop={8}
-                    className="w-7 h-7 rounded-full bg-red-900/40 items-center justify-center"
+                    className="w-7 h-7 bg-red-900/40 items-center justify-center"
                   >
                     <Ionicons name="trash-outline" color="#EF4444" size={15} />
                   </Pressable>
                 </View>
               ) : (
-                <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
+                <View className="flex-1 bg-paper-light border border-line-paper px-4 py-2 max-h-32">
                   <TextInput
                     ref={inputRef}
                     value={draft}
@@ -1308,7 +1309,7 @@ export default function ChatDetail() {
                     onKeyPress={onComposerKeyPress}
                     onFocus={() => setShowEmojiPicker(false)}
                     placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
-                    placeholderTextColor="#8A7E6C"
+                    placeholderTextColor={feed.inkDim}
                     multiline
                     editable={!sending}
                     className="text-ink text-base"
@@ -1322,7 +1323,7 @@ export default function ChatDetail() {
                 // Recording is active → stop and send
                 <Pressable
                   onPress={() => stopRecording(true)}
-                  className="bg-red-500 active:bg-red-600 rounded-full items-center justify-center"
+                  className="bg-red-500 active:bg-red-600 items-center justify-center"
                   style={{ width: 52, height: 52 }}
                 >
                   <Ionicons name="send" color="#fff" size={20} />
@@ -1332,14 +1333,14 @@ export default function ChatDetail() {
                 <Pressable
                   onPress={onSend}
                   disabled={sending || !draft.trim()}
-                  className={`rounded-full items-center justify-center ${
+                  className={` items-center justify-center ${
                     sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
                   }`}
                   style={{ width: 52, height: 52 }}
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? "#5A4F40" : "#F5E8D3"}
+                    color={sending || !draft.trim() ? feed.inkDim : feed.text}
                     size={22}
                   />
                 </Pressable>
@@ -1353,10 +1354,10 @@ export default function ChatDetail() {
                     else startRecording();
                   } : undefined}
                   disabled={sending}
-                  className="bg-ink active:bg-ink-soft rounded-full items-center justify-center"
+                  className="bg-ink active:bg-ink-soft items-center justify-center"
                   style={{ width: 52, height: 52 }}
                 >
-                  <Ionicons name="mic" color="#F5E8D3" size={22} />
+                  <Ionicons name="mic" color={feed.text} size={22} />
                 </Pressable>
               )}
             </View>
@@ -1567,7 +1568,7 @@ export default function ChatDetail() {
           >
             <Pressable
               onPress={() => {}}
-              className="bg-paper rounded-3xl px-6 py-5 mx-8 w-72"
+              className="bg-paper px-6 py-5 mx-8 w-72"
             >
               <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>
                 {reactionDetail?.emoji}
@@ -1628,7 +1629,7 @@ function ReactionPickerModal({
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}
       >
         <View
-          className="bg-paper mx-6 rounded-3xl overflow-hidden"
+          className="bg-paper mx-6 overflow-hidden"
           style={{ maxWidth: 480, alignSelf: "center", width: "90%" }}
         >
           {/* Reacties */}
@@ -1654,13 +1655,13 @@ function ReactionPickerModal({
           )}
           {canEdit && onEdit && (
             <Pressable onPress={onEdit} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="pencil-outline" color="#1A1714" size={18} />
+              <Ionicons name="pencil-outline" color={feed.ink} size={18} />
               <Text className="text-ink font-medium ml-3">Bewerken</Text>
             </Pressable>
           )}
           {onCopy && (
             <Pressable onPress={onCopy} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="copy-outline" color="#1A1714" size={18} />
+              <Ionicons name="copy-outline" color={feed.ink} size={18} />
               <Text className="text-ink font-medium ml-3">Kopiëren</Text>
             </Pressable>
           )}
@@ -1712,20 +1713,20 @@ function EditBar({
   const [value, setValue] = useState(text);
   return (
     <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3 border-b border-line-paper/60">
-      <View className="w-0.5 self-stretch bg-amber-500 rounded-full" />
+      <View className="w-0.5 self-stretch bg-amber-500" />
       <TextInput
         value={value}
         onChangeText={setValue}
         autoFocus
         multiline
         className="flex-1 text-base"
-        style={{ minHeight: 24, maxHeight: 80, color: "#F5E8D3" }}
+        style={{ minHeight: 24, maxHeight: 80, color: feed.text }}
       />
       <Pressable onPress={() => onConfirm(value)} hitSlop={8} className="p-1">
         <Ionicons name="checkmark" color="#22c55e" size={22} />
       </Pressable>
       <Pressable onPress={onCancel} hitSlop={8} className="p-1">
-        <Ionicons name="close" color="#8A7E6C" size={20} />
+        <Ionicons name="close" color={feed.inkDim} size={20} />
       </Pressable>
     </View>
   );
@@ -1877,10 +1878,10 @@ function MessageBubble({
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
         } ${
           failed
-            ? "bg-red-700 rounded-2xl rounded-br-md"
+            ? "bg-red-700"
             : isMine
-              ? "bg-ink rounded-2xl rounded-br-md"
-              : "bg-paper-soft rounded-2xl rounded-bl-md"
+              ? "bg-ink"
+              : "bg-paper-soft"
         }`}
       >
         {content === null ? (
@@ -1889,7 +1890,7 @@ function MessageBubble({
             <View className={`flex-row items-center gap-2 px-1 py-0.5`}>
               <ActivityIndicator
                 size="small"
-                color={isMine ? "#F5E8D3" : "#8C7B6B"}
+                color={isMine ? feed.text : "#8C7B6B"}
               />
               <Text className={`italic text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
                 wordt ontsleuteld…
@@ -1982,7 +1983,7 @@ function MessageBubble({
         </View>
         {/* Inline actie-iconen — verschijnen bij tik/selectie */}
         {selected && (
-          <View className={`flex-row items-center gap-0.5 bg-paper rounded-2xl px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}>
+          <View className={`flex-row items-center gap-0.5 bg-paper px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}>
             {onReply && (
               <Pressable onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
                 <Ionicons name="return-down-back-outline" color="#5B8DEF" size={16} />
@@ -1996,7 +1997,7 @@ function MessageBubble({
             </Pressable>
             {onCopy && (
               <Pressable onPress={onCopy} hitSlop={6} className="w-8 h-8 items-center justify-center">
-                <Ionicons name="copy-outline" color="#8A7E6C" size={15} />
+                <Ionicons name="copy-outline" color={feed.inkDim} size={15} />
               </Pressable>
             )}
             {onDelete && (
@@ -2020,7 +2021,7 @@ function MessageBubble({
               onPress={() => onToggleReaction(r.emoji)}
               onLongPress={() => onReactionLongPress?.(r.emoji, r.userIds)}
               delayLongPress={300}
-              className={`flex-row items-center px-2 py-0.5 rounded-full border ${
+              className={`flex-row items-center px-2 py-0.5 border ${
                 r.mine
                   ? "bg-brand/20 border-brand"
                   : "bg-paper-soft border-line-paper"
@@ -2123,10 +2124,10 @@ function CallNotificationCard({
   return (
     <View className="items-center my-1">
       <View
-        className="bg-paper-soft rounded-2xl px-4 py-3 flex-row items-center gap-3"
+        className="bg-paper-soft px-4 py-3 flex-row items-center gap-3"
         style={{ maxWidth: 320, width: "100%" }}
       >
-        <View className="w-10 h-10 rounded-full bg-blue-500/15 items-center justify-center">
+        <View className="w-10 h-10 bg-blue-500/15 items-center justify-center">
           <Ionicons name="videocam" color="#5B8DEF" size={18} />
         </View>
         <View className="flex-1">
@@ -2137,7 +2138,7 @@ function CallNotificationCard({
         </View>
         <Pressable
           onPress={onJoin}
-          className="bg-blue-500 active:bg-blue-600 rounded-full px-3 py-1.5"
+          className="bg-blue-500 active:bg-blue-600 px-3 py-1.5"
         >
           <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Deelnemen</Text>
         </Pressable>
@@ -2160,7 +2161,7 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
       {/* Thumbnail */}
       <Pressable
         onPress={() => uri && setOpen(true)}
-        className="overflow-hidden rounded-2xl"
+        className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
       >
         {uri && !loading ? (
@@ -2176,9 +2177,9 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
             className="bg-paper-warm items-center justify-center"
           >
             {loading ? (
-              <ActivityIndicator color="#8A7E6C" />
+              <ActivityIndicator color={feed.inkDim} />
             ) : (
-              <Ionicons name="image-outline" color="#5A4F40" size={32} />
+              <Ionicons name="image-outline" color={feed.inkDim} size={32} />
             )}
           </View>
         )}
@@ -2209,7 +2210,7 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" color="#F5E8D3" size={20} />
+              <Ionicons name="close" color={feed.text} size={20} />
             </Pressable>
           </SafeAreaView>
 
@@ -2311,7 +2312,7 @@ function VoiceMessageBubble({
 
   return (
     <View
-      className={`flex-row items-center gap-3 px-3 py-3 rounded-2xl m-1 ${
+      className={`flex-row items-center gap-3 px-3 py-3 m-1 ${
         isMine ? "bg-ink/20" : "bg-paper-warm/60"
       }`}
       style={{ minWidth: 200, maxWidth: 260 }}
@@ -2319,16 +2320,16 @@ function VoiceMessageBubble({
       {/* Play / pause */}
       <Pressable
         onPress={togglePlay}
-        className={`w-10 h-10 rounded-full items-center justify-center ${
+        className={`w-10 h-10 items-center justify-center ${
           isMine ? "bg-cream/20" : "bg-paper-light"
         }`}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={isMine ? "#F5E8D3" : "#1A1714"} />
+          <ActivityIndicator size="small" color={isMine ? feed.text : feed.ink} />
         ) : (
           <Ionicons
             name={isPlaying ? "pause" : "play"}
-            color={isMine ? "#F5E8D3" : "#1A1714"}
+            color={isMine ? feed.text : feed.ink}
             size={18}
           />
         )}
@@ -2338,10 +2339,10 @@ function VoiceMessageBubble({
       <View className="flex-1 gap-1">
         {/* Track */}
         <View
-          className={`h-1.5 rounded-full ${isMine ? "bg-cream/20" : "bg-paper-warm"}`}
+          className={`h-1.5 ${isMine ? "bg-cream/20" : "bg-paper-warm"}`}
         >
           <View
-            className={`h-1.5 rounded-full ${isMine ? "bg-cream" : "bg-ink-soft"}`}
+            className={`h-1.5 ${isMine ? "bg-cream" : "bg-ink-soft"}`}
             style={{ width: `${Math.round(progress * 100)}%` }}
           />
         </View>
@@ -2368,7 +2369,7 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
       {/* Thumbnail preview */}
       <Pressable
         onPress={() => uri && setOpen(true)}
-        className="overflow-hidden rounded-2xl"
+        className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
       >
         <View
@@ -2376,7 +2377,7 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
           className="bg-paper-warm items-center justify-center"
         >
           {loading ? (
-            <ActivityIndicator color="#8A7E6C" />
+            <ActivityIndicator color={feed.inkDim} />
           ) : uri ? (
             <>
               {/* Probeer een stills-preview te tonen als poster */}
@@ -2404,7 +2405,7 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
               </View>
             </>
           ) : (
-            <Ionicons name="videocam-outline" color="#5A4F40" size={32} />
+            <Ionicons name="videocam-outline" color={feed.inkDim} size={32} />
           )}
         </View>
       </Pressable>
@@ -2434,7 +2435,7 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" color="#F5E8D3" size={20} />
+              <Ionicons name="close" color={feed.text} size={20} />
             </Pressable>
           </SafeAreaView>
 
@@ -2522,16 +2523,16 @@ function AttachmentView({
     <View
       className={`flex-row items-center px-3 py-3 ${
         isMine ? "bg-ink/20" : "bg-paper-warm/60"
-      } rounded-2xl m-1`}
+      } m-1`}
     >
       <View
-        className={`w-10 h-10 rounded-full items-center justify-center ${
+        className={`w-10 h-10 items-center justify-center ${
           isMine ? "bg-cream/20" : "bg-paper-light"
         }`}
       >
         <Ionicons
           name="document-outline"
-          color={isMine ? "#F5E8D3" : "#1A1714"}
+          color={isMine ? feed.text : feed.ink}
           size={20}
         />
       </View>
@@ -2555,7 +2556,7 @@ function AttachmentView({
         >
           <Ionicons
             name="download-outline"
-            color={isMine ? "#F5E8D3" : "#1A1714"}
+            color={isMine ? feed.text : feed.ink}
             size={18}
           />
         </Pressable>
@@ -2586,8 +2587,8 @@ function ChatCallPlanCard({
 
   if (!plan) {
     return (
-      <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
-        <ActivityIndicator size="small" color="#8A7E6C" />
+      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+        <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
   }
@@ -2605,7 +2606,7 @@ function ChatCallPlanCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
       {/* Header */}
       <View className="flex-row items-center gap-2 px-4 pt-3 pb-2">
         <Ionicons name="videocam-outline" color="#5B8DEF" size={16} />
@@ -2625,7 +2626,7 @@ function ChatCallPlanCard({
               key={slot.id}
               onPress={() => toggleSlot(slot.id, myVote)}
               disabled={!!isSaving}
-              className={`flex-row items-center px-3 py-2 rounded-2xl ${myVote ? "bg-blue-100" : "bg-paper"}`}
+              className={`flex-row items-center px-3 py-2 ${myVote ? "bg-blue-100" : "bg-paper"}`}
             >
               <View className="flex-1">
                 <Text className={`text-xs font-semibold ${myVote ? "text-blue-700" : "text-ink"}`}>
@@ -2659,7 +2660,7 @@ function ChatCallPlanCard({
                 endsAt: new Date(bestSlot.ends_at),
               });
             }}
-            className="flex-row items-center gap-1 bg-teal-50 border border-teal-200 rounded-full px-2.5 py-1"
+            className="flex-row items-center gap-1 bg-teal-50 border border-teal-200 px-2.5 py-1"
           >
             <Ionicons name="calendar-outline" color="#0F6E56" size={12} />
             <Text className="text-teal-700 text-[10px] font-semibold">Agenda</Text>
@@ -2690,8 +2691,8 @@ function ChatPollCard({
 
   if (!poll) {
     return (
-      <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
-        <ActivityIndicator size="small" color="#8A7E6C" />
+      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+        <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
   }
@@ -2710,7 +2711,7 @@ function ChatPollCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 rounded-3xl bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
       <View className="flex-row items-center gap-2 px-4 pt-3 pb-1">
         <Ionicons name="bar-chart-outline" color="#D46220" size={16} />
         <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={2}>{poll.question}</Text>
@@ -2721,9 +2722,9 @@ function ChatPollCard({
           const isMyVote = poll.my_vote_option_id === option.id;
           if (showResults) {
             return (
-              <View key={option.id} className="rounded-2xl overflow-hidden">
+              <View key={option.id} className=" overflow-hidden">
                 <View className="flex-row items-center px-3 py-2" style={{ backgroundColor: isMyVote ? "#D4622012" : "#1A160E06" }}>
-                  <View className="absolute left-0 top-0 bottom-0 rounded-2xl" style={{ width: `${pct}%`, backgroundColor: isMyVote ? "#D4622020" : "#1A160E08" }} />
+                  <View className="absolute left-0 top-0 bottom-0" style={{ width: `${pct}%`, backgroundColor: isMyVote ? "#D4622020" : "#1A160E08" }} />
                   <Text className={`flex-1 text-xs font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>{option.label}</Text>
                   <Text className={`text-xs font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>{pct}%</Text>
                 </View>
@@ -2731,7 +2732,7 @@ function ChatPollCard({
             );
           }
           return (
-            <Pressable key={option.id} onPress={() => handleVote(option.id)} className="border border-paper rounded-2xl px-3 py-2 active:bg-paper">
+            <Pressable key={option.id} onPress={() => handleVote(option.id)} className="border border-paper px-3 py-2 active:bg-paper">
               <Text className="text-ink text-xs font-medium">{option.label}</Text>
             </Pressable>
           );

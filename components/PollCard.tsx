@@ -6,6 +6,7 @@ import { ActionSheet } from "./ActionSheet";
 import { CommentsSection } from "./CommentsSection";
 import { votePoll, deletePoll, type PollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
+import { feed } from "@/lib/design/type";
 
 export function PollCard({
   poll,
@@ -102,7 +103,7 @@ export function PollCard({
         </View>
         {isMine && (
           <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} className="w-8 h-8 items-center justify-center">
-            <Ionicons name="ellipsis-horizontal" color="#55534E" size={18} />
+            <Ionicons name="ellipsis-horizontal" color={feed.inkDim} size={18} />
           </Pressable>
         )}
       </View>
@@ -186,7 +187,7 @@ export function PollCard({
 
       {/* Footer */}
       <View className="flex-row items-center mt-3 gap-2">
-        {voting && <ActivityIndicator size="small" color="#12110F" />}
+        {voting && <ActivityIndicator size="small" color={feed.ink} />}
         <Text className="text-carbon-muted text-xs">
           {localPoll.total_votes} {localPoll.total_votes === 1 ? "stem" : "stemmen"}
         </Text>

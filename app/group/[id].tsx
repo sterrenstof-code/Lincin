@@ -34,6 +34,7 @@ import {
 import { sendMessage } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
+import { feed } from "@/lib/design/type";
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -153,9 +154,9 @@ export default function GroupInfoScreen() {
       <View className="flex-row items-center px-4 py-3">
         <Pressable
           onPress={() => safeBack(router, `/chat/${chatId}`)}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="chevron-back" color="#1A1714" size={20} />
+          <Ionicons name="chevron-back" color={feed.ink} size={20} />
         </Pressable>
         <Text className="flex-1 text-cream text-lg font-semibold ml-3">Groep info</Text>
       </View>
@@ -166,13 +167,13 @@ export default function GroupInfoScreen() {
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
           {/* Hero */}
-          <View className="bg-paper rounded-3xl p-6 items-center">
+          <View className="bg-paper p-6 items-center">
             <Pressable
               onPress={onPickGroupAvatar}
               disabled={!isOwner}
               className="relative mb-3"
             >
-              <View className="w-20 h-20 rounded-full bg-paper-warm items-center justify-center overflow-hidden">
+              <View className="w-20 h-20 bg-paper-warm items-center justify-center overflow-hidden">
                 {groupAvatarUrl ? (
                   <Image
                     source={{ uri: groupAvatarUrl, cacheKey: groupAvatarUrl.split("?")[0] }}
@@ -181,14 +182,14 @@ export default function GroupInfoScreen() {
                     contentFit="cover"
                   />
                 ) : (
-                  <Ionicons name="people" color="#1A1714" size={32} />
+                  <Ionicons name="people" color={feed.ink} size={32} />
                 )}
               </View>
               {isOwner && (
-                <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-paper items-center justify-center">
+                <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-paper items-center justify-center">
                   {avatarUploading
-                    ? <ActivityIndicator size="small" color="#F5E8D3" />
-                    : <Ionicons name="camera" color="#F5E8D3" size={14} />
+                    ? <ActivityIndicator size="small" color={feed.text} />
+                    : <Ionicons name="camera" color={feed.text} size={14} />
                   }
                 </View>
               )}
@@ -204,7 +205,7 @@ export default function GroupInfoScreen() {
                   onChangeText={setNameDraft}
                   maxLength={64}
                   autoFocus
-                  className="bg-paper-light text-ink text-center text-xl font-bold px-4 py-3 rounded-full border border-line-paper"
+                  className="bg-paper-light text-ink text-center text-xl font-bold px-4 py-3 border border-line-paper"
                 />
                 <View className="flex-row gap-2 mt-3">
                   <Pressable
@@ -213,14 +214,14 @@ export default function GroupInfoScreen() {
                       setNameDraft(chat.data?.name ?? "");
                       setError(null);
                     }}
-                    className="flex-1 border border-ink/30 rounded-full py-2.5 items-center"
+                    className="flex-1 border border-ink/30 py-2.5 items-center"
                   >
                     <Text className="text-ink font-semibold">Annuleer</Text>
                   </Pressable>
                   <Pressable
                     onPress={onSaveName}
                     disabled={savingName}
-                    className="flex-1 bg-ink active:bg-ink-soft rounded-full py-2.5 items-center"
+                    className="flex-1 bg-ink active:bg-ink-soft py-2.5 items-center"
                   >
                     <Text className="text-cream font-semibold">
                       {savingName ? "Bezig…" : "Bewaren"}
@@ -229,7 +230,7 @@ export default function GroupInfoScreen() {
                 </View>
               </View>
             ) : chat.isLoading ? (
-              <Skeleton className="w-40 h-6 bg-paper-warm rounded-full" />
+              <Skeleton className="w-40 h-6 bg-paper-warm" />
             ) : (
               <View className="flex-row items-center">
                 <Text className="text-3xl font-bold tracking-tight text-ink">
@@ -241,7 +242,7 @@ export default function GroupInfoScreen() {
                     hitSlop={8}
                     className="ml-2 p-1"
                   >
-                    <Ionicons name="pencil" color="#5A4F40" size={18} />
+                    <Ionicons name="pencil" color={feed.inkDim} size={18} />
                   </Pressable>
                 )}
               </View>
@@ -265,9 +266,9 @@ export default function GroupInfoScreen() {
               {isOwner && isGroup && (
                 <Pressable
                   onPress={() => router.push(`/group-add/${chatId}`)}
-                  className="flex-row items-center bg-cream active:bg-cream-soft rounded-full px-3 py-1"
+                  className="flex-row items-center bg-cream active:bg-cream-soft px-3 py-1"
                 >
-                  <Ionicons name="person-add" color="#1A1714" size={14} />
+                  <Ionicons name="person-add" color={feed.ink} size={14} />
                   <Text className="text-ink font-semibold text-xs ml-1.5">
                     Voeg toe
                   </Text>
@@ -278,7 +279,7 @@ export default function GroupInfoScreen() {
             {members.isLoading ? (
               <SkeletonListCard rows={3} />
             ) : (
-              <View className="bg-paper-soft rounded-2xl overflow-hidden">
+              <View className="bg-paper-soft overflow-hidden">
                 {(members.data ?? []).map((m, i) => (
                   <MemberRow
                     key={m.user_id}
@@ -301,7 +302,7 @@ export default function GroupInfoScreen() {
           <View className="mt-8">
             <Pressable
               onPress={onLeave}
-              className="bg-paper-soft border border-line-paper/80 rounded-2xl px-4 py-4 flex-row items-center justify-center"
+              className="bg-paper-soft border border-line-paper/80 px-4 py-4 flex-row items-center justify-center"
             >
               <Ionicons name="exit-outline" color="#B23A1C" size={18} />
               <Text className="font-semibold ml-2" style={{ color: "#B23A1C" }}>
@@ -348,7 +349,7 @@ function MemberRow({
           <View className="flex-row items-center">
             <Text className="text-ink font-semibold">{name}</Text>
             {isMe && (
-              <View className="bg-paper-warm rounded-full px-2 py-0.5 ml-2">
+              <View className="bg-paper-warm px-2 py-0.5 ml-2">
                 <Text className="text-ink text-[10px] font-bold uppercase tracking-wider">
                   Jij
                 </Text>

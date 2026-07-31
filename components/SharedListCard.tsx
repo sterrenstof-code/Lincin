@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
 import type { SharedListWithDetails } from "@/lib/api/shared-lists";
+import { feed } from "@/lib/design/type";
 
 export function SharedListCard({ list }: { list: SharedListWithDetails }) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
           <Text className="text-carbon-muted text-xs">{formatRelativeTime(list.created_at)}</Text>
         </View>
         <View className="bg-page-alt px-2.5 py-1 flex-row items-center gap-1">
-          <Ionicons name="checkmark-circle-outline" color="#55534E" size={12} />
+          <Ionicons name="checkmark-circle-outline" color={feed.inkDim} size={12} />
           <Text className="text-carbon-muted text-xs font-semibold">Lijst</Text>
         </View>
       </View>
@@ -85,7 +86,7 @@ export function SharedListCard({ list }: { list: SharedListWithDetails }) {
         <Text className="text-carbon-muted text-xs">
           {done}/{total} gedaan
         </Text>
-        <Ionicons name="chevron-forward" color="#8E8C86" size={14} />
+        <Ionicons name="chevron-forward" color={feed.inkDim} size={14} />
       </View>
 
       <CommentsSection

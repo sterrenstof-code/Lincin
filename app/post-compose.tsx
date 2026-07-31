@@ -20,7 +20,7 @@ import { Arrow, BoxButton, Meta, Rule, Sheet, useWide } from "@/components/Edito
 import { SafeImage } from "@/components/SafeImage";
 import { SmartTextInput } from "@/components/SmartTextInput";
 import { useAuth } from "@/lib/auth/provider";
-import { carbon, page, type } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import {
   findUrl,
@@ -241,7 +241,7 @@ export default function PostComposeScreen() {
   const activeKind = KINDS.find((k) => k.id === kind);
 
   return (
-    <SafeAreaView className="flex-1 bg-page" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
       <Sheet flex>
         <KeyboardAvoidingView
           className="flex-1"
@@ -255,51 +255,51 @@ export default function PostComposeScreen() {
             >
               <Ionicons
                 name={kind ? "arrow-back" : "close"}
-                color={carbon.DEFAULT}
+                color={feed.ink}
                 size={22}
               />
             </Pressable>
             <View className="flex-1 ml-4">
-              <Meta strong>{activeKind ? activeKind.label : "Iets delen"}</Meta>
+              <Meta tone="feed" strong>{activeKind ? activeKind.label : "Iets delen"}</Meta>
             </View>
             {kind ? (
               submitting ? (
-                <ActivityIndicator size="small" color={carbon.muted} />
+                <ActivityIndicator size="small" color={feed.inkDim} />
               ) : (
-                <BoxButton label="Plaatsen" filled disabled={!canSubmit} onPress={onSubmit} />
+                <BoxButton tone="feed" label="Plaatsen" filled disabled={!canSubmit} onPress={onSubmit} />
               )
             ) : null}
           </View>
-          <Rule strong />
+          <Rule tone="feed" strong />
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 96 }}>
             {/* =============== STAP 1 — soort kiezen =============== */}
             {!kind && (
               <View>
                 <View className="px-6 pt-8 pb-6">
-                  <Text style={[type.headline, { color: carbon.DEFAULT, maxWidth: 460 }]}>
+                  <Text style={[feedType.tagline, { color: feed.ink, maxWidth: 460 }]}>
                     Wat breng je mee?
                   </Text>
                 </View>
-                <Rule />
+                <Rule tone="feed" />
                 {KINDS.map((k) => (
                   <Pressable
                     key={k.id}
                     onPress={() => { setKind(k.id); setError(null); }}
-                    className="active:bg-page-alt"
+                    className="active:bg-feed-panel"
                   >
                     <View className="flex-row items-center px-6 py-5">
                       <View className="flex-1 pr-5">
-                        <Text style={[type.headlineSmall, { color: carbon.DEFAULT }]}>
+                        <Text style={[feedType.tile, { color: feed.ink }]}>
                           {k.label}
                         </Text>
                         <View className="mt-0.5">
-                          <Meta dim>{k.hint}</Meta>
+                          <Meta tone="feed" dim>{k.hint}</Meta>
                         </View>
                       </View>
-                      <Arrow dim />
+                      <Arrow tone="feed" dim />
                     </View>
-                    <Rule />
+                    <Rule tone="feed" />
                   </Pressable>
                 ))}
               </View>
@@ -316,14 +316,14 @@ export default function PostComposeScreen() {
                         value={url}
                         onChangeText={(v) => { setUrl(v); setError(null); }}
                         placeholder="Plak een link…"
-                        placeholderTextColor={carbon.muted}
+                        placeholderTextColor={feed.inkDim}
                         autoCapitalize="none"
                         autoCorrect={false}
                         keyboardType="url"
                         autoFocus
                         style={[
-                          type.headlineSmall,
-                          { color: carbon.DEFAULT, paddingVertical: 11 },
+                          feedType.tile,
+                          { color: feed.ink, paddingVertical: 11 },
                           Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                         ]}
                       />
@@ -331,9 +331,9 @@ export default function PostComposeScreen() {
 
                     {unfurling && (
                       <View className="flex-row items-center px-6 py-6">
-                        <ActivityIndicator size="small" color={carbon.muted} />
+                        <ActivityIndicator size="small" color={feed.inkDim} />
                         <View className="ml-3">
-                          <Meta dim>Bron ophalen…</Meta>
+                          <Meta tone="feed" dim>Bron ophalen…</Meta>
                         </View>
                       </View>
                     )}
@@ -359,13 +359,13 @@ export default function PostComposeScreen() {
                         : kind === "fact" ? "Wat wist je nog niet?"
                         : "Wat zou je willen maken?"
                       }
-                      placeholderTextColor={carbon.muted}
+                      placeholderTextColor={feed.inkDim}
                       multiline
                       autoFocus
                       maxLength={2000}
                       style={[
-                        type.quote,
-                        { color: carbon.DEFAULT, paddingVertical: 12, minHeight: 150, textAlignVertical: "top" },
+                        feedType.pullSmall,
+                        { color: feed.ink, paddingVertical: 12, minHeight: 150, textAlignVertical: "top" },
                         Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                       ]}
                     />
@@ -381,19 +381,19 @@ export default function PostComposeScreen() {
                           uri={imageUri}
                           style={{ width: "100%", aspectRatio: 1 }}
                           contentFit="cover"
-                          fallbackBg="bg-page-alt"
-                          fallbackColor={carbon.muted}
+                          fallbackBg="bg-feed-post"
+                          fallbackColor={feed.inkDim}
                         />
                         <View className="flex-row px-6 py-4">
                           <Pressable onPress={() => pickImage(false)}>
-                            <Meta strong>Wijzig</Meta>
+                            <Meta tone="feed" strong>Wijzig</Meta>
                           </Pressable>
-                          <Meta dim style={{ marginHorizontal: 10 }}>/</Meta>
+                          <Meta tone="feed" dim style={{ marginHorizontal: 10 }}>/</Meta>
                           <Pressable onPress={() => setImageUri(null)}>
-                            <Meta dim>Verwijder</Meta>
+                            <Meta tone="feed" dim>Verwijder</Meta>
                           </Pressable>
                         </View>
-                        <Rule />
+                        <Rule tone="feed" />
                       </View>
                     ) : (
                       <View>
@@ -413,15 +413,15 @@ export default function PostComposeScreen() {
                       value={note}
                       onChangeText={onNoteChange}
                       placeholder="Schrijf iets…"
-                      placeholderTextColor={carbon.muted}
+                      placeholderTextColor={feed.inkDim}
                       multiline
                       autoFocus
                       maxLength={1000}
                       style={{
                         minHeight: 150,
                         textAlignVertical: "top",
-                        ...type.quote,
-                        color: carbon.DEFAULT,
+                        ...feedType.pullSmall,
+                        color: feed.ink,
                         paddingVertical: 12,
                       }}
                     />
@@ -431,7 +431,7 @@ export default function PostComposeScreen() {
                 {/* --- Bron: alleen waar het zin heeft --- */}
                 {(kind === "fragment" || kind === "link") && (
                   <View className="px-6 pt-7">
-                    <Meta dim>
+                    <Meta tone="feed" dim>
                       {kind === "fragment" ? "Bron — wie schreef het, en waarin" : "Bron"}
                     </Meta>
                     <View className="flex-row mt-1">
@@ -440,28 +440,28 @@ export default function PostComposeScreen() {
                           value={sourceAuthor}
                           onChangeText={setSourceAuthor}
                           placeholder="Auteur"
-                          placeholderTextColor={carbon.muted}
+                          placeholderTextColor={feed.inkDim}
                           style={[
-                            type.body,
-                            { color: carbon.DEFAULT, paddingVertical: 10 },
+                            feedType.body,
+                            { color: feed.ink, paddingVertical: 10 },
                             Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                           ]}
                         />
-                        <Rule />
+                        <Rule tone="feed" />
                       </View>
                       <View className="flex-1">
                         <TextInput
                           value={sourceTitle}
                           onChangeText={setSourceTitle}
                           placeholder="Titel"
-                          placeholderTextColor={carbon.muted}
+                          placeholderTextColor={feed.inkDim}
                           style={[
-                            type.body,
-                            { color: carbon.DEFAULT, paddingVertical: 10 },
+                            feedType.body,
+                            { color: feed.ink, paddingVertical: 10 },
                             Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                           ]}
                         />
-                        <Rule />
+                        <Rule tone="feed" />
                       </View>
                     </View>
                   </View>
@@ -474,14 +474,14 @@ export default function PostComposeScreen() {
                       value={note}
                       onChangeText={onNoteChange}
                       placeholder="Optioneel — één zin is genoeg."
-                      placeholderTextColor={carbon.muted}
+                      placeholderTextColor={feed.inkDim}
                       multiline
                       maxLength={500}
                       style={{
                         minHeight: 70,
                         textAlignVertical: "top",
-                        ...type.body,
-                        color: carbon.soft,
+                        ...feedType.body,
+                        color: feed.inkDim,
                         paddingVertical: 11,
                       }}
                     />
@@ -494,12 +494,12 @@ export default function PostComposeScreen() {
                     value={tagsRaw}
                     onChangeText={setTagsRaw}
                     placeholder="muziek bouwen design lezen"
-                    placeholderTextColor={carbon.muted}
+                    placeholderTextColor={feed.inkDim}
                     autoCapitalize="none"
                     autoCorrect={false}
                     style={[
-                      type.body,
-                      { color: carbon.DEFAULT, paddingVertical: 11 },
+                      feedType.body,
+                      { color: feed.ink, paddingVertical: 11 },
                       Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                     ]}
                   />
@@ -508,9 +508,9 @@ export default function PostComposeScreen() {
                 {error && (
                   <View
                     className="mx-6 mt-7 px-4 py-3"
-                    style={{ borderLeftWidth: 2, borderLeftColor: carbon.DEFAULT }}
+                    style={{ borderLeftWidth: 2, borderLeftColor: feed.ink }}
                   >
-                    <Text style={[type.bodySmall, { color: carbon.DEFAULT }]}>{error}</Text>
+                    <Text style={[feedType.body, { color: feed.ink }]}>{error}</Text>
                   </View>
                 )}
               </View>
@@ -545,9 +545,14 @@ export default function PostComposeScreen() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View className="px-6 pt-7">
-      <Meta dim>{label}</Meta>
+      {/* Het veldlabel is een redactionele kicker, niet een formulierlabel:
+          klein, kapitaal, in het rood. Vandaar flameDeep en niet de volle
+          flame — op lavendel haalt die geen 4.5:1 op deze maat. */}
+      <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+        {label.toUpperCase()}
+      </Text>
       {children}
-      <Rule />
+      <Rule tone="feed" />
     </View>
   );
 }
@@ -557,12 +562,12 @@ function PickRow({ label, onPress }: { label: string; onPress: () => void }) {
     <View>
       <Pressable
         onPress={onPress}
-        className="flex-row items-center px-6 py-5 active:bg-page-alt"
+        className="flex-row items-center px-6 py-5 active:bg-feed-panel"
       >
-        <Text style={[type.headlineSmall, { color: carbon.DEFAULT, flex: 1 }]}>{label}</Text>
-        <Arrow dim />
+        <Text style={[feedType.tile, { color: feed.ink, flex: 1 }]}>{label}</Text>
+        <Arrow tone="feed" dim />
       </Pressable>
-      <Rule />
+      <Rule tone="feed" />
     </View>
   );
 }
@@ -577,39 +582,74 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
     .filter(Boolean)
     .join("   ·   ");
 
+  /**
+   * Zodra er beeld is, wordt dat het vlak: volle breedte, hoog formaat, met
+   * de titel eroverheen — zoals de referenties. Zonder beeld valt hij terug
+   * op een tekstband op `feed-post`, zodat de preview altijd hetzelfde
+   * gewicht houdt in de kolom.
+   */
+  const hasImage = !!preview.image_url;
+
   return (
     <View className="mt-7">
-      <Rule strong />
-      {preview.image_url ? (
-        <SafeImage
-          uri={preview.image_url}
-          style={{ width: "100%", aspectRatio: 2 }}
-          contentFit="cover"
-          fallbackBg="bg-page-alt"
-          fallbackColor={carbon.muted}
-        />
+      <Rule tone="feed" strong />
+      {hasImage ? (
+        <View style={{ width: "100%", aspectRatio: 4 / 5, backgroundColor: feed.post }}>
+          <SafeImage
+            uri={preview.image_url}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            fallbackBg="bg-feed-post"
+            fallbackColor={feed.textDim}
+          />
+          {/* Scrim zodat de tekst leesbaar blijft op elke foto. Drie
+              gestapelde vlakken i.p.v. een gradient-dependency. */}
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+          >
+            <View style={{ height: 40, backgroundColor: "rgba(0,0,0,0.18)" }} />
+            <View style={{ height: 40, backgroundColor: "rgba(0,0,0,0.40)" }} />
+            <View style={{ backgroundColor: "rgba(0,0,0,0.66)", padding: 20 }}>
+              <Text
+                style={[
+                  feedType.kicker,
+                  { color: "#FFFFFF", opacity: 0.75, letterSpacing: 0.55, marginBottom: 8 },
+                ]}
+                numberOfLines={1}
+              >
+                {extra.toUpperCase()}
+              </Text>
+              {preview.title ? (
+                <Text style={[feedType.cover, { color: "#FFFFFF" }]} numberOfLines={4}>
+                  {preview.title}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
       ) : null}
       <View className="px-6 py-5">
-        <Meta dim>{extra}</Meta>
-        {preview.title ? (
-          <Text style={[type.headline, { color: carbon.DEFAULT, marginTop: 7 }]}>
+        {hasImage ? null : <Meta tone="feed" dim>{extra}</Meta>}
+        {preview.title && !hasImage ? (
+          <Text style={[feedType.tagline, { color: feed.ink, marginTop: 7 }]}>
             {preview.title}
           </Text>
         ) : null}
         {preview.description ? (
-          <Text style={[type.bodySmall, { color: carbon.muted, marginTop: 7 }]} numberOfLines={3}>
+          <Text style={[feedType.body, { color: feed.inkDim, marginTop: 7 }]} numberOfLines={3}>
             {preview.description}
           </Text>
         ) : null}
         {preview.kind !== "link" ? (
           <View className="mt-4">
-            <Meta dim>
+            <Meta tone="feed" dim>
               {preview.kind === "video" ? "Speelt af in de feed" : "Luistert in de feed"}
             </Meta>
           </View>
         ) : null}
       </View>
-      <Rule strong />
+      <Rule tone="feed" strong />
     </View>
   );
 }

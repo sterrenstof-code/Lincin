@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, type ImageProps } from "expo-image";
 import { useState } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
+import { feed } from "@/lib/design/type";
 
 /**
  * Image-wrapper die bij broken URL, lege source of laad-fout terugvalt op
@@ -18,7 +19,7 @@ export function SafeImage({
   cacheKey,
   fallbackIcon = "image-outline",
   fallbackBg = "bg-paper-warm",
-  fallbackColor = "#5A4F40",
+  fallbackColor = feed.inkDim,
   iconSize = 32,
   containerStyle,
   ...rest

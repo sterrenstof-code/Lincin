@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { feed } from "@/lib/design/type";
 
 interface Props {
   chatId: string;
@@ -35,7 +36,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Videogesprek</Text>
           <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
-            <Ionicons name="close" color="#F5E8D3" size={22} />
+            <Ionicons name="close" color={feed.text} size={22} />
           </Pressable>
         </View>
 
@@ -55,7 +56,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A1714", // shell-black
+    backgroundColor: feed.ink as string, // inkt
   },
   header: {
     flexDirection: "row",
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#242019",
   },
   headerTitle: {
-    color: "#F5E8D3",
+    color: feed.text,
     fontSize: 16,
     fontWeight: "600",
   },

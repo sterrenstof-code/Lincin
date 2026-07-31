@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { joinEventByCode } from "@/lib/api/events";
+import { feed, flame } from "@/lib/design/type";
 
 /**
  * Landing voor /e/{join_code}: roept join_event RPC aan, doet auto-redirect
@@ -49,9 +50,9 @@ export default function JoinEventScreen() {
       <ScreenContainer>
         <View className="flex-1 items-center justify-center px-6">
           {error ? (
-            <View className="bg-paper rounded-3xl p-8 w-full items-center">
-              <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="alert-circle-outline" color="#1A1714" size={24} />
+            <View className="bg-paper p-8 w-full items-center">
+              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+                <Ionicons name="alert-circle-outline" color={feed.ink} size={24} />
               </View>
               <Text className="text-ink font-bold text-xl text-center mb-1">
                 Kon niet meedoen
@@ -61,15 +62,15 @@ export default function JoinEventScreen() {
               </Text>
               <Pressable
                 onPress={() => router.replace("/(app)/feed")}
-                className="mt-5 bg-ink active:bg-ink-soft rounded-full px-6 py-3"
+                className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
               >
                 <Text className="text-cream font-semibold">Naar Lincin</Text>
               </Pressable>
             </View>
           ) : (
-            <View className="bg-paper rounded-3xl p-8 w-full items-center">
-              <View className="w-14 h-14 rounded-full bg-flame items-center justify-center mb-3">
-                <Ionicons name="sparkles" color="#F5E8D3" size={24} />
+            <View className="bg-paper p-8 w-full items-center">
+              <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
+                <Ionicons name="sparkles" color={feed.text} size={24} />
               </View>
               <Text className="text-ink font-bold text-xl text-center mb-1">
                 Je doet mee

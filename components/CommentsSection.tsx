@@ -63,7 +63,7 @@ function paletteFor(tone: Tone): Palette {
     case "dark":
       return {
         text: page.DEFAULT,
-        dim: "#8E8C86",
+        dim: feed.inkDim,
         fill: "rgba(242,241,238,0.10)",
         rule: "#3A3936",
         onSend: carbon.DEFAULT,
@@ -72,8 +72,8 @@ function paletteFor(tone: Tone): Palette {
       return {
         text: carbon.DEFAULT,
         dim: carbon.muted,
-        fill: "#E9E8E4",
-        rule: "#E9E8E4",
+        fill: feed.panel,
+        rule: feed.panel,
         onSend: page.DEFAULT,
       };
   }

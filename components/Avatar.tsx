@@ -77,7 +77,7 @@ export function Avatar({
           borderRadius: s.dot / 2,
           backgroundColor: dotColor,
           borderWidth: 1.5,
-          borderColor: "#F5E8D3",
+          borderColor: "#F3EDE4",
         }}
       />
     </View>

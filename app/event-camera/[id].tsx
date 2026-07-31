@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/lib/auth/provider";
 import { contributeToEvent } from "@/lib/api/events";
+import { feed } from "@/lib/design/type";
 
 /**
  * Full-screen camera met paper-cream shutter controls. Tap shutter →
@@ -95,7 +96,7 @@ export default function EventCameraScreen() {
   if (!permission) {
     return (
       <View className="flex-1 bg-shell items-center justify-center">
-        <ActivityIndicator color="#F5E8D3" />
+        <ActivityIndicator color={feed.text} />
       </View>
     );
   }
@@ -106,18 +107,18 @@ export default function EventCameraScreen() {
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="close" color="#1A1714" size={20} />
+            <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
           <Text className="flex-1 text-cream text-lg font-semibold ml-3">
             Camera
           </Text>
         </View>
         <View className="flex-1 px-6 items-center justify-center">
-          <View className="bg-paper rounded-3xl p-8 w-full max-w-md items-center">
-            <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-              <Ionicons name="camera-outline" color="#1A1714" size={24} />
+          <View className="bg-paper p-8 w-full max-w-md items-center">
+            <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+              <Ionicons name="camera-outline" color={feed.ink} size={24} />
             </View>
             <Text className="text-ink font-bold text-xl text-center mb-1">
               Camera-toegang nodig
@@ -130,7 +131,7 @@ export default function EventCameraScreen() {
             </Text>
             <Pressable
               onPress={requestPermission}
-              className="bg-ink active:bg-ink-soft rounded-full px-6 py-3"
+              className="bg-ink active:bg-ink-soft px-6 py-3"
             >
               <Text className="text-cream font-semibold">Geef toegang</Text>
             </Pressable>
@@ -164,26 +165,26 @@ export default function EventCameraScreen() {
         <View className="flex-row items-center justify-between px-4 py-3" pointerEvents="box-none">
           <Pressable
             onPress={() => router.back()}
-            className="w-11 h-11 rounded-full bg-shell/70 items-center justify-center"
+            className="w-11 h-11 bg-shell/70 items-center justify-center"
           >
-            <Ionicons name="close" color="#F5E8D3" size={22} />
+            <Ionicons name="close" color={feed.text} size={22} />
           </Pressable>
           <View className="flex-row gap-2">
             <Pressable
               onPress={toggleFlash}
-              className="w-11 h-11 rounded-full bg-shell/70 items-center justify-center"
+              className="w-11 h-11 bg-shell/70 items-center justify-center"
             >
               <Ionicons
                 name={flash === "on" ? "flash" : "flash-off"}
-                color="#F5E8D3"
+                color={feed.text}
                 size={20}
               />
             </Pressable>
             <Pressable
               onPress={flipCamera}
-              className="w-11 h-11 rounded-full bg-shell/70 items-center justify-center"
+              className="w-11 h-11 bg-shell/70 items-center justify-center"
             >
-              <Ionicons name="camera-reverse-outline" color="#F5E8D3" size={22} />
+              <Ionicons name="camera-reverse-outline" color={feed.text} size={22} />
             </Pressable>
           </View>
         </View>
@@ -199,7 +200,7 @@ export default function EventCameraScreen() {
           <Pressable
             onPress={onShutter}
             disabled={sending || !!preview}
-            className="w-20 h-20 rounded-full bg-cream items-center justify-center"
+            className="w-20 h-20 bg-cream items-center justify-center"
             style={{
               borderWidth: 4,
               borderColor: "rgba(255,255,255,0.5)",
@@ -209,7 +210,7 @@ export default function EventCameraScreen() {
               shadowOffset: { width: 0, height: 4 },
             }}
           >
-            <View className="w-16 h-16 rounded-full bg-cream border-2 border-shell" />
+            <View className="w-16 h-16 bg-cream border-2 border-shell" />
           </Pressable>
           <Text className="text-cream-soft text-xs mt-3">
             Tap om foto te maken
@@ -223,7 +224,7 @@ export default function EventCameraScreen() {
           pointerEvents="none"
           style={{ position: "absolute", top: 80, left: 0, right: 0, alignItems: "center" }}
         >
-          <View className="bg-shell/80 rounded-full px-4 py-2">
+          <View className="bg-shell/80 px-4 py-2">
             <Text className="text-cream text-sm font-semibold">{toast}</Text>
           </View>
         </View>
@@ -238,7 +239,7 @@ export default function EventCameraScreen() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "#0A0A0B",
+            backgroundColor: feed.ink,
           }}
         >
           <Image
@@ -256,9 +257,9 @@ export default function EventCameraScreen() {
               <Pressable
                 onPress={() => setPreview(null)}
                 disabled={sending}
-                className="w-11 h-11 rounded-full bg-shell/70 items-center justify-center"
+                className="w-11 h-11 bg-shell/70 items-center justify-center"
               >
-                <Ionicons name="close" color="#F5E8D3" size={22} />
+                <Ionicons name="close" color={feed.text} size={22} />
               </Pressable>
             </View>
           </SafeAreaView>
@@ -271,23 +272,23 @@ export default function EventCameraScreen() {
               <Pressable
                 onPress={() => setPreview(null)}
                 disabled={sending}
-                className="flex-1 border border-cream-muted rounded-full py-4 items-center"
+                className="flex-1 border border-cream-muted py-4 items-center"
               >
                 <Text className="text-cream font-semibold">Opnieuw</Text>
               </Pressable>
               <Pressable
                 onPress={onSend}
                 disabled={sending}
-                className={`flex-2 rounded-full py-4 flex-row items-center justify-center ${
+                className={`flex-2 py-4 flex-row items-center justify-center ${
                   sending ? "bg-paper-warm" : "bg-cream active:bg-cream-soft"
                 }`}
                 style={{ flex: 1.4 }}
               >
                 {sending ? (
-                  <ActivityIndicator color="#1A1714" />
+                  <ActivityIndicator color={feed.ink} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" color="#1A1714" size={18} />
+                    <Ionicons name="checkmark" color={feed.ink} size={18} />
                     <Text className="text-ink font-bold ml-2">Plaats</Text>
                   </>
                 )}
@@ -304,7 +305,7 @@ export default function EventCameraScreen() {
                 right: 24,
               }}
             >
-              <View className="bg-red-100 rounded-2xl px-4 py-3">
+              <View className="bg-red-100 px-4 py-3">
                 <Text className="text-red-800 text-sm text-center">{error}</Text>
               </View>
             </View>
@@ -317,7 +318,7 @@ export default function EventCameraScreen() {
           pointerEvents="none"
           style={{ position: "absolute", bottom: 140, left: 24, right: 24 }}
         >
-          <View className="bg-red-100 rounded-2xl px-4 py-3">
+          <View className="bg-red-100 px-4 py-3">
             <Text className="text-red-800 text-sm text-center">{error}</Text>
           </View>
         </View>

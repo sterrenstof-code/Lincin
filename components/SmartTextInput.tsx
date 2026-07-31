@@ -85,7 +85,7 @@ export function SmartTextInput({ value, onChangeText, inputClassName, style, ...
             <Pressable
               key={name}
               onPress={() => applyEmoji(name, emoji)}
-              className="bg-paper rounded-2xl px-3 py-2 flex-row items-center gap-2"
+              className="bg-paper px-3 py-2 flex-row items-center gap-2"
             >
               <Text style={{ fontSize: 18 }}>{emoji}</Text>
               <Text className="text-ink-muted text-xs">:{name}</Text>
@@ -96,7 +96,7 @@ export function SmartTextInput({ value, onChangeText, inputClassName, style, ...
 
       {/* @mention suggesties */}
       {mentionList && mentionList.length > 0 && (
-        <View className="bg-paper rounded-2xl overflow-hidden mb-2">
+        <View className="bg-paper overflow-hidden mb-2">
           {mentionList.map((m, i) => (
             <Pressable
               key={m.username}

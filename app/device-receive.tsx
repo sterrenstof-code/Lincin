@@ -25,6 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
+import { feed } from "@/lib/design/type";
 
 export default function DeviceReceiveScreen() {
   const { session } = useAuth();
@@ -110,7 +111,7 @@ export default function DeviceReceiveScreen() {
   if (processing) {
     return (
       <SafeAreaView className="flex-1 bg-shell items-center justify-center gap-4">
-        <ActivityIndicator color="#F5E8D3" size="large" />
+        <ActivityIndicator color={feed.text} size="large" />
         <Text className="text-ink-soft text-sm">Sleutels worden overgedragen…</Text>
       </SafeAreaView>
     );
@@ -127,11 +128,11 @@ export default function DeviceReceiveScreen() {
           }}
           className="flex-row items-center mb-6"
         >
-          <Ionicons name="arrow-back" color="#8A7E6C" size={18} />
+          <Ionicons name="arrow-back" color={feed.inkDim} size={18} />
           <Text className="text-ink-soft text-sm ml-1">Terug</Text>
         </Pressable>
 
-        <View className="w-12 h-12 rounded-full bg-brand/20 items-center justify-center mb-4">
+        <View className="w-12 h-12 bg-brand/20 items-center justify-center mb-4">
           <Ionicons name="link-outline" color="#5B8DEF" size={22} />
         </View>
         <Text className="text-ink text-xl font-bold mb-2">
@@ -145,11 +146,11 @@ export default function DeviceReceiveScreen() {
           value={manualInput}
           onChangeText={setManualInput}
           placeholder="lincin://device-receive?s=…&u=…"
-          placeholderTextColor="#8A7E6C"
+          placeholderTextColor={feed.inkDim}
           autoCapitalize="none"
           autoCorrect={false}
           multiline={false}
-          className="bg-paper-soft rounded-2xl px-4 py-3.5 text-ink text-xs font-mono mb-3"
+          className="bg-paper-soft px-4 py-3.5 text-ink text-xs font-mono mb-3"
           style={{
             borderWidth: 1,
             borderColor: manualInput ? "#5B8DEF" : "transparent",
@@ -163,7 +164,7 @@ export default function DeviceReceiveScreen() {
         <Pressable
           onPress={onManualSubmit}
           disabled={!manualInput.trim()}
-          className={`rounded-2xl py-3.5 items-center mb-3 ${
+          className={` py-3.5 items-center mb-3 ${
             manualInput.trim() ? "bg-ink active:bg-ink-soft" : "bg-paper-warm"
           }`}
         >
@@ -194,7 +195,7 @@ export default function DeviceReceiveScreen() {
   if (!permission?.granted) {
     return (
       <SafeAreaView className="flex-1 bg-shell items-center justify-center px-6">
-        <View className="w-14 h-14 rounded-full bg-brand/20 items-center justify-center mb-4">
+        <View className="w-14 h-14 bg-brand/20 items-center justify-center mb-4">
           <Ionicons name="camera-outline" color="#5B8DEF" size={26} />
         </View>
         <Text className="text-ink text-xl font-bold text-center mb-2">
@@ -210,7 +211,7 @@ export default function DeviceReceiveScreen() {
 
         <Pressable
           onPress={requestPermission}
-          className="bg-ink active:bg-ink-soft rounded-2xl px-6 py-3.5 mb-3 w-full max-w-xs items-center"
+          className="bg-ink active:bg-ink-soft px-6 py-3.5 mb-3 w-full max-w-xs items-center"
         >
           <Text className="text-cream font-bold">Geef cameratoegang</Text>
         </Pressable>
@@ -234,9 +235,9 @@ export default function DeviceReceiveScreen() {
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
           onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="arrow-back" color="#1A1714" size={20} />
+          <Ionicons name="arrow-back" color={feed.ink} size={20} />
         </Pressable>
         <Text className="text-ink text-lg font-bold ml-3">Scan QR-code</Text>
         <View style={{ flex: 1 }} />
@@ -268,14 +269,14 @@ export default function DeviceReceiveScreen() {
               width: 240,
               height: 240,
               borderWidth: 2,
-              borderColor: "#F5E8D3",
+              borderColor: feed.text,
               borderRadius: 16,
               backgroundColor: "transparent",
             }}
           />
           <Text
             style={{
-              color: "#F5E8D3",
+              color: feed.text,
               fontSize: 14,
               marginTop: 16,
               fontWeight: "500",
@@ -289,7 +290,7 @@ export default function DeviceReceiveScreen() {
       {/* Foutmelding onderaan */}
       {error ? (
         <View className="px-6 pb-4">
-          <View className="bg-red-500/20 border border-red-500/40 rounded-2xl p-3 flex-row items-center gap-2">
+          <View className="bg-red-500/20 border border-red-500/40 p-3 flex-row items-center gap-2">
             <Ionicons name="warning-outline" color="#FCA5A5" size={16} />
             <Text className="text-red-300 text-sm flex-1">{error}</Text>
             <Pressable onPress={() => setError(null)}>

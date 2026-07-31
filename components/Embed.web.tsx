@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { View } from "react-native";
+import { feed } from "@/lib/design/type";
 
 /**
  * Web-variant van de inline speler: een echte iframe.
@@ -23,7 +24,7 @@ export function Embed({
           height: "100%",
           border: "none",
           display: "block",
-          backgroundColor: "#0A0A0B",
+          backgroundColor: feed.ink,
         },
         allow:
           "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen",

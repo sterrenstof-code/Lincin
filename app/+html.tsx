@@ -22,7 +22,8 @@ export default function Root({ children }: PropsWithChildren) {
         />
 
         {/* PWA — algemeen */}
-        <meta name="theme-color" content="#0A0A0B" />
+        {/* Kleurt de browserbalk mee met het paginavlak. */}
+        <meta name="theme-color" content="#CDBEE3" />
         <meta name="description" content="Privé chats, foto-events en feed voor je inner circle. End-to-end versleuteld." />
 
         {/* Manifest — expliciet, want hij draagt de share_target.

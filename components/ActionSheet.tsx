@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, Text, View } from "react-native";
+import { feed } from "@/lib/design/type";
 
 export type ActionSheetAction = {
   label: string;
@@ -54,14 +55,14 @@ export function ActionSheet({
             alignSelf: "center",
           }}
         >
-          <View className="bg-paper rounded-t-3xl pt-5 pb-8 px-4 mx-2">
-            <View className="self-center w-10 h-1 rounded-full bg-line-paper mb-4" />
+          <View className="bg-paper pt-5 pb-8 px-4 mx-2">
+            <View className="self-center w-10 h-1 bg-line-paper mb-4" />
             {title && (
               <Text className="text-xs uppercase tracking-wider text-ink-muted text-center mb-3">
                 {title}
               </Text>
             )}
-            <View className="bg-paper-soft rounded-2xl overflow-hidden">
+            <View className="bg-paper-soft overflow-hidden">
               {actions.map((action, i) => (
                 <Pressable
                   key={action.label}
@@ -83,7 +84,7 @@ export function ActionSheet({
                     <Ionicons
                       name={action.icon}
                       size={20}
-                      color={action.destructive ? "#B23A1C" : "#1A1714"}
+                      color={action.destructive ? "#B23A1C" : feed.ink}
                     />
                   )}
                   <Text
@@ -100,7 +101,7 @@ export function ActionSheet({
 
             <Pressable
               onPress={onClose}
-              className="mt-3 bg-paper-warm active:bg-paper rounded-full py-3 items-center"
+              className="mt-3 bg-paper-warm active:bg-paper py-3 items-center"
             >
               <Text className="text-ink font-semibold">Annuleer</Text>
             </Pressable>

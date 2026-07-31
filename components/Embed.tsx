@@ -1,5 +1,6 @@
 import { WebView } from "react-native-webview";
 import { View } from "react-native";
+import { feed } from "@/lib/design/type";
 
 /**
  * Inline speler voor externe media (YouTube, Vimeo, Spotify, …).
@@ -21,7 +22,7 @@ export function Embed({
     <View style={{ width: "100%", aspectRatio }} className="bg-shell">
       <WebView
         source={{ uri: url }}
-        style={{ flex: 1, backgroundColor: "#0A0A0B" }}
+        style={{ flex: 1, backgroundColor: feed.ink }}
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction
         allowsFullscreenVideo

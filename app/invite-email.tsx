@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { sendEmailInvite } from "@/lib/api/invites";
+import { feed } from "@/lib/design/type";
 
 export default function InviteEmailScreen() {
   const router = useRouter();
@@ -48,9 +49,9 @@ export default function InviteEmailScreen() {
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="close" color="#1A1714" size={20} />
+            <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
           <Text className="flex-1 text-cream text-lg font-semibold ml-3">
             Iemand uitnodigen
@@ -62,7 +63,7 @@ export default function InviteEmailScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper rounded-3xl p-6">
+            <View className="bg-paper p-6">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
                 Vriend nog niet op Lincin?
               </Text>
@@ -84,10 +85,10 @@ export default function InviteEmailScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 placeholder="vriend@voorbeeld.be"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 editable={!submitting}
                 onSubmitEditing={onSubmit}
-                className="bg-paper-light text-ink text-base px-5 py-3.5 rounded-full border border-line-paper"
+                className="bg-paper-light text-ink text-base px-5 py-3.5 border border-line-paper"
               />
 
               {typeof status === "object" && status.kind === "error" && (
@@ -95,7 +96,7 @@ export default function InviteEmailScreen() {
               )}
 
               {status === "sent" ? (
-                <View className="mt-5 bg-paper-light border border-line-paper rounded-2xl px-5 py-4">
+                <View className="mt-5 bg-paper-light border border-line-paper px-5 py-4">
                   <Text className="text-ink font-semibold text-base mb-1">
                     Uitnodiging verstuurd
                   </Text>
@@ -108,7 +109,7 @@ export default function InviteEmailScreen() {
                         setEmail("");
                         setStatus("idle");
                       }}
-                      className="flex-1 border border-ink/30 rounded-full py-2.5 items-center"
+                      className="flex-1 border border-ink/30 py-2.5 items-center"
                     >
                       <Text className="text-ink font-semibold text-sm">
                         Nog iemand uitnodigen
@@ -116,7 +117,7 @@ export default function InviteEmailScreen() {
                     </Pressable>
                     <Pressable
                       onPress={() => router.back()}
-                      className="flex-1 bg-ink active:bg-ink-soft rounded-full py-2.5 items-center"
+                      className="flex-1 bg-ink active:bg-ink-soft py-2.5 items-center"
                     >
                       <Text className="text-cream font-semibold text-sm">Klaar</Text>
                     </Pressable>
@@ -126,7 +127,7 @@ export default function InviteEmailScreen() {
                 <Pressable
                   onPress={onSubmit}
                   disabled={submitting}
-                  className="mt-5 bg-ink active:bg-ink-soft rounded-full py-3.5 items-center"
+                  className="mt-5 bg-ink active:bg-ink-soft py-3.5 items-center"
                 >
                   <Text className="text-cream font-semibold text-base">
                     {submitting ? "Bezig…" : "Stuur uitnodiging"}

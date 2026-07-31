@@ -44,7 +44,7 @@ import {
 export type Tone = "page" | "dark" | "feed" | "post";
 
 function textColor(tone: Tone, dim: boolean): string {
-  if (tone === "dark") return dim ? "#8E8C86" : page.DEFAULT;
+  if (tone === "dark") return dim ? feed.inkDim : page.DEFAULT;
   if (tone === "feed") return dim ? feed.inkDim : feed.ink;
   if (tone === "post") return dim ? feed.textDim : feed.text;
   return dim ? carbon.muted : carbon.soft;

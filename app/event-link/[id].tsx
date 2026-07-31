@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { contributeToEvent } from "@/lib/api/events";
+import { feed } from "@/lib/design/type";
 
 export default function EventLinkComposeScreen() {
   const router = useRouter();
@@ -59,9 +60,9 @@ export default function EventLinkComposeScreen() {
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="close" color="#1A1714" size={20} />
+            <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
           <Text className="flex-1 text-cream text-lg font-semibold ml-3">
             Voeg link toe
@@ -69,7 +70,7 @@ export default function EventLinkComposeScreen() {
           <Pressable
             onPress={onSubmit}
             disabled={!canSubmit}
-            className={`rounded-full px-4 py-2 ${
+            className={` px-4 py-2 ${
               canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
             }`}
           >
@@ -88,17 +89,17 @@ export default function EventLinkComposeScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper rounded-3xl p-6">
+            <View className="bg-paper p-6">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Link
               </Text>
-              <View className="flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper">
-                <Ionicons name="link" color="#8A7E6C" size={16} />
+              <View className="flex-row items-center bg-paper-light px-4 border border-line-paper">
+                <Ionicons name="link" color={feed.inkDim} size={16} />
                 <TextInput
                   value={link}
                   onChangeText={setLink}
                   placeholder="https://…"
-                  placeholderTextColor="#8A7E6C"
+                  placeholderTextColor={feed.inkDim}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -115,16 +116,16 @@ export default function EventLinkComposeScreen() {
                 value={caption}
                 onChangeText={setCaption}
                 placeholder="Wat is dit?"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 multiline
                 maxLength={300}
-                className="bg-paper-light text-ink text-base px-4 py-3 rounded-2xl border border-line-paper"
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
                 style={{ minHeight: 60, textAlignVertical: "top" }}
               />
             </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
+              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
                 <Text className="text-red-800 text-sm">{error}</Text>
               </View>
             )}

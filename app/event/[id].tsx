@@ -14,7 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { AppChrome, PAGE_MAX, useChromeScroll } from "@/components/AppChrome";
+import { useWide } from "@/components/Editorial";
 import {
   contributeToEvent,
   deleteContribution,
@@ -30,9 +31,12 @@ import { confirm } from "@/lib/confirm";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
+import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 
 export default function EventDetailScreen() {
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -165,12 +169,10 @@ export default function EventDetailScreen() {
 
   if (event.isLoading || !event.data) {
     return (
-      <SafeAreaView className="flex-1 bg-shell">
-        <ScreenContainer>
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-cream-soft">Event laden…</Text>
-          </View>
-        </ScreenContainer>
+      <SafeAreaView className="flex-1 bg-feed-lav">
+        <View className="flex-1 items-center justify-center">
+          <Text style={[feedType.label, { color: feed.inkDim }]}>Event laden…</Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -182,104 +184,164 @@ export default function EventDetailScreen() {
   const start = new Date(ev.starts_at);
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-row items-center px-4 py-3">
-          <Pressable
-            onPress={() => safeBack(router, "/(app)/events")}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      <ScrollView
+        stickyHeaderIndices={[0]}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        <AppChrome wide={wide} progress={chrome.progress} />
+
+        <View style={{ width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }}>
+          {/* ============ HERO ============
+              Zelfde opbouw als de uitgelichte vondst in de feed: kicker en
+              kop links, de feiten rechts, en het beeld eronder dat de rest
+              van het scherm vult. Zie DESIGN_V3_FEED.md, "Layout, top to
+              bottom", punt 3. */}
+          <View
+            style={{
+              paddingHorizontal: wide ? 32 : 18,
+              paddingTop: 20,
+              paddingBottom: 28,
+              borderBottomWidth: FEED_BORDER,
+              borderBottomColor: feed.ink,
+            }}
           >
-            <Ionicons name="chevron-back" color="#1A1714" size={20} />
-          </Pressable>
-          <Text className="flex-1 text-cream text-lg font-semibold ml-3" numberOfLines={1}>
-            {ev.name}
-          </Text>
-        </View>
-
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-          {/* Cover */}
-          {ev.cover_url && (
-            <Image
-              source={{ uri: ev.cover_url }}
-              style={{ width: "100%", height: 160, borderRadius: 24, marginBottom: 12 }}
-              contentFit="cover"
-              transition={150}
-            />
-          )}
-
-          {/* Hero */}
-          <View className="bg-paper rounded-3xl p-6">
-            <Text className="text-4xl font-bold tracking-tight text-ink" numberOfLines={2}>
-              {ev.name}
-            </Text>
-            {ev.description && (
-              <Text className="text-ink-soft text-base mt-1 leading-6">
-                {ev.description}
+            <Pressable
+              onPress={() => safeBack(router, "/(app)/events")}
+              hitSlop={8}
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}
+            >
+              <Ionicons name="chevron-back" color={feed.ink} size={16} />
+              <Text style={[feedType.label, { color: feed.ink, marginLeft: 4 }]}>
+                Alle events
               </Text>
-            )}
+            </Pressable>
 
-            <View className="mt-4 gap-2">
-              <StatRow icon="time-outline" label={status} />
-              <StatRow
-                icon="calendar-outline"
-                label={start.toLocaleString("nl-BE", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              />
-              <StatRow
-                icon="people-outline"
-                label={`${ev.members_count} gasten`}
-              />
-              <StatRow
-                icon="images-outline"
-                label={`${ev.contributions_count} foto's`}
-              />
-            </View>
-
-            {/* Action buttons row */}
-            <View className="flex-row gap-2 mt-5">
-              <Pressable
-                onPress={onCopyInvite}
-                className="flex-1 flex-row items-center justify-center bg-paper-warm active:bg-paper rounded-full px-3 py-3"
-              >
-                <Ionicons name="download-outline" color="#1A1714" size={16} />
-                <Text className="text-ink font-semibold ml-1.5 text-sm">Save</Text>
-              </Pressable>
-              <Pressable
-                onPress={onOpenInvite}
-                className="flex-1 flex-row items-center justify-center bg-paper-warm active:bg-paper rounded-full px-3 py-3"
-              >
-                <Ionicons name="qr-code-outline" color="#1A1714" size={16} />
-                <Text className="text-ink font-semibold ml-1.5 text-sm">Invite</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setAddMenuOpen(true)}
-                disabled={uploading}
-                className="flex-row items-center justify-center bg-cream active:bg-cream-soft rounded-full px-5 py-3"
-                style={{ flex: 1.4 }}
-              >
-                <Ionicons name="add" color="#1A1714" size={16} />
-                <Text className="text-ink font-semibold ml-2 text-sm">
-                  {uploading ? "Bezig…" : "Voeg toe"}
+            <View
+              style={{
+                flexDirection: wide ? "row" : "column",
+                justifyContent: "space-between",
+                alignItems: wide ? "flex-start" : "stretch",
+                marginBottom: 22,
+              }}
+            >
+              <View style={wide ? { flex: 1, maxWidth: 640, paddingRight: 24 } : undefined}>
+                <Text
+                  style={[
+                    feedType.kicker,
+                    { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: 10 },
+                  ]}
+                >
+                  {`EVENT · ${status.toUpperCase()}`}
                 </Text>
-              </Pressable>
+                <Text
+                  style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}
+                  numberOfLines={3}
+                >
+                  {ev.name}
+                </Text>
+                {ev.description ? (
+                  <Text
+                    style={[feedType.body, { color: feed.inkDim, marginTop: 14, maxWidth: 560 }]}
+                  >
+                    {ev.description}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* De feitenkolom rechts — dezelfde plek waar de feed de deler
+                  en de bron zet. */}
+              <View style={wide ? { alignItems: "flex-end", paddingTop: 4 } : { marginTop: 20 }}>
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 15, fontWeight: "700", color: feed.ink, marginBottom: 6,
+                      textAlign: wide ? "right" : "left" },
+                  ]}
+                >
+                  {start.toLocaleString("nl-BE", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </Text>
+                <Text
+                  style={[
+                    feedType.label,
+                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
+                  ]}
+                >
+                  {start.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+                <Text
+                  style={[
+                    feedType.label,
+                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
+                  ]}
+                >
+                  {`${ev.members_count} gasten · ${ev.contributions_count} foto's`}
+                </Text>
+              </View>
             </View>
 
-            {copied && (
-              <Text className="text-ink text-xs text-center mt-2">✓ Link gekopieerd</Text>
-            )}
-            {error && (
-              <Text className="text-red-700 text-xs text-center mt-2">{error}</Text>
-            )}
+            {/* Het beeld vult de rest van de hero. */}
+            <View
+              style={{
+                width: "100%",
+                aspectRatio: wide ? 16 / 7 : 4 / 3,
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+                backgroundColor: feed.post,
+              }}
+            >
+              {ev.cover_url ? (
+                <Image
+                  source={{ uri: ev.cover_url }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  transition={150}
+                />
+              ) : null}
+            </View>
           </View>
+
+          {/* ============ ACTIES — één gekaderde rij ============ */}
+          <View
+            style={{
+              flexDirection: "row",
+              borderBottomWidth: FEED_BORDER,
+              borderBottomColor: feed.ink,
+            }}
+          >
+            <ActionCell label="Bewaren" onPress={onCopyInvite} icon="download-outline" />
+            <ActionCell label="Uitnodigen" onPress={onOpenInvite} icon="qr-code-outline" />
+            <ActionCell
+              label={uploading ? "Bezig…" : "Voeg toe"}
+              onPress={() => setAddMenuOpen(true)}
+              icon="add"
+              filled
+              disabled={uploading}
+              last
+            />
+          </View>
+
+          {copied ? (
+            <Text style={[feedType.label, { color: flameDeep, textAlign: "center", paddingTop: 10 }]}>
+              Link gekopieerd
+            </Text>
+          ) : null}
+          {error ? (
+            <Text style={[feedType.label, { color: flameDeep, textAlign: "center", paddingTop: 10 }]}>
+              {error}
+            </Text>
+          ) : null}
 
           {/* Privacy note: event media is not end-to-end encrypted like chats. */}
           <View className="flex-row items-center justify-center mt-3 px-4">
-            <Ionicons name="information-circle-outline" color="#8A8275" size={13} />
+            <Ionicons name="information-circle-outline" color={feed.inkDim} size={13} />
             <Text className="text-cream-muted text-[11px] ml-1.5 text-center">
               Event-media is niet end-to-end versleuteld zoals je chats.
             </Text>
@@ -315,9 +377,9 @@ export default function EventDetailScreen() {
 
           {/* Photo grid / reveal lock */}
           {!revealed ? (
-            <View className="mt-5 bg-paper-soft rounded-3xl p-6 items-center">
-              <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="lock-closed" color="#1A1714" size={24} />
+            <View className="mt-5 bg-paper-soft p-6 items-center">
+              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+                <Ionicons name="lock-closed" color={feed.ink} size={24} />
               </View>
               <Text className="text-ink font-semibold text-lg text-center mb-1">
                 Onthulling vergrendeld
@@ -332,9 +394,9 @@ export default function EventDetailScreen() {
               </Text>
             </View>
           ) : contribs.length === 0 ? (
-            <View className="mt-5 bg-paper-soft rounded-3xl p-6 items-center">
-              <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="images-outline" color="#1A1714" size={24} />
+            <View className="mt-5 bg-paper-soft p-6 items-center">
+              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+                <Ionicons name="images-outline" color={feed.ink} size={24} />
               </View>
               <Text className="text-ink font-semibold text-base mb-1">
                 Nog geen foto's
@@ -355,8 +417,8 @@ export default function EventDetailScreen() {
               ))}
             </View>
           )}
-        </ScrollView>
-      </ScreenContainer>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -408,9 +470,9 @@ function ContributionTile({
             />
             <View
               pointerEvents="none"
-              className="absolute top-2 left-2 bg-shell/70 rounded-full px-2 py-0.5 flex-row items-center"
+              className="absolute top-2 left-2 bg-shell/70 px-2 py-0.5 flex-row items-center"
             >
-              <Ionicons name="videocam" color="#F5E8D3" size={11} />
+              <Ionicons name="videocam" color={feed.text} size={11} />
             </View>
           </>
         ) : c.image_url ? (
@@ -432,9 +494,9 @@ function ContributionTile({
           <Pressable
             onPress={onDelete}
             hitSlop={8}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-shell/70 items-center justify-center"
+            className="absolute top-2 right-2 w-7 h-7 bg-shell/70 items-center justify-center"
           >
-            <Ionicons name="trash-outline" color="#F5E8D3" size={14} />
+            <Ionicons name="trash-outline" color={feed.text} size={14} />
           </Pressable>
         )}
       </View>
@@ -454,8 +516,56 @@ function StatRow({
 }) {
   return (
     <View className="flex-row items-center">
-      <Ionicons name={icon} color="#5A4F40" size={14} />
+      <Ionicons name={icon} color={feed.inkDim} size={14} />
       <Text className="text-ink-soft text-sm ml-2">{label}</Text>
     </View>
+  );
+}
+
+/**
+ * Eén cel in de actierij onder de hero. De cellen delen hun kaders, net als
+ * de tegelrij in de feed: geen losse knoppen met tussenruimte maar één
+ * doorlopende band.
+ */
+function ActionCell({
+  label,
+  icon,
+  onPress,
+  filled = false,
+  disabled = false,
+  last = false,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  filled?: boolean;
+  disabled?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({
+        flex: filled ? 1.3 : 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 16,
+        backgroundColor: filled ? (pressed ? flameDeep : feed.ink) : "transparent",
+        ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
+        opacity: disabled ? 0.5 : 1,
+      })}
+    >
+      <Ionicons name={icon} color={filled ? feed.text : feed.ink} size={15} />
+      <Text
+        style={[
+          feedType.label,
+          { fontSize: 13, fontWeight: "700", color: filled ? feed.text : feed.ink, marginLeft: 8 },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }

@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  FlatList,
   Pressable,
   Text,
   TextInput,
@@ -12,10 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { SkeletonListCard } from "@/components/Skeleton";
+import { feed, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   acceptFriendRequest,
@@ -101,161 +100,158 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
-          ScreenContainer omdat hij op volle breedte hoort. */}
-      <AppChrome wide={wide} progress={chrome.progress} />
-      <ScreenContainer>
-      <FlatList
+      {/* Eén scroller voor de hele pagina; de kop plakt bovenaan.
+          Geen ScreenContainer meer: dit ontwerp gebruikt de volle
+          breedte tot PAGE_MAX. */}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        data={[]}
-        keyExtractor={() => "_"}
-        renderItem={null as never}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        ListHeaderComponent={
-          <View>
-            <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
-              Lincs
-            </Text>
-            <Text className="text-cream-soft text-base mb-5">
-              Link up met mensen die je kent.
-            </Text>
+      >
+      <View style={{ paddingVertical: 20, paddingBottom: 40 }}>
+        <View>
+          <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
+            Lincs
+          </Text>
+          <Text className="text-cream-soft text-base mb-5">
+            Link up met mensen die je kent.
+          </Text>
 
-            {/* ── Link up ── */}
-            <View className="bg-paper rounded-3xl p-4 mb-5">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-                Link up
-              </Text>
-              {/* Twee primaire acties naast elkaar */}
-              <View className="flex-row gap-2 mb-2">
-                <Pressable
-                  onPress={() => router.push("/qr-scan")}
-                  className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-4"
-                >
-                  <Ionicons name="qr-code-outline" color="#F5E8D3" size={20} />
-                  <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
-                </Pressable>
-                <Pressable
-                  onPress={onShareLink}
-                  className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-4"
-                >
-                  <Ionicons name="share-outline" color="#1A1714" size={20} />
-                  <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
-                </Pressable>
-              </View>
-              {/* Secundaire actie: iemand uitnodigen die nog niet op Lincin zit */}
+          {/* ── Link up ── */}
+          <View className="bg-paper p-4 mb-5">
+            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
+              Link up
+            </Text>
+            {/* Twee primaire acties naast elkaar */}
+            <View className="flex-row gap-2 mb-2">
               <Pressable
-                onPress={() => router.push("/invite-email")}
-                className="flex-row items-center justify-center gap-2 py-2.5"
+                onPress={() => router.push("/qr-scan")}
+                className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft py-3.5 px-4"
               >
-                <Ionicons name="mail-outline" color="#8A7E6C" size={15} />
-                <Text className="text-ink-muted text-xs">
-                  Iemand uitnodigen die nog niet op Lincin zit
-                </Text>
+                <Ionicons name="qr-code-outline" color={feed.text} size={20} />
+                <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
+              </Pressable>
+              <Pressable
+                onPress={onShareLink}
+                className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper py-3.5 px-4"
+              >
+                <Ionicons name="share-outline" color={feed.ink} size={20} />
+                <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
               </Pressable>
             </View>
+            {/* Secundaire actie: iemand uitnodigen die nog niet op Lincin zit */}
+            <Pressable
+              onPress={() => router.push("/invite-email")}
+              className="flex-row items-center justify-center gap-2 py-2.5"
+            >
+              <Ionicons name="mail-outline" color={feed.inkDim} size={15} />
+              <Text className="text-ink-muted text-xs">
+                Iemand uitnodigen die nog niet op Lincin zit
+              </Text>
+            </Pressable>
+          </View>
 
-            {/* ── Zoekbalk ── */}
-            <View className="flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper mb-4">
-              <Ionicons name="search" color="#8A7E6C" size={18} />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Zoek iemand op handle"
-                placeholderTextColor="#8A7E6C"
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="flex-1 text-ink text-base py-3 pl-2"
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery("")} className="p-1">
-                  <Ionicons name="close-circle" color="#8A7E6C" size={18} />
-                </Pressable>
-              )}
-            </View>
-
-            {trimmed.length >= 2 && (
-              <Section title="Zoekresultaten">
-                {search.isLoading ? (
-                  <SkeletonListCard rows={2} />
-                ) : searchResults.length === 0 ? (
-                  <PaperHint text="Geen gebruikers gevonden." />
-                ) : (
-                  <View className="bg-paper-soft rounded-2xl overflow-hidden">
-                    {searchResults.map((p, i) => (
-                      <ProfileRow
-                        key={p.id}
-                        profile={p}
-                        onRowPress={() => router.push(`/user/${p.username}`)}
-                        onAction={() => onSendRequest(p.id)}
-                        actionLabel="Linc"
-                        actionIcon="person-add-outline"
-                        isLast={i === searchResults.length - 1}
-                      />
-                    ))}
-                  </View>
-                )}
-              </Section>
+          {/* ── Zoekbalk ── */}
+          <View className="flex-row items-center bg-paper-light px-4 border border-line-paper mb-4">
+            <Ionicons name="search" color={feed.inkDim} size={18} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Zoek iemand op handle"
+              placeholderTextColor={feed.inkDim}
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="flex-1 text-ink text-base py-3 pl-2"
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery("")} className="p-1">
+                <Ionicons name="close-circle" color={feed.inkDim} size={18} />
+              </Pressable>
             )}
+          </View>
 
-            {pendingIncoming.length > 0 && (
-              <Section title={`Linc-verzoeken (${pendingIncoming.length})`}>
-                <View className="bg-paper-soft rounded-2xl overflow-hidden">
-                  {pendingIncoming.map((f, i) => (
-                    <FriendshipRow
-                      key={f.id}
-                      friendship={f}
-                      isLast={i === pendingIncoming.length - 1}
-                      onRowPress={() => router.push(`/user/${f.other.username}`)}
-                      actions={[
-                        { label: "Link up", onPress: () => onAccept(f.id, f.requester_id), primary: true },
-                        { label: "Weiger", onPress: () => onDelete(f.id) },
-                      ]}
-                    />
-                  ))}
-                </View>
-              </Section>
-            )}
-
-            {pendingOutgoing.length > 0 && (
-              <Section title="Verzonden">
-                <View className="bg-paper-soft rounded-2xl overflow-hidden">
-                  {pendingOutgoing.map((f, i) => (
-                    <FriendshipRow
-                      key={f.id}
-                      friendship={f}
-                      isLast={i === pendingOutgoing.length - 1}
-                      onRowPress={() => router.push(`/user/${f.other.username}`)}
-                      actions={[{ label: "Annuleer", onPress: () => onDelete(f.id) }]}
-                    />
-                  ))}
-                </View>
-              </Section>
-            )}
-
-            <Section title="Jouw lincs">
-              {friendships.isLoading ? (
-                <SkeletonListCard rows={3} />
-              ) : accepted.length === 0 ? (
-                <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
+          {trimmed.length >= 2 && (
+            <Section title="Zoekresultaten">
+              {search.isLoading ? (
+                <SkeletonListCard rows={2} />
+              ) : searchResults.length === 0 ? (
+                <PaperHint text="Geen gebruikers gevonden." />
               ) : (
-                <View className="bg-paper-soft rounded-2xl overflow-hidden">
-                  {accepted.map((f, i) => (
-                    <FriendshipRow
-                      key={f.id}
-                      friendship={f}
-                      isLast={i === accepted.length - 1}
-                      onRowPress={() => router.push(`/user/${f.other.username}`)}
-                      actions={[{ label: "Verwijder", onPress: () => onDelete(f.id) }]}
+                <View className="bg-paper-soft overflow-hidden">
+                  {searchResults.map((p, i) => (
+                    <ProfileRow
+                      key={p.id}
+                      profile={p}
+                      onRowPress={() => router.push(`/user/${p.username}`)}
+                      onAction={() => onSendRequest(p.id)}
+                      actionLabel="Linc"
+                      actionIcon="person-add-outline"
+                      isLast={i === searchResults.length - 1}
                     />
                   ))}
                 </View>
               )}
             </Section>
-          </View>
-        }
-      />
-      </ScreenContainer>
+          )}
+
+          {pendingIncoming.length > 0 && (
+            <Section title={`Linc-verzoeken (${pendingIncoming.length})`}>
+              <View className="bg-paper-soft overflow-hidden">
+                {pendingIncoming.map((f, i) => (
+                  <FriendshipRow
+                    key={f.id}
+                    friendship={f}
+                    isLast={i === pendingIncoming.length - 1}
+                    onRowPress={() => router.push(`/user/${f.other.username}`)}
+                    actions={[
+                      { label: "Link up", onPress: () => onAccept(f.id, f.requester_id), primary: true },
+                      { label: "Weiger", onPress: () => onDelete(f.id) },
+                    ]}
+                  />
+                ))}
+              </View>
+            </Section>
+          )}
+
+          {pendingOutgoing.length > 0 && (
+            <Section title="Verzonden">
+              <View className="bg-paper-soft overflow-hidden">
+                {pendingOutgoing.map((f, i) => (
+                  <FriendshipRow
+                    key={f.id}
+                    friendship={f}
+                    isLast={i === pendingOutgoing.length - 1}
+                    onRowPress={() => router.push(`/user/${f.other.username}`)}
+                    actions={[{ label: "Annuleer", onPress: () => onDelete(f.id) }]}
+                  />
+                ))}
+              </View>
+            </Section>
+          )}
+
+          <Section title="Jouw lincs">
+            {friendships.isLoading ? (
+              <SkeletonListCard rows={3} />
+            ) : accepted.length === 0 ? (
+              <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
+            ) : (
+              <View className="bg-paper-soft overflow-hidden">
+                {accepted.map((f, i) => (
+                  <FriendshipRow
+                    key={f.id}
+                    friendship={f}
+                    isLast={i === accepted.length - 1}
+                    onRowPress={() => router.push(`/user/${f.other.username}`)}
+                    actions={[{ label: "Verwijder", onPress: () => onDelete(f.id) }]}
+                  />
+                ))}
+              </View>
+            )}
+          </Section>
+        </View>
+      </View>
+      </PageScroll>
     </SafeAreaView>
   );
 }
@@ -273,7 +269,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function PaperHint({ text }: { text: string }) {
   return (
-    <View className="bg-paper-soft rounded-2xl p-5">
+    <View className="bg-paper-soft p-5">
       <Text className="text-ink-soft text-sm leading-5">{text}</Text>
     </View>
   );
@@ -315,10 +311,10 @@ function ProfileRow({
       </Pressable>
       <Pressable
         onPress={onAction}
-        className="bg-ink active:bg-ink-soft rounded-full px-4 py-2 flex-row items-center"
+        className="bg-ink active:bg-ink-soft px-4 py-2 flex-row items-center"
       >
         {actionIcon && (
-          <Ionicons name={actionIcon} color="#F5E8D3" size={14} style={{ marginRight: 4 }} />
+          <Ionicons name={actionIcon} color={feed.text} size={14} style={{ marginRight: 4 }} />
         )}
         <Text className="text-cream font-semibold text-sm">{actionLabel}</Text>
       </Pressable>
@@ -363,8 +359,8 @@ function FriendshipRow({
             onPress={a.onPress}
             className={
               a.primary
-                ? "bg-ink active:bg-ink-soft rounded-full px-3 py-1.5"
-                : "border border-ink/20 active:bg-paper rounded-full px-3 py-1.5"
+                ? "bg-ink active:bg-ink-soft px-3 py-1.5"
+                : "border border-ink/20 active:bg-paper px-3 py-1.5"
             }
           >
             <Text

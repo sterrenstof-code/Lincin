@@ -15,6 +15,7 @@ import { touchLastSeen } from "@/lib/api/profiles";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
+import { feed, flame } from "@/lib/design/type";
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
@@ -201,7 +202,7 @@ export default function AppLayout() {
   if (bootstrapping) {
     return (
       <View className="flex-1 items-center justify-center bg-shell">
-        <ActivityIndicator color="#F5E8D3" />
+        <ActivityIndicator color={feed.text} />
       </View>
     );
   }
@@ -213,20 +214,20 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#15141A",
-          borderTopColor: "#2A2620",
+          backgroundColor: feed.post,
+          borderTopColor: feed.ink,
           borderTopWidth: 1,
           height: 68,
           paddingTop: 8,
           paddingBottom: 10,
         },
-        tabBarActiveTintColor: "#1A1714",
-        tabBarInactiveTintColor: "#8A8275",
+        tabBarActiveTintColor: feed.ink,
+        tabBarInactiveTintColor: feed.inkDim,
         tabBarShowLabel: false,
         tabBarItemStyle: { paddingHorizontal: 4 },
         tabBarBadgeStyle: {
-          backgroundColor: "#E66B3F",
-          color: "#F5E8D3",
+          backgroundColor: flame,
+          color: feed.text,
           fontSize: 10,
           fontWeight: "700",
           minWidth: 18,
@@ -312,7 +313,7 @@ function PaperTabBar({
           else if (tab.routeName === "chats") badge = totalUnread;
           else if (tab.routeName === "friends") badge = pendingFriendRequests ?? 0;
 
-          const activeColor = "#F5E8D3";
+          const activeColor = feed.text;
           const inactiveColor = "#6B6259";
 
           return (
@@ -330,7 +331,7 @@ function PaperTabBar({
                 />
                 {badge > 0 && (
                   <View
-                    className="bg-flame rounded-full absolute -right-2 -top-1.5"
+                    className="bg-flame absolute -right-2 -top-1.5"
                     style={{ minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}
                   >
                     <Text className="text-cream text-[9px] font-bold">

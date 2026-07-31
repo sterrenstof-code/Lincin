@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  FlatList,
   Pressable,
   ScrollView,
   Text,
@@ -14,10 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { SkeletonListCard } from "@/components/Skeleton";
+import { feed, FEED_BORDER, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   chatTitle,
@@ -159,119 +158,119 @@ export default function ChatsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
-          ScreenContainer omdat hij op volle breedte hoort. */}
-      <AppChrome wide={wide} progress={chrome.progress} />
-      <ScreenContainer>
-      <FlatList
+      {/* Eén scroller voor de hele pagina, net als op de andere tabs.
+          De chatlijst is een gewone map i.p.v. een FlatList: een
+          VirtualizedList binnen een ScrollView nesten mag niet, en de
+          lijst is begrensd genoeg om virtualisatie niet te missen. */}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        data={filtered}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        ListHeaderComponent={
-          <View>
-            <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
-              Chats
-            </Text>
-            <Text className="text-cream-soft text-base mb-5">
-              Volledig end-to-end versleuteld.
-            </Text>
+        contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
+      >
+        <View>
+          <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
+            Chats
+          </Text>
+          <Text className="text-cream-soft text-base mb-5">
+            Volledig end-to-end versleuteld.
+          </Text>
 
-            {/* Search pill */}
-            <View className="flex-row items-center gap-2 mb-5">
-              <View className="flex-1 flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper">
-                <Ionicons name="search" color="#8A7E6C" size={18} />
-                <TextInput
-                  value={filter}
-                  onChangeText={setFilter}
-                  placeholder="Filter chats…"
-                  placeholderTextColor="#8A7E6C"
-                  className="flex-1 text-ink text-base py-3 pl-2"
-                />
-                {filter.length > 0 && (
-                  <Pressable onPress={() => setFilter("")} className="p-1">
-                    <Ionicons name="close-circle" color="#8A7E6C" size={18} />
-                  </Pressable>
-                )}
-              </View>
-              <Pressable
-                onPress={() => router.push("/group-create")}
-                className="bg-ink active:bg-ink-soft rounded-full w-11 h-11 items-center justify-center"
-              >
-                <Ionicons name="people" color="#F5E8D3" size={18} />
-              </Pressable>
+          {/* Search pill */}
+          <View className="flex-row items-center gap-2 mb-5">
+            <View className="flex-1 flex-row items-center bg-paper-light px-4 border border-line-paper">
+              <Ionicons name="search" color={feed.inkDim} size={18} />
+              <TextInput
+                value={filter}
+                onChangeText={setFilter}
+                placeholder="Filter chats…"
+                placeholderTextColor={feed.inkDim}
+                className="flex-1 text-ink text-base py-3 pl-2"
+              />
+              {filter.length > 0 && (
+                <Pressable onPress={() => setFilter("")} className="p-1">
+                  <Ionicons name="close-circle" color={feed.inkDim} size={18} />
+                </Pressable>
+              )}
             </View>
-
-            {/* Friends quick row */}
-            {friendsWithoutChat.length > 0 && (
-              <View className="mb-5">
-                <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-                  Start een chat
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 20, gap: 12 }}
-                >
-                  {friendsWithoutChat.map((f) => (
-                    <Pressable
-                      key={f.id}
-                      onPress={() => openChatWith(f.other.id)}
-                      className="items-center w-16"
-                    >
-                      <Avatar
-                        name={f.other.display_name ?? f.other.username}
-                        size="lg"
-                        tint="warm"
-                      />
-                      <Text
-                        className="text-cream-soft text-xs mt-2 text-center"
-                        numberOfLines={1}
-                      >
-                        {f.other.display_name ?? f.other.username}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-              Gesprekken
-            </Text>
-
-            {chats.isLoading && <SkeletonListCard rows={3} />}
+            <Pressable
+              onPress={() => router.push("/group-create")}
+              className="bg-ink active:bg-ink-soft w-11 h-11 items-center justify-center"
+            >
+              <Ionicons name="people" color={feed.text} size={18} />
+            </Pressable>
           </View>
-        }
-        ListEmptyComponent={
-          chats.isLoading ? null : (
-            <View className="bg-paper-soft rounded-3xl p-6 items-center">
-              <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="chatbubbles-outline" color="#1A1714" size={24} />
-              </View>
-              <Text className="text-ink font-semibold text-base mb-1">
-                Nog geen gesprekken
+
+          {/* Friends quick row */}
+          {friendsWithoutChat.length > 0 && (
+            <View className="mb-5">
+              <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
+                Start een chat
               </Text>
-              <Text className="text-ink-soft text-sm text-center">
-                Start een chat met een vriend hierboven, of deel je link vanuit Profiel.
-              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 20, gap: 12 }}
+              >
+                {friendsWithoutChat.map((f) => (
+                  <Pressable
+                    key={f.id}
+                    onPress={() => openChatWith(f.other.id)}
+                    className="items-center w-16"
+                  >
+                    <Avatar
+                      name={f.other.display_name ?? f.other.username}
+                      size="lg"
+                      tint="warm"
+                    />
+                    <Text
+                      className="text-cream-soft text-xs mt-2 text-center"
+                      numberOfLines={1}
+                    >
+                      {f.other.display_name ?? f.other.username}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
+          )}
+
+          <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
+            Gesprekken
+          </Text>
+
+          {chats.isLoading && <SkeletonListCard rows={3} />}
+        </View>
+        {filtered.length === 0 ? (
+          chats.isLoading ? null : (
+        <View className="bg-paper-soft p-6 items-center">
+          <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+            <Ionicons name="chatbubbles-outline" color={feed.ink} size={24} />
+          </View>
+          <Text className="text-ink font-semibold text-base mb-1">
+            Nog geen gesprekken
+          </Text>
+          <Text className="text-ink-soft text-sm text-center">
+            Start een chat met een vriend hierboven, of deel je link vanuit Profiel.
+          </Text>
+        </View>
           )
-        }
-        renderItem={({ item, index }) => (
-          <ChatRow
-            chat={item}
-            myUserId={myUserId}
-            onPress={() => router.push(`/chat/${item.id}`)}
-            onLongPress={() => setMenuChat(item)}
-            onMenuPress={() => setMenuChat(item)}
-            isFirst={index === 0}
-            isLast={index === filtered.length - 1}
-          />
+        ) : (
+          filtered.map((item, index) => (
+            <ChatRow
+              key={item.id}
+              chat={item}
+              myUserId={myUserId}
+              onPress={() => router.push(`/chat/${item.id}`)}
+              onLongPress={() => setMenuChat(item)}
+              onMenuPress={() => setMenuChat(item)}
+              isFirst={index === 0}
+              isLast={index === filtered.length - 1}
+            />
+          ))
         )}
-      />
-      </ScreenContainer>
+      </PageScroll>
 
       {/* Acties-menu voor een specifieke chat (long-press of 3-dots). */}
       <ActionSheet
@@ -350,11 +349,17 @@ function ChatRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
-      className={`flex-row items-center bg-paper-soft active:bg-paper px-4 py-3.5 ${
-        isFirst ? "rounded-t-2xl" : ""
-      } ${isLast ? "rounded-b-2xl" : ""} ${
-        !isLast ? "border-b border-line-paper/60" : ""
-      }`}
+      // Geen afgeronde hoeken meer aan de uiteinden van de lijst: dit
+      // systeem kent maar één ronding en dat is de avatar. De rijen worden
+      // in plaats daarvan één gekaderd blok met scheidingslijnen ertussen.
+      className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-3.5"
+      style={{
+        borderLeftWidth: FEED_BORDER,
+        borderRightWidth: FEED_BORDER,
+        borderTopWidth: isFirst ? FEED_BORDER : 0,
+        borderBottomWidth: FEED_BORDER,
+        borderColor: feed.ink,
+      }}
     >
       {/* Avatar is geen aparte tap-target meer — op mobile vrat de hitSlop
           regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
@@ -400,7 +405,7 @@ function ChatRow({
         </Text>
       </View>
       {unread > 0 ? (
-        <View className="bg-flame rounded-full min-w-[22px] h-[22px] px-1.5 items-center justify-center mr-1">
+        <View className="bg-flame min-w-[22px] h-[22px] px-1.5 items-center justify-center mr-1">
           <Text className="text-cream text-[11px] font-bold">
             {unread > 99 ? "99+" : unread}
           </Text>
@@ -416,7 +421,7 @@ function ChatRow({
         hitSlop={10}
         className="w-9 h-9 items-center justify-center -mr-2"
       >
-        <Ionicons name="ellipsis-horizontal" color="#8A7E6C" size={18} />
+        <Ionicons name="ellipsis-horizontal" color={feed.inkDim} size={18} />
       </Pressable>
     </Pressable>
   );

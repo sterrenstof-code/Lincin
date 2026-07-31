@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import {
-  FlatList,
   Pressable,
   RefreshControl,
   Text,
@@ -11,8 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { feed, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
 import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
@@ -54,10 +53,10 @@ export default function EventsScreen() {
     if (events.isError) {
       const message = (events.error as Error | null)?.message ?? "Onbekende fout";
       return (
-        <View className="bg-paper-soft rounded-3xl p-6 mt-2">
+        <View className="bg-paper-soft p-6 mt-2">
           <View className="flex-row items-center mb-2">
-            <View className="w-9 h-9 rounded-full bg-flame/20 items-center justify-center">
-              <Ionicons name="alert-circle" color="#E66B3F" size={18} />
+            <View className="w-9 h-9 bg-flame/20 items-center justify-center">
+              <Ionicons name="alert-circle" color={flameDeep} size={18} />
             </View>
             <Text className="text-ink font-semibold ml-3">Kon events niet laden</Text>
           </View>
@@ -66,7 +65,7 @@ export default function EventsScreen() {
           </Text>
           <Pressable
             onPress={() => events.refetch()}
-            className="bg-ink active:bg-ink-soft rounded-full py-2.5 items-center self-start px-5"
+            className="bg-ink active:bg-ink-soft py-2.5 items-center self-start px-5"
           >
             <Text className="text-cream font-semibold text-sm">Probeer opnieuw</Text>
           </Pressable>
@@ -82,9 +81,9 @@ export default function EventsScreen() {
     // Empty state
     if (data.length === 0) {
       return (
-        <View className="bg-paper-soft rounded-3xl p-6 items-center mt-2">
-          <View className="w-14 h-14 rounded-full bg-flame items-center justify-center mb-3">
-            <Ionicons name="sparkles" color="#F5E8D3" size={24} />
+        <View className="bg-paper-soft p-6 items-center mt-2">
+          <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
+            <Ionicons name="sparkles" color={feed.text} size={24} />
           </View>
           <Text className="text-ink font-semibold text-base mb-1">
             Maak je eerste event
@@ -94,7 +93,7 @@ export default function EventsScreen() {
           </Text>
           <Pressable
             onPress={() => router.push("/event-create")}
-            className="bg-ink active:bg-ink-soft rounded-full px-5 py-3"
+            className="bg-ink active:bg-ink-soft px-5 py-3"
           >
             <Text className="text-cream font-semibold">Maak event</Text>
           </Pressable>
@@ -102,27 +101,29 @@ export default function EventsScreen() {
       );
     }
 
-    // Data state — secties tonen
+    // Data state — secties tonen. De nummering loopt dóór over de secties
+    // heen, zoals de paginering van een uitgave; hij zegt niets over rang.
+    let n = 0;
     return (
       <>
         {active.length > 0 && (
           <Section title="Nu live">
             {active.map((e) => (
-              <EventCard key={e.id} event={e} />
+              <EventCard key={e.id} event={e} index={++n} />
             ))}
           </Section>
         )}
         {upcoming.length > 0 && (
           <Section title="Komt eraan">
             {upcoming.map((e) => (
-              <EventCard key={e.id} event={e} />
+              <EventCard key={e.id} event={e} index={++n} />
             ))}
           </Section>
         )}
         {past.length > 0 && (
           <Section title="Afgelopen">
             {past.map((e) => (
-              <EventCard key={e.id} event={e} />
+              <EventCard key={e.id} event={e} index={++n} />
             ))}
           </Section>
         )}
@@ -132,61 +133,91 @@ export default function EventsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
-          ScreenContainer omdat hij op volle breedte hoort. */}
-      <AppChrome wide={wide} progress={chrome.progress} />
-      <ScreenContainer>
-        <FlatList
-          onScroll={chrome.onScroll}
-          scrollEventThrottle={chrome.scrollEventThrottle}
-          data={[] as never[]}
-          keyExtractor={() => "_"}
-          renderItem={null as never}
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={events.isFetching && !events.isLoading}
-              onRefresh={() =>
-                qc.invalidateQueries({ queryKey: ["events", myUserId] })
-              }
-              tintColor="#F5E8D3"
-            />
-          }
-          ListHeaderComponent={
-            <View>
-              <View className="flex-row items-end justify-between mb-1">
-                <Text className="text-3xl font-bold tracking-tight text-cream">
-                  Events
-                </Text>
-                <Pressable
-                  onPress={() => router.push("/event-create")}
-                  className="bg-cream active:bg-cream-soft rounded-full flex-row items-center px-4 py-2"
-                >
-                  <Ionicons name="add" color="#1A1714" size={18} />
-                  <Text className="text-ink font-semibold ml-1 text-sm">
-                    Nieuw event
-                  </Text>
-                </Pressable>
-              </View>
-              <Text className="text-cream-soft text-base mb-5">
-                Maak momenten samen. Foto's worden onthuld op het juiste moment.
+      {/* Eén scroller voor de hele pagina; de kop plakt bovenaan.
+          Geen ScreenContainer meer: dit ontwerp gebruikt de volle
+          breedte tot PAGE_MAX. */}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        refreshControl={
+          <RefreshControl
+            refreshing={events.isFetching && !events.isLoading}
+            onRefresh={() =>
+              qc.invalidateQueries({ queryKey: ["events", myUserId] })
+            }
+            tintColor={feedColor.ink}
+          />
+        }
+      >
+        <View style={{ paddingVertical: 28, paddingBottom: 80 }}>
+          {/* Paginakop: kicker, kop, ondertitel — dezelfde opbouw als de
+              hero van een vondst, één maat kleiner. */}
+          <Text
+            style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
+          >
+            SAMEN VASTGELEGD
+          </Text>
+          <View
+            style={{
+              flexDirection: wide ? "row" : "column",
+              justifyContent: "space-between",
+              alignItems: wide ? "flex-end" : "flex-start",
+              marginBottom: 10,
+            }}
+          >
+            <Text
+              style={[
+                wide ? feedType.hero : feedType.heroSmall,
+                { color: feedColor.ink, maxWidth: 620 },
+              ]}
+            >
+              Events
+            </Text>
+            <Pressable
+              onPress={() => router.push("/event-create")}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? flameDeep : feedColor.ink,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginTop: wide ? 0 : 16,
+              })}
+            >
+              <Text
+                style={[
+                  feedType.label,
+                  { fontSize: 13, fontWeight: "700", color: feedColor.text },
+                ]}
+              >
+                Nieuw event
               </Text>
-              {renderBody()}
-            </View>
-          }
-        />
-      </ScreenContainer>
+            </Pressable>
+          </View>
+          <Text
+            style={[feedType.body, { color: feedColor.inkDim, maxWidth: 560, marginBottom: 34 }]}
+          >
+            Maak momenten samen. Foto's worden onthuld op het juiste moment.
+          </Text>
+          {renderBody()}
+        </View>
+      </PageScroll>
     </SafeAreaView>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="mt-4">
-      <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-        {title}
+    <View style={{ marginTop: 28 }}>
+      <Text
+        style={[
+          feedType.kicker,
+          { color: "#3A3540", letterSpacing: 0.55, marginBottom: 16 },
+        ]}
+      >
+        {title.toUpperCase()}
       </Text>
-      <View className="gap-3">{children}</View>
+      <View style={{ gap: 16 }}>{children}</View>
     </View>
   );
 }
@@ -194,16 +225,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /** Compacte event-skeleton (geen vierkante image-area — past bij EventCard). */
 function SkeletonEventCard() {
   return (
-    <View className="bg-paper-soft rounded-3xl p-6 mt-2">
+    <View className="bg-paper-soft p-6 mt-2">
       <View className="flex-row items-center mb-3">
-        <Skeleton className="w-9 h-9 bg-paper-warm rounded-full" />
+        <Skeleton className="w-9 h-9 bg-paper-warm" />
         <View className="flex-1 ml-3">
-          <Skeleton className="w-24 h-3 bg-paper-warm rounded-full" />
+          <Skeleton className="w-24 h-3 bg-paper-warm" />
         </View>
       </View>
-      <Skeleton className="w-3/4 h-6 bg-paper-warm rounded-full" />
+      <Skeleton className="w-3/4 h-6 bg-paper-warm" />
       <View className="h-2" />
-      <Skeleton className="w-1/2 h-3 bg-paper-warm rounded-full" />
+      <Skeleton className="w-1/2 h-3 bg-paper-warm" />
     </View>
   );
 }

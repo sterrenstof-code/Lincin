@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 
 import { useAuth } from "@/lib/auth/provider";
+import { feed } from "@/lib/design/type";
 
 export default function AuthLayout() {
   const { session, loading } = useAuth();
@@ -15,7 +16,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#0A0A0B" },
+        contentStyle: { backgroundColor: feed.ink },
       }}
     />
   );

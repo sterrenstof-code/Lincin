@@ -25,6 +25,7 @@ import {
   type ListItem,
 } from "@/lib/api/shared-lists";
 import { supabase } from "@/lib/supabase/client";
+import { feed, flame } from "@/lib/design/type";
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -81,7 +82,7 @@ export default function ListDetailScreen() {
   if (loading || !list) {
     return (
       <SafeAreaView className="flex-1 bg-shell items-center justify-center">
-        <ActivityIndicator color="#F5E8D3" />
+        <ActivityIndicator color={feed.text} />
       </SafeAreaView>
     );
   }
@@ -103,7 +104,7 @@ export default function ListDetailScreen() {
             {/* Header */}
             <View className="flex-row items-center mb-4 gap-3">
               <Pressable onPress={() => router.back()} className="w-9 h-9 items-center justify-center">
-                <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
+                <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text style={{ fontSize: 28 }}>{list.emoji}</Text>
               <Text className="text-cream font-bold text-xl flex-1" numberOfLines={2}>{list.title}</Text>
@@ -116,8 +117,8 @@ export default function ListDetailScreen() {
                   <Text className="text-cream-soft text-xs">{done} van {total} gedaan</Text>
                   <Text className="text-cream-soft text-xs font-bold">{pct}%</Text>
                 </View>
-                <View className="h-2 bg-paper rounded-full overflow-hidden">
-                  <View className="h-full bg-teal-500 rounded-full" style={{ width: `${pct}%` }} />
+                <View className="h-2 bg-paper overflow-hidden">
+                  <View className="h-full bg-teal-500" style={{ width: `${pct}%` }} />
                 </View>
               </View>
             )}
@@ -159,15 +160,15 @@ export default function ListDetailScreen() {
               placeholderTextColor="#6B5E4E"
               returnKeyType="done"
               onSubmitEditing={onAddItem}
-              className="flex-1 bg-paper-soft rounded-full px-4 py-2.5 text-ink text-sm"
+              className="flex-1 bg-paper-soft px-4 py-2.5 text-ink text-sm"
               style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
             />
             <Pressable
               onPress={onAddItem}
               disabled={!draft.trim() || adding}
-              className={`w-10 h-10 rounded-full items-center justify-center ${draft.trim() ? "bg-flame" : "bg-paper-soft"}`}
+              className={`w-10 h-10 items-center justify-center ${draft.trim() ? "bg-flame" : "bg-paper-soft"}`}
             >
-              {adding ? <ActivityIndicator size="small" color="#F5E8D3" /> : <Ionicons name="add" color={draft.trim() ? "#F5E8D3" : "#8A7E6C"} size={20} />}
+              {adding ? <ActivityIndicator size="small" color={feed.text} /> : <Ionicons name="add" color={draft.trim() ? feed.text : feed.inkDim} size={20} />}
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -178,8 +179,8 @@ export default function ListDetailScreen() {
 
 function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onToggle: () => void; onDelete: () => void; canDelete: boolean }) {
   return (
-    <View className={`flex-row items-center gap-3 px-4 py-3 rounded-2xl ${item.checked ? "bg-paper-soft/50" : "bg-paper-soft"}`}>
-      <Pressable onPress={onToggle} className={`w-5 h-5 rounded-full border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
+    <View className={`flex-row items-center gap-3 px-4 py-3 ${item.checked ? "bg-paper-soft/50" : "bg-paper-soft"}`}>
+      <Pressable onPress={onToggle} className={`w-5 h-5 border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
         {item.checked && <Ionicons name="checkmark" color="#fff" size={11} />}
       </Pressable>
       <Text className={`flex-1 text-sm ${item.checked ? "text-ink-muted line-through" : "text-ink"}`}>
@@ -187,7 +188,7 @@ function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onTo
       </Text>
       {canDelete && (
         <Pressable onPress={onDelete} hitSlop={8}>
-          <Ionicons name="trash-outline" color="#8A7E6C" size={15} />
+          <Ionicons name="trash-outline" color={feed.inkDim} size={15} />
         </Pressable>
       )}
     </View>

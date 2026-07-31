@@ -23,6 +23,7 @@ import {
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { rekeyMessagesForNewMember } from "@/lib/api/rekey";
+import { feed } from "@/lib/design/type";
 
 export default function GroupAddMembersScreen() {
   const router = useRouter();
@@ -102,9 +103,9 @@ export default function GroupAddMembersScreen() {
       <View className="flex-row items-center px-4 py-3">
         <Pressable
           onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="close" color="#1A1714" size={20} />
+          <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
         <Text className="flex-1 text-cream text-lg font-semibold ml-3">
           Leden toevoegen
@@ -112,7 +113,7 @@ export default function GroupAddMembersScreen() {
         <Pressable
           onPress={onSubmit}
           disabled={!canSubmit}
-          className={`rounded-full px-4 py-2 ${
+          className={` px-4 py-2 ${
             canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
           }`}
         >
@@ -131,7 +132,7 @@ export default function GroupAddMembersScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-          <View className="bg-paper rounded-3xl p-5">
+          <View className="bg-paper p-5">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
               {chat.data?.name ? `Naar "${chat.data.name}"` : "Naar groep"}
             </Text>
@@ -154,13 +155,13 @@ export default function GroupAddMembersScreen() {
             {friendships.isLoading || members.isLoading ? (
               <SkeletonListCard rows={3} />
             ) : friendsToAdd.length === 0 ? (
-              <View className="bg-paper-soft rounded-2xl p-5">
+              <View className="bg-paper-soft p-5">
                 <Text className="text-ink-soft text-sm leading-5">
                   Iedereen op je vriendenlijst zit al in deze groep. Voeg eerst nieuwe vrienden toe in de Vrienden-tab.
                 </Text>
               </View>
             ) : (
-              <View className="bg-paper-soft rounded-2xl overflow-hidden">
+              <View className="bg-paper-soft overflow-hidden">
                 {friendsToAdd.map((f, i) => {
                   const checked = selected.has(f.other.id);
                   const isLast = i === friendsToAdd.length - 1;
@@ -186,7 +187,7 @@ export default function GroupAddMembersScreen() {
                       </View>
                       <Ionicons
                         name={checked ? "checkmark-circle" : "ellipse-outline"}
-                        color={checked ? "#1A1714" : "#8A7E6C"}
+                        color={checked ? feed.ink : feed.inkDim}
                         size={24}
                       />
                     </Pressable>
@@ -197,7 +198,7 @@ export default function GroupAddMembersScreen() {
           </View>
 
           {error && (
-            <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
+            <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
               <Text className="text-red-800 text-sm">{error}</Text>
             </View>
           )}

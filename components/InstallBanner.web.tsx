@@ -74,7 +74,7 @@ export function InstallBanner() {
       }}
     >
       <View
-        className="bg-paper rounded-3xl px-5 py-4 shadow-xl"
+        className="bg-paper px-5 py-4 shadow-xl"
         style={{ shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 16 }}
       >
         {/* Sluit-knop */}

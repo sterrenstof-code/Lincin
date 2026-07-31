@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { useWide } from "@/components/Editorial";
 import { Skeleton, SkeletonGallery } from "@/components/Skeleton";
 import { safeBack } from "@/lib/nav";
 import { useAuth } from "@/lib/auth/provider";
@@ -26,11 +27,14 @@ import {
 } from "@/lib/api/friends";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { listUserPosts } from "@/lib/api/posts";
+import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function UserProfileScreen() {
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
   const { session, loading: authLoading } = useAuth();
   const { username: raw } = useLocalSearchParams<{ username: string }>();
@@ -127,53 +131,73 @@ export default function UserProfileScreen() {
   const heroName = profile.data?.display_name ?? username;
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3">
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        contentStyle={{ paddingVertical: 24, paddingBottom: 80 }}
+      >
         <Pressable
           onPress={() => safeBack(router, "/(app)/feed")}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          hitSlop={8}
+          style={{ flexDirection: "row", alignItems: "center", marginBottom: 22 }}
         >
-          <Ionicons name="chevron-back" color="#1A1714" size={20} />
+          <Ionicons name="chevron-back" color={feed.ink} size={16} />
+          <Text style={[feedType.label, { color: feed.ink, marginLeft: 4 }]}>Terug</Text>
         </Pressable>
-        <Text className="flex-1 text-cream text-lg font-semibold ml-3" numberOfLines={1}>
-          @{profile.data?.username ?? username}
-        </Text>
-      </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-        {/* Hero */}
-        <View className="bg-paper rounded-3xl p-6 items-center">
+        {/* Hero — links uitgelijnd, niet gecentreerd. Een profiel is hier
+            een redactionele kop met een portret, geen visitekaartje. */}
+        <View
+          style={{
+            borderWidth: FEED_BORDER,
+            borderColor: feed.ink,
+            backgroundColor: feed.post,
+            padding: wide ? 32 : 24,
+          }}
+        >
           {relation.kind === "loading" ? (
             <>
-              <Skeleton className="w-20 h-20 bg-paper-warm rounded-full" />
+              <Skeleton className="w-20 h-20 bg-paper-warm" />
               <View className="h-3" />
-              <Skeleton className="w-40 h-6 bg-paper-warm rounded-full" />
+              <Skeleton className="w-40 h-6 bg-paper-warm" />
               <View className="h-2" />
-              <Skeleton className="w-24 h-3.5 bg-paper-warm rounded-full" />
+              <Skeleton className="w-24 h-3.5 bg-paper-warm" />
             </>
           ) : relation.kind === "not-found" ? (
             <>
-              <View className="w-20 h-20 rounded-full bg-paper-warm items-center justify-center">
-                <Ionicons name="help" color="#1A1714" size={32} />
+              <View className="w-20 h-20 bg-paper-warm items-center justify-center">
+                <Ionicons name="help" color={feed.ink} size={32} />
               </View>
-              <Text className="text-2xl font-bold tracking-tight text-ink mt-4">
+              <Text style={[feedType.heroSmall, { color: feed.text, marginTop: 16 }]}>
                 Niet gevonden
               </Text>
-              <Text className="text-ink-soft text-center mt-2">
+              <Text style={[feedType.body, { color: feed.textDim, marginTop: 8 }]}>
                 @{username} bestaat niet (of heeft een andere handle).
               </Text>
             </>
           ) : (
             <>
+              <Text
+                style={[feedType.kicker, { color: flame, letterSpacing: 0.55, marginBottom: 16 }]}
+              >
+                PROFIEL
+              </Text>
               <Avatar name={heroName} size="hero" tint="warm" />
-              {profile.data?.display_name && (
-                <Text className="text-3xl font-bold tracking-tight text-ink mt-3">
+              {profile.data?.display_name ? (
+                <Text
+                  style={[
+                    wide ? feedType.hero : feedType.heroSmall,
+                    { color: feed.text, marginTop: 18 },
+                  ]}
+                  numberOfLines={2}
+                >
                   {profile.data.display_name}
                 </Text>
-              )}
-              <Text className="text-ink-soft text-base mt-1">
+              ) : null}
+              <Text style={[feedType.label, { fontSize: 14, color: feed.textDim, marginTop: 6 }]}>
                 @{profile.data?.username ?? username}
               </Text>
 
@@ -203,13 +227,15 @@ export default function UserProfileScreen() {
         {/* Posts */}
         {relation.kind !== "not-found" && (
           <View className="mt-6">
-            <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
-              Posts
+            <Text
+              style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 16 }]}
+            >
+              GEDEELDE VONDSTEN
             </Text>
             {posts.isLoading ? (
               <SkeletonGallery />
             ) : (posts.data?.length ?? 0) === 0 ? (
-              <View className="bg-paper-soft rounded-2xl p-5">
+              <View className="bg-paper-soft p-5">
                 <Text className="text-ink-soft text-sm leading-5">
                   {relation.kind === "self"
                     ? "Je hebt nog niks gedeeld. Plaats je eerste post vanaf de Feed-tab."
@@ -235,8 +261,8 @@ export default function UserProfileScreen() {
                         />
                       ) : p.link_url ? (
                         <View className="flex-1 items-center justify-center p-2">
-                          <View className="w-8 h-8 rounded-full bg-paper items-center justify-center mb-1">
-                            <Ionicons name="link" color="#1A1714" size={14} />
+                          <View className="w-8 h-8 bg-paper items-center justify-center mb-1">
+                            <Ionicons name="link" color={feed.ink} size={14} />
                           </View>
                           <Text
                             className="text-ink-soft text-[9px] text-center leading-3"
@@ -266,8 +292,7 @@ export default function UserProfileScreen() {
             )}
           </View>
         )}
-      </ScrollView>
-      </ScreenContainer>
+      </PageScroll>
     </SafeAreaView>
   );
 }
@@ -304,9 +329,9 @@ function ActionButton({
   onEdit: () => void;
 }) {
   const primaryClass =
-    "w-full bg-ink active:bg-ink-soft rounded-full py-3.5 items-center";
+    "w-full bg-ink active:bg-ink-soft py-3.5 items-center";
   const ghostClass =
-    "w-full border border-ink/30 active:bg-paper rounded-full py-3 items-center mt-2";
+    "w-full border border-ink/30 active:bg-paper py-3 items-center mt-2";
 
   switch (relation.kind) {
     case "needs-login":
@@ -353,7 +378,7 @@ function ActionButton({
     case "outgoing":
       return (
         <>
-          <View className="w-full border border-ink/20 rounded-full py-3.5 items-center">
+          <View className="w-full border border-ink/20 py-3.5 items-center">
             <Text className="text-ink-soft font-semibold">Verzoek verstuurd</Text>
           </View>
           <Pressable

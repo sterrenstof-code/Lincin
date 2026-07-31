@@ -36,9 +36,9 @@ function paletteFor(tone: Tone): Palette {
     case "post":
       return { strong: feed.text, dim: feed.textDim, fill: "rgba(243,237,228,0.10)" };
     case "dark":
-      return { strong: page.DEFAULT, dim: "#8E8C86", fill: "rgba(242,241,238,0.10)" };
+      return { strong: page.DEFAULT, dim: feed.inkDim, fill: "rgba(242,241,238,0.10)" };
     default:
-      return { strong: carbon.DEFAULT, dim: carbon.muted, fill: "#E9E8E4" };
+      return { strong: carbon.DEFAULT, dim: carbon.muted, fill: feed.panel };
   }
 }
 

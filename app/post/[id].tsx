@@ -16,9 +16,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { useWide } from "@/components/Editorial";
+import { AppChrome, PAGE_MAX, useChromeScroll } from "@/components/AppChrome";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
+import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import {
   addEntityComment,
   deleteEntityComment,
@@ -35,6 +37,8 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function PostDetailScreen() {
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
@@ -222,28 +226,27 @@ export default function PostDetailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
-      <ScreenContainer>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
           onPress={() => safeBack(router, "/(app)/feed")}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="chevron-back" color="#1A1714" size={20} />
+          <Ionicons name="chevron-back" color={feed.ink} size={20} />
         </Pressable>
-        <Text className="flex-1 text-cream text-lg font-semibold ml-3">Foto</Text>
+        <Text className="flex-1 text-ink text-lg font-semibold ml-3">Foto</Text>
         {canModerate && (
           <Pressable
             onPress={() => setMenuOpen(true)}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="ellipsis-horizontal" color="#1A1714" size={20} />
+            <Ionicons name="ellipsis-horizontal" color={feed.ink} size={20} />
           </Pressable>
         )}
       </View>
 
       {deleteError && (
-        <View className="bg-red-100 border border-red-300 rounded-2xl mx-5 mt-2 px-4 py-3">
+        <View className="bg-red-100 border border-red-300  mx-5 mt-2 px-4 py-3">
           <Text className="text-red-800 text-sm">{deleteError}</Text>
         </View>
       )}
@@ -262,105 +265,161 @@ export default function PostDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
+        {/* Zelfde plakkende kop als de tabbladen: een detailpagina is
+            geen los venster maar een pagina van dezelfde site. */}
         <ScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          stickyHeaderIndices={[0]}
+          onScroll={chrome.onScroll}
+          scrollEventThrottle={chrome.scrollEventThrottle}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <AppChrome wide={wide} progress={chrome.progress} />
+          <View
+            style={{
+              width: "100%",
+              maxWidth: PAGE_MAX,
+              alignSelf: "center",
+              padding: 20,
+              paddingBottom: 40,
+            }}
+          >
           {/* Post card */}
           {post.isLoading || !post.data ? (
-            <View className="bg-paper-soft rounded-3xl overflow-hidden">
+            <View className="bg-paper-soft  overflow-hidden">
               <View className="flex-row items-center px-4 py-3">
-                <Skeleton className="w-11 h-11 bg-paper-warm rounded-full" />
+                <Skeleton className="w-11 h-11 bg-paper-warm" />
                 <View className="flex-1 ml-3">
-                  <Skeleton className="w-32 h-3.5 bg-paper-warm rounded-full" />
+                  <Skeleton className="w-32 h-3.5 bg-paper-warm" />
                   <View className="h-1.5" />
-                  <Skeleton className="w-20 h-3 bg-paper-warm rounded-full" />
+                  <Skeleton className="w-20 h-3 bg-paper-warm" />
                 </View>
               </View>
               <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
             </View>
           ) : (
-            <View className="bg-paper-soft rounded-3xl overflow-hidden">
-              <Pressable
-                onPress={() =>
-                  post.data?.author?.username &&
-                  router.push(`/user/${post.data.author.username}`)
-                }
-                className="flex-row items-center px-4 py-3"
+            <View style={{ marginHorizontal: -20, marginTop: -20 }}>
+              {/* De foto is het vlak, niet de inhoud van een kaartje: volle
+                  breedte, en de deler + toelichting staan eroverheen. Zonder
+                  foto valt hij terug op een plumvlak, zodat de bladspiegel
+                  hetzelfde blijft. */}
+              <View
+                style={{
+                  width: "100%",
+                  aspectRatio: post.data.image_url ? 4 / 5 : undefined,
+                  backgroundColor: feed.post,
+                  justifyContent: "flex-end",
+                }}
               >
-                <Avatar
-                  name={post.data.author?.display_name ?? post.data.author?.username}
-                  size="md"
-                  tint="warm"
-                />
-                <View className="flex-1 ml-3">
-                  <Text className="text-ink font-semibold">
-                    {post.data.author?.display_name ?? post.data.author?.username ?? "Onbekend"}
-                  </Text>
-                  <Text className="text-ink-muted text-xs">
-                    @{post.data.author?.username ?? "?"}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" color="#8A7E6C" size={18} />
-              </Pressable>
-              {post.data.image_path && post.data.image_url && (
-                <View className="bg-shell">
+                {post.data.image_path && post.data.image_url ? (
                   <Image
                     source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
                     cachePolicy="disk"
-                    style={{ width: "100%", aspectRatio: 1 }}
-                    contentFit="contain"
+                    style={{ position: "absolute", width: "100%", height: "100%" }}
+                    contentFit="cover"
                     transition={150}
                   />
+                ) : null}
+
+                {/* Scrim — drie gestapelde vlakken i.p.v. een gradient. */}
+                {post.data.image_url ? (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+                  >
+                    <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.16)" }} />
+                    <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.38)" }} />
+                    <View style={{ height: 180, backgroundColor: "rgba(0,0,0,0.62)" }} />
+                  </View>
+                ) : null}
+
+                <View style={{ padding: 20 }}>
+                  <Pressable
+                    onPress={() =>
+                      post.data?.author?.username &&
+                      router.push(`/user/${post.data.author.username}`)
+                    }
+                    className="flex-row items-center"
+                  >
+                    <Avatar
+                      name={post.data.author?.display_name ?? post.data.author?.username}
+                      size="md"
+                      tint="warm"
+                    />
+                    <View className="flex-1 ml-3">
+                      <Text style={[feedType.label, { fontSize: 15, fontWeight: "700", color: "#FFFFFF" }]}>
+                        {post.data.author?.display_name ?? post.data.author?.username ?? "Onbekend"}
+                      </Text>
+                      <Text style={[feedType.label, { color: "rgba(255,255,255,0.7)" }]}>
+                        @{post.data.author?.username ?? "?"}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" color="rgba(255,255,255,0.7)" size={18} />
+                  </Pressable>
+
+                  {post.data.caption ? (
+                    <Text
+                      style={[
+                        post.data.image_path ? feedType.pullSmall : feedType.pull,
+                        { color: "#FFFFFF", marginTop: 16 },
+                      ]}
+                    >
+                      {post.data.caption}
+                    </Text>
+                  ) : null}
                 </View>
-              )}
-              {post.data.caption && (
-                <View className="px-4 py-4">
-                  <Text className={`text-ink leading-6 ${post.data.image_path ? "text-base" : "text-lg"}`}>
-                    {post.data.caption}
-                  </Text>
-                </View>
-              )}
-              {post.data.link_url && (
+              </View>
+
+              {post.data.link_url ? (
                 <Pressable
                   onPress={() =>
                     post.data?.link_url &&
                     require("expo-linking").openURL(post.data.link_url).catch(() => {})
                   }
-                  className="mx-3 mb-3 mt-1 bg-paper-warm active:bg-paper rounded-2xl px-4 py-3 flex-row items-center"
+                  style={{
+                    borderTopWidth: FEED_BORDER,
+                    borderBottomWidth: FEED_BORDER,
+                    borderColor: feed.ink,
+                    backgroundColor: feed.panel,
+                    paddingHorizontal: 20,
+                    paddingVertical: 14,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
                 >
-                  <View className="w-10 h-10 rounded-full bg-paper-light items-center justify-center">
-                    <Ionicons name="link" color="#1A1714" size={18} />
-                  </View>
-                  <View className="flex-1 ml-3">
-                    <Text className="text-ink font-semibold text-sm" numberOfLines={1}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+                      BRON
+                    </Text>
+                    <Text
+                      style={[feedType.tile, { color: feed.ink, marginTop: 4 }]}
+                      numberOfLines={1}
+                    >
                       {(() => { try { return new URL(post.data.link_url).hostname.replace(/^www\./, ""); } catch { return post.data.link_url; } })()}
                     </Text>
-                    <Text className="text-ink-muted text-xs" numberOfLines={1}>{post.data.link_url}</Text>
                   </View>
-                  <Ionicons name="open-outline" color="#5A4F40" size={16} />
+                  <Text style={[feedType.label, { color: feed.ink }]}>Openen ↗</Text>
                 </Pressable>
-              )}
+              ) : null}
             </View>
           )}
 
           {/* Comments */}
-          <Text className="text-xs uppercase tracking-wider text-cream-muted mt-6 mb-3 px-1">
+          <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
             Reacties {comments && comments.length > 0 ? `(${comments.length})` : ""}
           </Text>
 
           {comments === null ? (
-            <View className="bg-paper-soft rounded-2xl p-4 gap-3">
-              <Skeleton className="bg-paper-warm h-4 rounded-full" style={{ width: "70%" }} />
-              <Skeleton className="bg-paper-warm h-4 rounded-full" style={{ width: "55%" }} />
+            <View className="bg-paper-soft  p-4 gap-3">
+              <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
+              <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
             </View>
           ) : comments.length === 0 ? (
-            <View className="bg-paper-soft rounded-2xl p-5">
+            <View className="bg-paper-soft  p-5">
               <Text className="text-ink-soft text-sm leading-5">Nog geen reacties. Stuur de eerste hieronder.</Text>
             </View>
           ) : (
-            <View className="bg-paper-soft rounded-2xl overflow-hidden">
+            <View className="bg-paper-soft  overflow-hidden">
               {comments.map((c, i) => (
                 <CommentRow
                   key={c.id}
@@ -377,10 +436,11 @@ export default function PostDetailScreen() {
               ))}
             </View>
           )}
+          </View>
         </ScrollView>
 
         {commentError && (
-          <View className="bg-red-100 border border-red-300 rounded-2xl mx-5 mb-2 px-4 py-3">
+          <View className="bg-red-100 border border-red-300  mx-5 mb-2 px-4 py-3">
             <Text className="text-red-800 text-sm font-semibold mb-1">Kon reactie niet plaatsen</Text>
             <Text className="text-red-800 text-xs leading-5">{commentError}</Text>
           </View>
@@ -399,7 +459,7 @@ export default function PostDetailScreen() {
                 <Pressable
                   key={name}
                   onPress={() => applyEmoji(name, emoji)}
-                  className="bg-paper rounded-2xl px-3 py-2 flex-row items-center gap-2"
+                  className="bg-paper  px-3 py-2 flex-row items-center gap-2"
                 >
                   <Text style={{ fontSize: 20 }}>{emoji}</Text>
                   <Text className="text-ink-muted text-xs">:{name}</Text>
@@ -412,12 +472,12 @@ export default function PostDetailScreen() {
         {/* Reply bar */}
         {replyTo && (
           <View className="flex-row items-center px-4 py-2 gap-3 border-t border-line-paper/60">
-            <View className="w-0.5 self-stretch bg-brand rounded-full" />
+            <View className="w-0.5 self-stretch bg-brand" />
             <Text className="flex-1 text-ink-muted text-xs">
               Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
             </Text>
             <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
-              <Ionicons name="close" color="#8A7E6C" size={18} />
+              <Ionicons name="close" color={feed.inkDim} size={18} />
             </Pressable>
           </View>
         )}
@@ -457,11 +517,11 @@ export default function PostDetailScreen() {
                   inputRef.current?.focus();
                 }
               }}
-              className="w-11 h-11 rounded-full bg-paper-warm items-center justify-center"
+              className="w-11 h-11 bg-paper-warm items-center justify-center"
             >
               <Text style={{ fontSize: 20 }}>😊</Text>
             </Pressable>
-            <View className="flex-1 bg-paper-light rounded-3xl border border-line-paper px-4 py-2 max-h-32">
+            <View className="flex-1 bg-paper-light  border border-line-paper px-4 py-2 max-h-32">
               <TextInput
                 ref={inputRef}
                 value={draft}
@@ -469,7 +529,7 @@ export default function PostDetailScreen() {
                 onKeyPress={onKeyPress}
                 onFocus={() => setShowEmojiPicker(false)}
                 placeholder="Schrijf een reactie…"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 multiline
                 maxLength={500}
                 className="text-ink text-base"
@@ -479,20 +539,19 @@ export default function PostDetailScreen() {
             <Pressable
               onPress={onSend}
               disabled={sending || !draft.trim()}
-              className={`w-11 h-11 rounded-full items-center justify-center ${
+              className={`w-11 h-11 items-center justify-center ${
                 sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
               }`}
             >
               <Ionicons
                 name="arrow-up"
-                color={sending || !draft.trim() ? "#5A4F40" : "#F5E8D3"}
+                color={sending || !draft.trim() ? feed.inkDim : feed.text}
                 size={20}
               />
             </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
-      </ScreenContainer>
     </SafeAreaView>
   );
 }
@@ -528,11 +587,11 @@ function CommentRow({
       </View>
       <View className="flex-row items-center gap-1 ml-2">
         <Pressable onPress={onReply} hitSlop={8} className="p-1">
-          <Ionicons name="return-down-back-outline" color="#8A7E6C" size={16} />
+          <Ionicons name="return-down-back-outline" color={feed.inkDim} size={16} />
         </Pressable>
         {canDelete && (
           <Pressable onPress={onDelete} hitSlop={8} className="p-1">
-            <Ionicons name="trash-outline" color="#8A7E6C" size={16} />
+            <Ionicons name="trash-outline" color={feed.inkDim} size={16} />
           </Pressable>
         )}
       </View>

@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createCallPlan } from "@/lib/api/call-plans";
 import { sendMessage } from "@/lib/api/messages";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
+import { feed, flame } from "@/lib/design/type";
 
 type SlotDraft = {
   id: string;
@@ -142,7 +143,7 @@ export default function CallPlanComposeScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
               <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
+                <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text className="text-cream font-bold text-lg">
                 {chatId ? "Call plannen in chat" : "Videocall plannen"}
@@ -150,10 +151,10 @@ export default function CallPlanComposeScreen() {
               <Pressable
                 onPress={onSubmit}
                 disabled={!canSubmit}
-                className={`px-4 py-2 rounded-full ${canSubmit ? "bg-flame" : "bg-paper"}`}
+                className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
               >
                 {submitting
-                  ? <ActivityIndicator size="small" color="#F5E8D3" />
+                  ? <ActivityIndicator size="small" color={feed.text} />
                   : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
                       {chatId ? "Versturen" : "Plaatsen"}
                     </Text>
@@ -168,7 +169,7 @@ export default function CallPlanComposeScreen() {
                 onChangeText={setTitle}
                 placeholder="Onderwerp, bijv. Catch-up"
                 placeholderTextColor="#6B5E4E"
-                className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base"
+                className="bg-paper-soft px-4 py-3 text-ink text-base"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
               />
               <TextInput
@@ -177,7 +178,7 @@ export default function CallPlanComposeScreen() {
                 placeholder="Toelichting (optioneel)"
                 placeholderTextColor="#6B5E4E"
                 multiline
-                className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base"
+                className="bg-paper-soft px-4 py-3 text-ink text-base"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
               />
             </View>
@@ -194,29 +195,29 @@ export default function CallPlanComposeScreen() {
                     <Pressable
                       key={slot.id}
                       onPress={() => setActiveSlotId(slot.id)}
-                      className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"}`}
+                      className={`flex-row items-center gap-1.5 px-4 py-2 border ${active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"}`}
                     >
                       <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
                         {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
                       </Text>
                       {slots.length > 1 && (
                         <Pressable onPress={() => removeSlot(slot.id)} hitSlop={8}>
-                          <Ionicons name="close-circle" color={active ? "#5A4F40" : "#8A7E6C"} size={14} />
+                          <Ionicons name="close-circle" color={active ? feed.inkDim : feed.inkDim} size={14} />
                         </Pressable>
                       )}
                     </Pressable>
                   );
                 })}
                 {slots.length < 8 && (
-                  <Pressable onPress={addSlot} className="flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-paper-soft border border-paper-soft">
-                    <Ionicons name="add" color="#8A7E6C" size={16} />
+                  <Pressable onPress={addSlot} className="flex-row items-center gap-1.5 px-4 py-2 bg-paper-soft border border-paper-soft">
+                    <Ionicons name="add" color={feed.inkDim} size={16} />
                     <Text className="text-ink-muted text-sm font-semibold">Voeg toe</Text>
                   </Pressable>
                 )}
               </ScrollView>
 
               {/* Datum-grid — volgende 28 dagen */}
-              <View className="bg-paper-soft rounded-3xl p-4 mb-4">
+              <View className="bg-paper-soft p-4 mb-4">
                 <Text className="text-ink-muted text-xs mb-3">Datum</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                   {DAY_OPTIONS.map((opt) => {
@@ -225,7 +226,7 @@ export default function CallPlanComposeScreen() {
                       <Pressable
                         key={opt.date.toISOString()}
                         onPress={() => updateActive({ date: new Date(opt.date) })}
-                        className={`items-center px-3 py-2 rounded-2xl min-w-[52px] ${selected ? "bg-flame" : "bg-paper"}`}
+                        className={`items-center px-3 py-2 min-w-[52px] ${selected ? "bg-flame" : "bg-paper"}`}
                       >
                         <Text className={`text-[10px] font-semibold uppercase ${selected ? "text-cream/80" : "text-ink-muted"}`}>
                           {opt.date.toLocaleDateString("nl-NL", { weekday: "short" })}
@@ -243,7 +244,7 @@ export default function CallPlanComposeScreen() {
               </View>
 
               {/* Begintijd */}
-              <View className="bg-paper-soft rounded-3xl p-4">
+              <View className="bg-paper-soft p-4">
                 <Text className="text-ink-muted text-xs mb-3">Begintijd</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {HOUR_OPTIONS.map((h) => {
@@ -252,7 +253,7 @@ export default function CallPlanComposeScreen() {
                       <Pressable
                         key={h}
                         onPress={() => updateActive({ startHour: h })}
-                        className={`px-4 py-2 rounded-full ${selected ? "bg-ink" : "bg-paper"}`}
+                        className={`px-4 py-2 ${selected ? "bg-ink" : "bg-paper"}`}
                       >
                         <Text className={`text-sm font-semibold ${selected ? "text-cream" : "text-ink-muted"}`}>
                           {h}:00
@@ -287,7 +288,7 @@ export default function CallPlanComposeScreen() {
                         }
                         className="items-center gap-1.5"
                       >
-                        <View className={`rounded-full p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
+                        <View className={` p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
                           <Avatar
                             name={p.display_name ?? p.username}
                             avatarUrl={p.avatar_url ?? null}
@@ -298,8 +299,8 @@ export default function CallPlanComposeScreen() {
                           {p.display_name ?? p.username}
                         </Text>
                         {selected && (
-                          <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame rounded-full items-center justify-center">
-                            <Ionicons name="checkmark" color="#F5E8D3" size={10} />
+                          <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame items-center justify-center">
+                            <Ionicons name="checkmark" color={feed.text} size={10} />
                           </View>
                         )}
                       </Pressable>

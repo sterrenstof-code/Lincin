@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { feed } from "@/lib/design/type";
 
 /**
  * Catch-all 404 voor paden die de router niet kan matchen. Dit gebeurt
@@ -32,7 +33,7 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenContainer className="px-6 justify-center">
         <View className="items-center gap-6">
-          <View className="size-20 rounded-full bg-paper-soft items-center justify-center">
+          <View className="size-20 bg-paper-soft items-center justify-center">
             <Ionicons name="compass-outline" size={40} color="#1a1a1a" />
           </View>
 
@@ -48,7 +49,7 @@ export default function NotFoundScreen() {
 
           <Pressable
             onPress={goHome}
-            className="bg-shell active:bg-ink rounded-full px-6 py-3 flex-row items-center gap-2"
+            className="bg-shell active:bg-ink px-6 py-3 flex-row items-center gap-2"
           >
             <Ionicons name="arrow-back" size={18} color="#fdfaf3" />
             <Text className="text-cream font-medium">Terug naar Lincin</Text>

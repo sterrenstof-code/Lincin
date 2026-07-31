@@ -26,9 +26,9 @@ export function NewDeviceWarning({
 }) {
   return (
     <SafeAreaView className="flex-1 bg-shell items-center justify-center px-6">
-      <View className="bg-paper-soft rounded-3xl p-6 w-full max-w-sm">
+      <View className="bg-paper-soft p-6 w-full max-w-sm">
         {/* Icoon */}
-        <View className="w-14 h-14 rounded-full bg-amber-500/15 items-center justify-center mb-4 self-center">
+        <View className="w-14 h-14 bg-amber-500/15 items-center justify-center mb-4 self-center">
           <Ionicons name="warning-outline" color="#F59E0B" size={26} />
         </View>
 
@@ -45,7 +45,7 @@ export function NewDeviceWarning({
         {onLinkDevice ? (
           <Pressable
             onPress={onLinkDevice}
-            className="bg-brand active:bg-brand/80 rounded-2xl py-3.5 items-center mb-2"
+            className="bg-brand active:bg-brand/80 py-3.5 items-center mb-2"
           >
             <View className="flex-row items-center gap-2">
               <Ionicons name="qr-code-outline" color="#fff" size={18} />
@@ -67,7 +67,7 @@ export function NewDeviceWarning({
         </View>
 
         {/* Nieuwe keys — oude chats gaan verloren */}
-        <View className="bg-paper-warm rounded-2xl px-4 py-3 mb-3">
+        <View className="bg-paper-warm px-4 py-3 mb-3">
           <Text className="text-ink-soft text-xs leading-5">
             <Text className="text-ink font-semibold">Let op:</Text> als je
             doorgaat met een nieuwe sleutel worden{" "}
@@ -81,7 +81,7 @@ export function NewDeviceWarning({
 
         <Pressable
           onPress={onConfirm}
-          className="bg-amber-500 active:bg-amber-600 rounded-2xl py-3.5 items-center mb-2"
+          className="bg-amber-500 active:bg-amber-600 py-3.5 items-center mb-2"
         >
           <Text className="text-white font-bold text-base">
             Doorgaan met nieuwe sleutel
@@ -90,7 +90,7 @@ export function NewDeviceWarning({
 
         <Pressable
           onPress={onCancel}
-          className="bg-paper active:bg-paper-warm rounded-2xl py-3.5 items-center"
+          className="bg-paper active:bg-paper-warm py-3.5 items-center"
         >
           <Text className="text-ink font-semibold text-base">Annuleren</Text>
         </Pressable>

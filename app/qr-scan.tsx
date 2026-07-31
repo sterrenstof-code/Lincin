@@ -6,6 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { feed } from "@/lib/design/type";
 
 /**
  * QR-scanner: scan de code van een andere gebruiker om naar diens profiel te gaan.
@@ -46,16 +47,16 @@ export default function QRScanScreen() {
           <View className="flex-row items-center px-4 py-3">
             <Pressable
               onPress={() => router.back()}
-              className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+              className="w-9 h-9 bg-paper-soft items-center justify-center"
             >
-              <Ionicons name="close" color="#1A1714" size={20} />
+              <Ionicons name="close" color={feed.ink} size={20} />
             </Pressable>
             <Text className="flex-1 text-cream text-lg font-semibold ml-3">
               QR-code scannen
             </Text>
           </View>
           <View className="flex-1 items-center justify-center px-8 gap-4">
-            <Ionicons name="camera-outline" color="#F5E8D3" size={48} />
+            <Ionicons name="camera-outline" color={feed.text} size={48} />
             <Text className="text-cream text-xl font-bold text-center">
               Camera-toegang vereist
             </Text>
@@ -64,7 +65,7 @@ export default function QRScanScreen() {
             </Text>
             <Pressable
               onPress={requestPermission}
-              className="mt-2 bg-cream rounded-full px-6 py-3"
+              className="mt-2 bg-cream px-6 py-3"
             >
               <Text className="text-ink font-semibold">Geef toegang</Text>
             </Pressable>
@@ -81,9 +82,9 @@ export default function QRScanScreen() {
       <View className="absolute top-14 left-4 z-10">
         <Pressable
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-black/50 items-center justify-center"
+          className="w-10 h-10 bg-black/50 items-center justify-center"
         >
-          <Ionicons name="close" color="#F5E8D3" size={22} />
+          <Ionicons name="close" color={feed.text} size={22} />
         </Pressable>
       </View>
 
@@ -103,7 +104,7 @@ export default function QRScanScreen() {
             height: 240,
             borderRadius: 20,
             borderWidth: 2,
-            borderColor: "#F5E8D3",
+            borderColor: feed.text,
             backgroundColor: "transparent",
           }}
         />
@@ -112,11 +113,11 @@ export default function QRScanScreen() {
       {/* Label onderaan */}
       <View className="absolute bottom-12 left-0 right-0 items-center px-6">
         {scanError ? (
-          <View className="bg-red-800/90 rounded-full px-5 py-2">
+          <View className="bg-red-800/90 px-5 py-2">
             <Text className="text-white font-medium text-sm">{scanError}</Text>
           </View>
         ) : (
-          <View className="bg-black/50 rounded-full px-5 py-2">
+          <View className="bg-black/50 px-5 py-2">
             <Text className="text-cream text-sm">
               Richt op de QR-code van een vriend
             </Text>

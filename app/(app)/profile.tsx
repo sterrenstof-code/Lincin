@@ -7,9 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { Avatar } from "@/components/Avatar";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { feed, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
@@ -165,23 +165,22 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Dezelfde kop als op elk ander tabblad. Staat buiten de
-          ScreenContainer omdat hij op volle breedte hoort. */}
-      <AppChrome wide={wide} progress={chrome.progress} />
-      <ScreenContainer>
-      <ScrollView
+      {/* Eén scroller voor de hele pagina; de kop plakt bovenaan. */}
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        contentStyle={{ paddingVertical: 20, paddingBottom: 60 }}
       >
         {/* ---- Hero on shell ---- */}
         <View className="items-center mt-2 mb-6">
           <Pressable onPress={onPickAvatar} className="relative">
             <Avatar name={heroName} avatarUrl={avatarUrl} size="hero" tint="warm" />
-            <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-shell items-center justify-center">
+            <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
               {avatarUploading
-                ? <ActivityIndicator size="small" color="#F5E8D3" />
-                : <Ionicons name="camera" color="#F5E8D3" size={14} />
+                ? <ActivityIndicator size="small" color={feed.text} />
+                : <Ionicons name="camera" color={feed.text} size={14} />
               }
             </View>
           </Pressable>
@@ -199,23 +198,23 @@ export default function ProfileScreen() {
         </View>
 
         {/* ---- Link up ---- */}
-        <View className="bg-paper rounded-3xl p-4 mb-3">
+        <View className="bg-paper p-4 mb-3">
           <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
             Link up
           </Text>
           <View className="flex-row gap-2 mb-2">
             <Pressable
               onPress={() => router.push("/qr-scan")}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft rounded-2xl py-3.5 px-4"
+              className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft py-3.5 px-4"
             >
-              <Ionicons name="qr-code-outline" color="#F5E8D3" size={20} />
+              <Ionicons name="qr-code-outline" color={feed.text} size={20} />
               <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
             </Pressable>
             <Pressable
               onPress={onShareUrl}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper rounded-2xl py-3.5 px-4"
+              className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper py-3.5 px-4"
             >
-              <Ionicons name="share-outline" color="#1A1714" size={20} />
+              <Ionicons name="share-outline" color={feed.ink} size={20} />
               <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
             </Pressable>
           </View>
@@ -223,7 +222,7 @@ export default function ProfileScreen() {
             onPress={() => router.push("/invite-email")}
             className="flex-row items-center justify-center gap-2 py-2.5"
           >
-            <Ionicons name="mail-outline" color="#8A7E6C" size={15} />
+            <Ionicons name="mail-outline" color={feed.inkDim} size={15} />
             <Text className="text-ink-muted text-xs">
               Iemand uitnodigen die nog niet op Lincin zit
             </Text>
@@ -232,7 +231,7 @@ export default function ProfileScreen() {
 
         {copyHint && (
           <View className="items-center mb-3">
-            <View className="bg-paper-warm rounded-full px-3 py-1">
+            <View className="bg-paper-warm px-3 py-1">
               <Text className="text-ink text-xs font-medium">✓ {copyHint}</Text>
             </View>
           </View>
@@ -244,10 +243,10 @@ export default function ProfileScreen() {
         </Text>
         <Pressable
           onPress={() => router.push("/profile-edit")}
-          className="flex-row items-center bg-paper-soft active:bg-paper rounded-2xl px-4 py-4 mb-2"
+          className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
         >
-          <View className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center">
-            <Ionicons name="create-outline" color="#1A1714" size={18} />
+          <View className="w-9 h-9 bg-paper-warm items-center justify-center">
+            <Ionicons name="create-outline" color={feed.ink} size={18} />
           </View>
           <View className="flex-1 ml-3">
             <Text className="text-ink font-semibold">Bewerk profiel</Text>
@@ -255,7 +254,7 @@ export default function ProfileScreen() {
               Pas je handle of weergavenaam aan
             </Text>
           </View>
-          <Ionicons name="chevron-forward" color="#8A7E6C" size={18} />
+          <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />
         </Pressable>
 
         {/* ---- Geavanceerd (versleuteling + notificaties) ---- */}
@@ -268,7 +267,7 @@ export default function ProfileScreen() {
           </Text>
           <Ionicons
             name={advancedOpen ? "chevron-up" : "chevron-down"}
-            color="#8A7E6C"
+            color={feed.inkDim}
             size={14}
           />
         </Pressable>
@@ -278,9 +277,9 @@ export default function ProfileScreen() {
         <Text className="text-xs uppercase tracking-wider text-cream-muted mt-4 mb-3 px-1">
           Versleuteling
         </Text>
-        <View className="bg-paper-soft rounded-2xl p-5">
+        <View className="bg-paper-soft p-5">
           <View className="flex-row items-center mb-3">
-            <View className="w-9 h-9 rounded-full bg-brand/20 items-center justify-center">
+            <View className="w-9 h-9 bg-brand/20 items-center justify-center">
               <Ionicons name="lock-closed" color="#5B8DEF" size={18} />
             </View>
             <Text className="text-ink font-semibold ml-3">End-to-end versleuteld</Text>
@@ -290,7 +289,7 @@ export default function ProfileScreen() {
             encryptie-sleutel is gekoppeld aan je account — elk apparaat
             waarop je inlogt kan automatisch berichten lezen.
           </Text>
-          <View className="bg-paper-light border border-line-paper rounded-xl mt-4 p-3">
+          <View className="bg-paper-light border border-line-paper mt-4 p-3">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
               Identity public key
             </Text>
@@ -309,7 +308,7 @@ export default function ProfileScreen() {
             </View>
           )}
           {keySync && keySync.kind !== "ok" && (
-            <View className="bg-red-100 border border-red-300 rounded-xl mt-3 p-3">
+            <View className="bg-red-100 border border-red-300 mt-3 p-3">
               <Text className="text-red-900 text-xs font-semibold mb-1">
                 {keySync.kind === "no-keys"
                   ? "⚠ Geen encryptie-sleutels"
@@ -326,7 +325,7 @@ export default function ProfileScreen() {
           {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
           <Pressable
             onPress={() => router.push("/device-link" as any)}
-            className="flex-row items-center bg-brand/10 active:bg-brand/20 rounded-2xl px-4 py-3 mt-3"
+            className="flex-row items-center bg-brand/10 active:bg-brand/20 px-4 py-3 mt-3"
           >
             <Ionicons name="qr-code-outline" color="#5B8DEF" size={18} />
             <View className="flex-1 ml-3">
@@ -344,7 +343,7 @@ export default function ProfileScreen() {
             <Pressable
               onPress={onSyncKeys}
               disabled={keyBusy || keySync?.kind === "ok" || keySync?.kind === "no-profile"}
-              className={`flex-1 rounded-full py-2.5 items-center ${
+              className={`flex-1 py-2.5 items-center ${
                 !keyBusy && keySync?.kind !== "ok" && keySync?.kind !== "no-profile"
                   ? "bg-ink active:bg-ink-soft"
                   : "bg-paper-warm"
@@ -363,7 +362,7 @@ export default function ProfileScreen() {
             <Pressable
               onPress={onResetIdentity}
               disabled={keyBusy}
-              className="flex-1 rounded-full py-2.5 items-center border border-red-300"
+              className="flex-1 py-2.5 items-center border border-red-300"
             >
               <Text className="text-red-700 font-semibold text-xs">
                 Reset sleutels
@@ -382,12 +381,12 @@ export default function ProfileScreen() {
           Notificaties
         </Text>
 
-        <View className="bg-paper-soft rounded-2xl p-5">
+        <View className="bg-paper-soft p-5">
           <View className="flex-row items-center mb-2">
-            <View className="w-9 h-9 rounded-full bg-paper-warm items-center justify-center">
+            <View className="w-9 h-9 bg-paper-warm items-center justify-center">
               <Ionicons
                 name={pushStatus?.kind === "ready" ? "notifications" : "notifications-off-outline"}
-                color="#1A1714"
+                color={feed.ink}
                 size={18}
               />
             </View>
@@ -400,7 +399,7 @@ export default function ProfileScreen() {
           </Text>
           {pushStatus?.kind === "ready" && (
             <>
-              <View className="bg-paper-light border border-line-paper rounded-xl mt-3 p-3">
+              <View className="bg-paper-light border border-line-paper mt-3 p-3">
                 <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
                   Push token ({pushStatus.platform})
                 </Text>
@@ -411,7 +410,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={onTestPush}
                 disabled={pushBusy}
-                className="mt-3 bg-ink active:bg-ink-soft rounded-full py-2.5 items-center"
+                className="mt-3 bg-ink active:bg-ink-soft py-2.5 items-center"
               >
                 <Text className="text-cream font-semibold text-sm">
                   {pushBusy ? "Bezig…" : "Stuur test-notificatie"}
@@ -431,12 +430,11 @@ export default function ProfileScreen() {
         {/* ---- Sign out ---- */}
         <Pressable
           onPress={signOut}
-          className="mt-8 border border-cream-muted rounded-full py-3 items-center"
+          className="mt-8 border border-cream-muted py-3 items-center"
         >
           <Text className="text-cream font-semibold">Uitloggen</Text>
         </Pressable>
-      </ScrollView>
-      </ScreenContainer>
+      </PageScroll>
     </SafeAreaView>
   );
 }

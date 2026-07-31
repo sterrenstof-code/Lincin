@@ -19,6 +19,7 @@ import {
   feed,
   FEED_BORDER,
   feedType,
+  flame,
   flameDeep,
   page,
   rule,
@@ -880,7 +881,7 @@ function CoverBand({
         <Text
           style={[
             feedType.numeral,
-            { fontSize: 24, lineHeight: 28, color: "#E66B3F", marginTop: 18 },
+            { fontSize: 24, lineHeight: 28, color: flame, marginTop: 18 },
           ]}
         >
           {`(${String(index).padStart(2, "0")})`}
@@ -1113,7 +1114,7 @@ function QuoteBand({
         <Text
           style={[
             feedType.numeral,
-            { fontSize: 56, lineHeight: 56, letterSpacing: -2, color: "#E66B3F" },
+            { fontSize: 56, lineHeight: 56, letterSpacing: -2, color: flame },
           ]}
         >
           {"“"}

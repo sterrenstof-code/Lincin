@@ -3,14 +3,16 @@ import { useState } from "react";
 import {
   Image,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth/provider";
+import { feed as feedColor, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 
 type Mode = "signin" | "signup";
 type Status =
@@ -137,27 +139,49 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell">
-      <ScreenContainer>
-        <View className="flex-1 justify-center px-6">
-          <View className="bg-paper rounded-3xl p-8">
-            <View className="items-center mb-6">
-              <Image
-                source={require("../../assets/images/icon.png")}
-                style={{ width: 84, height: 84, borderRadius: 20 }}
-                resizeMode="contain"
-              />
-            </View>
+    <SafeAreaView className="flex-1 bg-feed-lav">
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 620,
+            alignSelf: "center",
+            paddingHorizontal: 20,
+            paddingVertical: 40,
+          }}
+        >
+          {/* De woordmerkplaat draagt hier het merk — geen app-icoon in een
+              afgerond vierkant. Dit is de eerste pagina die iemand ziet, dus
+              hij gebruikt dezelfde plaat als de rest van de app. */}
+          <LogoMark size="plate" />
 
-            <Text className="text-5xl font-bold tracking-tight text-ink text-center">
-              Lincin
+          <View
+            style={{
+              borderWidth: FEED_BORDER,
+              borderColor: feedColor.ink,
+              borderTopWidth: 0,
+              padding: 28,
+            }}
+          >
+            <Text
+              style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
+            >
+              {mode === "signup" ? "NIEUW HIER" : "WELKOM TERUG"}
             </Text>
-            <Text className="text-base text-ink-soft text-center mt-2 mb-6">
+            <Text style={[feedType.taglineSmall, { color: feedColor.ink, marginBottom: 24 }]}>
               Link up. Versleuteld, voor je vrienden.
             </Text>
 
-            {/* Mode toggle */}
-            <View className="bg-paper-light border border-line-paper rounded-full p-1 flex-row mb-5">
+            {/* Modus-keuze — dezelfde gesegmenteerde strip als de tabstrip
+                in de kop van de app. */}
+            <View
+              style={{
+                flexDirection: "row",
+                borderWidth: FEED_BORDER,
+                borderColor: feedColor.ink,
+                marginBottom: 24,
+              }}
+            >
               <ModeTab
                 label="Inloggen"
                 active={mode === "signin"}
@@ -177,8 +201,8 @@ export default function LoginScreen() {
             </View>
 
             {/* Email */}
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-              E-mailadres
+            <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
+              E-MAILADRES
             </Text>
             <TextInput
               value={email}
@@ -187,16 +211,21 @@ export default function LoginScreen() {
               autoCorrect={false}
               keyboardType="email-address"
               placeholder="jij@voorbeeld.be"
-              placeholderTextColor="#8A7E6C"
-              className="bg-paper-light text-ink text-base px-5 py-3.5 rounded-full border border-line-paper"
+              placeholderTextColor={feedColor.inkDim}
+              style={{ borderWidth: FEED_BORDER, borderColor: feedColor.ink, backgroundColor: feedColor.panel, paddingHorizontal: 16, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
               editable={!submitting}
             />
 
             {/* Password */}
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mt-4 mb-2">
-              Wachtwoord
+            <Text
+              style={[
+                feedType.kicker,
+                { color: flameDeep, letterSpacing: 0.55, marginTop: 20, marginBottom: 8 },
+              ]}
+            >
+              WACHTWOORD
             </Text>
-            <View className="flex-row items-center bg-paper-light border border-line-paper rounded-full px-5">
+            <View style={{ flexDirection: "row", alignItems: "center", borderWidth: FEED_BORDER, borderColor: feedColor.ink, backgroundColor: feedColor.panel, paddingHorizontal: 16 }}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
@@ -204,8 +233,8 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 secureTextEntry={!showPassword}
                 placeholder={mode === "signup" ? "min. 8 tekens" : "•••••••••"}
-                placeholderTextColor="#8A7E6C"
-                className="flex-1 text-ink text-base py-3.5"
+                placeholderTextColor={feedColor.inkDim}
+                style={{ flex: 1, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
                 editable={!submitting}
                 onSubmitEditing={onPasswordSubmit}
               />
@@ -216,7 +245,7 @@ export default function LoginScreen() {
               >
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  color="#5A4F40"
+                  color={feedColor.inkDim}
                   size={20}
                 />
               </Pressable>
@@ -233,7 +262,7 @@ export default function LoginScreen() {
               />
             )}
             {status.kind === "confirm-sent" && (
-              <View className="mt-4 bg-paper-light border border-line-paper rounded-2xl px-5 py-4">
+              <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
                 <Text className="text-ink font-semibold text-base mb-1">
                   Bevestig je e-mail
                 </Text>
@@ -247,7 +276,7 @@ export default function LoginScreen() {
                   <Pressable
                     onPress={onResendConfirmation}
                     disabled={submitting}
-                    className="border border-ink/30 rounded-full px-3 py-1.5"
+                    className="border border-ink/30 px-3 py-1.5"
                   >
                     <Text className="text-ink text-xs font-semibold">
                       Stuur opnieuw
@@ -256,7 +285,7 @@ export default function LoginScreen() {
                   <Pressable
                     onPress={onMagicLink}
                     disabled={submitting}
-                    className="border border-ink/30 rounded-full px-3 py-1.5"
+                    className="border border-ink/30 px-3 py-1.5"
                   >
                     <Text className="text-ink text-xs font-semibold">
                       Inloggen via magic link
@@ -272,7 +301,7 @@ export default function LoginScreen() {
               />
             )}
             {status.kind === "already-exists" && (
-              <View className="mt-4 bg-paper-light border border-line-paper rounded-2xl px-5 py-4">
+              <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
                 <Text className="text-ink font-semibold text-base mb-1">
                   Dit account bestaat al
                 </Text>
@@ -287,7 +316,7 @@ export default function LoginScreen() {
                       setMode("signin");
                       setStatus({ kind: "idle" });
                     }}
-                    className="border border-ink/30 rounded-full px-3 py-1.5"
+                    className="border border-ink/30 px-3 py-1.5"
                   >
                     <Text className="text-ink text-xs font-semibold">
                       Naar Inloggen
@@ -296,7 +325,7 @@ export default function LoginScreen() {
                   <Pressable
                     onPress={onMagicLink}
                     disabled={submitting}
-                    className="bg-ink active:bg-ink-soft rounded-full px-3 py-1.5"
+                    className="bg-ink active:bg-ink-soft px-3 py-1.5"
                   >
                     <Text className="text-cream text-xs font-semibold">
                       Stuur magic link
@@ -310,7 +339,7 @@ export default function LoginScreen() {
             <Pressable
               onPress={onPasswordSubmit}
               disabled={submitting}
-              className="mt-5 bg-ink active:bg-ink-soft rounded-full py-3.5 items-center"
+              className="mt-5 bg-ink active:bg-ink-soft py-3.5 items-center"
             >
               <Text className="text-cream font-semibold text-base">
                 {submitting
@@ -342,7 +371,7 @@ export default function LoginScreen() {
             End-to-end versleuteld. Lincin's servers zien enkel ciphertext.
           </Text>
         </View>
-      </ScreenContainer>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -359,14 +388,18 @@ function ModeTab({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 rounded-full py-2 items-center ${
-        active ? "bg-ink" : ""
-      }`}
+      style={{
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: "center",
+        backgroundColor: active ? feedColor.ink : "transparent",
+      }}
     >
       <Text
-        className={`text-sm font-semibold ${
-          active ? "text-cream" : "text-ink-muted"
-        }`}
+        style={[
+          feedType.label,
+          { fontSize: 12, color: active ? feedColor.lav : feedColor.ink },
+        ]}
       >
         {label}
       </Text>
@@ -376,7 +409,7 @@ function ModeTab({
 
 function Banner({ title, body }: { title: string; body: string }) {
   return (
-    <View className="mt-4 bg-paper-light border border-line-paper rounded-2xl px-5 py-4">
+    <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
       <Text className="text-ink font-semibold text-base mb-1">{title}</Text>
       <Text className="text-ink-soft text-sm leading-5">{body}</Text>
     </View>

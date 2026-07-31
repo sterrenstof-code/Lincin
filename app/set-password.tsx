@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
+import { feed } from "@/lib/design/type";
 
 /**
  * Verplicht wachtwoord-instellen scherm. Wordt afgedwongen na de eerste
@@ -97,7 +98,7 @@ export default function SetPasswordScreen() {
             }}
             keyboardShouldPersistTaps="handled"
           >
-            <View className="bg-paper rounded-3xl p-8">
+            <View className="bg-paper p-8">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
                 Eén stap nog
               </Text>
@@ -118,8 +119,8 @@ export default function SetPasswordScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 placeholder="min. 8 tekens"
-                placeholderTextColor="#8A7E6C"
-                className="bg-paper-light text-ink text-base px-5 py-3.5 rounded-full border border-line-paper"
+                placeholderTextColor={feed.inkDim}
+                className="bg-paper-light text-ink text-base px-5 py-3.5 border border-line-paper"
               />
 
               <View className="h-4" />
@@ -134,9 +135,9 @@ export default function SetPasswordScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 placeholder="herhaal"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 onSubmitEditing={onSave}
-                className="bg-paper-light text-ink text-base px-5 py-3.5 rounded-full border border-line-paper"
+                className="bg-paper-light text-ink text-base px-5 py-3.5 border border-line-paper"
               />
 
               {password.length > 0 && password.length < 8 && (
@@ -153,7 +154,7 @@ export default function SetPasswordScreen() {
               <Pressable
                 onPress={onSave}
                 disabled={!canSave}
-                className={`mt-6 rounded-full py-3.5 items-center ${
+                className={`mt-6 py-3.5 items-center ${
                   canSave ? "bg-ink active:bg-ink-soft" : "bg-paper-warm"
                 }`}
               >

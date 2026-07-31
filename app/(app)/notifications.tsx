@@ -4,7 +4,6 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
-  FlatList,
   Pressable,
   RefreshControl,
   Text,
@@ -13,7 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { useWide } from "@/components/Editorial";
 import { useAuth } from "@/lib/auth/provider";
 import {
   listNotifications,
@@ -22,11 +22,14 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { supabase } from "@/lib/supabase/client";
+import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
+  const wide = useWide();
+  const chrome = useChromeScroll();
   const qc = useQueryClient();
 
   const { data, isLoading, isFetching } = useQuery({
@@ -59,50 +62,75 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
-      <ScreenContainer>
-        <FlatList
-          data={data ?? []}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isFetching && !isLoading}
-              onRefresh={onRefresh}
-              tintColor="#F5E8D3"
-            />
-          }
-          ListHeaderComponent={
-            <View className="mb-5">
-              <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
-                Meldingen
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        contentStyle={{ paddingVertical: 28, paddingBottom: 80 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching && !isLoading}
+            onRefresh={onRefresh}
+            tintColor={feed.ink}
+          />
+        }
+      >
+        {/* Paginakop in de redactionele opbouw: kicker, kop, ondertitel. */}
+        <Text
+          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
+        >
+          WAT ER SPEELT
+        </Text>
+        <Text
+          style={[
+            wide ? feedType.hero : feedType.heroSmall,
+            { color: feed.ink, maxWidth: 620 },
+          ]}
+        >
+          Meldingen
+        </Text>
+        <Text
+          style={[feedType.body, { color: feed.inkDim, maxWidth: 520, marginTop: 10, marginBottom: 34 }]}
+        >
+          Reacties op jouw vondsten en de threads waar je in zit.
+        </Text>
+
+        {(data ?? []).length === 0 ? (
+          isLoading ? null : (
+            <View
+              style={{
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+                backgroundColor: feed.post,
+                padding: 32,
+              }}
+            >
+              <Text style={[feedType.tile, { fontSize: 20, color: feed.text, marginBottom: 8 }]}>
+                Nog geen meldingen
               </Text>
-              <Text className="text-cream-soft text-base">
-                Reacties op jouw posts en threads.
+              <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
+                Zodra iemand reageert op jouw vondst, of op een thread waar je in
+                zit, verschijnt het hier.
               </Text>
             </View>
-          }
-          ListEmptyComponent={
-            isLoading ? null : (
-              <View className="bg-paper-soft rounded-3xl p-6 items-center mt-2">
-                <View className="w-14 h-14 rounded-full bg-paper-warm items-center justify-center mb-3">
-                  <Ionicons name="notifications-outline" color="#1A1714" size={24} />
-                </View>
-                <Text className="text-ink font-semibold text-base mb-1">
-                  Nog geen meldingen
-                </Text>
-                <Text className="text-ink-soft text-sm text-center">
-                  Zodra iemand reageert op jouw post of een thread waarbij je bent, verschijnt het hier.
-                </Text>
-              </View>
-            )
-          }
-          ItemSeparatorComponent={() => <View className="h-2" />}
-          renderItem={({ item }) => (
-            <NotificationRow item={item} onPress={() => onPressNotification(item)} />
-          )}
-        />
-      </ScreenContainer>
+          )
+        ) : (
+          /* Eén gekaderd blok met scheidingslijnen — geen zwevende kaartjes
+             met tussenruimte. Zelfde vorm als de chatlijst. */
+          <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
+            {(data ?? []).map((item, i) => (
+              <NotificationRow
+                key={item.id}
+                item={item}
+                isLast={i === (data ?? []).length - 1}
+                onPress={() => onPressNotification(item)}
+              />
+            ))}
+          </View>
+        )}
+      </PageScroll>
     </SafeAreaView>
   );
 }
@@ -110,9 +138,12 @@ export default function NotificationsScreen() {
 function NotificationRow({
   item,
   onPress,
+  isLast = false,
 }: {
   item: NotificationWithDetails;
   onPress: () => void;
+  /** Laatste rij krijgt geen scheidingslijn — het kader sluit al af. */
+  isLast?: boolean;
 }) {
   const actorName =
     item.actor?.display_name ?? item.actor?.username ?? "Iemand";
@@ -143,12 +174,18 @@ function NotificationRow({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center gap-3 px-4 py-3 rounded-2xl ${
-        item.read ? "bg-paper-soft" : "bg-paper"
-      }`}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        backgroundColor: item.read ? feed.panel : feed.lav,
+        ...(isLast ? null : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
+      }}
     >
-      {/* Unread dot */}
-      <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.read ? "transparent" : "#E66B3F" }} />
+      {/* Ongelezen-markering: vierkant, in het rood. */}
+      <View style={{ width: 6, height: 6, backgroundColor: item.read ? "transparent" : flame }} />
 
       <Avatar
         name={item.actor?.display_name ?? item.actor?.username}
@@ -157,16 +194,25 @@ function NotificationRow({
       />
 
       <View className="flex-1">
-        <Text className={`text-sm ${item.read ? "text-ink-muted" : "text-ink font-semibold"}`} numberOfLines={2}>
+        <Text
+          style={[
+            feedType.body,
+            { fontSize: 14, color: feed.ink, fontWeight: item.read ? "400" : "700" },
+          ]}
+          numberOfLines={2}
+        >
           {label}
         </Text>
-        {snippet && (
-          <Text className="text-ink-muted text-xs mt-0.5" numberOfLines={1}>
+        {snippet ? (
+          <Text
+            style={[feedType.label, { color: feed.inkDim, marginTop: 3 }]}
+            numberOfLines={1}
+          >
             {snippet}
           </Text>
-        )}
-        <Text className="text-ink-muted text-[10px] mt-0.5">
-          {formatRelativeTime(item.created_at)}
+        ) : null}
+        <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.5, marginTop: 4 }]}>
+          {formatRelativeTime(item.created_at).toUpperCase()}
         </Text>
       </View>
 
@@ -175,7 +221,7 @@ function NotificationRow({
         <PostThumb imagePath={item.post_image_path} />
       )}
 
-      <Ionicons name="chevron-forward" color="#8A7E6C" size={14} />
+      <Ionicons name="chevron-forward" color={feed.inkDim} size={14} />
     </Pressable>
   );
 }

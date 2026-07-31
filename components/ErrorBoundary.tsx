@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const isDev = typeof __DEV__ !== "undefined" && __DEV__;
     return (
       <View className="flex-1 bg-shell items-center justify-center px-8">
-        <View className="bg-paper rounded-3xl p-6 w-full max-w-md">
+        <View className="bg-paper p-6 w-full max-w-md">
           <Text className="text-ink text-2xl font-bold mb-2">
             Er ging iets mis.
           </Text>
@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </Text>
           <Pressable
             onPress={this.handleReload}
-            className="bg-ink active:bg-ink-soft rounded-full px-6 py-3 items-center"
+            className="bg-ink active:bg-ink-soft px-6 py-3 items-center"
           >
             <Text className="text-cream font-semibold">Herlaad app</Text>
           </Pressable>

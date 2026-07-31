@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
+import { feed, flame } from "@/lib/design/type";
 
 export default function PollComposeScreen() {
   const router = useRouter();
@@ -94,7 +95,7 @@ export default function PollComposeScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between mb-6">
               <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color="#F5E8D3" size={22} />
+                <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text className="text-cream font-bold text-lg">
                 {chatId ? "Poll in chat" : "Nieuwe stemming"}
@@ -102,10 +103,10 @@ export default function PollComposeScreen() {
               <Pressable
                 onPress={onSubmit}
                 disabled={!canSubmit}
-                className={`px-4 py-2 rounded-full ${canSubmit ? "bg-flame" : "bg-paper"}`}
+                className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
               >
                 {submitting
-                  ? <ActivityIndicator size="small" color="#F5E8D3" />
+                  ? <ActivityIndicator size="small" color={feed.text} />
                   : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
                       {chatId ? "Versturen" : "Plaatsen"}
                     </Text>
@@ -121,7 +122,7 @@ export default function PollComposeScreen() {
               placeholder="Stel je vraag…"
               placeholderTextColor="#6B5E4E"
               multiline
-              className="bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base mb-6"
+              className="bg-paper-soft px-4 py-3 text-ink text-base mb-6"
               style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
             />
 
@@ -135,15 +136,15 @@ export default function PollComposeScreen() {
                     onChangeText={(v) => updateOption(i, v)}
                     placeholder={`Optie ${i + 1}`}
                     placeholderTextColor="#6B5E4E"
-                    className="flex-1 bg-paper-soft rounded-2xl px-4 py-3 text-ink text-base"
+                    className="flex-1 bg-paper-soft px-4 py-3 text-ink text-base"
                     style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
                   />
                   {options.length > 2 && (
                     <Pressable
                       onPress={() => removeOption(i)}
-                      className="w-9 h-9 items-center justify-center bg-paper-soft rounded-full"
+                      className="w-9 h-9 items-center justify-center bg-paper-soft"
                     >
-                      <Ionicons name="close" color="#8A7E6C" size={16} />
+                      <Ionicons name="close" color={feed.inkDim} size={16} />
                     </Pressable>
                   )}
                 </View>
@@ -153,9 +154,9 @@ export default function PollComposeScreen() {
             {options.length < 6 && (
               <Pressable
                 onPress={addOption}
-                className="flex-row items-center gap-2 py-3 px-4 bg-paper-soft rounded-2xl mb-6"
+                className="flex-row items-center gap-2 py-3 px-4 bg-paper-soft mb-6"
               >
-                <Ionicons name="add-circle-outline" color="#8A7E6C" size={18} />
+                <Ionicons name="add-circle-outline" color={feed.inkDim} size={18} />
                 <Text className="text-ink-muted text-sm">Optie toevoegen</Text>
               </Pressable>
             )}

@@ -19,6 +19,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { createGroupChat } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
+import { feed } from "@/lib/design/type";
 
 export default function GroupCreateScreen() {
   const router = useRouter();
@@ -75,9 +76,9 @@ export default function GroupCreateScreen() {
       <View className="flex-row items-center px-4 py-3">
         <Pressable
           onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="close" color="#1A1714" size={20} />
+          <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
         <Text className="flex-1 text-cream text-lg font-semibold ml-3">
           Nieuwe groep
@@ -85,7 +86,7 @@ export default function GroupCreateScreen() {
         <Pressable
           onPress={onSubmit}
           disabled={!canSubmit}
-          className={`rounded-full px-4 py-2 ${
+          className={` px-4 py-2 ${
             canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
           }`}
         >
@@ -105,7 +106,7 @@ export default function GroupCreateScreen() {
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
           {/* Group name */}
-          <View className="bg-paper rounded-3xl p-6">
+          <View className="bg-paper p-6">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
               Groepsnaam
             </Text>
@@ -113,9 +114,9 @@ export default function GroupCreateScreen() {
               value={name}
               onChangeText={setName}
               placeholder="bv. Vrijdagavondbende"
-              placeholderTextColor="#8A7E6C"
+              placeholderTextColor={feed.inkDim}
               maxLength={64}
-              className="bg-paper-light text-ink text-base px-5 py-3 rounded-full border border-line-paper"
+              className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
             />
             <Text className="text-ink-muted text-xs mt-2">
               Iedereen in de groep ziet deze naam.
@@ -134,17 +135,17 @@ export default function GroupCreateScreen() {
             </View>
 
             {friendships.isLoading ? (
-              <View className="bg-paper-soft rounded-2xl p-6 items-center">
-                <ActivityIndicator color="#1A1714" />
+              <View className="bg-paper-soft p-6 items-center">
+                <ActivityIndicator color={feed.ink} />
               </View>
             ) : accepted.length === 0 ? (
-              <View className="bg-paper-soft rounded-2xl p-5">
+              <View className="bg-paper-soft p-5">
                 <Text className="text-ink-soft text-sm leading-5">
                   Je hebt nog geen geaccepteerde vrienden. Voeg eerst iemand toe in de Vrienden-tab.
                 </Text>
               </View>
             ) : (
-              <View className="bg-paper-soft rounded-2xl overflow-hidden">
+              <View className="bg-paper-soft overflow-hidden">
                 {accepted.map((f, i) => {
                   const checked = selectedIds.has(f.other.id);
                   const isLast = i === accepted.length - 1;
@@ -170,7 +171,7 @@ export default function GroupCreateScreen() {
                       </View>
                       <Ionicons
                         name={checked ? "checkmark-circle" : "ellipse-outline"}
-                        color={checked ? "#1A1714" : "#8A7E6C"}
+                        color={checked ? feed.ink : feed.inkDim}
                         size={24}
                       />
                     </Pressable>
@@ -181,7 +182,7 @@ export default function GroupCreateScreen() {
           </View>
 
           {error && (
-            <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
+            <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
               <Text className="text-red-800 text-sm">{error}</Text>
             </View>
           )}

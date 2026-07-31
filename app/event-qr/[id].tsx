@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
+import { feed } from "@/lib/design/type";
 
 const QR_SIZE = 260;
 
@@ -59,7 +60,7 @@ export default function EventQrScreen() {
       <SafeAreaView className="flex-1 bg-shell">
         <ScreenContainer>
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#F5E8D3" />
+            <ActivityIndicator color={feed.text} />
           </View>
         </ScreenContainer>
       </SafeAreaView>
@@ -75,9 +76,9 @@ export default function EventQrScreen() {
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="close" color="#1A1714" size={20} />
+            <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
           <Text className="flex-1 text-cream text-lg font-semibold ml-3">
             Uitnodigen
@@ -85,7 +86,7 @@ export default function EventQrScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-          <View className="bg-paper rounded-3xl p-6 items-center">
+          <View className="bg-paper p-6 items-center">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
               Scan om mee te doen
             </Text>
@@ -105,15 +106,15 @@ export default function EventQrScreen() {
               {ev.members_count} {ev.members_count === 1 ? "gast" : "gasten"}
             </Text>
 
-            <View className="bg-paper-light rounded-3xl p-5 border border-line-paper">
+            <View className="bg-paper-light p-5 border border-line-paper">
               <QRCode
                 value={url}
                 size={QR_SIZE}
-                color="#1A1714"
-                backgroundColor="#F5EFE2"
+                color={feed.ink}
+                backgroundColor={feed.panel}
                 logo={require("../../assets/images/icon.png")}
                 logoSize={56}
-                logoBackgroundColor="#F5EFE2"
+                logoBackgroundColor={feed.panel}
                 logoBorderRadius={12}
                 logoMargin={4}
                 ecl="H"
@@ -125,7 +126,7 @@ export default function EventQrScreen() {
             </Text>
           </View>
 
-          <View className="bg-paper-light border border-line-paper rounded-2xl px-4 py-3 mt-4">
+          <View className="bg-paper-light border border-line-paper px-4 py-3 mt-4">
             <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
               Join-link
             </Text>
@@ -137,23 +138,23 @@ export default function EventQrScreen() {
           <View className="flex-row gap-2 mt-4">
             <Pressable
               onPress={onShare}
-              className="flex-1 flex-row items-center justify-center bg-ink active:bg-ink-soft rounded-full px-4 py-3"
+              className="flex-1 flex-row items-center justify-center bg-ink active:bg-ink-soft px-4 py-3"
             >
-              <Ionicons name="share-outline" color="#F5E8D3" size={16} />
+              <Ionicons name="share-outline" color={feed.text} size={16} />
               <Text className="text-cream font-semibold ml-2">Deel link</Text>
             </Pressable>
             <Pressable
               onPress={onCopy}
-              className="flex-1 flex-row items-center justify-center border border-cream-muted rounded-full px-4 py-3"
+              className="flex-1 flex-row items-center justify-center border border-cream-muted px-4 py-3"
             >
-              <Ionicons name="link-outline" color="#F5E8D3" size={16} />
+              <Ionicons name="link-outline" color={feed.text} size={16} />
               <Text className="text-cream font-semibold ml-2">Kopieer</Text>
             </Pressable>
           </View>
 
           {copyHint && (
             <View className="items-center mt-3">
-              <View className="bg-paper-warm rounded-full px-3 py-1">
+              <View className="bg-paper-warm px-3 py-1">
                 <Text className="text-ink text-xs font-medium">✓ {copyHint}</Text>
               </View>
             </View>

@@ -4,11 +4,13 @@ import {
   Animated,
   Easing,
   Pressable,
+  ScrollView,
   Text,
   useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewStyle,
 } from "react-native";
 
 import { LogoMark } from "@/components/LogoMark";
@@ -351,5 +353,75 @@ export function AppChrome({
         <LogoPlate progress={progress} />
       </View>
     </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// De pagina zelf
+// ---------------------------------------------------------------
+
+/** Breedte van de bladspiegel. Geen telefoonkolom van 600px meer. */
+export const PAGE_MAX = 1280;
+
+/**
+ * De scroller van een heel scherm.
+ *
+ * Belangrijk verschil met de vorige opzet: de kop staat NIET meer boven een
+ * eigen, apart scrollend vak. Er is een scroller voor de hele pagina, en de
+ * kop is daarvan het eerste kind met `stickyHeaderIndices={[0]}`. Daardoor
+ * scrollt de pagina als een document -- zoals een website -- terwijl de kop
+ * bovenaan blijft plakken.
+ *
+ * `stickyHeaderIndices` werkt op native en op react-native-web (daar wordt
+ * het `position: sticky`), dus dit is een implementatie voor beide.
+ *
+ * De oude `ScreenContainer` (max 600px) hoort hier niet meer omheen: dit
+ * ontwerp is redactioneel en gebruikt de volle breedte tot `PAGE_MAX`.
+ */
+export function PageScroll({
+  children,
+  wide,
+  progress,
+  onScroll,
+  scrollEventThrottle,
+  refreshControl,
+  announcement,
+  contentStyle,
+  gutter = true,
+}: {
+  children: React.ReactNode;
+  wide: boolean;
+  progress: Animated.Value;
+  onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  scrollEventThrottle: number;
+  /** Zelfde type als ScrollView verwacht -- niet de kale ReactElement. */
+  refreshControl?: React.ComponentProps<typeof ScrollView>["refreshControl"];
+  announcement?: string | null;
+  contentStyle?: ViewStyle;
+  /** Zet uit als de inhoud zelf tot de rand moet lopen (volvlak-beeld). */
+  gutter?: boolean;
+}) {
+  return (
+    <ScrollView
+      stickyHeaderIndices={[0]}
+      onScroll={onScroll}
+      scrollEventThrottle={scrollEventThrottle}
+      refreshControl={refreshControl}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ minHeight: "100%" }}
+    >
+      <AppChrome wide={wide} progress={progress} announcement={announcement} />
+      <View
+        style={{
+          width: "100%",
+          maxWidth: PAGE_MAX,
+          alignSelf: "center",
+          ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
+          ...contentStyle,
+        }}
+      >
+        {children}
+      </View>
+    </ScrollView>
   );
 }

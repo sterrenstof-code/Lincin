@@ -15,6 +15,7 @@ import WebView from "react-native-webview";
 import { Camera } from "expo-camera";
 
 import { buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { feed } from "@/lib/design/type";
 
 interface Props {
   chatId: string;
@@ -79,8 +80,8 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#111" }} edges={["top"]}>
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#111" }}>
-          <Ionicons name="videocam" color="#F5E8D3" size={18} />
-          <Text style={{ color: "#F5E8D3", fontWeight: "600", fontSize: 16, marginLeft: 8, flex: 1 }}>
+          <Ionicons name="videocam" color={feed.text} size={18} />
+          <Text style={{ color: feed.text, fontWeight: "600", fontSize: 16, marginLeft: 8, flex: 1 }}>
             Videogesprek
           </Text>
           <Pressable
@@ -89,8 +90,8 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
             style={{ backgroundColor: closing ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.12)", borderRadius: 20, padding: 6 }}
           >
             {closing
-              ? <ActivityIndicator size="small" color="#F5E8D3" />
-              : <Ionicons name="close" color="#F5E8D3" size={18} />
+              ? <ActivityIndicator size="small" color={feed.text} />
+              : <Ionicons name="close" color={feed.text} size={18} />
             }
           </Pressable>
         </View>
@@ -98,8 +99,8 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         {/* Wacht op toestemmingen */}
         {!ready ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <ActivityIndicator color="#F5E8D3" />
-            <Text style={{ color: "#F5E8D3", opacity: 0.6, fontSize: 13 }}>
+            <ActivityIndicator color={feed.text} />
+            <Text style={{ color: feed.text, opacity: 0.6, fontSize: 13 }}>
               Camera en microfoon toestemming aanvragen…
             </Text>
           </View>

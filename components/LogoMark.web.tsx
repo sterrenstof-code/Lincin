@@ -141,7 +141,7 @@ export function LogoMark({ size = "plate" }: LogoMarkProps) {
                 position: "absolute",
                 inset: 0,
                 backgroundImage:
-                  "radial-gradient(circle at center, #E66B3F 40%, transparent 42%)",
+                  "radial-gradient(circle at center, #E63329 40%, transparent 42%)",
                 backgroundSize: "5px 5px",
                 backgroundPosition: "1.5px 1.5px",
                 WebkitBackgroundClip: "text",

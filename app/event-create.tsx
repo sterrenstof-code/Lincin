@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { createEvent, type EventRevealMode } from "@/lib/api/events";
+import { feed } from "@/lib/design/type";
 
 function plusHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 3_600_000);
@@ -112,9 +113,9 @@ export default function EventCreateScreen() {
         <View className="flex-row items-center px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+            className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
-            <Ionicons name="close" color="#1A1714" size={20} />
+            <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
           <Text className="flex-1 text-cream text-lg font-semibold ml-3">
             Nieuw event
@@ -122,7 +123,7 @@ export default function EventCreateScreen() {
           <Pressable
             onPress={onSubmit}
             disabled={!canSubmit}
-            className={`rounded-full px-4 py-2 ${
+            className={` px-4 py-2 ${
               canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
             }`}
           >
@@ -137,7 +138,7 @@ export default function EventCreateScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper rounded-3xl p-6">
+            <View className="bg-paper p-6">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Naam
               </Text>
@@ -145,9 +146,9 @@ export default function EventCreateScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="bv. Paris 2025, Tom's verjaardag…"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 maxLength={80}
-                className="bg-paper-light text-ink text-base px-5 py-3 rounded-full border border-line-paper"
+                className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
               />
 
               <View className="h-5" />
@@ -159,16 +160,16 @@ export default function EventCreateScreen() {
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Een paar lijnen over je event"
-                placeholderTextColor="#8A7E6C"
+                placeholderTextColor={feed.inkDim}
                 multiline
                 maxLength={500}
-                className="bg-paper-light text-ink text-base px-4 py-3 rounded-2xl border border-line-paper"
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
                 style={{ minHeight: 72, textAlignVertical: "top" }}
               />
             </View>
 
             {/* Cover (optioneel) */}
-            <View className="bg-paper rounded-3xl p-6 mt-4">
+            <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Cover (optioneel)
               </Text>
@@ -182,13 +183,13 @@ export default function EventCreateScreen() {
                   <View className="flex-row gap-2 mt-3">
                     <Pressable
                       onPress={pickCover}
-                      className="flex-1 border border-line-paper rounded-full py-2.5 items-center"
+                      className="flex-1 border border-line-paper py-2.5 items-center"
                     >
                       <Text className="text-ink font-semibold text-sm">Vervang</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => { setCoverUri(null); setCoverMime(null); }}
-                      className="flex-1 border border-line-paper rounded-full py-2.5 items-center"
+                      className="flex-1 border border-line-paper py-2.5 items-center"
                     >
                       <Text className="text-ink font-semibold text-sm">Verwijder</Text>
                     </Pressable>
@@ -197,16 +198,16 @@ export default function EventCreateScreen() {
               ) : (
                 <Pressable
                   onPress={pickCover}
-                  className="bg-paper-soft active:bg-paper-warm rounded-2xl py-8 items-center justify-center border border-line-paper"
+                  className="bg-paper-soft active:bg-paper-warm py-8 items-center justify-center border border-line-paper"
                 >
-                  <Ionicons name="image-outline" color="#5A4F40" size={26} />
+                  <Ionicons name="image-outline" color={feed.inkDim} size={26} />
                   <Text className="text-ink-soft text-sm mt-2">Kies een cover-foto</Text>
                 </Pressable>
               )}
             </View>
 
             {/* Datum en tijd */}
-            <View className="bg-paper rounded-3xl p-6 mt-4">
+            <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Start
               </Text>
@@ -221,7 +222,7 @@ export default function EventCreateScreen() {
             </View>
 
             {/* Onthulling */}
-            <View className="bg-paper rounded-3xl p-6 mt-4">
+            <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
                 Foto's zichtbaar
               </Text>
@@ -258,14 +259,14 @@ export default function EventCreateScreen() {
                     value={delayHours}
                     onChangeText={setDelayHours}
                     keyboardType="number-pad"
-                    className="bg-paper-light text-ink text-base px-5 py-3 rounded-full border border-line-paper"
+                    className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
                   />
                 </View>
               )}
             </View>
 
             {/* Aantal gasten */}
-            <View className="bg-paper rounded-3xl p-6 mt-4">
+            <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Aantal gasten (max)
               </Text>
@@ -273,7 +274,7 @@ export default function EventCreateScreen() {
                 value={maxGuests}
                 onChangeText={setMaxGuests}
                 keyboardType="number-pad"
-                className="bg-paper-light text-ink text-base px-5 py-3 rounded-full border border-line-paper"
+                className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
               />
               <Text className="text-ink-muted text-xs mt-2">
                 1–1000. Iedereen kan via een gedeelde link of QR meedoen tot deze limiet.
@@ -281,7 +282,7 @@ export default function EventCreateScreen() {
             </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
+              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
                 <Text className="text-red-800 text-sm">{error}</Text>
               </View>
             )}
@@ -313,8 +314,8 @@ function DateInput({
           value,
           onChange: (e: any) => onChange(e.target.value),
           style: {
-            backgroundColor: "#F5EFE2",
-            color: "#1A1714",
+            backgroundColor: feed.panel,
+            color: feed.ink,
             border: "1px solid #D8C29B",
             borderRadius: 999,
             padding: "12px 20px",
@@ -333,10 +334,10 @@ function DateInput({
       value={value}
       onChangeText={onChange}
       placeholder="yyyy-mm-ddThh:mm"
-      placeholderTextColor="#8A7E6C"
+      placeholderTextColor={feed.inkDim}
       autoCapitalize="none"
       autoCorrect={false}
-      className="bg-paper-light text-ink text-base px-5 py-3 rounded-full border border-line-paper"
+      className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
     />
   );
 }
@@ -355,13 +356,13 @@ function RevealOption({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center rounded-2xl px-4 py-3 ${
+      className={`flex-row items-center px-4 py-3 ${
         active ? "bg-ink" : "bg-paper-soft active:bg-paper-warm"
       }`}
     >
       <Ionicons
         name={active ? "radio-button-on" : "radio-button-off"}
-        color={active ? "#F5E8D3" : "#5A4F40"}
+        color={active ? feed.text : feed.inkDim}
         size={20}
       />
       <View className="flex-1 ml-3">

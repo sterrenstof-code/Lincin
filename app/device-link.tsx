@@ -23,6 +23,7 @@ import {
   type TransferPackage,
 } from "@/lib/crypto/transfer";
 import { copyToClipboard } from "@/lib/share";
+import { feed } from "@/lib/design/type";
 
 const EXPIRY_SECS = 600;
 
@@ -94,9 +95,9 @@ export default function DeviceLinkScreen() {
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
           onPress={onClose}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="close" color="#1A1714" size={20} />
+          <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
         <Text className="text-ink text-lg font-bold ml-3">
           Nieuw apparaat koppelen
@@ -105,13 +106,13 @@ export default function DeviceLinkScreen() {
 
       <View className="flex-1 items-center justify-center px-6">
         {loading ? (
-          <ActivityIndicator color="#F5E8D3" size="large" />
+          <ActivityIndicator color={feed.text} size="large" />
         ) : error ? (
           <View className="items-center gap-4">
             <Text className="text-red-400 text-sm text-center">{error}</Text>
             <Pressable
               onPress={generate}
-              className="bg-paper-soft active:bg-paper rounded-2xl px-6 py-3"
+              className="bg-paper-soft active:bg-paper px-6 py-3"
             >
               <Text className="text-ink font-semibold">Opnieuw proberen</Text>
             </Pressable>
@@ -124,18 +125,18 @@ export default function DeviceLinkScreen() {
             </Text>
 
             {/* QR-code op paper achtergrond */}
-            <View className="bg-paper rounded-3xl p-5 mb-5 shadow-sm">
+            <View className="bg-paper p-5 mb-5 shadow-sm">
               <QRCode
                 value={pkg.url}
                 size={220}
                 backgroundColor="transparent"
-                color="#1A1714"
+                color={feed.ink}
               />
             </View>
 
             {/* Afteltimer */}
             <View className="flex-row items-center gap-2 mb-5">
-              <Ionicons name="time-outline" color="#8A7E6C" size={15} />
+              <Ionicons name="time-outline" color={feed.inkDim} size={15} />
               <Text className="text-ink-muted text-sm">
                 Verloopt over{" "}
                 <Text className="text-ink font-semibold">
@@ -147,11 +148,11 @@ export default function DeviceLinkScreen() {
             {/* Kopieerknop — voor desktop-browsers die geen camera-QR-scan hebben */}
             <Pressable
               onPress={onCopy}
-              className="flex-row items-center bg-paper-soft active:bg-paper rounded-2xl px-5 py-3.5 mb-3"
+              className="flex-row items-center bg-paper-soft active:bg-paper px-5 py-3.5 mb-3"
             >
               <Ionicons
                 name={copied ? "checkmark-circle" : "link-outline"}
-                color={copied ? "#4CAF82" : "#1A1714"}
+                color={copied ? "#4CAF82" : feed.ink}
                 size={18}
               />
               <Text className="text-ink font-semibold ml-2">

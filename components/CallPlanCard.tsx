@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase/client";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
+import { feed } from "@/lib/design/type";
 
 export function CallPlanCard({
   plan,
@@ -224,7 +225,7 @@ export function CallPlanCard({
               onPress={openInvite}
               className="flex-row items-center gap-1.5 bg-page-alt border border-page-alt px-3 py-1.5"
             >
-              <Ionicons name="person-add-outline" color="#55534E" size={13} />
+              <Ionicons name="person-add-outline" color={feed.inkDim} size={13} />
               <Text className="text-carbon-muted text-xs font-semibold">Uitnodigen</Text>
             </Pressable>
           )}
@@ -254,7 +255,7 @@ export function CallPlanCard({
             <View className="flex-row items-center mb-4">
               <Text className="flex-1 text-carbon font-bold text-lg">Uitnodigen</Text>
               <Pressable onPress={() => setInviteOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color="#8E8C86" size={22} />
+                <Ionicons name="close" color={feed.inkDim} size={22} />
               </Pressable>
             </View>
 
@@ -281,7 +282,7 @@ export function CallPlanCard({
                       </View>
                       {selected && (
                         <View className="absolute top-0 right-0 w-4 h-4 bg-carbon items-center justify-center">
-                          <Ionicons name="checkmark" color="#F2F1EE" size={10} />
+                          <Ionicons name="checkmark" color={feed.text} size={10} />
                         </View>
                       )}
                       <Text className={`text-[11px] text-center ${selected ? "text-carbon font-semibold" : "text-carbon-muted"}`} numberOfLines={1}>
@@ -299,7 +300,7 @@ export function CallPlanCard({
               className={`mt-4 py-3.5 items-center ${selectedIds.length > 0 ? "bg-carbon" : "bg-page-alt"}`}
             >
               {inviting
-                ? <ActivityIndicator size="small" color="#F2F1EE" />
+                ? <ActivityIndicator size="small" color={feed.text} />
                 : <Text className={`font-semibold ${selectedIds.length > 0 ? "text-page" : "text-carbon-muted"}`}>
                     {selectedIds.length === 0 ? "Kies wie je uitnodigt" : `${selectedIds.length} uitnodigen`}
                   </Text>

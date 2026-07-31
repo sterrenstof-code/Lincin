@@ -3,12 +3,13 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import type { ActivityEventWithActor } from "@/lib/api/activity-events";
+import { feed } from "@/lib/design/type";
 
 const KIND_ICON: Record<string, { name: any; color: string }> = {
   friend_accepted: { name: "person-add-outline", color: "#5B8DEF" },
-  post_created:    { name: "image-outline",       color: "#12110F" },
-  event_created:   { name: "calendar-outline",    color: "#12110F" },
-  event_joined:    { name: "enter-outline",       color: "#12110F" },
+  post_created:    { name: "image-outline",       color: feed.ink },
+  event_created:   { name: "calendar-outline",    color: feed.ink },
+  event_joined:    { name: "enter-outline",       color: feed.ink },
 };
 
 function activityLabel(event: ActivityEventWithActor): string {
@@ -31,7 +32,7 @@ function activityLabel(event: ActivityEventWithActor): string {
 
 export function ActivityCard({ event }: { event: ActivityEventWithActor }) {
   const router = useRouter();
-  const icon = KIND_ICON[event.kind] ?? { name: "flash-outline", color: "#8E8C86" };
+  const icon = KIND_ICON[event.kind] ?? { name: "flash-outline", color: feed.inkDim };
 
   function handlePress() {
     if (event.kind === "post_created" && event.post_id) {

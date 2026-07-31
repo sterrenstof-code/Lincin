@@ -26,6 +26,7 @@ import {
   validateUsername,
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
+import { feed } from "@/lib/design/type";
 
 export default function ProfileEditScreen() {
   const router = useRouter();
@@ -125,9 +126,9 @@ export default function ProfileEditScreen() {
       <View className="flex-row items-center px-4 py-3">
         <Pressable
           onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-paper-soft items-center justify-center"
+          className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
-          <Ionicons name="close" color="#1A1714" size={20} />
+          <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
         <Text className="flex-1 text-cream text-lg font-semibold ml-3">
           Profiel bewerken
@@ -135,7 +136,7 @@ export default function ProfileEditScreen() {
         <Pressable
           onPress={onSave}
           disabled={!canSave}
-          className={`rounded-full px-4 py-2 ${
+          className={` px-4 py-2 ${
             canSave ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
           }`}
         >
@@ -151,7 +152,7 @@ export default function ProfileEditScreen() {
       >
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#F5E8D3" />
+            <ActivityIndicator color={feed.text} />
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
@@ -164,8 +165,8 @@ export default function ProfileEditScreen() {
                   avatarUrl={avatarUrl}
                   size="hero"
                 />
-                <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-ink border-2 border-shell items-center justify-center">
-                  <Ionicons name="camera" color="#F5E8D3" size={14} />
+                <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
+                  <Ionicons name="camera" color={feed.text} size={14} />
                 </View>
               </Pressable>
               <Text className="text-cream-muted text-xs mt-2">
@@ -173,11 +174,11 @@ export default function ProfileEditScreen() {
               </Text>
             </View>
 
-            <View className="bg-paper rounded-3xl p-6">
+            <View className="bg-paper p-6">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Gebruikersnaam
               </Text>
-              <View className="flex-row items-center bg-paper-light rounded-full px-4 border border-line-paper">
+              <View className="flex-row items-center bg-paper-light px-4 border border-line-paper">
                 <Text className="text-ink-muted text-base">@</Text>
                 <TextInput
                   value={username}
@@ -185,7 +186,7 @@ export default function ProfileEditScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholder="kies een handle"
-                  placeholderTextColor="#8A7E6C"
+                  placeholderTextColor={feed.inkDim}
                   className="flex-1 text-ink text-base py-3 pl-1"
                   maxLength={32}
                 />
@@ -207,8 +208,8 @@ export default function ProfileEditScreen() {
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholder="bv. Tom"
-                placeholderTextColor="#8A7E6C"
-                className="bg-paper-light text-ink text-base px-4 py-3 rounded-full border border-line-paper"
+                placeholderTextColor={feed.inkDim}
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
                 maxLength={48}
               />
               <Text className="text-ink-muted text-xs mt-2">
@@ -217,13 +218,13 @@ export default function ProfileEditScreen() {
             </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 rounded-2xl px-4 py-3 mt-4">
+              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
                 <Text className="text-red-800 text-sm">{error}</Text>
               </View>
             )}
 
             {/* Wachtwoord instellen / wijzigen */}
-            <View className="bg-paper rounded-3xl p-6 mt-4">
+            <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
                 Beveiliging
               </Text>
@@ -245,8 +246,8 @@ export default function ProfileEditScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 placeholder="min. 8 tekens"
-                placeholderTextColor="#8A7E6C"
-                className="bg-paper-light text-ink text-base px-4 py-3 rounded-full border border-line-paper"
+                placeholderTextColor={feed.inkDim}
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
               />
 
               <View className="h-4" />
@@ -261,8 +262,8 @@ export default function ProfileEditScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 placeholder="herhaal je wachtwoord"
-                placeholderTextColor="#8A7E6C"
-                className="bg-paper-light text-ink text-base px-4 py-3 rounded-full border border-line-paper"
+                placeholderTextColor={feed.inkDim}
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
               />
 
               {password.length > 0 && password.length < 8 && (
@@ -279,7 +280,7 @@ export default function ProfileEditScreen() {
               <Pressable
                 onPress={onSavePassword}
                 disabled={!passwordValid}
-                className={`mt-5 rounded-full py-3 items-center ${
+                className={`mt-5 py-3 items-center ${
                   passwordValid ? "bg-ink active:bg-ink-soft" : "bg-paper-warm"
                 }`}
               >

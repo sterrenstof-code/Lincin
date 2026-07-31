@@ -213,9 +213,10 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      <AppChrome wide={wide} progress={chrome.progress} />
-
+      {/* De kop is het eerste kind van DEZE scroller en plakt via
+          stickyHeaderIndices. Zo scrollt de pagina als een geheel. */}
       <ScrollView
+        stickyHeaderIndices={[0]}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         showsVerticalScrollIndicator={false}
@@ -227,6 +228,8 @@ export default function FeedScreen() {
           />
         }
       >
+        <AppChrome wide={wide} progress={chrome.progress} />
+
         <View
           style={{
             width: "100%",

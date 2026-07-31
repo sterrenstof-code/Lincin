@@ -1,121 +1,190 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { useWide } from "@/components/Editorial";
 import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
+import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 /**
- * Een event-kaart in onze paper-cream stijl. Wordt gebruikt in:
- *  - Events tab (lijst van events)
- *  - Feed (mixed tussen post-kaarten)
+ * Een event als **cover-band**.
  *
- * Toont status (Komt eraan / X over / Afgelopen / Onthulling over X) en
- * basis-stats. Tap → /event/{id}.
+ * Dit is dezelfde vorm als de cover-band in de feed (`DESIGN_V3_FEED.md`,
+ * "Layout, top to bottom", punt 3): tekstvlak links op `feed-post`, beeld
+ * rechts, een kapitalenkop en een `(06)`-achtig indexcijfer in het rood.
+ * Onder het breekpunt stapelt hij, tekst eerst.
+ *
+ * Waarom niet de oude kaart: die had een beeldstrook van 130px bovenaan,
+ * een statusbadge, een voetbalk met een knop en drie icoonregels — vier
+ * verschillende ritmes in één kaart. De cover-band zegt hetzelfde met de
+ * opbouw die de rest van de app al gebruikt.
+ *
+ * `compact` laat het beeld weg; dat is de variant die tússen de vondsten in
+ * de feed staat, waar een tweede grote afbeelding met de tegels zou vechten.
  */
 export function EventCard({
   event,
   compact = false,
+  /** Volgnummer in de uitgave. Puur redactioneel — geen ranking. */
+  index,
 }: {
   event: EventWithMeta;
   compact?: boolean;
+  index?: number;
 }) {
   const router = useRouter();
+  const wide = useWide();
   const status = eventStatusLabel(event);
   const start = new Date(event.starts_at);
+
   const dateLabel = start.toLocaleDateString("nl-BE", {
-    weekday: "short",
+    weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
   });
   const timeLabel = start.toLocaleTimeString("nl-BE", {
     hour: "2-digit",
     minute: "2-digit",
   });
 
+  const showImage = !!event.cover_url && !compact;
+  const twoColumn = wide && showImage;
+
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
-      className="bg-page-alt overflow-hidden"
+      style={{
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        overflow: "hidden",
+        flexDirection: twoColumn ? "row" : "column",
+      }}
     >
-      {event.cover_url && !compact && (
-        <Image
-          source={{ uri: event.cover_url }}
-          style={{ width: "100%", height: 130 }}
-          contentFit="cover"
-          transition={150}
-        />
-      )}
-      <View className="px-5 pt-5">
-        <View className="flex-row items-center mb-3">
-          <View className="w-9 h-9 bg-carbon items-center justify-center mr-3">
-            <Ionicons name="sparkles" color="#F2F1EE" size={16} />
-          </View>
-          <Text className="text-xs uppercase tracking-wider text-carbon-muted flex-1">
-            Event
-          </Text>
-          <View className={`px-2.5 py-0.5 ${
-            event.is_active ? "bg-carbon" : "bg-page-alt"
-          }`}>
-            <Text className={`text-[10px] font-bold uppercase tracking-wider ${
-              event.is_active ? "text-page" : "text-carbon"
-            }`}>
-              {event.is_active ? "Live" : status.split(" ")[0]}
+      {/* ---- Tekstvlak ---- */}
+      <View
+        style={{
+          backgroundColor: feed.post,
+          padding: wide ? 30 : 22,
+          justifyContent: "space-between",
+          ...(twoColumn ? { flex: 1.1 } : null),
+        }}
+      >
+        <View>
+          {/* Kicker met de categoriestip. Vierkant, niet rond — de enige
+              ronding in dit systeem is de avatar. */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                backgroundColor: event.is_active ? flame : feed.textDim,
+                marginRight: 6,
+              }}
+            />
+            <Text
+              style={[feedType.kicker, { color: feed.text, letterSpacing: 0.5 }]}
+              numberOfLines={1}
+            >
+              {event.is_active ? "EVENT · LIVE" : `EVENT · ${status.toUpperCase()}`}
             </Text>
           </View>
+
+          <Text
+            style={[wide ? feedType.cover : feedType.coverSmall, { color: feed.text }]}
+            numberOfLines={3}
+          >
+            {event.name.toUpperCase()}
+          </Text>
+
+          {!compact && event.description ? (
+            <Text
+              style={[
+                feedType.body,
+                { fontSize: 13, lineHeight: 19, color: feed.textDim, marginTop: 12 },
+              ]}
+              numberOfLines={2}
+            >
+              {event.description}
+            </Text>
+          ) : null}
         </View>
 
-        <Text className="text-3xl font-bold tracking-tight text-carbon mb-1" numberOfLines={2}>
-          {event.name}
-        </Text>
-
-        {!compact && event.description && (
-          <Text className="text-carbon-soft text-sm leading-5 mb-3" numberOfLines={2}>
-            {event.description}
-          </Text>
-        )}
-
-        <View className="flex-row items-center gap-4 mt-2">
-          <View className="flex-row items-center">
-            <Ionicons name="time-outline" color="#55534E" size={14} />
-            <Text className="text-carbon-soft text-xs ml-1.5">{status}</Text>
-          </View>
-          <View className="flex-row items-center">
-            <Ionicons name="people-outline" color="#55534E" size={14} />
-            <Text className="text-carbon-soft text-xs ml-1.5">
-              {event.members_count} {event.members_count === 1 ? "gast" : "gasten"}
+        {/* Voet van het tekstvlak: de feiten links, het indexcijfer rechts. */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            marginTop: 20,
+          }}
+        >
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[feedType.label, { color: feed.text }]} numberOfLines={1}>
+              {dateLabel}
             </Text>
-          </View>
-          <View className="flex-row items-center">
-            <Ionicons name="images-outline" color="#55534E" size={14} />
-            <Text className="text-carbon-soft text-xs ml-1.5">
-              {event.contributions_count}
+            <Text style={[feedType.label, { color: feed.textDim, marginTop: 2 }]}>
+              {`${timeLabel} · ${event.members_count} ${
+                event.members_count === 1 ? "gast" : "gasten"
+              } · ${event.contributions_count} foto's`}
             </Text>
+            {event.is_host ? (
+              <Text
+                style={[feedType.kicker, { color: flame, letterSpacing: 0.55, marginTop: 8 }]}
+              >
+                JIJ ORGANISEERT
+              </Text>
+            ) : null}
           </View>
+
+          {typeof index === "number" ? (
+            <Text
+              style={[
+                feedType.numeral,
+                { fontSize: 24, lineHeight: 28, color: flame },
+              ]}
+            >
+              {`(${String(index).padStart(2, "0")})`}
+            </Text>
+          ) : null}
         </View>
       </View>
 
-      <View className="bg-page-alt mt-4 px-5 py-3 flex-row items-center">
-        <View className="flex-1">
-          <Text className="text-carbon-muted text-[10px] uppercase tracking-wider">
-            {dateLabel}
-          </Text>
-          <Text className="text-carbon font-semibold text-sm">{timeLabel}</Text>
+      {/* ---- Beeldvlak ---- */}
+      {showImage ? (
+        <View
+          style={{
+            backgroundColor: "#3A2A46",
+            minHeight: 200,
+            ...(twoColumn
+              ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }
+              : { borderTopWidth: FEED_BORDER, borderTopColor: feed.ink, aspectRatio: 16 / 9 }),
+          }}
+        >
+          <Image
+            source={{ uri: event.cover_url! }}
+            style={{ width: "100%", height: "100%", minHeight: 200 }}
+            contentFit="cover"
+            transition={150}
+          />
         </View>
-        {event.is_host && (
-          <View className="bg-page-alt px-2.5 py-0.5 mr-2">
-            <Text className="text-carbon text-[10px] font-bold uppercase tracking-wider">
-              Host
-            </Text>
-          </View>
-        )}
-        <View className="bg-carbon px-4 py-2 flex-row items-center">
-          <Text className="text-page text-xs font-semibold mr-1">
-            {event.is_active ? "Open" : event.is_revealed ? "Bekijk" : "Open"}
-          </Text>
-          <Ionicons name="arrow-forward" color="#F2F1EE" size={12} />
-        </View>
-      </View>
+      ) : null}
     </Pressable>
+  );
+}
+
+/**
+ * De rubriekregel boven een reeks events — hetzelfde etiket als
+ * "MEER VONDSTEN DEZE WEEK" boven de compacte sectie in de feed.
+ */
+export function EventSectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={[
+        feedType.kicker,
+        { color: flameDeep, letterSpacing: 0.55, marginBottom: 18 },
+      ]}
+    >
+      {children.toUpperCase()}
+    </Text>
   );
 }
