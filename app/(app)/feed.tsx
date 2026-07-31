@@ -35,6 +35,7 @@ import {
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
+  flameDeep,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
 import { getProfiles } from "@/lib/api/profiles";
@@ -71,76 +72,136 @@ import {
 const PAGE_MAX = 1280;
 
 /**
- * Het vaste ritme van de compacte sectie: één cover-band, een rij van vier
- * tegels, één citaatband. Daarna herhaalt het.
- */
-const TILE_CYCLE: TileVariant[] = ["cover", "tall", "text", "stat", "caption", "quote"];
-
-/**
- * Welk soort vondst het béste in welke maat past. Dit is de "soort"-helft
- * van de hybride toewijzing: binnen elk blok van zes krijgt elke plek eerst
- * een passend soort aangeboden, en valt hij anders terug op het vaste ritme
- * hierboven. Zo staat een fragment in de citaatband en een video in de hoge
- * beeldtegel, zónder dat een vondst ooit kan blijven wachten op een plek.
+ * ---------------------------------------------------------------
+ * DE INDELING VAN DE UITGAVE
+ * ---------------------------------------------------------------
+ * De feed is geen enkele stroom meer maar een reeks **rubrieken**, elk met
+ * een eigen selectieregel en een eigen vorm:
  *
- * Dit is nadrukkelijk géén ranking: de volgorde van de blokken blijft
- * chronologisch, en er wordt alleen bínnen een blok van zes geschoven.
+ *   UITGELICHT              de meest besproken vondst        cover-band
+ *   WAAR OVER GEPRAAT WORDT op aantal reacties               tegelrij
+ *   NIEUW                   op tijd, nieuwste eerst          tegelrij
+ *   BEELD                   op soort: beeld/video/muziek     mozaïek
+ *   IN WOORDEN              op soort: fragment/weetje/idee   citaat + tekst
+ *
+ * ⚠️  LET OP — dit wijkt af van een eerder vastgelegd productprincipe.
+ * `DESIGN_V3_FEED.md` legde vast: "geen ranking, geen bereiktellers, je
+ * vrienden zijn het algoritme", en verwierp expliciet het idee om posts te
+ * schalen op basis van reacties. De eerste twee rubrieken hierboven dóén
+ * dat nu wel: ze sorteren op `comment_count`. Dat is een bewuste
+ * koerswijziging van Tom (31-07-2026), geen vergissing — maar wie dit later
+ * leest moet weten dat het doc en de code hierover uit elkaar liepen.
+ *
+ * Wat we NIET doen: tellers tonen. Het aantal reacties bepaalt de volgorde
+ * binnen een rubriek, maar staat nergens als getal in beeld. Het verschil
+ * tussen "hier wordt over gepraat" en "dit heeft 47 likes" is precies het
+ * verschil dat dit ontwerp wil bewaren.
  */
-const SLOT_PREFERENCE: Record<TileVariant, FindKind[]> = {
-  cover: ["link", "video", "image"],
-  tall: ["video", "image"],
-  text: ["link", "note"],
-  stat: ["fact", "idea"],
-  caption: ["image", "music"],
-  quote: ["fragment", "fact", "idea"],
+
+/** Hoe een rubriek zijn vondsten kiest. */
+type SectionRule = "discussed" | "recent" | "visual" | "words";
+
+/** Hoe een rubriek zijn vondsten toont. */
+type SectionLayout = "cover" | "tiles" | "mosaic" | "words";
+
+type SectionDef = {
+  key: string;
+  label: string;
+  rule: SectionRule;
+  layout: SectionLayout;
+  /** Hoeveel vondsten deze rubriek hoogstens opneemt. */
+  limit: number;
 };
 
+const SECTIONS: SectionDef[] = [
+  { key: "featured",  label: "Uitgelicht",              rule: "discussed", layout: "cover",  limit: 1 },
+  { key: "discussed", label: "Waar over gepraat wordt", rule: "discussed", layout: "tiles",  limit: 4 },
+  { key: "recent",    label: "Nieuw deze week",         rule: "recent",    layout: "tiles",  limit: 4 },
+  { key: "visual",    label: "Beeld",                   rule: "visual",    layout: "mosaic", limit: 5 },
+  { key: "words",     label: "In woorden",              rule: "words",     layout: "words",  limit: 3 },
+];
+
+/** Soorten die in de beeldrubriek thuishoren. */
+const VISUAL_KINDS: FindKind[] = ["image", "video", "music"];
+/** Soorten die in de woordenrubriek thuishoren. */
+const WORD_KINDS: FindKind[] = ["fragment", "fact", "idea", "note"];
+
 type Slot = { variant: TileVariant; item: FeedItem; index: number };
+type Section = { key: string; label: string; layout: SectionLayout; slots: Slot[] };
+
+/** De tegelmaten binnen een gewone tegelrij, op volgorde. */
+const TILE_CYCLE: TileVariant[] = ["tall", "text", "stat", "caption"];
 
 /**
- * Deelt de resterende feed op in blokken van zes en wijst binnen elk blok
- * de plekken toe: eerst op soort, dan op volgorde.
- *
- * Niet-posts (herinnering, poll, call, lijst, activiteit) doen niet mee aan
- * de tegeltoewijzing — die houden hun eigen kaart en krijgen een eigen band.
+ * Bouwt de rubrieken. Elke vondst komt hoogstens één keer voor: een rubriek
+ * neemt wat hij nodig heeft en laat de rest over aan de volgende.
  */
-function assignSlots(items: FeedItem[]): Slot[] {
-  const out: Slot[] = [];
+function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slot[] } {
+  const posts = items.filter(
+    (i): i is Extract<FeedItem, { type: "post" }> => i.type === "post"
+  );
+  const others = items.filter((i) => i.type !== "post");
+  const used = new Set<string>();
   let counter = 0;
-  let window: FeedItem[] = [];
 
-  const flush = () => {
-    if (window.length === 0) return;
-    const remaining = [...window];
-    for (const variant of TILE_CYCLE) {
-      if (remaining.length === 0) break;
-      const prefs = SLOT_PREFERENCE[variant];
-      let pick = remaining.findIndex(
-        (i) => i.type === "post" && prefs.includes(i.data.kind ?? "note")
+  const available = () => posts.filter((p) => !used.has(p.id));
+
+  function select(rule: SectionRule, limit: number): typeof posts {
+    let pool = available();
+    if (rule === "visual") {
+      pool = pool.filter(
+        (p) => VISUAL_KINDS.includes(p.data.kind ?? "note") || !!p.data.image_url
       );
-      // Geen passend soort in dit blok? Dan gewoon de volgende op volgorde.
-      if (pick === -1) pick = 0;
-      const [item] = remaining.splice(pick, 1);
-      counter += 1;
-      out.push({ variant, item, index: counter });
+    } else if (rule === "words") {
+      pool = pool.filter((p) => WORD_KINDS.includes(p.data.kind ?? "note"));
     }
-    window = [];
-  };
-
-  for (const item of items) {
-    if (item.type !== "post") {
-      // De band van een niet-post breekt het blok niet open: we plaatsen hem
-      // op zijn chronologische plek en gaan daarna verder met het ritme.
-      flush();
-      counter += 1;
-      out.push({ variant: "text", item, index: counter });
-      continue;
+    if (rule === "discussed") {
+      // Meest besproken eerst. Bij gelijk aantal wint de nieuwste, zodat een
+      // oude post met twee reacties niet eeuwig bovenaan blijft staan.
+      pool = [...pool].sort((a, b) => {
+        const d = (b.data.comment_count ?? 0) - (a.data.comment_count ?? 0);
+        if (d !== 0) return d;
+        return (
+          new Date(b.data.created_at).getTime() -
+          new Date(a.data.created_at).getTime()
+        );
+      });
+      // Zonder enige reactie is er niets om "besproken" aan te noemen.
+      pool = pool.filter((p) => (p.data.comment_count ?? 0) > 0);
     }
-    window.push(item);
-    if (window.length === TILE_CYCLE.length) flush();
+    return pool.slice(0, limit);
   }
-  flush();
-  return out;
+
+  const sections: Section[] = [];
+  for (const def of SECTIONS) {
+    const chosen = select(def.rule, def.limit);
+    if (chosen.length === 0) continue;
+    const slots: Slot[] = chosen.map((item, i) => {
+      used.add(item.id);
+      counter += 1;
+      const variant: TileVariant =
+        def.layout === "cover" ? "cover"
+        : def.layout === "mosaic" ? "mosaic"
+        : def.layout === "words" ? (i === 0 ? "quote" : "text")
+        : TILE_CYCLE[i % TILE_CYCLE.length];
+      return { variant, item, index: counter };
+    });
+    sections.push({ key: def.key, label: def.label, layout: def.layout, slots });
+  }
+
+  // Wat geen rubriek heeft gevonden, plus alle niet-posts, sluit chronologisch
+  // aan. Zo verdwijnt er nooit iets uit de feed doordat het nergens paste.
+  const leftovers: Slot[] = [];
+  for (const item of items) {
+    if (item.type === "post" && used.has(item.id)) continue;
+    if (item.type !== "post" && !others.includes(item)) continue;
+    counter += 1;
+    const variant: TileVariant =
+      item.type !== "post" ? "text" : TILE_CYCLE[leftovers.length % TILE_CYCLE.length];
+    leftovers.push({ variant, item, index: counter });
+  }
+
+  return { sections, leftovers };
 }
 
 export default function FeedScreen() {
@@ -185,7 +246,7 @@ export default function FeedScreen() {
    * Geen ranking: `listUnifiedFeed` sorteert al aflopend op `created_at` en
    * wij nemen daar simpelweg de eerste post uit.
    */
-  const { hero, slots } = useMemo(() => {
+  const { hero, sections, leftovers } = useMemo(() => {
     let items = feed.data ?? [];
     if (activeTag) {
       items = items.filter(
@@ -195,10 +256,14 @@ export default function FeedScreen() {
       );
     }
     const heroIndex = items.findIndex((i) => i.type === "post");
-    if (heroIndex === -1) return { hero: null, slots: assignSlots(items) };
+    if (heroIndex === -1) {
+      const built = buildSections(items);
+      return { hero: null, ...built };
+    }
+    const rest = items.filter((_, i) => i !== heroIndex);
     return {
       hero: items[heroIndex] as Extract<FeedItem, { type: "post" }>,
-      slots: assignSlots(items.filter((_, i) => i !== heroIndex)),
+      ...buildSections(rest),
     };
   }, [feed.data, activeTag]);
 
@@ -210,7 +275,7 @@ export default function FeedScreen() {
     qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
   }, [qc, myUserId]);
 
-  const empty = !hero && slots.length === 0;
+  const empty = !hero && sections.length === 0 && leftovers.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
@@ -298,15 +363,6 @@ export default function FeedScreen() {
                       paddingBottom: 80,
                     }}
                   >
-                    <Text
-                      style={[
-                        feedType.kicker,
-                        { color: "#3A3540", letterSpacing: 0.55, marginBottom: 22 },
-                      ]}
-                    >
-                      MEER VONDSTEN DEZE WEEK
-                    </Text>
-
                     {tags.length > 0 ? (
                       <TagStrip
                         tags={tags}
@@ -315,12 +371,52 @@ export default function FeedScreen() {
                       />
                     ) : null}
 
-                    <CompactSection
-                      slots={slots}
-                      wide={wide}
-                      myUserId={myUserId}
-                      onChanged={invalidate}
-                    />
+                    {sections.map((section) => (
+                      <View key={section.key} style={{ marginBottom: 40 }}>
+                        <Text
+                          style={[
+                            feedType.kicker,
+                            { color: flameDeep, letterSpacing: 0.55, marginBottom: 18 },
+                          ]}
+                        >
+                          {section.label.toUpperCase()}
+                        </Text>
+                        {section.layout === "mosaic" ? (
+                          <MosaicGrid
+                            slots={section.slots}
+                            wide={wide}
+                            myUserId={myUserId}
+                            onChanged={invalidate}
+                          />
+                        ) : (
+                          <CompactSection
+                            slots={section.slots}
+                            wide={wide}
+                            myUserId={myUserId}
+                            onChanged={invalidate}
+                          />
+                        )}
+                      </View>
+                    ))}
+
+                    {leftovers.length > 0 ? (
+                      <View style={{ marginBottom: 40 }}>
+                        <Text
+                          style={[
+                            feedType.kicker,
+                            { color: "#3A3540", letterSpacing: 0.55, marginBottom: 18 },
+                          ]}
+                        >
+                          VERDER DEZE WEEK
+                        </Text>
+                        <CompactSection
+                          slots={leftovers}
+                          wide={wide}
+                          myUserId={myUserId}
+                          onChanged={invalidate}
+                        />
+                      </View>
+                    ) : null}
 
                     <Colophon />
                   </View>
@@ -819,6 +915,71 @@ function Colophon() {
         Geen oneindige stroom, geen ranking, geen tellers. Kom straks terug, of
         deel zelf iets.
       </Text>
+    </View>
+  );
+}
+
+/**
+ * Het mozaïek: beelden tegen elkaar aan, met alleen de kaderlijn ertussen.
+ *
+ * De eerste tegel is dubbel zo hoog als de rest — dat geeft het blok een
+ * ankerpunt in plaats van een egaal raster. De hoogtes staan vast in plaats
+ * van uit het beeld te komen, want anders bepaalt de beeldverhouding van een
+ * willekeurige foto de hele compositie.
+ */
+function MosaicGrid({
+  slots,
+  wide,
+  myUserId,
+  onChanged,
+}: {
+  slots: Slot[];
+  wide: boolean;
+  myUserId: string;
+  onChanged: () => void;
+}) {
+  if (slots.length === 0) return null;
+  const [lead, ...rest] = slots;
+  const cellH = wide ? 190 : 150;
+
+  return (
+    <View
+      style={{
+        flexDirection: wide ? "row" : "column",
+        borderWidth: FEED_BORDER,
+        borderColor: feedColor.ink,
+        backgroundColor: feedColor.post,
+      }}
+    >
+      {/* De grote cel links. */}
+      <View
+        style={{
+          height: cellH * 2,
+          ...(wide
+            ? { flex: 1.2, borderRightWidth: FEED_BORDER, borderRightColor: feedColor.ink }
+            : { borderBottomWidth: FEED_BORDER, borderBottomColor: feedColor.ink }),
+        }}
+      >
+        <CompactItem slot={lead} wide={wide} myUserId={myUserId} onChanged={onChanged} />
+      </View>
+
+      {/* De kleinere cellen rechts, twee per rij. */}
+      <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap" }}>
+        {rest.map((slot, i) => (
+          <View
+            key={slot.item.id}
+            style={{
+              width: "50%",
+              height: cellH,
+              borderBottomWidth: i < 2 ? FEED_BORDER : 0,
+              borderRightWidth: i % 2 === 0 ? FEED_BORDER : 0,
+              borderColor: feedColor.ink,
+            }}
+          >
+            <CompactItem slot={slot} wide={wide} myUserId={myUserId} onChanged={onChanged} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

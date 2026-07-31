@@ -33,7 +33,7 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { safeBack } from "@/lib/nav";
@@ -91,6 +91,9 @@ import { feed, flame } from "@/lib/design/type";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
+  const { width: windowWidth } = useWindowDimensions();
+  const railVisible = windowWidth >= CHAT_RAIL_BREAKPOINT;
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
@@ -744,13 +747,19 @@ export default function ChatDetail() {
   }, [chat, myUserId, id, router]);
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
-      <ScreenContainer>
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
+          midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
+          de middenkolom terug en verandert er niets aan dit scherm. */}
+      <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""}>
         <View className="bg-paper-soft border-b border-line-paper">
           <View className="flex-row items-center px-3 py-3 gap-2">
             <Pressable
               onPress={() => safeBack(router, "/(app)/chats")}
               className="w-9 h-9 bg-paper-warm items-center justify-center"
+              // Boven het breekpunt staat de gesprekkenlijst al links in
+              // beeld; een terug-knop wijst dan nergens heen.
+              style={{ display: railVisible ? "none" : "flex" }}
             >
               <Ionicons name="chevron-back" color={feed.ink} size={20} />
               {otherUnread > 0 && (
@@ -1581,7 +1590,7 @@ export default function ChatDetail() {
             </Pressable>
           </Pressable>
         </Modal>
-      </ScreenContainer>
+      </ChatWorkspace>
     </SafeAreaView>
   );
 }

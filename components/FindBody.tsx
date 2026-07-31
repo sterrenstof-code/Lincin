@@ -788,7 +788,15 @@ export function FindHero({
 // De compacte tegels
 // ---------------------------------------------------------------
 
-export type TileVariant = "cover" | "tall" | "text" | "stat" | "caption" | "quote";
+export type TileVariant =
+  | "cover"
+  | "tall"
+  | "text"
+  | "stat"
+  | "caption"
+  | "quote"
+  /** Deel van een mozaïekblok — de tegel vult zijn cel volledig. */
+  | "mosaic";
 
 /**
  * Eén vondst in de compacte sectie.
@@ -824,6 +832,8 @@ export function FindTile({
       return <StatTile p={p} post={post} index={index} onPress={onPress} />;
     case "caption":
       return <CaptionTile p={p} id={post.id} onPress={onPress} />;
+    case "mosaic":
+      return <MosaicTile p={p} post={post} onPress={onPress} />;
     default:
       return <TextTile p={p} post={post} onPress={onPress} />;
   }
@@ -1141,6 +1151,72 @@ function QuoteBand({
         >
           {[attribution || p.kicker, p.sharer, p.time].filter(Boolean).join(" · ")}
         </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Een cel in een mozaïek: beeld tot de rand, tekst eroverheen.
+ *
+ * Anders dan de andere tegels heeft deze géén eigen binnenmarge — het
+ * mozaïek dankt zijn ritme aan beelden die tegen elkaar aan liggen, met
+ * alleen de kaderlijn ertussen. De hoogte komt van de cel waar hij in zit,
+ * niet van de tegel zelf, zodat rijen van verschillende hoogte kunnen
+ * bestaan zonder dat de inhoud gaat zwemmen.
+ */
+function MosaicTile({
+  p,
+  post,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={{ flex: 1, backgroundColor: feed.post }}>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <SafeImage
+          uri={p.image}
+          cacheKey={p.imageKey}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={150}
+          fallbackBg="bg-feed-post"
+          fallbackColor={feed.textDim}
+        />
+      </View>
+
+      {/* Scrim alleen onderaan, zodat het beeld zelf zo vrij mogelijk blijft. */}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <View pointerEvents="none">
+          <View style={{ height: 24, backgroundColor: "rgba(0,0,0,0.16)" }} />
+          <View style={{ height: 24, backgroundColor: "rgba(0,0,0,0.38)" }} />
+        </View>
+        <View style={{ backgroundColor: "rgba(0,0,0,0.62)", padding: 12 }}>
+          <Text
+            style={[
+              feedType.kicker,
+              { color: "#FFFFFF", opacity: 0.7, letterSpacing: 0.5, marginBottom: 4 },
+            ]}
+            numberOfLines={1}
+          >
+            {`${p.kicker} · ${p.sharer}`.toUpperCase()}
+          </Text>
+          <Text
+            style={{
+              fontFamily: feedType.tile.fontFamily,
+              fontSize: 14,
+              lineHeight: 17,
+              fontWeight: "800",
+              color: "#FFFFFF",
+            }}
+            numberOfLines={2}
+          >
+            {p.title}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );

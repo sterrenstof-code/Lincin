@@ -45,6 +45,9 @@ import { announce, feed, FEED_BORDER, feedType } from "@/lib/design/type";
  * `useNativeDriver` staat uit omdat we `height` animeren, en dat kan de
  * native driver niet.
  */
+/** Breedte van de bladspiegel. Geen telefoonkolom van 600px meer. */
+export const PAGE_MAX = 1280;
+
 export function useChromeScroll() {
   const progress = useRef(new Animated.Value(0)).current;
   const collapsed = useRef(false);
@@ -397,8 +400,15 @@ export function AppChrome({
       >
         <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
       </Animated.View>
+      {/* Zelfde bladspiegel als de inhoud eronder: `PAGE_MAX` én dezelfde
+          zijmarge. Zonder de maxWidth liep de kop door tot de vensterrand
+          terwijl de inhoud op 1280 werd afgekapt — dan staan de twee
+          blokken zichtbaar niet onder elkaar. */}
       <Animated.View
         style={{
+          width: "100%",
+          maxWidth: PAGE_MAX,
+          alignSelf: "center",
           paddingHorizontal: wide ? 24 : 16,
           paddingTop: padTop,
           paddingBottom: padBottom,
@@ -420,8 +430,6 @@ export function AppChrome({
 // De pagina zelf
 // ---------------------------------------------------------------
 
-/** Breedte van de bladspiegel. Geen telefoonkolom van 600px meer. */
-export const PAGE_MAX = 1280;
 
 /**
  * De scroller van een heel scherm, met de kop erboven.
