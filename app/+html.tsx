@@ -60,6 +60,101 @@ export default function Root({ children }: PropsWithChildren) {
           href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap"
         />
 
+        {/* ---------------------------------------------------------------
+            De paginaovergangen (View Transitions API).
+
+            Twee dingen bewegen hier, en ze zijn met opzet niet hetzelfde:
+
+            1. DE PAGINA — de `root`-opname. Elke navigatie loopt via
+               `lib/page-transition.web.ts` door een View Transition, dus
+               de browser heeft van élke wissel een oude en een nieuwe
+               opname. Die kruisvervagen, en de nieuwe komt 12px omhoog.
+               Bij een terugnavigatie komt hij van boven — dezelfde
+               beweging omgekeerd, zodat "terug" ook terug voelt. De
+               richting staat als `data-nav` op <html>.
+
+            2. HET GEDEELDE ELEMENT — elk genoemd paar (`hero-…`, gezet
+               door `lib/hero-transition.web.ts`). Dat morpht trager,
+               520ms, want een foto die uitgroeit tot paginabreed legt een
+               veel grotere afstand af dan een kruisvervaging.
+
+            Volgorde is hier functioneel: de `*`-regels staan boven en de
+            `root`-regels eronder. Ze zijn even specifiek, dus wat later
+            staat wint — zo pakt de morph alles behalve de pagina zelf.
+
+            Bij een hero-overgang staat de pagina bewust stil (alleen
+            vervagen, geen stijging): één beweging tegelijk leest, twee
+            tegelijk niet.
+
+            `prefers-reduced-motion`: wie beweging heeft uitgezet krijgt
+            een directe wissel. Precies het soort beweging waar die
+            voorkeur over gaat.
+            --------------------------------------------------------------- */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+/* ---- 1. Het gedeelde element: de morph ---- */
+::view-transition-group(*) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Het beeld vult zijn vlak in beide standen, zodat het tijdens de morph
+     niet uitrekt maar bijsnijdt — hetzelfde gedrag als contentFit="cover". */
+  object-fit: cover;
+}
+
+/* ---- 2. De pagina: kruisvervagen met een stijging ---- */
+@keyframes lincin-page-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes lincin-page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes lincin-page-in-back {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes lincin-page-in-still {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* De oude pagina gaat sneller weg dan de nieuwe komt: zonder dat staan er
+   een halve seconde lang twee volle paginabeelden over elkaar. */
+::view-transition-old(root) {
+  animation: lincin-page-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+  object-fit: fill;
+}
+::view-transition-new(root) {
+  animation: lincin-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  object-fit: fill;
+}
+:root[data-nav="back"]::view-transition-new(root) {
+  animation-name: lincin-page-in-back;
+}
+:root[data-nav="hero"]::view-transition-new(root) {
+  animation-name: lincin-page-in-still;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms !important;
+  }
+}
+`,
+          }}
+        />
+
         {/* ScrollViewStyleReset verwijdert de default body-scroll-styling. */}
         <ScrollViewStyleReset />
       </head>

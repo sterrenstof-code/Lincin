@@ -1,5 +1,7 @@
 import type { ViewStyle } from "react-native";
 
+import { PAGE_TRANSITION_SUPPORTED, withPageTransition } from "@/lib/page-transition";
+
 /**
  * Gedeelde-element-overgang — WEB.
  *
@@ -10,30 +12,19 @@ import type { ViewStyle } from "react-native";
  * DOM binnen `document.startViewTransition()`, en de browser morpht het
  * ene naar het andere — positie, formaat en beeld tegelijk.
  *
- * `flushSync` wordt via `require` opgehaald en niet geïmporteerd: dit
- * project heeft geen `@types/react-dom`, dus een echte import geeft
- * TS7016. Zelfde patroon als `require("expo-linking")` elders in de code.
- * Als de call om welke reden dan ook ontbreekt, valt hij terug op een
- * gewone navigatie.
+ * Het uitvoeren van de overgang zelf staat sinds de overgangsuitrol in
+ * `page-transition.web.ts`, want élke navigatie loopt daar nu doorheen.
+ * Dit bestand houdt alleen nog wat er *eigen* aan de hero is over: het
+ * markeren van het gedeelde element, en het meegeven dat deze navigatie
+ * een morph is. Dat laatste is niet cosmetisch — bij een hero-overgang
+ * blijft de pagina eromheen bewust stil (alleen kruisvervagen, geen
+ * stijging), anders schuift het blad terwijl de foto morpht.
  *
- * Waarom `flushSync` überhaupt: `startViewTransition` maakt een momentopname van
- * de DOM, roept dan de callback aan en vergelijkt het resultaat. React
- * batcht state-updates standaard, dus zonder `flushSync` is de DOM nog
- * niet veranderd op het moment dat de browser de tweede opname maakt en
- * zie je geen overgang.
- *
- * Ondersteuning: Chrome/Edge 111+, Safari 18+. Firefox nog niet. De
- * `?.` en de capability-check zorgen dat het daar gewoon een directe
- * navigatie is in plaats van een fout.
+ * Ondersteuning: Chrome/Edge 111+, Safari 18+. Firefox nog niet; daar is
+ * het een gewone navigatie met de fade uit `components/PageTransition.tsx`.
  */
 
-type DocumentWithVT = Document & {
-  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
-};
-
-export const HERO_TRANSITION_SUPPORTED =
-  typeof document !== "undefined" &&
-  typeof (document as DocumentWithVT).startViewTransition === "function";
+export const HERO_TRANSITION_SUPPORTED = PAGE_TRANSITION_SUPPORTED;
 
 /**
  * Markeert het gedeelde element.
@@ -54,35 +45,17 @@ export function heroTag(id: string): ViewStyle {
 }
 
 /**
- * Voert de navigatie uit binnen een View Transition.
+ * Voert de navigatie uit als gedeelde-element-overgang.
  *
- * Valt terug op een gewone navigatie als de browser het niet kent, of als
- * de overgang om welke reden dan ook gooit — een mislukte animatie mag
- * nooit een navigatie tegenhouden.
+ * De `"hero"`-richting is het enige verschil met een gewone navigatie: de
+ * pagina eromheen kruisvervaagt dan alleen, zodat de morph van het beeld
+ * het enige is dat beweegt.
+ *
+ * De navigatie zelf loopt ook zónder deze wikkel goed af — `router.push`
+ * is app-breed al omwikkeld — maar dan zonder de hero-richting. Blijf hem
+ * dus gebruiken op de plekken waar tegel en hero hetzelfde `heroTag`
+ * dragen.
  */
 export function withHeroTransition(navigate: () => void): void {
-  const doc = document as DocumentWithVT;
-  if (!HERO_TRANSITION_SUPPORTED || !doc.startViewTransition) {
-    navigate();
-    return;
-  }
-
-  let flush: ((cb: () => void) => void) | undefined;
-  try {
-    flush = (require("react-dom") as { flushSync?: (cb: () => void) => void })
-      .flushSync;
-  } catch {
-    flush = undefined;
-  }
-
-  try {
-    doc.startViewTransition(() => {
-      // Zie de toelichting hierboven: zonder flushSync ziet de browser
-      // geen verschil tussen de twee opnames en zie je geen overgang.
-      if (flush) flush(navigate);
-      else navigate();
-    });
-  } catch {
-    navigate();
-  }
+  withPageTransition(navigate, "hero");
 }

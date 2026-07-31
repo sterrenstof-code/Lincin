@@ -11,7 +11,9 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { stackScreenLayout } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
+import { installPageTransitions } from "@/lib/page-transition";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
@@ -32,6 +34,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     initCryptoRandom();
+    // Zet de app-brede paginaovergangen aan. Op web omwikkelt dit élke
+    // navigatie met een View Transition; op native een no-op, want daar
+    // animeert de stack hieronder het al. Zie lib/page-transition.web.ts.
+    installPageTransitions();
     setupNotificationChannels().catch(() => {});
     setupNotificationCategories().catch(() => {});
   }, []);
@@ -69,13 +75,32 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider value={DarkTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
+          {/* `animation: fade_from_bottom` is de native evenknie van de
+              web-overgang: vervagen met een lichte stijging, dezelfde
+              320ms. Hij geldt als default voor élk scherm hieronder; de
+              modals zetten hem bewust om naar slide_from_bottom, want een
+              modaal blad hoort van onder te komen en niet te vervagen.
+
+              `animationDuration` werkt alleen op iOS (Android houdt zijn
+              eigen systeemduur aan); zonder deze regel duurt hij daar 500ms.
+
+              `screenLayout` vult het gat voor browsers zonder View
+              Transitions — zie components/PageTransition.tsx. */}
+          <Stack
+            screenLayout={stackScreenLayout}
+            screenOptions={{
+              headerShown: false,
+              animation: "fade_from_bottom",
+              animationDuration: 320,
+            }}
+          >
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(app)" />
             <Stack.Screen
               name="chat/[id]"
-              options={{ headerShown: false, animation: "slide_from_right" }}
+              // Erft `fade_from_bottom` uit de screenOptions hierboven.
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="add/[username]"
@@ -83,11 +108,13 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="user/[username]"
-              options={{ headerShown: false, animation: "slide_from_right" }}
+              // Erft `fade_from_bottom` uit de screenOptions hierboven.
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="post/[id]"
-              options={{ headerShown: false, animation: "slide_from_right" }}
+              // Erft `fade_from_bottom` uit de screenOptions hierboven.
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="profile-edit"
@@ -123,7 +150,8 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="group/[id]"
-              options={{ headerShown: false, animation: "slide_from_right" }}
+              // Erft `fade_from_bottom` uit de screenOptions hierboven.
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="group-add/[id]"
@@ -155,7 +183,8 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="event/[id]"
-              options={{ headerShown: false, animation: "slide_from_right" }}
+              // Erft `fade_from_bottom` uit de screenOptions hierboven.
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="e/[code]"

@@ -1,5 +1,7 @@
 import type { ViewStyle } from "react-native";
 
+import { withPageTransition } from "@/lib/page-transition";
+
 /**
  * Gedeelde-element-overgang tussen een vondst in de feed en zijn detailpagina:
  * het beeld van de tegel groeit uit tot de hero van de postpagina.
@@ -23,9 +25,9 @@ import type { ViewStyle } from "react-native";
  * achtige effect, zonder dependency. Zie `hero-transition.web.ts`.
  *
  * Deze (native) variant is een bewuste no-op: geen tag, en `navigate`
- * doet gewoon de push. De pagina komt binnen met de standaard
- * stack-animatie. Dat is eerlijk gedegradeerd gedrag, geen stilzwijgend
- * kapot ding.
+ * doet gewoon de push. De pagina komt binnen met de stack-animatie uit
+ * `app/_layout.tsx` (`fade_from_bottom`). Dat is eerlijk gedegradeerd
+ * gedrag, geen stilzwijgend kapot ding.
  */
 
 /**
@@ -40,10 +42,11 @@ export function heroTag(id: string): ViewStyle {
 }
 
 /**
- * Voer een navigatie uit binnen een overgang. Op native gewoon uitvoeren.
+ * Voer een navigatie uit binnen een overgang. Op native gewoon uitvoeren
+ * — `withPageTransition` is daar zelf ook een no-op.
  */
 export function withHeroTransition(navigate: () => void): void {
-  navigate();
+  withPageTransition(navigate, "hero");
 }
 
 /** Ondersteunt dit platform de morph? Handig voor uitleg in de UI. */

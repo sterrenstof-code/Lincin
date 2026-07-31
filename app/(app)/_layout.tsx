@@ -15,6 +15,7 @@ import { touchLastSeen } from "@/lib/api/profiles";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
+import { tabScreenLayout } from "@/components/PageTransition";
 import { feed, flame } from "@/lib/design/type";
 
 export default function AppLayout() {
@@ -211,6 +212,12 @@ export default function AppLayout() {
     <>
     <InstallBanner />
     <Tabs
+      // Een tabwissel krijgt van deze navigator zelf geen animatie: hij
+      // toont en verbergt gemounte schermen. Op web dekt de View
+      // Transition dat af (de tabs navigeren via router.push in AppChrome),
+      // maar op native — en in een browser zonder die API — knippert het
+      // zonder deze laag. Zie components/PageTransition.tsx.
+      screenLayout={tabScreenLayout}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
