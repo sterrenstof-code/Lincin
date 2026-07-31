@@ -36,6 +36,7 @@ import {
   FEED_BREAKPOINT,
   feedType,
 } from "@/lib/design/type";
+import { withHeroTransition } from "@/lib/hero-transition";
 import { getProfiles } from "@/lib/api/profiles";
 import {
   collectTags,
@@ -362,7 +363,7 @@ const HeroBlock = memo(function HeroBlock({
         post={post}
         wide={wide}
         minHeight={minHeight}
-        onPress={() => router.push(`/post/${post.id}`)}
+        onPress={() => withHeroTransition(() => router.push(`/post/${post.id}`))}
         onMenu={menu.isMine ? menu.open : undefined}
       />
       <View style={{ paddingHorizontal: wide ? 24 : 10, paddingTop: 12 }}>
@@ -508,7 +509,9 @@ const CompactItem = memo(function CompactItem({
         wide={wide}
         myUserId={myUserId}
         onChanged={onChanged}
-        onPress={() => router.push(`/post/${item.data.id}`)}
+        onPress={() =>
+          withHeroTransition(() => router.push(`/post/${item.data.id}`))
+        }
       />
     );
   }

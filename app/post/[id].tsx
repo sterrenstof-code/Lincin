@@ -32,6 +32,7 @@ import { deletePost, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
+import { heroTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
 
@@ -309,6 +310,9 @@ export default function PostDetailScreen() {
                   aspectRatio: post.data.image_url ? 4 / 5 : undefined,
                   backgroundColor: feed.post,
                   justifyContent: "flex-end",
+                  // Zelfde naam als de tegel in de feed: de browser morpht
+                  // het ene vlak naar het andere.
+                  ...heroTag(String(id)),
                 }}
               >
                 {post.data.image_path && post.data.image_url ? (

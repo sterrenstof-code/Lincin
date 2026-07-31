@@ -32,6 +32,7 @@ import {
   type LinkPreview,
 } from "@/lib/api/unfurl";
 import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
+import { heroTag } from "@/lib/hero-transition";
 
 /**
  * De inhoud van één vondst, per soort anders gezet.
@@ -747,6 +748,8 @@ export function FindHero({
           borderWidth: FEED_BORDER,
           borderColor: feed.ink,
           backgroundColor: feed.post,
+          // Ankerpunt van de morph naar de detailpagina.
+          ...heroTag(post.id),
         }}
       >
         <SafeImage
@@ -820,7 +823,7 @@ export function FindTile({
     case "stat":
       return <StatTile p={p} post={post} index={index} onPress={onPress} />;
     case "caption":
-      return <CaptionTile p={p} onPress={onPress} />;
+      return <CaptionTile p={p} id={post.id} onPress={onPress} />;
     default:
       return <TextTile p={p} post={post} onPress={onPress} />;
   }
@@ -892,6 +895,7 @@ function CoverBand({
         style={{
           minHeight: 200,
           backgroundColor: "#3A2A46",
+          ...heroTag(post.id),
           ...(wide
             ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }
             : { borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }),
@@ -926,7 +930,7 @@ function TallTile({
       <View style={{ marginBottom: 10 }}>
         <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
       </View>
-      <View style={{ width: "100%", aspectRatio: 3 / 4, marginBottom: 12 }}>
+      <View style={{ width: "100%", aspectRatio: 3 / 4, marginBottom: 12, ...heroTag(post.id) }}>
         <SafeImage
           uri={p.image}
           cacheKey={p.imageKey}
@@ -1053,10 +1057,10 @@ function StatTile({
 }
 
 /** t-d: kleine vierkante foto met onderschrift eronder. */
-function CaptionTile({ p, onPress }: { p: FindParts; onPress?: () => void }) {
+function CaptionTile({ p, id, onPress }: { p: FindParts; id: string; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View style={{ width: "100%", aspectRatio: 1, marginBottom: 10 }}>
+      <View style={{ width: "100%", aspectRatio: 1, marginBottom: 10, ...heroTag(id) }}>
         <SafeImage
           uri={p.image}
           cacheKey={p.imageKey}

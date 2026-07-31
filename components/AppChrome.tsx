@@ -176,6 +176,18 @@ export function AppHeader({
   const pathname = usePathname();
   const p = progress ?? new Animated.Value(0);
 
+  // Ingeklapt blijft ALLEEN de tabstrip over, plus de woordmerk-plaat in
+  // zijn compacte maat. De micro-utilityregel (rij A) en de tagline (rij C)
+  // vouwen allebei dicht — dat is wat "heel klein" hier betekent.
+  const utilityHeight = p.interpolate({
+    inputRange: [0, 1],
+    outputRange: [38, 0],
+  });
+  const utilityOpacity = p.interpolate({
+    inputRange: [0, 0.4],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
   const taglineHeight = p.interpolate({
     inputRange: [0, 1],
     outputRange: [wide ? 96 : 118, 0],
@@ -188,7 +200,10 @@ export function AppHeader({
 
   return (
     <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-      {/* Rij A — micro-utility, drie gelijke kolommen. */}
+      {/* Rij A — micro-utility. Vouwt dicht zodra de kop compact wordt. */}
+      <Animated.View
+        style={{ height: utilityHeight, opacity: utilityOpacity, overflow: "hidden" }}
+      >
       <View style={{ flexDirection: "row" }}>
         <View style={{ flex: 1 }} className="px-3.5 py-2.5">
           <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
@@ -217,10 +232,10 @@ export function AppHeader({
           </Pressable>
         </View>
       </View>
-
       <Divider />
+      </Animated.View>
 
-      {/* Rij B — de tabstrip. Dit IS de navigatie van de app. */}
+      {/* Rij B — de tabstrip. Blijft altijd staan: dit IS de navigatie. */}
       <View style={{ flexDirection: "row" }}>
         {TABS.map((tab, i) => {
           const active = pathname === tab.href;
