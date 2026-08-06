@@ -165,12 +165,35 @@ const PATCHED: Record<string, NavDirection> = {
 let installed = false;
 
 /**
+ * De knoppen "terug" en "vooruit" van de browser lopen **niet** langs de
+ * router hierboven: die komen als `popstate` binnen en worden rechtstreeks
+ * door de linking-laag van React Navigation afgehandeld. Zonder deze
+ * luisteraar zou een paginawissel via de router animeren en dezelfde
+ * wissel via de browserknop niet — hetzelfde gebaar, ander gedrag.
+ *
+ * We kunnen `popstate` niet omsluiten zoals een aanroep: op het moment dat
+ * hij vuurt, is de URL al veranderd. Wat we wél kunnen is er meteen een
+ * overgang omheen starten; de callback wacht dan op de commit die React
+ * Navigation zelf al in gang gezet heeft. Richting is altijd "back": ook
+ * "vooruit" is voor het oog een terugkeer naar iets dat er al was.
+ */
+function installHistoryTransitions(): void {
+  window.addEventListener("popstate", () => {
+    // Geen navigate-callback: de navigatie is al onderweg. We nemen alleen
+    // de opnames eromheen.
+    withPageTransition(() => {}, "back");
+  });
+}
+
+/**
  * Zet de app-brede overgangen aan. Idempotent — een tweede aanroep (fast
  * refresh, een dubbel gemounte root) doet niets.
  */
 export function installPageTransitions(): void {
   if (installed || !PAGE_TRANSITION_SUPPORTED) return;
   installed = true;
+
+  installHistoryTransitions();
 
   const target = router as unknown as Record<string, unknown>;
 

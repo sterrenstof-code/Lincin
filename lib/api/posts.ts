@@ -244,7 +244,13 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
     .from(POSTS_BUCKET)
     .createSignedUrls(paths, 60 * 60 * 24); // 24u — cache overleeft een dag navigeren
   if (sErr) throw sErr;
-  return new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
+  // Rijen zonder pad of zonder URL overslaan in plaats van ze onder de
+  // lege sleutel "" te parkeren — daar kon een verkeerde foto uit komen.
+  const urls = new Map<string, string>();
+  for (const s of signed ?? []) {
+    if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+  }
+  return urls;
 }
 
 async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {

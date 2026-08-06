@@ -361,7 +361,9 @@ function ActionButton({
       return (
         <>
           <Pressable
-            onPress={() => onAccept(relation.friendshipId, "")}
+            // De `requesterId` wordt door de ouder al meegebonden (zie waar
+            // `onAccept` wordt doorgegeven); hier hoort alleen het id.
+            onPress={() => onAccept(relation.friendshipId)}
             disabled={loading}
             className={primaryClass}
           >

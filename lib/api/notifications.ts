@@ -14,6 +14,8 @@ export type NotificationRow = {
     | "invited_to_list"
     | "invited_to_call"
     | "event_join"
+    | "event_join_request"
+    | "event_join_approved"
     | "event_contribution";
   post_id: string | null;
   comment_id: string | null;

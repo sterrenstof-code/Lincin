@@ -167,6 +167,7 @@ export default function ChatsScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
         contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
       >
         <View>

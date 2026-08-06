@@ -7,6 +7,17 @@ import { createActivityEvent } from "./activity-events";
 
 export type EventRevealMode = "during" | "after" | "delayed";
 
+/**
+ * Wie mag er binnen?
+ *
+ *   open     iedereen met de link/QR staat meteen in de gastenlijst
+ *   closed   de link/QR levert een verzoek op dat de host goedkeurt
+ *
+ * In beide gevallen blijft de link deelbaar — het verschil zit in wat er aan
+ * de andere kant gebeurt. Zie migratie 0043.
+ */
+export type EventJoinPolicy = "open" | "closed";
+
 export type EventRow = {
   id: string;
   host_user_id: string;
@@ -19,12 +30,15 @@ export type EventRow = {
   reveal_delay_hours: number;
   max_guests: number;
   join_code: string;
+  join_policy: EventJoinPolicy;
   created_at: string;
 };
 
 export type EventWithMeta = EventRow & {
   members_count: number;
   contributions_count: number;
+  /** Openstaande toegangsverzoeken. Alleen gevuld voor de host; anders 0. */
+  pending_requests_count: number;
   /** Computed: is content revealed for the current viewer? Hosts always see. */
   is_revealed: boolean;
   /** Convenience: is this event currently happening? */
@@ -49,6 +63,24 @@ export type ContributionWithAuthor = ContributionRow & {
   image_url: string | null;
   /** "image" | "video" for media, or null for text/link-only contributions. */
   media_type: "image" | "video" | null;
+};
+
+/** Een openstaand toegangsverzoek voor een gesloten event. */
+export type EventJoinRequest = {
+  user_id: string;
+  created_at: string;
+  profile: Profile | null;
+};
+
+/** Wat er gebeurde toen je op een join-link tikte. */
+export type JoinEventResult = {
+  eventId: string;
+  /**
+   * joined   je staat in de gastenlijst (open event)
+   * pending  je verzoek wacht op de host (gesloten event)
+   * member   je was al lid
+   */
+  status: "joined" | "pending" | "member";
 };
 
 const EVENT_BUCKET = "event-photos";
@@ -156,6 +188,8 @@ export async function createEvent(args: {
   reveal: EventRevealMode;
   revealDelayHours?: number;
   maxGuests?: number;
+  /** Default 'closed': liever één goedkeuring te veel dan één gast te veel. */
+  joinPolicy?: EventJoinPolicy;
   coverUri?: string | null;
   coverMimeType?: string | null;
 }): Promise<EventRow> {
@@ -171,9 +205,10 @@ export async function createEvent(args: {
       reveal_delay_hours:
         args.reveal === "delayed" ? (args.revealDelayHours ?? 24) : 0,
       max_guests: args.maxGuests ?? 100,
+      join_policy: args.joinPolicy ?? "closed",
     })
     .select(
-      "id, host_user_id, name, description, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, created_at"
+      "id, host_user_id, name, description, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, join_policy, created_at"
     )
     .single();
   if (error) throw error;
@@ -230,6 +265,7 @@ export async function listMyEvents(myUserId: string): Promise<EventWithMeta[]> {
   const rows = (data ?? []) as (EventRow & {
     members_count: number;
     contributions_count: number;
+    pending_requests_count: number;
   })[];
   if (rows.length === 0) return [];
 
@@ -239,6 +275,7 @@ export async function listMyEvents(myUserId: string): Promise<EventWithMeta[]> {
     ...e,
     members_count: Number(e.members_count ?? 0),
     contributions_count: Number(e.contributions_count ?? 0),
+    pending_requests_count: Number(e.pending_requests_count ?? 0),
     is_revealed: isRevealed(e, myUserId),
     is_active: isActive(e),
     is_host: e.host_user_id === myUserId,
@@ -258,6 +295,7 @@ export async function getEvent(
   const row = data as EventRow & {
     members_count: number;
     contributions_count: number;
+    pending_requests_count: number;
     is_revealed: boolean;
     is_active: boolean;
     is_host: boolean;
@@ -275,6 +313,7 @@ export async function getEvent(
     ...row,
     members_count: Number(row.members_count ?? 0),
     contributions_count: Number(row.contributions_count ?? 0),
+    pending_requests_count: Number(row.pending_requests_count ?? 0),
     is_revealed: !!row.is_revealed,
     is_active: !!row.is_active,
     is_host: !!row.is_host,
@@ -282,17 +321,90 @@ export async function getEvent(
   };
 }
 
-/** Join an event by its join_code (from QR or shared link). Returns the event_id.
- * The host notification is created server-side inside the join_event RPC. */
-export async function joinEventByCode(joinCode: string): Promise<string> {
+/**
+ * Meedoen via de join_code (uit een QR of gedeelde link).
+ *
+ * Bij een **open** event sta je meteen in de gastenlijst; bij een **gesloten**
+ * event wordt het een verzoek dat de host goedkeurt — dan is `status` gelijk
+ * aan `"pending"` en is er nog geen event om naartoe te sturen. Alle meldingen
+ * worden server-side gemaakt, binnen de join_event RPC.
+ */
+export async function joinEventByCode(joinCode: string): Promise<JoinEventResult> {
   const { data, error } = await supabase.rpc("join_event", { p_join_code: joinCode });
   if (error) throw error;
-  const eventId = data as string;
-  // Activiteitsmoment — fire-and-forget
-  supabase.auth.getUser().then(({ data: { user } }) => {
-    if (user) createActivityEvent({ actorId: user.id, kind: "event_joined", eventId }).catch(() => {});
+  const result = data as { event_id: string; status: JoinEventResult["status"] };
+  const out: JoinEventResult = {
+    eventId: result.event_id,
+    status: result.status ?? "joined",
+  };
+  // Een activiteitsmoment hoort bij het écht meedoen, niet bij het vragen.
+  if (out.status === "joined") {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        createActivityEvent({
+          actorId: user.id,
+          kind: "event_joined",
+          eventId: out.eventId,
+        }).catch(() => {});
+      }
+    });
+  }
+  return out;
+}
+
+/** Openstaande toegangsverzoeken van een event. Alleen de host krijgt rijen. */
+export async function listEventJoinRequests(
+  eventId: string
+): Promise<EventJoinRequest[]> {
+  const { data, error } = await supabase.rpc("list_event_join_requests", {
+    p_event_id: eventId,
   });
-  return eventId;
+  if (error) throw error;
+  const rows = (data ?? []) as { user_id: string; created_at: string }[];
+  if (rows.length === 0) return [];
+
+  const profiles = await getProfiles(rows.map((r) => r.user_id));
+  const byId = new Map(profiles.map((p) => [p.id, p]));
+  return rows.map((r) => ({ ...r, profile: byId.get(r.user_id) ?? null }));
+}
+
+/** Keur een verzoek goed: de aanvrager wordt gast en krijgt een melding. */
+export async function approveEventJoinRequest(
+  eventId: string,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("approve_event_join", {
+    p_event_id: eventId,
+    p_user_id: userId,
+  });
+  // Het activiteitsmoment ("X doet mee") wordt server-side gemaakt: het staat
+  // op naam van de gast, en de RLS op activity_events laat alleen een insert
+  // op je eigen naam toe. Zie approve_event_join in migratie 0043.
+  if (error) throw error;
+}
+
+/** Weiger een verzoek. De aanvrager krijgt hier bewust géén melding van. */
+export async function declineEventJoinRequest(
+  eventId: string,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("decline_event_join", {
+    p_event_id: eventId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+}
+
+/** Zet een lopend event open of dicht. Alleen de host (afgedwongen door RLS). */
+export async function setEventJoinPolicy(
+  eventId: string,
+  policy: EventJoinPolicy
+): Promise<void> {
+  const { error } = await supabase
+    .from("events")
+    .update({ join_policy: policy })
+    .eq("id", eventId);
+  if (error) throw error;
 }
 
 /** Upload een foto/video naar de event-photos bucket + insert contribution row. */

@@ -122,7 +122,9 @@ export default function EventQrScreen() {
             </View>
 
             <Text className="text-ink-muted text-xs text-center mt-5 leading-5">
-              Laat iemand deze code scannen met hun camera, of stuur de link door. Ze worden automatisch toegevoegd aan het event.
+              {ev.join_policy === "closed"
+                ? "Laat iemand deze code scannen met hun camera, of stuur de link door. Dit is een gesloten event: hun verzoek komt eerst bij jou terecht."
+                : "Laat iemand deze code scannen met hun camera, of stuur de link door. Ze worden automatisch toegevoegd aan het event."}
             </Text>
           </View>
 

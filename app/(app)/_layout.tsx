@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, Tabs, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile } from "@/lib/auth/bootstrap";
@@ -257,106 +256,5 @@ export default function AppLayout() {
       <Tabs.Screen name="profile" />
     </Tabs>
     </>
-  );
-}
-
-/**
- * Custom tab bar geïnspireerd op de screenshot referentie: een paper-warm
- * pil rondom de actieve tab, cream icoon op shell achtergrond voor inactieve.
- */
-function PaperTabBar({
-  state,
-  descriptors,
-  navigation,
-  totalUnread,
-  pendingFriendRequests,
-  unreadNotifications,
-}: any) {
-  const { width } = useWindowDimensions();
-  const showLabels = width >= 500; // tablet/desktop: labels tonen
-  const tabs: Array<{
-    key: string;
-    routeName: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    label: string;
-  }> = [
-    { key: "notifications", routeName: "notifications", icon: "notifications-outline", label: "Meldingen" },
-    { key: "feed", routeName: "feed", icon: "images-outline", label: "Feed" },
-    { key: "events", routeName: "events", icon: "sparkles-outline", label: "Events" },
-    { key: "chats", routeName: "chats", icon: "chatbubbles-outline", label: "Chats" },
-    { key: "friends", routeName: "friends", icon: "people-outline", label: "Vrienden" },
-    { key: "profile", routeName: "profile", icon: "person-outline", label: "Profiel" },
-  ];
-
-  return (
-    <View className="bg-shell-soft border-t border-line">
-      <View
-        className="flex-row items-center self-center"
-        style={{ width: "100%", maxWidth: 600, paddingTop: 8, paddingBottom: showLabels ? 12 : 10, paddingHorizontal: 8 }}
-      >
-        {tabs.map((tab) => {
-          const route = state.routes.find((r: any) => r.name === tab.routeName);
-          if (!route) return null;
-          const isFocused =
-            state.index === state.routes.findIndex((r: any) => r.name === tab.routeName);
-          const onPress = () => {
-            if (Platform.OS === "ios") {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            }
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          let badge = 0;
-          if (tab.routeName === "notifications") badge = unreadNotifications ?? 0;
-          else if (tab.routeName === "chats") badge = totalUnread;
-          else if (tab.routeName === "friends") badge = pendingFriendRequests ?? 0;
-
-          const activeColor = feed.text;
-          const inactiveColor = "#6B6259";
-
-          return (
-            <Pressable
-              key={tab.key}
-              onPress={onPress}
-              className="flex-1 items-center"
-              style={{ gap: showLabels ? 3 : 0, paddingVertical: 2, minHeight: showLabels ? 48 : 40 }}
-            >
-              <View>
-                <Ionicons
-                  name={isFocused ? (tab.icon.replace("-outline", "") as any) : tab.icon}
-                  size={showLabels ? 24 : 26}
-                  color={isFocused ? activeColor : inactiveColor}
-                />
-                {badge > 0 && (
-                  <View
-                    className="bg-flame absolute -right-2 -top-1.5"
-                    style={{ minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}
-                  >
-                    <Text className="text-cream text-[9px] font-bold">
-                      {badge > 99 ? "99+" : badge}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {showLabels && (
-                <Text
-                  style={{ fontSize: 10, fontWeight: isFocused ? "700" : "400", color: isFocused ? activeColor : inactiveColor }}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }

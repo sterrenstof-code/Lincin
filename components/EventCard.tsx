@@ -4,12 +4,13 @@ import { Pressable, Text, View } from "react-native";
 
 import { useWide } from "@/components/Editorial";
 import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
+import { heroTag, withHeroTransition } from "@/lib/hero-transition";
 import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 /**
  * Een event als **cover-band**.
  *
- * Dit is dezelfde vorm als de cover-band in de feed (`DESIGN_V3_FEED.md`,
+ * Dit is dezelfde vorm als de cover-band in de feed (DESIGN.md §4,
  * "Layout, top to bottom", punt 3): tekstvlak links op `feed-post`, beeld
  * rechts, een kapitalenkop en een `(06)`-achtig indexcijfer in het rood.
  * Onder het breekpunt stapelt hij, tekst eerst.
@@ -52,7 +53,11 @@ export function EventCard({
 
   return (
     <Pressable
-      onPress={() => router.push(`/event/${event.id}`)}
+      // De cover van deze kaart en de hero van de eventpagina dragen dezelfde
+      // `heroTag`; deze wikkel zegt de overgang dat het om een morph gaat.
+      onPress={() =>
+        withHeroTransition(() => router.push(`/event/${event.id}`))
+      }
       style={{
         borderWidth: FEED_BORDER,
         borderColor: feed.ink,
@@ -131,7 +136,21 @@ export function EventCard({
               <Text
                 style={[feedType.kicker, { color: flame, letterSpacing: 0.55, marginTop: 8 }]}
               >
-                JIJ ORGANISEERT
+                {/* Openstaande verzoeken staan hier en niet in een apart
+                    badge-bolletje: het is dezelfde regel die al zegt dat dit
+                    jouw event is, en het is precies dáár dat je iets moet. */}
+                {event.pending_requests_count > 0
+                  ? `JIJ ORGANISEERT · ${event.pending_requests_count} VERZOEK${
+                      event.pending_requests_count === 1 ? "" : "EN"
+                    }`
+                  : "JIJ ORGANISEERT"}
+              </Text>
+            ) : null}
+            {event.join_policy === "closed" ? (
+              <Text
+                style={[feedType.kicker, { color: feed.textDim, letterSpacing: 0.55, marginTop: 6 }]}
+              >
+                GESLOTEN GROEP
               </Text>
             ) : null}
           </View>
@@ -155,6 +174,7 @@ export function EventCard({
           style={{
             backgroundColor: "#3A2A46",
             minHeight: 200,
+            ...heroTag(`event-${event.id}`),
             ...(twoColumn
               ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }
               : { borderTopWidth: FEED_BORDER, borderTopColor: feed.ink, aspectRatio: 16 / 9 }),

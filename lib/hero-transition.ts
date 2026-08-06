@@ -41,6 +41,18 @@ export function heroTag(id: string): ViewStyle {
   return {};
 }
 
+/** Zie de webvariant. Op native heeft de kop geen eigen morph. */
+export const CHROME_TRANSITION_NAME = "lincin-chrome";
+
+/**
+ * Markeert de paginakop als gedeeld element. Op native leeg, om dezelfde
+ * reden als `heroTag`: er is geen View Transitions API.
+ */
+export function chromeTag(enabled = true): ViewStyle {
+  void enabled;
+  return {};
+}
+
 /**
  * Voer een navigatie uit binnen een overgang. Op native gewoon uitvoeren
  * — `withPageTransition` is daar zelf ook een no-op.

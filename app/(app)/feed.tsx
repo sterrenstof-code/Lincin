@@ -52,7 +52,7 @@ import {
 
 /**
  * De feed als website-uitgave. Zie `feed-v3-merged.html` voor de
- * pixelreferentie en `DESIGN_V3_FEED.md` voor het ontwerpverslag.
+ * pixelreferentie en `DESIGN.md` voor het systeem.
  *
  * Een gekaderde kop met de tabstrip, daaronder de woordmerk-plaat, en dan
  * één gedeeld kader met twee zones: een smalle zijbalk (alleen "iets delen"
@@ -88,7 +88,7 @@ import {
  *   IN WOORDEN              op soort: fragment/weetje/idee   citaat + tekst
  *
  * ⚠️  LET OP — dit wijkt af van een eerder vastgelegd productprincipe.
- * `DESIGN_V3_FEED.md` legde vast: "geen ranking, geen bereiktellers, je
+ * Het uitgangspunt lag vast: "geen ranking, geen bereiktellers, je
  * vrienden zijn het algoritme", en verwierp expliciet het idee om posts te
  * schalen op basis van reacties. De eerste twee rubrieken hierboven dóén
  * dat nu wel: ze sorteren op `comment_count`. Dat is een bewuste
@@ -715,7 +715,7 @@ const CompactItem = memo(function CompactItem({
 
   // Deze kaarten draaien nog op het warme shell/paper-palet en zijn nog niet
   // herstijld — ze staan daarom in een licht paneel met een etiket erboven,
-  // net zoals in het vorige feed-ontwerp. Zie DESIGN.md §10.
+  // net zoals in het vorige feed-ontwerp. Zie DESIGN.md §5.
   return (
     <Frame filled style={{ padding: 12, ...(dimStyle ?? {}) }}>
       <View style={{ marginBottom: 8 }}>

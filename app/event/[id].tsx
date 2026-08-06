@@ -15,19 +15,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { Avatar } from "@/components/Avatar";
 import { useWide } from "@/components/Editorial";
 import {
+  approveEventJoinRequest,
   contributeToEvent,
+  declineEventJoinRequest,
   deleteContribution,
   eventStatusLabel,
   getEvent,
   listEventContributions,
+  listEventJoinRequests,
+  setEventJoinPolicy,
   subscribeToEventContributions,
   buildEventJoinUrl,
   type ContributionWithAuthor,
+  type EventJoinPolicy,
+  type EventJoinRequest,
 } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
+import { heroTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
@@ -59,6 +67,17 @@ export default function EventDetailScreen() {
     queryFn: () => listEventContributions(eventId, myUserId),
   });
 
+  /**
+   * Openstaande toegangsverzoeken. De RPC geeft alleen rijen terug aan de
+   * host, dus deze query is voor een gast simpelweg leeg — geen aparte
+   * enable-voorwaarde nodig die pas klopt zodra `event` binnen is.
+   */
+  const joinRequests = useQuery({
+    queryKey: ["event-join-requests", eventId],
+    queryFn: () => listEventJoinRequests(eventId),
+    refetchInterval: 60_000,
+  });
+
   useEffect(() => {
     const channel = subscribeToEventContributions(eventId, () => {
       qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
@@ -75,8 +94,55 @@ export default function EventDetailScreen() {
     useCallback(() => {
       qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
       qc.invalidateQueries({ queryKey: ["event", eventId] });
+      qc.invalidateQueries({ queryKey: ["event-join-requests", eventId] });
     }, [eventId, qc])
   );
+
+  async function refreshAccess() {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["event-join-requests", eventId] }),
+      qc.invalidateQueries({ queryKey: ["event", eventId] }),
+      qc.invalidateQueries({ queryKey: ["events", myUserId] }),
+    ]);
+  }
+
+  async function onApproveRequest(request: EventJoinRequest) {
+    setError(null);
+    try {
+      await approveEventJoinRequest(eventId, request.user_id);
+      await refreshAccess();
+    } catch (e: any) {
+      setError(e?.message ?? "Kon het verzoek niet goedkeuren.");
+    }
+  }
+
+  async function onDeclineRequest(request: EventJoinRequest) {
+    const name =
+      request.profile?.display_name ?? request.profile?.username ?? "Deze persoon";
+    const ok = await confirm(
+      "Verzoek weigeren?",
+      `${name} krijgt geen toegang tot dit event. Er gaat geen bericht naar hen.`,
+      { affirmativeLabel: "Weiger", destructive: true }
+    );
+    if (!ok) return;
+    setError(null);
+    try {
+      await declineEventJoinRequest(eventId, request.user_id);
+      await refreshAccess();
+    } catch (e: any) {
+      setError(e?.message ?? "Kon het verzoek niet weigeren.");
+    }
+  }
+
+  async function onChangeJoinPolicy(policy: EventJoinPolicy) {
+    setError(null);
+    try {
+      await setEventJoinPolicy(eventId, policy);
+      await refreshAccess();
+    } catch (e: any) {
+      setError(e?.message ?? "Kon de toegang niet aanpassen.");
+    }
+  }
 
   async function onDeleteContribution(c: ContributionWithAuthor) {
     const ok = await confirm(
@@ -200,7 +266,7 @@ export default function EventDetailScreen() {
           {/* ============ HERO ============
               Zelfde opbouw als de uitgelichte vondst in de feed: kicker en
               kop links, de feiten rechts, en het beeld eronder dat de rest
-              van het scherm vult. Zie DESIGN_V3_FEED.md, "Layout, top to
+              van het scherm vult. Zie DESIGN.md §5, "Layout, top to
               bottom", punt 3. */}
           <View
             style={{
@@ -286,10 +352,22 @@ export default function EventDetailScreen() {
                 >
                   {`${ev.members_count} gasten · ${ev.contributions_count} foto's`}
                 </Text>
+                <Text
+                  style={[
+                    feedType.label,
+                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
+                  ]}
+                >
+                  {ev.join_policy === "closed"
+                    ? "Gesloten · op goedkeuring"
+                    : "Open · iedereen met de link"}
+                </Text>
               </View>
             </View>
 
-            {/* Het beeld vult de rest van de hero. */}
+            {/* Het beeld vult de rest van de hero. `heroTag` maakt hem het
+                gedeelde element met de cover van de eventkaart: op web morpht
+                de browser het ene naar het andere. Zie lib/hero-transition. */}
             <View
               style={{
                 width: "100%",
@@ -297,6 +375,7 @@ export default function EventDetailScreen() {
                 borderWidth: FEED_BORDER,
                 borderColor: feed.ink,
                 backgroundColor: feed.post,
+                ...heroTag(`event-${ev.id}`),
               }}
             >
               {ev.cover_url ? (
@@ -339,6 +418,81 @@ export default function EventDetailScreen() {
             <Text style={[feedType.label, { color: flameDeep, textAlign: "center", paddingTop: 10 }]}>
               {error}
             </Text>
+          ) : null}
+
+          {/* ============ TOEGANG — alleen voor de host ============
+              Wie mag binnen, en wie staat er te wachten. Dit staat direct
+              onder de actierij omdat het het enige is op deze pagina waar
+              iemand ánders op wacht. */}
+          {ev.is_host ? (
+            <View
+              style={{
+                marginHorizontal: wide ? 32 : 18,
+                marginTop: 20,
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+              }}
+            >
+              <View style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 }}>
+                <Text
+                  style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}
+                >
+                  TOEGANG
+                </Text>
+                <Text style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.inkDim }]}>
+                  {ev.join_policy === "closed"
+                    ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
+                    : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: "row", borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+                <PolicyCell
+                  label="Gesloten"
+                  active={ev.join_policy === "closed"}
+                  onPress={() => onChangeJoinPolicy("closed")}
+                />
+                <PolicyCell
+                  label="Open"
+                  active={ev.join_policy === "open"}
+                  onPress={() => onChangeJoinPolicy("open")}
+                  last
+                />
+              </View>
+
+              {(joinRequests.data ?? []).length > 0 ? (
+                <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+                  <View style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6 }}>
+                    <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.55 }]}>
+                      {`${(joinRequests.data ?? []).length} WACHT${
+                        (joinRequests.data ?? []).length === 1 ? "" : "EN"
+                      } OP JE`}
+                    </Text>
+                  </View>
+                  {(joinRequests.data ?? []).map((request) => (
+                    <JoinRequestRow
+                      key={request.user_id}
+                      request={request}
+                      onApprove={() => onApproveRequest(request)}
+                      onDecline={() => onDeclineRequest(request)}
+                    />
+                  ))}
+                </View>
+              ) : ev.join_policy === "closed" ? (
+                <View
+                  style={{
+                    borderTopWidth: FEED_BORDER,
+                    borderTopColor: feed.ink,
+                    paddingHorizontal: 18,
+                    paddingVertical: 14,
+                  }}
+                >
+                  <Text style={[feedType.label, { color: feed.inkDim }]}>
+                    Geen openstaande verzoeken.
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           ) : null}
 
           {/* Privacy note: event media is not end-to-end encrypted like chats. */}
@@ -422,6 +576,112 @@ export default function EventDetailScreen() {
         </View>
       </PageScroll>
     </SafeAreaView>
+  );
+}
+
+/** Eén helft van de open/gesloten-schakelaar. Dezelfde vorm als de actierij. */
+function PolicyCell({
+  label,
+  active,
+  onPress,
+  last = false,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={active}
+      style={({ pressed }) => ({
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 13,
+        backgroundColor: active ? feed.ink : pressed ? feed.post : "transparent",
+        ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
+      })}
+    >
+      <Text
+        style={[
+          feedType.label,
+          { fontSize: 12, fontWeight: "700", color: active ? feed.text : feed.ink },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Eén openstaand toegangsverzoek: wie het is, en de twee knoppen. */
+function JoinRequestRow({
+  request,
+  onApprove,
+  onDecline,
+}: {
+  request: EventJoinRequest;
+  onApprove: () => void;
+  onDecline: () => void;
+}) {
+  const name =
+    request.profile?.display_name ?? request.profile?.username ?? "Onbekend";
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+      }}
+    >
+      <Avatar
+        name={name}
+        avatarUrl={request.profile?.avatar_url ?? null}
+        size="sm"
+        tint="light"
+      />
+      <View style={{ flex: 1, paddingHorizontal: 12 }}>
+        <Text
+          style={[feedType.label, { fontSize: 13, fontWeight: "700", color: feed.ink }]}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        {request.profile?.username ? (
+          <Text style={[feedType.label, { color: feed.inkDim, marginTop: 2 }]} numberOfLines={1}>
+            {`@${request.profile.username}`}
+          </Text>
+        ) : null}
+      </View>
+      <Pressable
+        onPress={onDecline}
+        style={({ pressed }) => ({
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          marginRight: 8,
+          borderWidth: FEED_BORDER,
+          borderColor: feed.ink,
+          backgroundColor: pressed ? feed.post : "transparent",
+        })}
+      >
+        <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>Weiger</Text>
+      </Pressable>
+      <Pressable
+        onPress={onApprove}
+        style={({ pressed }) => ({
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          backgroundColor: pressed ? flameDeep : feed.ink,
+        })}
+      >
+        <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.text }]}>
+          Toelaten
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 

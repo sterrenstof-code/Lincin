@@ -171,6 +171,7 @@ export default function ProfileScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
         contentStyle={{ paddingVertical: 20, paddingBottom: 60 }}
       >
         {/* ---- Hero on shell ---- */}
@@ -324,7 +325,7 @@ export default function ProfileScreen() {
 
           {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
           <Pressable
-            onPress={() => router.push("/device-link" as any)}
+            onPress={() => router.push("/device-link")}
             className="flex-row items-center bg-brand/10 active:bg-brand/20 px-4 py-3 mt-3"
           >
             <Ionicons name="qr-code-outline" color="#5B8DEF" size={18} />

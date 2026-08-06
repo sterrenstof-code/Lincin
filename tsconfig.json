@@ -14,5 +14,12 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo/web-build",
+    "_backup_feed_upgrade",
+    "supabase/functions"
   ]
 }

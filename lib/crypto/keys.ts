@@ -1,4 +1,4 @@
-import { generateKeyPair, sharedKey } from "@stablelib/x25519";
+import { generateKeyPair, generateKeyPairFromSeed, sharedKey } from "@stablelib/x25519";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import { initCryptoRandom } from "./random";
@@ -56,11 +56,19 @@ export function deriveSharedSecret(
 /**
  * Leid de publieke sleutel af uit een bestaande private sleutel.
  * Gebruikt door de transfer-module na sleutelherstel.
- * generateKeyPair(seed) klampt de scalar en berekent het basispunt-product.
- * Dubbel klampen is idempotent, dus veilig voor al-geklampte keys.
+ *
+ * `generateKeyPairFromSeed` klampt de scalar en berekent het
+ * basispunt-product. Dubbel klampen is idempotent, dus veilig voor
+ * al-geklampte sleutels.
+ *
+ * LET OP — dit was `generateKeyPair(secretKey)`, en dat is een andere
+ * functie: die verwacht géén seed maar een `RandomSource` en roept er
+ * `randomBytes()` op aan. Op een Uint8Array bestaat die methode niet, dus
+ * elke aanroep gooide. Sleutelherstel op een tweede toestel
+ * (`lib/crypto/transfer.ts`) kon daardoor niet werken.
  */
 export function derivePublicFromPrivate(secretKey: Uint8Array): Uint8Array {
-  return generateKeyPair(secretKey).publicKey;
+  return generateKeyPairFromSeed(secretKey).publicKey;
 }
 
 // ---------- device id ----------

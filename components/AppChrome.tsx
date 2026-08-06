@@ -1,4 +1,6 @@
-import { usePathname, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
+import { usePathname, useRouter, type Href } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   Animated,
@@ -6,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -13,6 +16,7 @@ import {
 } from "react-native";
 
 import { LogoMark } from "@/components/LogoMark";
+import { chromeTag } from "@/lib/hero-transition";
 import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 
 /**
@@ -26,10 +30,22 @@ import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/t
  *   COMPACT   één zwarte balk: klein LINCIN links, de navigatie erín,
  *             en rechts de primaire actie
  *
- * Bovenaan de pagina staat de grote stand; zodra je scrolt kruisvervaagt
- * hij naar de compacte balk, die ook naar de linkerhoek krimpt. Detailpagina's
- * (`/post/[id]`, `/event/[id]`, `/user/[…]`) beginnen meteen in de compacte
- * stand — daar is de grote kop alleen maar ruimte die het onderwerp afpakt.
+ * De grote stand hoort bij **de thuispagina** (`/feed`) en nergens anders.
+ * Daar is het merk het onderwerp; op elke andere pagina is het onderwerp de
+ * pagina zelf, en dan is een affiche van drie rijen boven de inhoud alleen
+ * maar ruimte die je van het onderwerp afpakt. Op de feed klapt hij bij het
+ * scrollen alsnog dicht naar de compacte balk; alle andere pagina's — de
+ * andere tabbladen én de detailpagina's — geven `compact` mee en beginnen
+ * én blijven in de balk.
+ *
+ * Omdat de compacte balk daarmee op de meeste pagina's de énige kop is,
+ * draagt hij ook de utility die anders alleen in de grote stand stond:
+ * Meldingen zit rechts in de balk, naast de primaire actie.
+ *
+ * Beide standen dragen op web dezelfde `view-transition-name` (zie
+ * `chromeTag`). Bij een navigatie morpht de browser de ene kop dus naar de
+ * andere, net zoals hij dat met een hero-beeld doet: de grote kop krimpt
+ * naar de balk in plaats van eronder weg te vallen.
  *
  * De chrome staat BUITEN de scrollende inhoud van een scherm; zie PageScroll.
  */
@@ -46,13 +62,35 @@ export const PAGE_MAX: number | undefined = undefined;
 const BAR_H = 58;
 
 /** De échte routes uit `app/(app)/_layout.tsx` — geen verzonnen navigatie. */
-const TABS: { href: string; label: string }[] = [
-  { href: "/feed", label: "Feed" },
-  { href: "/events", label: "Events" },
-  { href: "/chats", label: "Chats" },
-  { href: "/friends", label: "Vrienden" },
-  { href: "/profile", label: "Profiel" },
-];
+// `as const satisfies`: de literals blijven behouden (nodig als React-key
+// én voor de gegenereerde route-types), en `satisfies` bewaakt dat elke
+// href een bestaande route is. Met een kale `Href`-annotatie zou het type
+// de object-vorm meenemen, en die kan geen key zijn.
+const TABS = [
+  { href: "/feed", label: "Feed", icon: "newspaper-outline" },
+  { href: "/events", label: "Events", icon: "sparkles-outline" },
+  { href: "/chats", label: "Chats", icon: "chatbubble-outline" },
+  { href: "/friends", label: "Vrienden", icon: "people-outline" },
+  { href: "/profile", label: "Profiel", icon: "person-outline" },
+] as const satisfies readonly {
+  href: Href;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[];
+
+/**
+ * Onder deze breedte krijgt de compacte balk iconen in plaats van woorden.
+ *
+ * Dit is geen smaakkwestie: de balk is de énige navigatie in de app (de
+ * Tabs-navigator tekent bewust geen tweede rij onderaan), en vijf woorden
+ * plus het merk plus een actieknop passen op een telefoon niet naast elkaar.
+ * Ze werden dan stilletjes weggeknipt door de `overflow: hidden` van de
+ * balk — navigatie die er niet is, zonder dat iets dat meldt.
+ *
+ * De grens ligt lager dan het `wide`-breekpunt (900): op een tablet is er
+ * ruimte zat voor de woorden, en woorden lezen beter dan iconen.
+ */
+const ICON_ONLY_MAX_WIDTH = 560;
 
 // ---------------------------------------------------------------
 // Scrollpositie → inklapstand
@@ -176,6 +214,9 @@ function CompactBar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  const iconOnly = width < ICON_ONLY_MAX_WIDTH;
+  const onNotifications = pathname === "/notifications";
 
   return (
     <View
@@ -191,8 +232,8 @@ function CompactBar({
     >
       {/* Het merk, klein. */}
       <Pressable
-        onPress={() => router.push("/feed" as never)}
-        style={{ justifyContent: "center", paddingHorizontal: 16 }}
+        onPress={() => router.push("/feed")}
+        style={{ justifyContent: "center", paddingHorizontal: iconOnly ? 12 : 16 }}
       >
         <Text
           allowFontScaling={false}
@@ -229,27 +270,74 @@ function CompactBar({
               <Pressable
                 key={tab.href}
                 onPress={() => {
-                  if (!active) router.push(tab.href as never);
+                  if (!active) router.push(tab.href);
                 }}
                 style={{
                   justifyContent: "center",
-                  paddingHorizontal: 16,
+                  alignItems: "center",
+                  // Op een telefoon deelt de rij de breedte; met vaste
+                  // padding viel het laatste tabblad buiten de balk.
+                  ...(iconOnly ? { flex: 1 } : { paddingHorizontal: 16 }),
                   // De actieve pagina keert om binnen de zwarte balk.
                   backgroundColor: active ? "#FAF8F5" : "transparent",
                 }}
               >
-                <Text
-                  style={[
-                    feedType.label,
-                    { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
+                {iconOnly ? (
+                  <Ionicons
+                    name={tab.icon}
+                    size={19}
+                    color={active ? feed.ink : "rgba(250,248,245,0.78)"}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      feedType.label,
+                      { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {tab.label}
+                  </Text>
+                )}
               </Pressable>
             );
           })}
+
+          {/* Meldingen. Die zat vroeger alleen in de micro-utilityregel van
+              de grote kop; nu die kop alleen nog op de feed staat, zou hij
+              van élke andere pagina verdwijnen. */}
+          <Pressable
+            onPress={() => {
+              if (!onNotifications) router.push("/notifications");
+            }}
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              ...(iconOnly ? { flex: 1 } : { paddingHorizontal: 14 }),
+              backgroundColor: onNotifications ? "#FAF8F5" : "transparent",
+            }}
+          >
+            {iconOnly ? (
+              <Ionicons
+                name="notifications-outline"
+                size={19}
+                color={onNotifications ? feed.ink : "rgba(250,248,245,0.78)"}
+              />
+            ) : (
+              <Text
+                style={[
+                  feedType.label,
+                  {
+                    fontSize: 12,
+                    color: onNotifications ? feed.ink : "rgba(250,248,245,0.78)",
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                Meldingen
+              </Text>
+            )}
+          </Pressable>
         </View>
       )}
 
@@ -318,7 +406,7 @@ function FullHeader({
             <Text style={[feedType.label, { color: feed.ink, marginHorizontal: 5 }]}>·</Text>
             {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
                 verouderd en kennen /notifications niet. */}
-            <Pressable onPress={() => router.push("/notifications" as never)} hitSlop={6}>
+            <Pressable onPress={() => router.push("/notifications")} hitSlop={6}>
               <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
             </Pressable>
           </View>
@@ -334,7 +422,7 @@ function FullHeader({
               <Pressable
                 key={tab.href}
                 onPress={() => {
-                  if (!active) router.push(tab.href as never);
+                  if (!active) router.push(tab.href);
                 }}
                 style={{
                   flex: 1,
@@ -592,6 +680,13 @@ export function PageScroll({
   compact?: boolean;
 }) {
   const [headerHeight, setHeaderHeight] = useState(0);
+  /**
+   * Alleen de kop van het scherm dat je aankijkt draagt de naam van het
+   * gedeelde element. Een navigator houdt schermen gemount, en twee
+   * elementen met dezelfde `view-transition-name` tegelijk in beeld laat de
+   * browser de hele overgang overslaan.
+   */
+  const focused = useIsFocused();
 
   return (
     <View style={{ flex: 1 }}>
@@ -615,7 +710,7 @@ export function PageScroll({
       </ScrollView>
 
       <View
-        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, ...chromeTag(focused) }}
         onLayout={(e) => {
           const h = e.nativeEvent.layout.height;
           setHeaderHeight((prev) => (h > prev ? h : prev));

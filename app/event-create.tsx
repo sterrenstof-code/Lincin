@@ -17,7 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
-import { createEvent, type EventRevealMode } from "@/lib/api/events";
+import {
+  createEvent,
+  type EventJoinPolicy,
+  type EventRevealMode,
+} from "@/lib/api/events";
 import { feed } from "@/lib/design/type";
 
 function plusHours(date: Date, hours: number): Date {
@@ -44,6 +48,10 @@ export default function EventCreateScreen() {
   const [startsAt, setStartsAt] = useState(toLocalISO(defaultStart));
   const [endsAt, setEndsAt] = useState(toLocalISO(defaultEnd));
   const [reveal, setReveal] = useState<EventRevealMode>("after");
+  // Gesloten is de standaard: een event dat per ongeluk open staat kost je
+  // gasten die je niet uitgenodigd hebt, en dat kan je achteraf niet meer
+  // ongedaan maken.
+  const [joinPolicy, setJoinPolicy] = useState<EventJoinPolicy>("closed");
   const [delayHours, setDelayHours] = useState("24");
   const [maxGuests, setMaxGuests] = useState("100");
   const [coverUri, setCoverUri] = useState<string | null>(null);
@@ -93,6 +101,7 @@ export default function EventCreateScreen() {
         startsAt: start,
         endsAt: end,
         reveal,
+        joinPolicy,
         revealDelayHours: reveal === "delayed" ? parseInt(delayHours, 10) || 24 : 0,
         maxGuests: Math.max(1, Math.min(1000, parseInt(maxGuests, 10) || 100)),
         coverUri,
@@ -221,6 +230,31 @@ export default function EventCreateScreen() {
               <DateInput value={endsAt} onChange={setEndsAt} />
             </View>
 
+            {/* Toegang — open of gesloten groep */}
+            <View className="bg-paper p-6 mt-4">
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
+                Wie mag meedoen
+              </Text>
+              <Text className="text-ink-soft text-sm mb-3">
+                De link en QR blijven in beide gevallen deelbaar. Het verschil is
+                wat er gebeurt wanneer iemand erop tikt.
+              </Text>
+              <View className="gap-2">
+                <ChoiceOption
+                  active={joinPolicy === "closed"}
+                  onPress={() => setJoinPolicy("closed")}
+                  title="Gesloten groep"
+                  subtitle="Jij keurt elk verzoek goed — geen ongenode gasten"
+                />
+                <ChoiceOption
+                  active={joinPolicy === "open"}
+                  onPress={() => setJoinPolicy("open")}
+                  title="Open groep"
+                  subtitle="Iedereen met de link komt meteen binnen"
+                />
+              </View>
+            </View>
+
             {/* Onthulling */}
             <View className="bg-paper p-6 mt-4">
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
@@ -230,19 +264,19 @@ export default function EventCreateScreen() {
                 Wanneer mogen gasten elkaars bijdragen zien?
               </Text>
               <View className="gap-2">
-                <RevealOption
+                <ChoiceOption
                   active={reveal === "during"}
                   onPress={() => setReveal("during")}
                   title="Tijdens het event"
                   subtitle="Iedereen ziet alles realtime"
                 />
-                <RevealOption
+                <ChoiceOption
                   active={reveal === "after"}
                   onPress={() => setReveal("after")}
                   title="Na het event"
                   subtitle="Surprise-onthulling op het eind"
                 />
-                <RevealOption
+                <ChoiceOption
                   active={reveal === "delayed"}
                   onPress={() => setReveal("delayed")}
                   title="Na vertraging"
@@ -277,7 +311,9 @@ export default function EventCreateScreen() {
                 className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
               />
               <Text className="text-ink-muted text-xs mt-2">
-                1–1000. Iedereen kan via een gedeelde link of QR meedoen tot deze limiet.
+                {joinPolicy === "closed"
+                  ? "1–1000. Ook goedgekeurde verzoeken tellen mee tot deze limiet."
+                  : "1–1000. Iedereen kan via een gedeelde link of QR meedoen tot deze limiet."}
               </Text>
             </View>
 
@@ -342,7 +378,7 @@ function DateInput({
   );
 }
 
-function RevealOption({
+function ChoiceOption({
   active,
   onPress,
   title,

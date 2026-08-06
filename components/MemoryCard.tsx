@@ -9,7 +9,7 @@ export function MemoryCard({ post }: { post: PostWithAuthor }) {
 
   return (
     <Pressable
-      onPress={() => router.push(`/post/${post.id}` as any)}
+      onPress={() => router.push(`/post/${post.id}`)}
       className="bg-carbon overflow-hidden mb-3"
     >
       {post.image_url && (

@@ -194,15 +194,22 @@ export async function voteCallPlanSlot(args: {
     );
   if (error) throw error;
 
-  // Notify plan owner (fire-and-forget) — alleen bij "ja"-stem, één keer per persoon
+  // Notify plan owner (fire-and-forget) — alleen bij "ja"-stem, één keer per persoon.
+  //
+  // Een async IIFE en geen `.then(...).catch(...)`: de builder van Supabase
+  // geeft een `PromiseLike` terug, en die heeft wél `then` maar géén `catch`.
+  // De keten hierboven zag er dus goed uit maar ving niets op — een fout in
+  // de notificatie zou als unhandled rejection zijn geëindigd.
   if (args.available) {
-    supabase
-      .from("call_plan_slots")
-      .select("call_plan_id")
-      .eq("id", args.slotId)
-      .single()
-      .then(async ({ data: slot }) => {
+    void (async () => {
+      try {
+        const { data: slot } = await supabase
+          .from("call_plan_slots")
+          .select("call_plan_id")
+          .eq("id", args.slotId)
+          .single();
         if (!slot) return;
+
         const { data: plan } = await supabase
           .from("call_plans")
           .select("user_id")
@@ -216,7 +223,9 @@ export async function voteCallPlanSlot(args: {
             postId: slot.call_plan_id,
           });
         }
-      })
-      .catch(() => {});
+      } catch {
+        // Bewust stil: een gemiste notificatie mag een stem niet laten falen.
+      }
+    })();
   }
 }

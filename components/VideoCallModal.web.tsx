@@ -44,7 +44,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         {/* @ts-ignore — iframe is een geldig DOM-element in React Native Web */}
         <iframe
           src={src}
-          style={styles.iframe as any}
+          style={iframeStyle as any}
           allow="camera; microphone; fullscreen; display-capture; autoplay"
           allowFullScreen
         />
@@ -79,10 +79,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iframe: {
-    flex: 1,
-    border: "none",
-    width: "100%",
-    height: "100%",
-  },
 });
+
+/**
+ * Staat bewust buiten `StyleSheet.create`: deze stijl gaat naar een échte
+ * `<iframe>` in de DOM, en `border` bestaat niet in ViewStyle. In de
+ * StyleSheet zou hij de hele set laten afkeuren.
+ */
+const iframeStyle = {
+  flex: 1,
+  border: "none",
+  width: "100%",
+  height: "100%",
+} as const;

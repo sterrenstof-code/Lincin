@@ -218,7 +218,7 @@ export async function getChatRow(chatId: string): Promise<ChatRow | null> {
 export async function uploadGroupAvatar(
   chatId: string,
   userId: string,
-  fileBytes: Uint8Array,
+  fileBytes: Uint8Array<ArrayBuffer>,
   mimeType: string
 ): Promise<string> {
   const ext = mimeType === "image/png" ? "png" : "jpg";

@@ -1,4 +1,4 @@
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type ViewStyle } from "react-native";
 
@@ -11,7 +11,7 @@ import { feed, FEED_BORDER, feedType } from "@/lib/design/type";
  *
  * Alles hier is rechthoekig en omkaderd met één lijndikte (`FEED_BORDER`,
  * 1.5px). De enige ronding in dit hele scherm is de avatar — dat is de
- * regel uit DESIGN.md §9 en `DESIGN_V3_FEED.md` bevestigt hem expliciet.
+ * regel uit DESIGN.md §7 ("geen tweede navigatiebalk").
  *
  * De kaders staan in `style` en niet in een `border-[1.5px]`-class. Dat is
  * dezelfde afweging die de oude `Band` in feed.tsx al maakte voor de
@@ -63,13 +63,17 @@ function Divider() {
  * wordt hier geen eigen navigatieset verzonnen. Meldingen zit niet in de
  * strip maar in de micro-utilityregel erboven, precies zoals in het ontwerp.
  */
-const TABS: { href: string; label: string }[] = [
+// `as const satisfies`: de literals blijven behouden (nodig als React-key
+// én voor de gegenereerde route-types), en `satisfies` bewaakt dat elke
+// href een bestaande route is. Met een kale `Href`-annotatie zou het type
+// de object-vorm meenemen, en die kan geen key zijn.
+const TABS = [
   { href: "/feed", label: "Feed" },
   { href: "/events", label: "Events" },
   { href: "/chats", label: "Chats" },
   { href: "/friends", label: "Vrienden" },
   { href: "/profile", label: "Profiel" },
-];
+] as const satisfies readonly { href: Href; label: string }[];
 
 export function FeedHeader({ wide }: { wide: boolean }) {
   const router = useRouter();
@@ -108,7 +112,7 @@ export function FeedHeader({ wide }: { wide: boolean }) {
           {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
               verouderd en kennen /notifications niet. Zelfde workaround als
               SharedListCard al gebruikt voor /list/[id]. */}
-          <Pressable onPress={() => router.push("/notifications" as never)} hitSlop={6}>
+          <Pressable onPress={() => router.push("/notifications")} hitSlop={6}>
             <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
           </Pressable>
         </View>
@@ -125,7 +129,7 @@ export function FeedHeader({ wide }: { wide: boolean }) {
             <Pressable
               key={tab.href}
               onPress={() => {
-                if (!active) router.push(tab.href as never);
+                if (!active) router.push(tab.href);
               }}
               style={{
                 flex: 1,
@@ -172,7 +176,7 @@ export function FeedHeader({ wide }: { wide: boolean }) {
           Ontdekkingen van je vrienden — links, fragmenten, muziek en ideeën.
         </Text>
         <Pressable
-          onPress={() => router.push("/notifications" as never)}
+          onPress={() => router.push("/notifications")}
           style={{ marginTop: wide ? 0 : 12, marginLeft: wide ? 24 : 0 }}
         >
           <Text

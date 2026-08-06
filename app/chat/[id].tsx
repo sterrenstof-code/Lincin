@@ -1518,12 +1518,12 @@ export default function ChatDetail() {
             {
               label: "Videocall plannen",
               icon: "videocam-outline",
-              onPress: () => router.push(`/call-plan-compose?chatId=${id}` as any),
+              onPress: () => router.push(`/call-plan-compose?chatId=${id}`),
             },
             {
               label: "Poll",
               icon: "bar-chart-outline",
-              onPress: () => router.push(`/poll-compose?chatId=${id}` as any),
+              onPress: () => router.push(`/poll-compose?chatId=${id}`),
             },
           ]}
         />

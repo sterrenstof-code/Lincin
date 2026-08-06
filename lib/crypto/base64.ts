@@ -37,7 +37,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
  * keys (44 chars, 1 "=") werden de laatste 2 bytes 0xFF, waardoor
  * encrypt/decrypt nooit kon werken cross-session.
  */
-export function base64ToBytes(b64: string): Uint8Array {
+export function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   const clean = b64.replace(/[^A-Za-z0-9+/=]/g, "");
   const pad = (clean.match(/=+$/) || [""])[0].length;
   const len = (clean.length / 4) * 3 - pad;

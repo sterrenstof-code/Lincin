@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
-import * as FileSystem from "expo-file-system";
+// Legacy-ingang: de klassieke functies op de hoofdingang gooien sinds
+// SDK 54 bij aanroep. Zie de toelichting in `lib/crypto/file.ts`.
+import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 
 export type CalendarEvent = {

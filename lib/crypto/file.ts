@@ -1,6 +1,19 @@
 import { randomBytes } from "@stablelib/random";
 import { XChaCha20Poly1305 } from "@stablelib/xchacha20poly1305";
-import * as FileSystem from "expo-file-system";
+/**
+ * `expo-file-system/legacy` en niet `expo-file-system`.
+ *
+ * Sinds SDK 54 draagt de hoofdingang de nieuwe File/Directory-API. De
+ * klassieke functies staan er nog wel in als *deprecated stubs*, maar die
+ * **gooien bij aanroep** ("This method will throw in runtime") en
+ * `cacheDirectory`/`EncodingType` zijn er helemaal uit. Het typecheck-lawaai
+ * verborg dat: dit bestand was in de praktijk stuk — versleutelde bijlagen
+ * konden niet gelezen of weggeschreven worden.
+ *
+ * De legacy-ingang is dezelfde implementatie als vroeger en dus een
+ * gedragsneutrale herstelling. Migreren naar `new File(...)` kan later.
+ */
+import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
@@ -56,7 +69,7 @@ export function decryptFileBytes(
  * Lees een lokale URI (van image-picker of document-picker) als Uint8Array.
  * Werkt op web (blob: of data: URIs) en native (file://).
  */
-export async function uriToBytes(uri: string): Promise<Uint8Array> {
+export async function uriToBytes(uri: string): Promise<Uint8Array<ArrayBuffer>> {
   if (Platform.OS === "web") {
     const response = await fetch(uri);
     const buffer = await response.arrayBuffer();

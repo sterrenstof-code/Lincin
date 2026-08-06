@@ -19,8 +19,9 @@ module.exports = {
         // ernaar, en door de wáárden te herwijzen schuift alles in
         // één keer mee zonder die schermen aan te raken.
         //
-        // De oude warme waarden staan in `_backup_feed_v3/` en in
-        // git-historie als je wil vergelijken.
+        // De oude warme waarden staan in de git-historie als je wil
+        // vergelijken. Het systeem zelf staat in `DESIGN.md`; deze
+        // waarden moeten gelijk blijven aan die in `lib/design/type.ts`.
         // =========================================================
 
         // ---- Vlakken ----

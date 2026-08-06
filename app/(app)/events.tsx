@@ -141,6 +141,7 @@ export default function EventsScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
         refreshControl={
           <RefreshControl
             refreshing={events.isFetching && !events.isLoading}

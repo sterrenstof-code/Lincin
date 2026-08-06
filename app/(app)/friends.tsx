@@ -108,6 +108,7 @@ export default function FriendsScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
       >
       <View style={{ paddingVertical: 20, paddingBottom: 40 }}>
         <View>

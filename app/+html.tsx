@@ -107,6 +107,26 @@ export default function Root({ children }: PropsWithChildren) {
   object-fit: cover;
 }
 
+/* ---- 1b. De kop: krimpt mee in plaats van te verspringen ----
+   De grote kop van de thuispagina en de balk van elke andere pagina dragen
+   dezelfde naam (zie lib/hero-transition.web.ts). De browser morpht dus het
+   ene kader naar het andere. Korter dan de 520ms van een beeld: de kop legt
+   een kleinere afstand af, en hij mag niet nog bewegen wanneer de pagina
+   eronder al staat.
+
+   object-fit: cover met object-position: top left laat de kop bijsnijden
+   vanaf de linkerbovenhoek in plaats van uit te rekken — het woordmerk staat
+   daar, en dat is precies wat je in beeld wil houden terwijl hij krimpt. */
+::view-transition-group(lincin-chrome) {
+  animation-duration: 380ms;
+}
+::view-transition-old(lincin-chrome),
+::view-transition-new(lincin-chrome) {
+  animation-duration: 380ms;
+  object-fit: cover;
+  object-position: top left;
+}
+
 /* ---- 2. De pagina: kruisvervagen met een stijging ---- */
 @keyframes lincin-page-out {
   from { opacity: 1; }

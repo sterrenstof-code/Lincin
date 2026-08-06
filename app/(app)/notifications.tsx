@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -68,6 +68,7 @@ export default function NotificationsScreen() {
         progress={chrome.progress}
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
         contentStyle={{ paddingVertical: 28, paddingBottom: 80 }}
         refreshControl={
           <RefreshControl
@@ -157,6 +158,8 @@ function NotificationRow({
     item.type === "invited_to_list"   ? `${actorName} nodigde je uit voor een lijst` :
     item.type === "invited_to_call"   ? `${actorName} nodigde je uit voor een videocall` :
     item.type === "event_join"        ? `${actorName} nam deel aan ${eventName}` :
+    item.type === "event_join_request" ? `${actorName} vraagt toegang tot ${eventName}` :
+    item.type === "event_join_approved" ? `${actorName} liet je toe tot ${eventName}` :
     item.type === "event_contribution" ? `${actorName} plaatste iets in ${eventName}` :
     `${actorName} deed iets`;
 
@@ -227,12 +230,20 @@ function NotificationRow({
 }
 
 function PostThumb({ imagePath }: { imagePath: string }) {
-  const [url, setUrl] = require("react").useState<string | null>(null);
-  require("react").useEffect(() => {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    // `cancelled` voorkomt een setState nadat de rij uit de lijst is
+    // gevallen — de ondertekende URL komt asynchroon binnen.
+    let cancelled = false;
     supabase.storage
       .from("posts")
       .createSignedUrl(imagePath, 300)
-      .then(({ data }) => { if (data?.signedUrl) setUrl(data.signedUrl); });
+      .then(({ data }) => {
+        if (!cancelled && data?.signedUrl) setUrl(data.signedUrl);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [imagePath]);
   if (!url) return null;
   return (

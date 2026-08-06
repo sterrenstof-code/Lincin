@@ -45,6 +45,29 @@ export function heroTag(id: string): ViewStyle {
 }
 
 /**
+ * De naam van het gedeelde element van de **paginakop**.
+ *
+ * De kop is het tweede ding dat over een navigatie heen blijft bestaan: op
+ * de thuispagina staat hij groot, overal elders als balk. Krijgen beide
+ * standen dezelfde naam, dan morpht de browser de ene naar de andere in
+ * plaats van de ene te laten verdwijnen en de andere te laten verschijnen.
+ * De keyframes staan in `app/+html.tsx`.
+ */
+export const CHROME_TRANSITION_NAME = "lincin-chrome";
+
+/**
+ * Markeert de kop als gedeeld element.
+ *
+ * `enabled` is geen luxe: een navigator houdt schermen gemount, en twéé
+ * elementen met dezelfde naam tegelijk in beeld laat de browser de hele
+ * overgang overslaan. Alleen het scherm dat de focus heeft draagt hem.
+ */
+export function chromeTag(enabled = true): ViewStyle {
+  if (!HERO_TRANSITION_SUPPORTED || !enabled) return {};
+  return { viewTransitionName: CHROME_TRANSITION_NAME } as unknown as ViewStyle;
+}
+
+/**
  * Voert de navigatie uit als gedeelde-element-overgang.
  *
  * De `"hero"`-richting is het enige verschil met een gewone navigatie: de

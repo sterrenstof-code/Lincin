@@ -36,11 +36,11 @@ export function ActivityCard({ event }: { event: ActivityEventWithActor }) {
 
   function handlePress() {
     if (event.kind === "post_created" && event.post_id) {
-      router.push(`/post/${event.post_id}` as any);
+      router.push(`/post/${event.post_id}`);
     } else if ((event.kind === "event_created" || event.kind === "event_joined") && event.event_id) {
-      router.push(`/event/${event.event_id}` as any);
+      router.push(`/event/${event.event_id}`);
     } else if (event.kind === "friend_accepted" && event.actor?.username) {
-      router.push(`/user/${event.actor.username}` as any);
+      router.push(`/user/${event.actor.username}`);
     }
   }
 

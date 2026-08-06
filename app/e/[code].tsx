@@ -11,8 +11,12 @@ import { joinEventByCode } from "@/lib/api/events";
 import { feed, flame } from "@/lib/design/type";
 
 /**
- * Landing voor /e/{join_code}: roept join_event RPC aan, doet auto-redirect
- * naar /event/{event_id} bij succes. Bij niet-ingelogd: stuur naar login.
+ * Landing voor /e/{join_code}: roept de join_event RPC aan.
+ *
+ * Bij een **open** event sta je meteen in de gastenlijst en sturen we door
+ * naar /event/{id}. Bij een **gesloten** event is er nog niets om naartoe te
+ * gaan — je verzoek staat bij de host — dus blijft dit scherm staan met de
+ * uitleg. Bij niet-ingelogd: eerst naar login.
  */
 export default function JoinEventScreen() {
   const router = useRouter();
@@ -23,6 +27,7 @@ export default function JoinEventScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -34,9 +39,13 @@ export default function JoinEventScreen() {
     (async () => {
       setBusy(true);
       try {
-        const eventId = await joinEventByCode(code);
+        const result = await joinEventByCode(code);
         await qc.invalidateQueries({ queryKey: ["events", session.user.id] });
-        router.replace(`/event/${eventId}`);
+        if (result.status === "pending") {
+          setPending(true);
+          return;
+        }
+        router.replace(`/event/${result.eventId}`);
       } catch (e: any) {
         setError(e?.message ?? "Kon event niet joinen.");
       } finally {
@@ -62,6 +71,26 @@ export default function JoinEventScreen() {
               </Text>
               <Pressable
                 onPress={() => router.replace("/(app)/feed")}
+                className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
+              >
+                <Text className="text-cream font-semibold">Naar Lincin</Text>
+              </Pressable>
+            </View>
+          ) : pending ? (
+            <View className="bg-paper p-8 w-full items-center">
+              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
+                <Ionicons name="hourglass-outline" color={feed.ink} size={24} />
+              </View>
+              <Text className="text-ink font-bold text-xl text-center mb-1">
+                Verzoek verstuurd
+              </Text>
+              <Text className="text-ink-soft text-sm text-center leading-5">
+                Dit is een gesloten event. De organisator kreeg je verzoek en
+                laat je binnen zodra hij het goedkeurt — je krijgt er een
+                melding van.
+              </Text>
+              <Pressable
+                onPress={() => router.replace("/(app)/events")}
                 className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
               >
                 <Text className="text-cream font-semibold">Naar Lincin</Text>

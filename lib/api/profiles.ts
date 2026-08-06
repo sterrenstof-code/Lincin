@@ -85,7 +85,7 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
  */
 export async function uploadAvatar(
   userId: string,
-  fileBytes: Uint8Array,
+  fileBytes: Uint8Array<ArrayBuffer>,
   mimeType: string
 ): Promise<string> {
   const ext = mimeType === "image/png" ? "png" : "jpg";
@@ -106,7 +106,13 @@ export async function updateMyProfile(
   userId: string,
   changes: { username?: string; display_name?: string | null; avatar_url?: string | null }
 ): Promise<Profile> {
-  const patch: Record<string, unknown> = {};
+  // Niet `Record<string, unknown>`: dat is te breed voor de Update-vorm van
+  // de tabel, waardoor `.update(patch)` niet meer typecheckt.
+  const patch: {
+    username?: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } = {};
   if (changes.username !== undefined) {
     const u = changes.username.trim().toLowerCase();
     const err = validateUsername(u);

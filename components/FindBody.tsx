@@ -506,7 +506,7 @@ function NoteBody({ post }: { post: PostWithAuthor }) {
 // Alleen `app/(app)/feed.tsx` gebruikt wat hieronder staat.
 //
 // Maatvoering volgt `feed-v3-merged.html` (de pixelreferentie) en
-// `DESIGN_V3_FEED.md`. De tegelmaat komt uit de POSITIE en het
+// het feed-systeem. De tegelmaat komt uit de POSITIE en het
 // SOORT, nooit uit populariteit: er wordt hier nergens geteld,
 // gesorteerd of geschaald op basis van reacties. "Geen ranking,
 // geen bereiktellers, je vrienden zijn het algoritme."
@@ -571,7 +571,7 @@ export function formatFeedTime(iso: string): string {
 /**
  * De categoriekleur van een soort — het stipje voor de kicker.
  * `flame-deep` is de klein-tekst-veilige variant en draagt de kickers zelf;
- * teal en gold zijn de twee secundaire accenten uit `DESIGN_V3_FEED.md`.
+ * teal en gold zijn de twee secundaire accenten; zie DESIGN.md §2.
  */
 function categoryColor(kind: PostWithAuthor["kind"]): string {
   switch (kind) {
@@ -591,7 +591,7 @@ function categoryColor(kind: PostWithAuthor["kind"]): string {
  * De kickerregel: soort · deler, met een gekleurd blokje ervoor.
  *
  * Let op: het blokje is vierkant, niet rond. De mockup tekent hier een
- * cirkel van 6px, maar `DESIGN_V3_FEED.md` en Toms briefing zeggen allebei
+ * cirkel van 6px, maar het systeem en Toms briefing zeggen allebei
  * expliciet "radii 0 overal behalve de avatar — niet oprekken". De
  * geschreven regel wint; dit is de enige plek waar hij en de mockup elkaar
  * tegenspreken.

@@ -55,12 +55,14 @@ export const SANS_FAMILY = Platform.select({
 }) as string;
 
 // ===============================================================
-// FEED V3 — het lavendel/plum-systeem. ALLEEN het feed-scherm.
+// FEED V3 — het sans-stelsel.
 //
-// Dit blok staat náást het serif-systeem hierboven, dat overal
-// elders in de app live blijft. De feed is bewust sans-only: ook
-// de brontitel krijgt hier géén serif. Dat is een afwijking van
-// DESIGN.md §1.4, en die afwijking stopt bij de feed.
+// Dit blok staat náást het serif-systeem hierboven; welke waar
+// geldt staat in DESIGN.md §3. Kort: `feedType` draagt de feed en
+// alles wat sinds de v3-uitrol herbouwd is, `type` draagt de
+// redactionele momenten (citaten, koppen van een vondst).
+//
+// De feed is bewust sans-only: ook de brontitel krijgt géén serif.
 // ===============================================================
 
 /**
@@ -343,42 +345,49 @@ export const type = {
 // in een style-object). Voor achtergronden gebruik je de Tailwind-tokens.
 // ---------------------------------------------------------------
 
-/** Het editorial-palet — feed en composer. */
+/**
+ * ---------------------------------------------------------------
+ * ÉÉN ZWART, ÉÉN GEBROKEN WIT — en ze staan gelijk aan Tailwind
+ * ---------------------------------------------------------------
+ * Deze waarden liepen uit de pas met `tailwind.config.js`. Daar wees
+ * `ink` naar #0B0A0C en hier naar #1A1714; `cream` naar #F3EDE4 daar en
+ * #F5E8D3 hier; `page` naar #CDBEE3 daar en #F2F1EE hier. Twee zwarten
+ * van vier hexpunten uit elkaar zie je niet, en dat is precies waarom
+ * het bleef staan: `text-ink` (klasse) en `ink.DEFAULT` (prop) gaven een
+ * andere kleur zonder dat iets het meldde.
+ *
+ * Sinds de v3-uitrol is er één systeem. Deze objecten wijzen daarom nu
+ * naar dezelfde waarden als het `feed`-object hieronder en als de
+ * Tailwind-tokens. Ze blijven bestaan onder hun eigen naam omdat vier
+ * componenten (Editorial, FindBody, CommentsSection, PostReactions) er
+ * met een editoriale bedoeling naar verwijzen — `carbon.muted` zegt daar
+ * iets anders dan `feed.textDim`.
+ *
+ * De pre-v3 exports `ink`, `cream` en `line` zijn weg: nergens
+ * geïmporteerd, en ze hielden een tweede palet in leven. De
+ * Tailwind-klassen `text-ink`/`text-cream` bestaan gewoon nog — die
+ * komen uit `tailwind.config.js`, niet hieruit.
+ */
+
+/** Inkt op een licht vlak. Gelijk aan `feed.ink` en aan `ink` in Tailwind. */
 export const carbon = {
-  DEFAULT: "#12110F",
-  soft: "#55534E",
-  muted: "#8E8C86",
+  DEFAULT: "#0B0A0C",
+  soft: "#3A3540",
+  muted: "#6B6474",
 } as const;
 
+/** De lichte vlakken. Gelijk aan `page`/`paper` in Tailwind. */
 export const page = {
-  DEFAULT: "#F2F1EE",
-  alt: "#E9E8E4",
-  sheet: "#FFFFFF",
+  DEFAULT: "#CDBEE3",
+  alt: "#EFE9F5",
+  sheet: "#F5F1FA",
 } as const;
 
-/** Twee lijngewichten: zwart voor rubrieken, grijs tussen rijen. */
+/** Twee lijngewichten: inkt voor rubrieken, gedempt tussen rijen. */
 export const rule = {
-  strong: "#12110F",
-  soft: "#CFCDC7",
-  onDark: "#3A3936",
-} as const;
-
-/** Het oudere warme palet — nog in gebruik door de niet-gemigreerde schermen. */
-export const ink = {
-  DEFAULT: "#1A1714",
-  soft: "#5A4F40",
-  muted: "#8A7E6C",
-} as const;
-
-export const cream = {
-  DEFAULT: "#F5E8D3",
-  soft: "#C7BBA9",
-  muted: "#8A8275",
-} as const;
-
-export const line = {
-  shell: "#2A2620",
-  paper: "#D8C29B",
+  strong: "#0B0A0C",
+  soft: "rgba(11,10,12,0.25)",
+  onDark: "rgba(243,237,228,0.22)",
 } as const;
 
 /**
