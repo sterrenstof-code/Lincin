@@ -26,16 +26,20 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { AppChrome, useChromeScroll } from "@/components/AppChrome";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
 import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
+import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
+import { chromeTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import {
   chatTitle,
@@ -87,13 +91,19 @@ import {
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { feed, flame } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
   const { width: windowWidth } = useWindowDimensions();
   const railVisible = windowWidth >= CHAT_RAIL_BREAKPOINT;
+  const wide = useWide();
+  // De chat scrollt in een eigen omgekeerde lijst, dus de kop klapt hier
+  // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
+  // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
+  const chrome = useChromeScroll();
+  const screenFocused = useIsFocused();
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
@@ -748,6 +758,19 @@ export default function ChatDetail() {
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
+          balk was de chat een doodlopende straat: op desktop verbergt de
+          gesprekkenlijst links de terug-knop, en dan was er geen enkele
+          weg terug naar de feed, events of je profiel. Zie DESIGN.md §5 —
+          elk scherm draagt dezelfde kop.
+
+          `chromeTag` alleen wanneer dit scherm de focus heeft: twee koppen
+          met dezelfde naam tegelijk in de DOM laat de browser de hele
+          overgang overslaan. Zie lib/hero-transition.web.ts. */}
+      <View style={chromeTag(screenFocused)}>
+        <AppChrome wide={wide} progress={chrome.progress} compact />
+      </View>
+
       {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
           de middenkolom terug en verandert er niets aan dit scherm. */}
@@ -1224,12 +1247,20 @@ export default function ChatDetail() {
             {/* Reply preview bar */}
             {replyTo && (
               <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3">
-                <View className="w-0.5 self-stretch bg-brand" />
+                {/* Zelfde citaatvorm als in de bubbel: rode kantlijn, geen
+                    blauw. Deze balk staat op het donkere composer-vlak. */}
+                <View style={{ width: FEED_BORDER * 2, alignSelf: "stretch", backgroundColor: flame }} />
                 <View className="flex-1">
-                  <Text className="text-brand text-xs font-semibold" numberOfLines={1}>
-                    {replyTo.senderName}
+                  <Text
+                    style={[feedType.kicker, { color: flame, letterSpacing: 0.55 }]}
+                    numberOfLines={1}
+                  >
+                    {replyTo.senderName.toUpperCase()}
                   </Text>
-                  <Text className="text-ink-muted text-xs" numberOfLines={1}>
+                  <Text
+                    style={[feedType.label, { color: feed.textDim, marginTop: 3 }]}
+                    numberOfLines={1}
+                  >
                     {replyTo.previewText}
                   </Text>
                 </View>
@@ -1413,7 +1444,7 @@ export default function ChatDetail() {
             {/* Upload voortgang */}
             {uploadProgress !== null && (
               <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>
-                <View style={{ height: 3, width: `${uploadProgress}%`, backgroundColor: "#5B8DEF" }} />
+                <View style={{ height: 3, width: `${uploadProgress}%`, backgroundColor: flame }} />
               </View>
             )}
 
@@ -1432,7 +1463,7 @@ export default function ChatDetail() {
                     style={{
                       width: 64, height: 64, borderRadius: 8, overflow: "hidden",
                       borderWidth: 2,
-                      borderColor: i === selectedPendingIdx ? "#5B8DEF" : "transparent",
+                      borderColor: i === selectedPendingIdx ? flame : "transparent",
                     }}
                   >
                     <Image source={{ uri: img.uri }} style={{ width: 64, height: 64 }} contentFit="cover" />
@@ -1485,7 +1516,7 @@ export default function ChatDetail() {
                   disabled={sending}
                   style={{
                     width: 44, height: 44, borderRadius: 22,
-                    backgroundColor: sending ? "#3A3A3A" : "#5B8DEF",
+                    backgroundColor: sending ? "#3A3A3A" : flame,
                     alignItems: "center", justifyContent: "center",
                   }}
                 >
@@ -1658,7 +1689,7 @@ function ReactionPickerModal({
           {/* Acties */}
           {onReply && (
             <Pressable onPress={onReply} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+              <Ionicons name="return-down-back-outline" color={flameDeep} size={18} />
               <Text className="text-ink font-medium ml-3">Beantwoorden</Text>
             </Pressable>
           )}
@@ -1829,7 +1860,16 @@ function MessageBubble({
     .onFinalize(springBack);
 
   return (
-    <View className={isMine ? "items-end" : "items-start"}>
+    <View
+      className={isMine ? "items-end" : "items-start"}
+      // Een bubbel mag nooit zo breed worden dat de regel niet meer te
+      // volgen is. Op een telefoon doet de percentage-maat hieronder het
+      // werk; op een breed scherm is 90% van de kolom al gauw 900px, en
+      // dan leest één plakregel — of een lange URL — als een liniaal.
+      // Zestig tekens is de bovengrens van een leesbare regel; bij
+      // 16px-tekst is dat ongeveer deze maat.
+      style={{ maxWidth: BUBBLE_MAX_W, alignSelf: isMine ? "flex-end" : "flex-start" }}
+    >
       {/* Swipe-to-reply indicator */}
       {Platform.OS !== "web" && (
         <Animated.View
@@ -1845,7 +1885,7 @@ function MessageBubble({
             paddingHorizontal: 8,
           }}
         >
-          <Ionicons name="return-down-back-outline" color="#5B8DEF" size={18} />
+          <Ionicons name="return-down-back-outline" color={flameDeep} size={18} />
         </Animated.View>
       )}
 
@@ -1915,27 +1955,42 @@ function MessageBubble({
           )
         ) : (
           <>
-            {/* Reply-quote — aantikken scrollt naar het originele bericht */}
+            {/* Reply-quote — aantikken scrollt naar het originele bericht.
+                Het citaat is een aangehaald blok, geen widget: vierkant,
+                één rode kantlijn, en de naam in dezelfde kicker die de
+                rest van de app voor rubrieken gebruikt. De ronde hoeken en
+                het merkblauw hoorden bij het pre-v3-systeem — zie DESIGN.md
+                §4 en §7. Op de donkere eigen bubbel staat het rood in
+                `flame`, op het lichte vlak in `flameDeep`: klein rood op
+                lavendel haalt anders geen contrast. */}
             {content.reply && (
               <Pressable
                 onPress={() => onReplyQuotePress?.(content.reply!.messageId)}
                 style={{
-                  backgroundColor: isMine ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.10)",
-                  borderLeftWidth: 3,
-                  borderLeftColor: "#5B8DEF",
-                  borderTopLeftRadius: 10,
-                  borderTopRightRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
+                  backgroundColor: isMine ? "rgba(243,237,228,0.08)" : "rgba(11,10,12,0.05)",
+                  borderLeftWidth: FEED_BORDER * 2,
+                  borderLeftColor: isMine ? flame : flameDeep,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
                   marginBottom: 2,
                 }}
               >
-                <Text selectable={false} style={{ color: "#5B8DEF", fontSize: 10, fontWeight: "600" }} numberOfLines={1}>
-                  {content.reply.senderName}
+                <Text
+                  selectable={false}
+                  style={[
+                    feedType.kicker,
+                    { color: isMine ? flame : flameDeep, letterSpacing: 0.55 },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {content.reply.senderName.toUpperCase()}
                 </Text>
                 <Text
                   selectable={false}
-                  style={{ color: isMine ? "#C4B49A" : "#6B5E4E", fontSize: 11 }}
+                  style={[
+                    feedType.label,
+                    { color: isMine ? feed.textDim : feed.inkDim, marginTop: 3 },
+                  ]}
                   numberOfLines={2}
                 >
                   {content.reply.previewText}
@@ -1995,7 +2050,7 @@ function MessageBubble({
           <View className={`flex-row items-center gap-0.5 bg-paper px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}>
             {onReply && (
               <Pressable onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
-                <Ionicons name="return-down-back-outline" color="#5B8DEF" size={16} />
+                <Ionicons name="return-down-back-outline" color={flameDeep} size={16} />
               </Pressable>
             )}
             <Pressable onPress={() => onToggleReaction("❤️")} hitSlop={6} className="w-8 h-8 items-center justify-center">
@@ -2032,14 +2087,14 @@ function MessageBubble({
               delayLongPress={300}
               className={`flex-row items-center px-2 py-0.5 border ${
                 r.mine
-                  ? "bg-brand/20 border-brand"
+                  ? "bg-flame/15 border-flame"
                   : "bg-paper-soft border-line-paper"
               }`}
             >
               <Text style={{ fontSize: 13 }}>{r.emoji}</Text>
               <Text
                 className={`ml-1 text-xs font-semibold ${
-                  r.mine ? "text-brand" : "text-ink-soft"
+                  r.mine ? "text-flame-deep" : "text-ink-soft"
                 }`}
               >
                 {r.count}
@@ -2051,13 +2106,24 @@ function MessageBubble({
 
       {isMine && showReadReceipt && (
         <View className="flex-row items-center self-end pr-1 mt-0.5 gap-0.5">
-          <Ionicons name="checkmark-done" size={12} color="#5B8DEF" />
-          <Text className="text-[10px] text-brand">Gelezen</Text>
+          <Ionicons name="checkmark-done" size={12} color={flameDeep} />
+          <Text className="text-[10px] text-flame-deep">Gelezen</Text>
         </View>
       )}
     </View>
   );
 }
+
+/**
+ * De leesbreedte van een bericht.
+ *
+ * De bubbel neemt van oudsher een percentage van de kolom; dat klopt op
+ * een telefoon, maar op een breed scherm wordt een regel dan honderden
+ * pixels lang en verlies je bij het teruglopen de volgende regel. Deze
+ * harde bovengrens komt overeen met ~60 tekens op 16px — de maat die de
+ * feed ook aanhoudt voor lopende tekst.
+ */
+const BUBBLE_MAX_W = 560;
 
 /** Veelgebruikte emoji's voor de simpele in-chat picker. */
 const CHAT_EMOJIS = [
@@ -2137,7 +2203,7 @@ function CallNotificationCard({
         style={{ maxWidth: 320, width: "100%" }}
       >
         <View className="w-10 h-10 bg-blue-500/15 items-center justify-center">
-          <Ionicons name="videocam" color="#5B8DEF" size={18} />
+          <Ionicons name="videocam" color={flameDeep} size={18} />
         </View>
         <View className="flex-1">
           <Text className="text-ink font-semibold text-sm">
@@ -2596,7 +2662,7 @@ function ChatCallPlanCard({
 
   if (!plan) {
     return (
-      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ width: "85%", maxWidth: BUBBLE_MAX_W }}>
         <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
@@ -2615,10 +2681,10 @@ function ChatCallPlanCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ width: "90%", maxWidth: BUBBLE_MAX_W }}>
       {/* Header */}
       <View className="flex-row items-center gap-2 px-4 pt-3 pb-2">
-        <Ionicons name="videocam-outline" color="#5B8DEF" size={16} />
+        <Ionicons name="videocam-outline" color={flameDeep} size={16} />
         <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={1}>{plan.title}</Text>
       </View>
       {plan.description ? (
@@ -2700,7 +2766,7 @@ function ChatPollCard({
 
   if (!poll) {
     return (
-      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "85%" }}>
+      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ width: "85%", maxWidth: BUBBLE_MAX_W }}>
         <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
@@ -2720,7 +2786,7 @@ function ChatPollCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ maxWidth: "90%" }}>
+    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ width: "90%", maxWidth: BUBBLE_MAX_W }}>
       <View className="flex-row items-center gap-2 px-4 pt-3 pb-1">
         <Ionicons name="bar-chart-outline" color="#D46220" size={16} />
         <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={2}>{poll.question}</Text>
