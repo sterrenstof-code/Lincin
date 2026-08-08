@@ -22,7 +22,7 @@ import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { Meta } from "@/components/Editorial";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { CHROME_COMPACT_H, PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { FeedRail, Frame } from "@/components/FeedChrome";
 import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
@@ -38,6 +38,7 @@ import {
   flameDeep,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
+import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useSeenPosts } from "@/lib/read-state";
 import { getProfiles } from "@/lib/api/profiles";
 import {
@@ -216,13 +217,17 @@ export default function FeedScreen() {
   const wide = width >= FEED_BREAKPOINT;
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
-   * Hoe de hele feed geordend is. `thematic` groepeert in rubrieken (zie
-   * SECTIONS); `chrono` gooit alles op één hoop, nieuwste eerst. Bewust
-   * een keuze van de lezer en niet iets wat de app voor je beslist.
+   * De twee leesvoorkeuren:
+   *   `sort`     `thematic` groepeert in rubrieken (zie SECTIONS),
+   *              `chrono` gooit alles op één hoop, nieuwste eerst.
+   *   `dimSeen`  al bekeken vondsten worden uitgegrijsd.
+   *
+   * Beide zijn een keuze van de lezer en geen instelling die de app voor
+   * je maakt — dus onthouden we ze, per gebruiker, op dit toestel. Zie
+   * lib/feed-prefs.ts voor waarom dat lokaal blijft.
    */
-  const [sort, setSort] = useState<"thematic" | "chrono">("thematic");
-  /** Al bekeken vondsten worden gedimd. Lokaal, zie lib/read-state.ts. */
-  const [dimSeen, setDimSeen] = useState(true);
+  const { prefs, setSort, setDimSeen } = useFeedPrefs(myUserId);
+  const { sort, dimSeen } = prefs;
   const { seen } = useSeenPosts();
   // De kop staat buiten de ScrollView; deze hook koppelt de scrollstand
   // aan de inklap-animatie van de woordmerk-plaat.
@@ -350,7 +355,16 @@ export default function FeedScreen() {
                 wide && Platform.OS === "web"
                   ? // `position: sticky` bestaat alleen op web. Op native
                     // scrollt de zijbalk mee; dat is daar het verwachte gedrag.
-                    ({ position: "sticky", top: 16, alignSelf: "flex-start" } as any)
+                    //
+                    // De bovenmarge is de hoogte van de ingeklapte kop plus
+                    // wat lucht: die kop zweeft absoluut over de pagina, dus
+                    // een zijbalk die zich op 16px vastzet kruipt eronder —
+                    // "Iets delen" verdween achter de zwarte balk.
+                    ({
+                      position: "sticky",
+                      top: CHROME_COMPACT_H + 16,
+                      alignSelf: "flex-start",
+                    } as any)
                   : undefined
               }
             >
@@ -422,7 +436,7 @@ export default function FeedScreen() {
                       </View>
 
                       <Pressable
-                        onPress={() => setDimSeen((v) => !v)}
+                        onPress={() => setDimSeen(!dimSeen)}
                         style={{
                           borderWidth: FEED_BORDER,
                           borderColor: feedColor.ink,
@@ -542,17 +556,21 @@ const HeroBlock = memo(function HeroBlock({
         minHeight={minHeight}
         onPress={() => withHeroTransition(() => router.push(`/post/${post.id}`))}
         onMenu={menu.isMine ? menu.open : undefined}
+        // De reacties horen in de kolom naast het beeld, niet als losse
+        // strook onder het hele tweeluik — zie FindHero.
+        footer={
+          <>
+            <PostReactions postId={post.id} tone="feed" />
+            <CommentsSection
+              entityType="post"
+              entityId={post.id}
+              ownerId={post.user_id}
+              initialCount={post.comment_count}
+              tone="feed"
+            />
+          </>
+        }
       />
-      <View style={{ paddingHorizontal: wide ? 24 : 10, paddingTop: 12 }}>
-        <PostReactions postId={post.id} tone="feed" />
-        <CommentsSection
-          entityType="post"
-          entityId={post.id}
-          ownerId={post.user_id}
-          initialCount={post.comment_count}
-          tone="feed"
-        />
-      </View>
       {menu.element}
     </View>
   );

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Platform,
   Pressable,
@@ -11,6 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { CHROME_COMPACT_H } from "@/components/AppChrome";
 import { Embed } from "@/components/Embed";
 import { SafeImage } from "@/components/SafeImage";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
@@ -33,7 +34,7 @@ import {
   type LinkPreview,
 } from "@/lib/api/unfurl";
 import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
-import { heroTag } from "@/lib/hero-transition";
+import { useHeroTag } from "@/lib/hero-transition";
 
 /**
  * De inhoud van één vondst, per soort anders gezet.
@@ -643,6 +644,7 @@ export function FindHero({
   minHeight,
   onPress,
   onMenu,
+  footer,
 }: {
   post: PostWithAuthor;
   wide: boolean;
@@ -650,6 +652,15 @@ export function FindHero({
   minHeight: number;
   onPress?: () => void;
   onMenu?: () => void;
+  /**
+   * Wat onderaan de tekstkolom komt — in de praktijk de reacties.
+   *
+   * Die stonden eerder over de volle breedte ónder het tweeluik, waar ze
+   * los kwamen te staan van de vondst waar ze bij horen terwijl de kolom
+   * naast het beeld halfleeg bleef. Als laatste blok in die kolom staan ze
+   * waar het gesprek hoort: naast het beeld, in dezelfde leesmaat.
+   */
+  footer?: ReactNode;
 }) {
   const p = partsOf(post);
 
@@ -692,7 +703,10 @@ export function FindHero({
         borderBottomColor: feed.ink,
       }}
     >
-      <StickySpread media={media} stickyTop={0} ratio={1.15}>
+      {/* Het beeld plakt onder de kop en niet onder de bovenrand van het
+          venster: de kop zweeft absoluut over de pagina, dus op `0` schoof
+          de bovenkant van het beeld eronder weg. */}
+      <StickySpread media={media} stickyTop={CHROME_COMPACT_H} ratio={1.15}>
         {/* Blok 1 — de kop */}
         <SpreadBlock>
           <Text
@@ -752,8 +766,18 @@ export function FindHero({
         {/* Blok 3 — de tekst van de vondst zelf, op plum zodat de kolom
             niet als één egale lap leest. */}
         {p.body ? (
-          <SpreadBlock filled last>
+          <SpreadBlock filled last={!footer}>
             <Text style={[feedType.pullSmall, { color: feed.text }]}>{p.body}</Text>
+          </SpreadBlock>
+        ) : null}
+
+        {/* Blok 4 — het gesprek over deze vondst. De reactiepillen en de
+            reactielijst dragen hun eigen binnenmarge; zonder deze
+            compensatie springen ze twee keer in en staan ze niet meer op
+            dezelfde lijn als de kop erboven. */}
+        {footer ? (
+          <SpreadBlock last>
+            <View style={{ marginHorizontal: -16 }}>{footer}</View>
           </SpreadBlock>
         ) : null}
       </StickySpread>
@@ -882,7 +906,7 @@ function CoverBand({
         style={{
           minHeight: 200,
           backgroundColor: "#3A2A46",
-          ...heroTag(post.id),
+          ...useHeroTag(post.id),
           ...(wide
             ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }
             : { borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }),
@@ -917,7 +941,7 @@ function TallTile({
       <View style={{ marginBottom: 10 }}>
         <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
       </View>
-      <View style={{ width: "100%", aspectRatio: 3 / 4, marginBottom: 12, ...heroTag(post.id) }}>
+      <View style={{ width: "100%", aspectRatio: 3 / 4, marginBottom: 12, ...useHeroTag(post.id) }}>
         <SafeImage
           uri={p.image}
           cacheKey={p.imageKey}
@@ -1047,7 +1071,7 @@ function StatTile({
 function CaptionTile({ p, id, onPress }: { p: FindParts; id: string; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View style={{ width: "100%", aspectRatio: 1, marginBottom: 10, ...heroTag(id) }}>
+      <View style={{ width: "100%", aspectRatio: 1, marginBottom: 10, ...useHeroTag(id) }}>
         <SafeImage
           uri={p.image}
           cacheKey={p.imageKey}
@@ -1156,7 +1180,7 @@ function MosaicTile({
       onPress={onPress}
       // Ankerpunt van de morph naar de detailpagina — ook de mozaïekcellen
       // groeien uit tot de volledige plaat.
-      style={{ flex: 1, backgroundColor: feed.post, ...heroTag(post.id) }}
+      style={{ flex: 1, backgroundColor: feed.post, ...useHeroTag(post.id) }}
     >
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
         <SafeImage
