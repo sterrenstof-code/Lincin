@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type NotificationRow = {
   id: string;
@@ -152,7 +153,7 @@ export function subscribeToNotifications(
   onNew: () => void
 ): RealtimeChannel {
   return supabase
-    .channel(`notifications:${userId}`)
+    .channel(uniqueTopic(`notifications:${userId}`))
     .on(
       "postgres_changes",
       {

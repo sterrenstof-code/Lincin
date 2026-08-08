@@ -3,6 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type CommentRow = {
   id: string;
@@ -121,7 +122,7 @@ export function subscribeToPostComments(
   onComment: (c: CommentWithAuthor) => void
 ): RealtimeChannel {
   return supabase
-    .channel(`post-comments:${postId}`)
+    .channel(uniqueTopic(`post-comments:${postId}`))
     .on(
       "postgres_changes",
       {

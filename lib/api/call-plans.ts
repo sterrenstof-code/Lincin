@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type CallPlanSlot = {
   id: string;
@@ -149,7 +150,7 @@ export function subscribeToCallPlanVotes(
   onChange: () => void
 ): RealtimeChannel {
   return supabase
-    .channel(`call-plan-votes:${planId}`)
+    .channel(uniqueTopic(`call-plan-votes:${planId}`))
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "call_plan_votes" },

@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type SharedListRow = {
   id: string;
@@ -178,7 +179,7 @@ export async function addListMember(listId: string, userId: string): Promise<voi
 
 export function subscribeToListItems(listId: string, onChange: () => void): RealtimeChannel {
   return supabase
-    .channel(`list-items:${listId}`)
+    .channel(uniqueTopic(`list-items:${listId}`))
     .on("postgres_changes", { event: "*", schema: "public", table: "list_items", filter: `list_id=eq.${listId}` }, onChange)
     .subscribe();
 }

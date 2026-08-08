@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type EntityType = "post" | "poll" | "call_plan" | "list";
 
@@ -115,7 +116,7 @@ export function subscribeToEntityComments(
   onNew: (comment: EntityComment) => void
 ): RealtimeChannel {
   return supabase
-    .channel(`entity-comments:${entityType}:${entityId}`)
+    .channel(uniqueTopic(`entity-comments:${entityType}:${entityId}`))
     .on(
       "postgres_changes",
       {

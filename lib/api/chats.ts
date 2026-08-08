@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
 import type { Profile } from "./profiles";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type ChatRow = {
   id: string;
@@ -331,7 +332,7 @@ export function subscribeToChatMemberUpdates(
   onChange: (userId: string, lastReadAt: string) => void
 ): RealtimeChannel {
   return supabase
-    .channel(`chat-members-read:${chatId}:${Math.random().toString(36).slice(2)}`)
+    .channel(uniqueTopic(`chat-members-read:${chatId}`))
     .on(
       "postgres_changes",
       {

@@ -9,6 +9,7 @@ import {
 import { loadIdentity } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type MessageRow = {
   id: string;
@@ -283,18 +284,16 @@ export async function sendMessage(args: {
  * om de chatlijst en bottom-bar badge meteen mee te updaten, ongeacht in
  * welke tab je staat.
  *
- * Belangrijk: de channel-naam moet uniek zijn per subscription-site,
- * anders krijg je "cannot add postgres_changes callbacks after subscribe()"
- * wanneer meerdere screens tegelijk subscriben (bv. (app)-layout én chat
- * detail). We hangen er een random suffix aan.
+ * Eigen kanaalnaam per abonnee: het (app)-layout en een open gesprek
+ * abonneren allebei, en een gedeelde naam gooit dan. Zie
+ * `lib/supabase/channel.ts`.
  */
 export function subscribeToAllMyMessages(
   myUserId: string,
   onInsert: (row: MessageRow) => void
 ): RealtimeChannel {
-  const uniq = Math.random().toString(36).slice(2, 10);
   const channel = supabase
-    .channel(`global-messages:${myUserId}:${uniq}`)
+    .channel(uniqueTopic(`global-messages:${myUserId}`))
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "messages" },
@@ -307,13 +306,22 @@ export function subscribeToAllMyMessages(
   return channel;
 }
 
+/**
+ * Realtime-berichten van één gesprek.
+ *
+ * Eigen kanaalnaam per abonnee (`uniqueTopic`), want ditzelfde scherm kan
+ * twee keer gemount staan: een stack houdt een scherm in leven als je er
+ * bovenop navigeert, dus ga je van een gesprek via een tussenscherm terug
+ * naar datzelfde gesprek, dan abonneren er twee. Zie
+ * `lib/supabase/channel.ts` voor wat er dan misgaat.
+ */
 export function subscribeToChatMessages(
   chatId: string,
   myUserId: string,
   onMessage: (msg: DecryptedMessage) => void
 ): RealtimeChannel {
   const channel = supabase
-    .channel(`chat:${chatId}`)
+    .channel(uniqueTopic(`chat:${chatId}`))
     .on(
       "postgres_changes",
       {

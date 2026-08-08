@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type ReactionRow = {
   message_id: string;
@@ -80,13 +81,17 @@ export function groupReactions(
   return Array.from(byEmoji.values()).sort((a, b) => b.count - a.count);
 }
 
-/** Subscribe to reaction inserts/deletes for a list of message IDs. */
+/**
+ * Subscribe to reaction inserts/deletes for a list of message IDs.
+ *
+ * Eigen kanaalnaam per abonnee — zie `lib/supabase/channel.ts`.
+ */
 export function subscribeToReactions(
   chatId: string,
   onChange: () => void
 ): RealtimeChannel {
   return supabase
-    .channel(`reactions:${chatId}`)
+    .channel(uniqueTopic(`reactions:${chatId}`))
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "message_reactions" },

@@ -4,6 +4,7 @@ import { supabase } from "../supabase/client";
 import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { createActivityEvent } from "./activity-events";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type EventRevealMode = "during" | "after" | "delayed";
 
@@ -521,7 +522,7 @@ export function subscribeToEventContributions(
   onChange: () => void
 ): RealtimeChannel {
   return supabase
-    .channel(`event-contrib:${eventId}`)
+    .channel(uniqueTopic(`event-contrib:${eventId}`))
     .on(
       "postgres_changes",
       {

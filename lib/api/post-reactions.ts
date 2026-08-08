@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
+import { uniqueTopic } from "@/lib/supabase/channel";
 
 export const QUICK_REACTIONS = ["❤️", "👍", "😂", "🔥", "😮", "🎉", "😢"];
 
@@ -87,7 +88,7 @@ export function subscribeToPostReactions(
   onChange: () => void
 ): RealtimeChannel {
   return supabase
-    .channel(`post-reactions:${postId}`)
+    .channel(uniqueTopic(`post-reactions:${postId}`))
     .on("postgres_changes", { event: "*", schema: "public", table: "post_reactions", filter: `post_id=eq.${postId}` }, onChange)
     .subscribe();
 }
