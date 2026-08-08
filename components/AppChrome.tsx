@@ -38,9 +38,11 @@ import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/t
  * andere tabbladen én de detailpagina's — geven `compact` mee en beginnen
  * én blijven in de balk.
  *
- * Omdat de compacte balk daarmee op de meeste pagina's de énige kop is,
- * draagt hij ook de utility die anders alleen in de grote stand stond:
- * Meldingen zit rechts in de balk, naast de primaire actie.
+ * Wat hier **niet** in zit: alles wat over jou gaat. Meldingen,
+ * instellingen, je profiel, iets delen — die stonden hier eerder en zijn
+ * verhuisd naar het persoonlijke blok in de zijbalk van de feed (zie
+ * `FeedRail`). De kop navigeert tussen de rubrieken van de uitgave, en die
+ * zijn voor iedereen hetzelfde; je meldingen zijn dat niet.
  *
  * Beide standen dragen op web dezelfde `view-transition-name` (zie
  * `chromeTag`). Bij een navigatie morpht de browser de ene kop dus naar de
@@ -227,7 +229,6 @@ function CompactBar({
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const iconOnly = width < ICON_ONLY_MAX_WIDTH;
-  const onNotifications = pathname === "/notifications";
 
   return (
     <View
@@ -314,41 +315,6 @@ function CompactBar({
             );
           })}
 
-          {/* Meldingen. Die zat vroeger alleen in de micro-utilityregel van
-              de grote kop; nu die kop alleen nog op de feed staat, zou hij
-              van élke andere pagina verdwijnen. */}
-          <Pressable
-            onPress={() => {
-              if (!onNotifications) router.push("/notifications");
-            }}
-            style={{
-              justifyContent: "center",
-              alignItems: "center",
-              ...(iconOnly ? { flex: 1 } : { paddingHorizontal: 14 }),
-              backgroundColor: onNotifications ? "#FAF8F5" : "transparent",
-            }}
-          >
-            {iconOnly ? (
-              <Ionicons
-                name="notifications-outline"
-                size={19}
-                color={onNotifications ? feed.ink : "rgba(250,248,245,0.78)"}
-              />
-            ) : (
-              <Text
-                style={[
-                  feedType.label,
-                  {
-                    fontSize: 12,
-                    color: onNotifications ? feed.ink : "rgba(250,248,245,0.78)",
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                Meldingen
-              </Text>
-            )}
-          </Pressable>
         </View>
       )}
 
@@ -393,7 +359,9 @@ function FullHeader({
   return (
     <View>
       <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-        {/* Rij A — micro-utility. */}
+        {/* Rij A — micro-utility. Hier stond rechts "Instellingen ·
+            Meldingen"; dat is persoonlijk en staat nu in het persoonlijke
+            blok van de zijbalk, bij je naam en je avatar. Zie FeedRail. */}
         <View style={{ flexDirection: "row" }}>
           <View style={{ flex: 1 }} className="px-3.5 py-2.5">
             <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
@@ -402,24 +370,10 @@ function FullHeader({
           </View>
           <View style={{ flex: 1 }} className="px-3.5 py-2.5">
             {wide ? (
-              <Text style={[feedType.label, { color: "#3A3540", textAlign: "center" }]}>
+              <Text style={[feedType.label, { color: "#3A3540", textAlign: "right" }]}>
                 Voor je vrienden.
               </Text>
             ) : null}
-          </View>
-          <View
-            style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}
-            className="px-3.5 py-2.5"
-          >
-            <Pressable onPress={() => router.push("/profile-edit")} hitSlop={6}>
-              <Text style={[feedType.label, { color: feed.ink }]}>Instellingen</Text>
-            </Pressable>
-            <Text style={[feedType.label, { color: feed.ink, marginHorizontal: 5 }]}>·</Text>
-            {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
-                verouderd en kennen /notifications niet. */}
-            <Pressable onPress={() => router.push("/notifications")} hitSlop={6}>
-              <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
-            </Pressable>
           </View>
         </View>
 

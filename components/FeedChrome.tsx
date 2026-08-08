@@ -1,13 +1,12 @@
-import { usePathname, useRouter, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import { BoxButton } from "@/components/Editorial";
-import { feed, FEED_BORDER, feedType } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
 
 /**
- * De chrome van het feed-scherm: de gekaderde kop en de zijbalk.
+ * De chrome van het feed-scherm: het kader en het persoonlijke blok.
  *
  * Alles hier is rechthoekig en omkaderd met één lijndikte (`FEED_BORDER`,
  * 1.5px). De enige ronding in dit hele scherm is de avatar — dat is de
@@ -49,246 +48,183 @@ export function Frame({
   );
 }
 
-/** Horizontale scheiding binnen een kader — zelfde dikte als het kader. */
-function Divider() {
-  return <View style={{ height: FEED_BORDER, backgroundColor: feed.ink }} />;
-}
-
-// ---------------------------------------------------------------
-// De kop
-// ---------------------------------------------------------------
-
-/**
- * De tabstrip gebruikt de échte routes uit `app/(app)/_layout.tsx` — er
- * wordt hier geen eigen navigatieset verzonnen. Meldingen zit niet in de
- * strip maar in de micro-utilityregel erboven, precies zoals in het ontwerp.
- */
-// `as const satisfies`: de literals blijven behouden (nodig als React-key
-// én voor de gegenereerde route-types), en `satisfies` bewaakt dat elke
-// href een bestaande route is. Met een kale `Href`-annotatie zou het type
-// de object-vorm meenemen, en die kan geen key zijn.
-const TABS = [
-  { href: "/feed", label: "Feed" },
-  { href: "/events", label: "Events" },
-  { href: "/chats", label: "Chats" },
-  { href: "/friends", label: "Vrienden" },
-  { href: "/profile", label: "Profiel" },
-] as const satisfies readonly { href: Href; label: string }[];
-
-export function FeedHeader({ wide }: { wide: boolean }) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  return (
-    <Frame>
-      {/* Rij A — micro-utility, drie gelijke kolommen. Het woordmerk staat
-          hier als platte tekst; het merkteken krijgt zijn eigen plaat
-          direct onder deze kop. */}
-      <View style={{ flexDirection: "row" }}>
-        <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-          <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
-            Lincin
-          </Text>
-        </View>
-        <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-          {wide ? (
-            <Text
-              style={[feedType.label, { color: "#3A3540", textAlign: "center" }]}
-            >
-              Voor je vrienden.
-            </Text>
-          ) : null}
-        </View>
-        <View
-          style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}
-          className="px-3.5 py-2.5"
-        >
-          <Pressable onPress={() => router.push("/profile-edit")} hitSlop={6}>
-            <Text style={[feedType.label, { color: feed.ink }]}>Instellingen</Text>
-          </Pressable>
-          <Text style={[feedType.label, { color: feed.ink, marginHorizontal: 5 }]}>
-            ·
-          </Text>
-          {/* `as never`: de gegenereerde typed routes in `.expo/types` zijn
-              verouderd en kennen /notifications niet. Zelfde workaround als
-              SharedListCard al gebruikt voor /list/[id]. */}
-          <Pressable onPress={() => router.push("/notifications")} hitSlop={6}>
-            <Text style={[feedType.label, { color: feed.ink }]}>Meldingen</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <Divider />
-
-      {/* Rij B — de gesegmenteerde tabstrip. Actieve cel omgekeerd: inkt
-          vlak met lavendel tekst, precies zoals in de mockup. */}
-      <View style={{ flexDirection: "row" }}>
-        {TABS.map((tab, i) => {
-          const active = pathname === tab.href;
-          return (
-            <Pressable
-              key={tab.href}
-              onPress={() => {
-                if (!active) router.push(tab.href);
-              }}
-              style={{
-                flex: 1,
-                backgroundColor: active ? feed.ink : "transparent",
-                ...(i < TABS.length - 1
-                  ? { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }
-                  : null),
-              }}
-              className="py-3 px-2 items-center"
-            >
-              <Text
-                style={[
-                  feedType.label,
-                  { fontSize: 12, color: active ? feed.lav : feed.ink },
-                ]}
-                numberOfLines={1}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Divider />
-
-      {/* Rij C — de tagline als échte kop, aankondiging rechtsonder. */}
-      <View
-        style={{
-          flexDirection: wide ? "row" : "column",
-          justifyContent: "space-between",
-          alignItems: wide ? "flex-end" : "flex-start",
-          paddingHorizontal: 18,
-          paddingTop: 22,
-          paddingBottom: 26,
-        }}
-      >
-        <Text
-          style={[
-            wide ? feedType.tagline : feedType.taglineSmall,
-            { color: feed.ink, maxWidth: 520 },
-          ]}
-        >
-          Ontdekkingen van je vrienden — links, fragmenten, muziek en ideeën.
-        </Text>
-        <Pressable
-          onPress={() => router.push("/notifications")}
-          style={{ marginTop: wide ? 0 : 12, marginLeft: wide ? 24 : 0 }}
-        >
-          <Text
-            style={[
-              feedType.label,
-              { fontSize: 12, color: feed.ink, textDecorationLine: "underline" },
-            ]}
-          >
-            Aankondiging: nieuwe functie deze week ↗
-          </Text>
-        </Pressable>
-      </View>
-    </Frame>
-  );
-}
-
 // ---------------------------------------------------------------
 // De zijbalk
 // ---------------------------------------------------------------
 
 /**
- * De zijbalk is géén navigatiemenu — die zit al in de tabstrip hierboven.
- * Er staat alleen wat je hier nieuw kunt doen, plus wie je bent.
+ * De zijbalk is het **persoonlijke blok**: wie je bent, en alles wat over
+ * jou gaat in plaats van over de uitgave. Delen, je meldingen, je profiel,
+ * je instellingen.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT HIER STAAT EN NIET IN DE KOP
+ * ---------------------------------------------------------------
+ * De kop (`AppChrome`) droeg dit eerder: een micro-utilityregel met
+ * "Instellingen · Meldingen" en een actieknop rechts in de balk. Dat
+ * mengde twee soorten dingen door elkaar. De kop navigeert tussen de
+ * **rubrieken van de uitgave** — feed, events, chats, vrienden — en dat
+ * zijn plekken die voor iedereen hetzelfde zijn. Meldingen en instellingen
+ * zijn van jou alleen; die horen bij je naam en je avatar, niet tussen de
+ * rubrieken.
+ *
+ * Het is géén navigatiemenu: de tabstrip blijft de enige navigatie
+ * (DESIGN.md §7). Dit blok is de rest.
  *
  * Op desktop een kolom van 200px met een scheidingslijn rechts; onder het
- * breekpunt kantelt hij naar een rij met de scheidingslijn tussen CTA en
- * account, zoals de media-query in de mockup.
+ * breekpunt kantelt hij naar een liggend blok.
  */
 export function FeedRail({
   displayName,
   avatarUrl,
   onShare,
   onProfile,
+  onNotifications,
+  onSettings,
+  unreadNotifications = 0,
   wide,
 }: {
   displayName: string;
   avatarUrl?: string | null;
   onShare: () => void;
   onProfile: () => void;
+  onNotifications: () => void;
+  onSettings: () => void;
+  /** Ongelezen meldingen. Alleen een getal als er iets ligt. */
+  unreadNotifications?: number;
   wide: boolean;
 }) {
+  const identity = (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      {/* De enige ronding in dit scherm. */}
+      <Avatar name={displayName} avatarUrl={avatarUrl} size="sm" tint="light" />
+      <View style={{ flex: 1, paddingLeft: 10, minWidth: 0 }}>
+        <Text
+          style={[feedType.label, { fontSize: 13, fontWeight: "700", color: feed.ink }]}
+          numberOfLines={1}
+        >
+          {displayName}
+        </Text>
+        <Pressable onPress={onProfile} hitSlop={6}>
+          <Text
+            style={[feedType.label, { color: feed.ink, opacity: 0.65, marginTop: 2 }]}
+          >
+            Bekijk profiel
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const actions = (
+    <>
+      {/* Hergebruikt BoxButton met de feed-toon — geen tweede knop-
+          component voor dit scherm. */}
+      <BoxButton tone="feed" label="Iets delen" filled block onPress={onShare} />
+      <RailLink
+        label="Meldingen"
+        badge={unreadNotifications}
+        onPress={onNotifications}
+      />
+      <RailLink label="Instellingen" onPress={onSettings} />
+    </>
+  );
+
+  if (!wide) {
+    return (
+      <View
+        style={{
+          backgroundColor: feed.panel,
+          padding: 20,
+          borderBottomWidth: FEED_BORDER,
+          borderBottomColor: feed.ink,
+        }}
+      >
+        <Text
+          style={[feedType.kicker, { color: feed.ink, opacity: 0.6, marginBottom: 12 }]}
+        >
+          PERSOONLIJK
+        </Text>
+        {identity}
+        <View
+          style={{
+            borderTopWidth: FEED_BORDER,
+            borderTopColor: feed.ink,
+            paddingTop: 16,
+            marginTop: 16,
+          }}
+        >
+          {actions}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View
       style={{
+        width: 200,
         backgroundColor: feed.panel,
         padding: 20,
-        ...(wide
-          ? {
-              width: 200,
-              borderRightWidth: FEED_BORDER,
-              borderRightColor: feed.ink,
-              justifyContent: "space-between",
-            }
-          : {
-              borderBottomWidth: FEED_BORDER,
-              borderBottomColor: feed.ink,
-              flexDirection: "row",
-              alignItems: "center",
-            }),
+        borderRightWidth: FEED_BORDER,
+        borderRightColor: feed.ink,
       }}
     >
-      <View style={wide ? undefined : { flex: 1 }}>
-        <Text
-          style={[
-            feedType.kicker,
-            { color: feed.ink, opacity: 0.6, marginBottom: 10 },
-          ]}
-        >
-          NIEUW
-        </Text>
-        {/* Hergebruikt BoxButton met de feed-toon — geen tweede knop-
-            component voor dit scherm. */}
-        <BoxButton tone="feed" label="Iets delen" filled block onPress={onShare} />
-      </View>
-
+      <Text
+        style={[feedType.kicker, { color: feed.ink, opacity: 0.6, marginBottom: 12 }]}
+      >
+        PERSOONLIJK
+      </Text>
+      {identity}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          ...(wide
-            ? {
-                borderTopWidth: FEED_BORDER,
-                borderTopColor: feed.ink,
-                paddingTop: 16,
-                marginTop: 16,
-              }
-            : {
-                borderLeftWidth: FEED_BORDER,
-                borderLeftColor: feed.ink,
-                paddingLeft: 16,
-                marginLeft: 16,
-              }),
+          borderTopWidth: FEED_BORDER,
+          borderTopColor: feed.ink,
+          paddingTop: 16,
+          marginTop: 16,
         }}
       >
-        {/* De enige ronding in dit scherm. */}
-        <Avatar name={displayName} avatarUrl={avatarUrl} size="sm" tint="light" />
-        <View style={{ flex: 1, paddingLeft: 10 }}>
-          <Text
-            style={[feedType.label, { fontSize: 13, fontWeight: "700", color: feed.ink }]}
-            numberOfLines={1}
-          >
-            {displayName}
-          </Text>
-          <Pressable onPress={onProfile} hitSlop={6}>
-            <Text
-              style={[feedType.label, { color: feed.ink, opacity: 0.65, marginTop: 2 }]}
-            >
-              Bekijk profiel
-            </Text>
-          </Pressable>
-        </View>
+        {actions}
       </View>
     </View>
+  );
+}
+
+/**
+ * Eén regel in het persoonlijke blok. Geen icoon en geen kader: dit staat
+ * onder een knop die wél gevuld is, en drie gelijkwaardige vlakken onder
+ * elkaar zou de hiërarchie platslaan.
+ */
+function RailLink({
+  label,
+  badge = 0,
+  onPress,
+}: {
+  label: string;
+  badge?: number;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 9,
+        marginTop: 4,
+      }}
+      hitSlop={4}
+    >
+      <Text style={[feedType.label, { color: feed.ink, flex: 1 }]} numberOfLines={1}>
+        {label}
+      </Text>
+      {badge > 0 ? (
+        <View style={{ backgroundColor: flame, paddingHorizontal: 6, paddingVertical: 2 }}>
+          <Text style={[feedType.kicker, { color: "#FFFFFF" }]}>
+            {badge > 99 ? "99+" : String(badge)}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }

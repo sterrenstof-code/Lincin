@@ -40,6 +40,7 @@ import {
 import { withHeroTransition } from "@/lib/hero-transition";
 import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useSeenPosts } from "@/lib/read-state";
+import { countUnreadNotifications } from "@/lib/api/notifications";
 import { getProfiles } from "@/lib/api/profiles";
 import {
   collectTags,
@@ -239,11 +240,18 @@ export default function FeedScreen() {
     refetchOnWindowFocus: true,
   });
 
-  // Eigen profiel voor het account-kaartje in de zijbalk.
+  // Eigen profiel voor het persoonlijke blok in de zijbalk.
   const me = useQuery({
     queryKey: ["profile", myUserId],
     queryFn: async () => (await getProfiles([myUserId]))[0] ?? null,
     staleTime: 5 * 60_000,
+  });
+
+  // Zelfde sleutel als in (app)/_layout — react-query dedupliceert, dus dit
+  // kost geen extra verzoek. Voedt het telletje naast "Meldingen".
+  const unreadNotifications = useQuery({
+    queryKey: ["notifications-unread", myUserId],
+    queryFn: () => countUnreadNotifications(myUserId),
   });
 
   useFocusEffect(
@@ -317,8 +325,6 @@ export default function FeedScreen() {
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         gutter={false}
-        actionLabel="Iets delen"
-        onAction={() => router.push("/post-compose")}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}
@@ -374,6 +380,9 @@ export default function FeedScreen() {
                 avatarUrl={me.data?.avatar_url ?? null}
                 onShare={() => router.push("/post-compose")}
                 onProfile={() => router.push("/profile")}
+                onNotifications={() => router.push("/notifications")}
+                onSettings={() => router.push("/profile-edit")}
+                unreadNotifications={unreadNotifications.data ?? 0}
               />
             </View>
 
