@@ -36,7 +36,14 @@ import { withPageTransition } from "@/lib/page-transition";
  * @param id  Unieke sleutel van de vondst — tegel en hero moeten dezelfde
  *            waarde krijgen, anders weet de browser niet wat bij wat hoort.
  */
-export function heroTag(id: string): ViewStyle {
+export function heroTag(id: string, enabled = true): ViewStyle {
+  void id;
+  void enabled;
+  return {};
+}
+
+/** Zie de webvariant. Op native heeft het beeld geen eigen morph. */
+export function useHeroTag(id: string): ViewStyle {
   void id;
   return {};
 }

@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { useWide } from "@/components/Editorial";
 import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
-import { heroTag, withHeroTransition } from "@/lib/hero-transition";
+import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
 import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 /**
@@ -35,6 +35,7 @@ export function EventCard({
 }) {
   const router = useRouter();
   const wide = useWide();
+  const heroStyle = useHeroTag(`event-${event.id}`);
   const status = eventStatusLabel(event);
   const start = new Date(event.starts_at);
 
@@ -174,7 +175,7 @@ export function EventCard({
           style={{
             backgroundColor: "#3A2A46",
             minHeight: 200,
-            ...heroTag(`event-${event.id}`),
+            ...heroStyle,
             ...(twoColumn
               ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }
               : { borderTopWidth: FEED_BORDER, borderTopColor: feed.ink, aspectRatio: 16 / 9 }),

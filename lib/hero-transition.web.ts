@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import type { ViewStyle } from "react-native";
 
 import { PAGE_TRANSITION_SUPPORTED, withPageTransition } from "@/lib/page-transition";
@@ -38,10 +39,34 @@ export const HERO_TRANSITION_SUPPORTED = PAGE_TRANSITION_SUPPORTED;
  * prima zolang er een letter voor staat. Vandaar het `hero-`-voorvoegsel
  * en het schoonvegen van al het overige.
  */
-export function heroTag(id: string): ViewStyle {
-  if (!HERO_TRANSITION_SUPPORTED) return {};
+export function heroTag(id: string, enabled = true): ViewStyle {
+  if (!HERO_TRANSITION_SUPPORTED || !enabled) return {};
   const safe = String(id).replace(/[^a-zA-Z0-9_-]/g, "");
   return { viewTransitionName: `hero-${safe}` } as unknown as ViewStyle;
+}
+
+/**
+ * Hetzelfde, maar alleen op het scherm dat je aankijkt.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT GEEN LUXE IS — dit was de reden dat er niets bewoog
+ * ---------------------------------------------------------------
+ * Een stack-navigator laat het vorige scherm op web gewoon in de DOM
+ * staan: `react-native-screens` zet alleen een scherm met activiteits-
+ * stand 0 op `display: none`, en het scherm ónder de bovenste staat op
+ * 1. Tijdens een navigatie van de feed naar een vondst staan de tegel
+ * (in de feed) en de hero (op de vondstpagina) dus tegelijk in beeld.
+ *
+ * Twee elementen met dezelfde `view-transition-name` is voor de browser
+ * geen twijfelgeval maar een fout: hij slaat de **hele** overgang over —
+ * niet alleen de morph, ook de kruisvervaging van de pagina zelf. Het
+ * gevolg is precies wat je zag: een harde wissel met een haperend beeld.
+ *
+ * `chromeTag` had die bescherming al; het beeld niet. Vandaar deze hook,
+ * zodat een aanroeper er niet meer zelf aan hoeft te denken.
+ */
+export function useHeroTag(id: string): ViewStyle {
+  return heroTag(id, useIsFocused());
 }
 
 /**

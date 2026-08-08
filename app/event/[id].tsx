@@ -35,7 +35,7 @@ import {
 } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { heroTag } from "@/lib/hero-transition";
+import { useHeroTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
@@ -50,6 +50,9 @@ export default function EventDetailScreen() {
   const myUserId = session!.user.id;
   const { id } = useLocalSearchParams<{ id: string }>();
   const eventId = id!;
+  // Zie useHeroTag: twee elementen met dezelfde naam laat de browser de
+  // hele overgang overslaan.
+  const heroStyle = useHeroTag(`event-${eventId}`);
 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -375,7 +378,7 @@ export default function EventDetailScreen() {
                 borderWidth: FEED_BORDER,
                 borderColor: feed.ink,
                 backgroundColor: feed.post,
-                ...heroTag(`event-${ev.id}`),
+                ...heroStyle,
               }}
             >
               {ev.cover_url ? (
