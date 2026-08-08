@@ -61,6 +61,17 @@ export const PAGE_MAX: number | undefined = undefined;
 /** Hoogte van de compacte balk. */
 const BAR_H = 58;
 
+/**
+ * Hoeveel de kop van boven inneemt zodra hij ingeklapt is: de balk plus
+ * de opvulling eromheen (`paddingTop: 10`, `paddingBottom: 8`).
+ *
+ * De kop is absoluut verankerd en zweeft dus over de inhoud. Alles wat
+ * zichzelf óók bovenaan vastzet — een `position: sticky` zijbalk op web —
+ * moet daaronder beginnen, anders schuift het eronder weg. Vandaar dat
+ * deze maat geëxporteerd wordt in plaats van dat elke pagina hem raadt.
+ */
+export const CHROME_COMPACT_H = BAR_H + 18;
+
 /** De échte routes uit `app/(app)/_layout.tsx` — geen verzonnen navigatie. */
 // `as const satisfies`: de literals blijven behouden (nodig als React-key
 // én voor de gegenereerde route-types), en `satisfies` bewaakt dat elke
