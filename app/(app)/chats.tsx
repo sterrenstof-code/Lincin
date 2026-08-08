@@ -171,10 +171,10 @@ export default function ChatsScreen() {
         contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
       >
         <View>
-          <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
+          <Text className="text-3xl font-bold tracking-tight text-ink mb-1">
             Chats
           </Text>
-          <Text className="text-cream-soft text-base mb-5">
+          <Text className="text-ink-soft text-base mb-5">
             Volledig end-to-end versleuteld.
           </Text>
 
@@ -206,7 +206,7 @@ export default function ChatsScreen() {
           {/* Friends quick row */}
           {friendsWithoutChat.length > 0 && (
             <View className="mb-5">
-              <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
                 Start een chat
               </Text>
               <ScrollView
@@ -226,7 +226,7 @@ export default function ChatsScreen() {
                       tint="warm"
                     />
                     <Text
-                      className="text-cream-soft text-xs mt-2 text-center"
+                      className="text-ink-soft text-xs mt-2 text-center"
                       numberOfLines={1}
                     >
                       {f.other.display_name ?? f.other.username}
@@ -237,7 +237,7 @@ export default function ChatsScreen() {
             </View>
           )}
 
-          <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
+          <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
             Gesprekken
           </Text>
 

@@ -112,10 +112,10 @@ export default function FriendsScreen() {
       >
       <View style={{ paddingVertical: 20, paddingBottom: 40 }}>
         <View>
-          <Text className="text-3xl font-bold tracking-tight text-cream mb-1">
+          <Text className="text-3xl font-bold tracking-tight text-ink mb-1">
             Lincs
           </Text>
-          <Text className="text-cream-soft text-base mb-5">
+          <Text className="text-ink-soft text-base mb-5">
             Link up met mensen die je kent.
           </Text>
 
@@ -260,7 +260,7 @@ export default function FriendsScreen() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View className="mt-6">
-      <Text className="text-xs uppercase tracking-wider text-cream-muted mb-3 px-1">
+      <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
         {title}
       </Text>
       {children}

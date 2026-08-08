@@ -186,14 +186,14 @@ export default function ProfileScreen() {
             </View>
           </Pressable>
           {displayName ? (
-            <Text className="text-2xl font-bold tracking-tight text-cream mt-3">
+            <Text className="text-2xl font-bold tracking-tight text-ink mt-3">
               {displayName}
             </Text>
           ) : null}
-          <Text className="text-cream-soft text-base mt-0.5">
+          <Text className="text-ink-soft text-base mt-0.5">
             @{username || "…"}
           </Text>
-          <Text className="text-cream-muted text-xs mt-1">
+          <Text className="text-ink-muted text-xs mt-1">
             {session?.user.email}
           </Text>
         </View>
@@ -239,7 +239,7 @@ export default function ProfileScreen() {
         )}
 
         {/* ---- Profile actions ---- */}
-        <Text className="text-xs uppercase tracking-wider text-cream-muted mt-6 mb-3 px-1">
+        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
           Profiel
         </Text>
         <Pressable
@@ -263,7 +263,7 @@ export default function ProfileScreen() {
           onPress={() => setAdvancedOpen((v) => !v)}
           className="flex-row items-center mt-6 mb-1 px-1"
         >
-          <Text className="text-xs uppercase tracking-wider text-cream-muted flex-1">
+          <Text className="text-xs uppercase tracking-wider text-ink-muted flex-1">
             Geavanceerd
           </Text>
           <Ionicons
@@ -275,7 +275,7 @@ export default function ProfileScreen() {
 
         {advancedOpen && <>
 
-        <Text className="text-xs uppercase tracking-wider text-cream-muted mt-4 mb-3 px-1">
+        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-4 mb-3 px-1">
           Versleuteling
         </Text>
         <View className="bg-paper-soft p-5">
@@ -378,7 +378,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ---- Push status ---- */}
-        <Text className="text-xs uppercase tracking-wider text-cream-muted mt-6 mb-3 px-1">
+        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
           Notificaties
         </Text>
 
@@ -431,9 +431,9 @@ export default function ProfileScreen() {
         {/* ---- Sign out ---- */}
         <Pressable
           onPress={signOut}
-          className="mt-8 border border-cream-muted py-3 items-center"
+          className="mt-8 border border-ink py-3 items-center"
         >
-          <Text className="text-cream font-semibold">Uitloggen</Text>
+          <Text className="text-ink font-semibold">Uitloggen</Text>
         </Pressable>
       </PageScroll>
     </SafeAreaView>
