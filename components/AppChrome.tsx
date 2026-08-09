@@ -15,9 +15,18 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { useQuery } from "@tanstack/react-query";
+
+import { ActionSheet } from "@/components/ActionSheet";
+import { Avatar } from "@/components/Avatar";
 import { LogoMark } from "@/components/LogoMark";
+import { useAuth } from "@/lib/auth/provider";
+import { listMyChats } from "@/lib/api/chats";
+import { listMyFriendships } from "@/lib/api/friends";
+import { countUnreadNotifications } from "@/lib/api/notifications";
+import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
-import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
+import { announce, feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 /**
  * De chrome die boven élke pagina staat.
@@ -38,11 +47,15 @@ import { announce, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/t
  * andere tabbladen én de detailpagina's — geven `compact` mee en beginnen
  * én blijven in de balk.
  *
- * Wat hier **niet** in zit: alles wat over jou gaat. Meldingen,
- * instellingen, je profiel, iets delen — die stonden hier eerder en zijn
- * verhuisd naar het persoonlijke blok in de zijbalk van de feed (zie
- * `FeedRail`). De kop navigeert tussen de rubrieken van de uitgave, en die
- * zijn voor iedereen hetzelfde; je meldingen zijn dat niet.
+ * Wat hier niet meer **uitgeschreven** staat: alles wat over jou gaat.
+ * Meldingen, instellingen, je profiel, iets delen stonden eerder als losse
+ * regels en tabs in de kop; ze wonen nu in het persoonlijke blok van de
+ * zijbalk (`FeedRail`), en zitten in de balk opgevouwen achter je avatar
+ * rechts (`PersonalMenu`). De kop navigeert tussen de rubrieken van de
+ * uitgave — die zijn voor iedereen hetzelfde; je meldingen zijn dat niet.
+ *
+ * De tabs dragen wél een teller, maar alleen waar die eerlijk is: zie
+ * `useTabBadges`.
  *
  * Beide standen dragen op web dezelfde `view-transition-name` (zie
  * `chromeTag`). Bij een navigatie morpht de browser de ene kop dus naar de
@@ -104,6 +117,81 @@ const TABS = [
  * ruimte zat voor de woorden, en woorden lezen beter dan iconen.
  */
 const ICON_ONLY_MAX_WIDTH = 560;
+
+// ---------------------------------------------------------------
+// Tellers per tabblad
+// ---------------------------------------------------------------
+
+/**
+ * Hoeveel er op elk tabblad op je ligt te wachten.
+ *
+ * Alleen tabbladen met een **eerlijke** teller staan hierin. Voor Chats is
+ * dat het aantal ongelezen berichten, voor Vrienden het aantal inkomende
+ * verzoeken: allebei een concreet ding dat op jou wacht en dat verdwijnt
+ * zodra je het bekeken hebt.
+ *
+ * Feed, Events en Profiel krijgen bewust géén getal. Er is voor die drie
+ * geen bron die "nieuw voor jou" betekent — je zou iets moeten verzinnen
+ * (posts sinds je laatste bezoek, events die je nog niet opende), en een
+ * badge die niet klopt leert je hem te negeren. Komt er later een echte
+ * bron, dan is dit de plek: één getal erbij in deze map.
+ *
+ * De sleutels zijn exact die van `app/(app)/_layout.tsx`, dus react-query
+ * dedupliceert; deze hook kost geen extra verzoek per pagina.
+ */
+function useTabBadges(): Partial<Record<string, number>> {
+  const { session } = useAuth();
+  const myUserId = session?.user.id;
+
+  const chats = useQuery({
+    queryKey: ["chats", myUserId ?? "anon"],
+    queryFn: () => listMyChats(myUserId!),
+    enabled: !!myUserId,
+  });
+  const friendships = useQuery({
+    queryKey: ["friendships", myUserId ?? "anon"],
+    queryFn: () => listMyFriendships(myUserId!),
+    enabled: !!myUserId,
+  });
+
+  const unreadChats = (chats.data ?? []).reduce(
+    (sum, c) => sum + (c.unread_count ?? 0),
+    0
+  );
+  const incomingRequests = (friendships.data ?? []).filter(
+    (f) => f.status === "pending" && f.addressee_id === myUserId
+  ).length;
+
+  return { "/chats": unreadChats, "/friends": incomingRequests };
+}
+
+/**
+ * Het getal zelf: een vlamvlak met het aantal erin. Vierkant, zoals al het
+ * andere in dit systeem — geen pil.
+ */
+function TabBadge({ count, floating = false }: { count: number; floating?: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <View
+      style={{
+        backgroundColor: flame,
+        paddingHorizontal: 4,
+        minWidth: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        ...(floating
+          ? // Bij iconen is er geen ruimte naast het label, dus hangt hij
+            // in de rechterbovenhoek van het icoon.
+            { position: "absolute", top: -6, right: -10, paddingVertical: 1 }
+          : { marginLeft: 6, paddingVertical: 1 }),
+      }}
+    >
+      <Text style={[feedType.kicker, { color: "#FFFFFF", letterSpacing: 0.2 }]}>
+        {count > 99 ? "99+" : String(count)}
+      </Text>
+    </View>
+  );
+}
 
 // ---------------------------------------------------------------
 // Scrollpositie → inklapstand
@@ -229,6 +317,7 @@ function CompactBar({
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const iconOnly = width < ICON_ONLY_MAX_WIDTH;
+  const badges = useTabBadges();
 
   return (
     <View
@@ -278,6 +367,7 @@ function CompactBar({
         <View style={{ flex: 1, flexDirection: "row" }}>
           {TABS.map((tab) => {
             const active = pathname === tab.href;
+            const badge = badges[tab.href] ?? 0;
             return (
               <Pressable
                 key={tab.href}
@@ -295,21 +385,27 @@ function CompactBar({
                 }}
               >
                 {iconOnly ? (
-                  <Ionicons
-                    name={tab.icon}
-                    size={19}
-                    color={active ? feed.ink : "rgba(250,248,245,0.78)"}
-                  />
+                  <View>
+                    <Ionicons
+                      name={tab.icon}
+                      size={19}
+                      color={active ? feed.ink : "rgba(250,248,245,0.78)"}
+                    />
+                    <TabBadge count={badge} floating />
+                  </View>
                 ) : (
-                  <Text
-                    style={[
-                      feedType.label,
-                      { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {tab.label}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text
+                      style={[
+                        feedType.label,
+                        { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {tab.label}
+                    </Text>
+                    <TabBadge count={badge} />
+                  </View>
                 )}
               </Pressable>
             );
@@ -317,6 +413,8 @@ function CompactBar({
 
         </View>
       )}
+
+      <PersonalMenu />
 
       {actionLabel && onAction ? (
         <Pressable
@@ -333,6 +431,104 @@ function CompactBar({
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// Het persoonlijke blok, als ingang in de balk
+// ---------------------------------------------------------------
+
+/**
+ * Je avatar rechts in de balk; aantikken opent het persoonlijke blok.
+ *
+ * Het blok zelf woont in de zijbalk van de feed (`FeedRail`) — daar staat
+ * het open en uitgeschreven, want daar is ruimte. Op elke andere pagina is
+ * die zijbalk er niet, en dan zou je voor je meldingen eerst terug naar de
+ * thuispagina moeten. Deze knop is dezelfde inhoud, opgevouwen tot één
+ * avatar: de kop blijft navigatie tussen de rubrieken, en het persoonlijke
+ * zit erachter in plaats van ertussen.
+ *
+ * De stip op de avatar is bewust géén getal. Hoevéél meldingen er liggen
+ * is iets voor het blok zelf; hier hoef je alleen te weten óf er iets ligt.
+ */
+function PersonalMenu() {
+  const router = useRouter();
+  const { session } = useAuth();
+  const myUserId = session?.user.id;
+  const [open, setOpen] = useState(false);
+
+  // Dezelfde sleutels als de feed en het (app)-layout gebruiken, dus
+  // react-query dedupliceert dit — geen extra verzoek per pagina.
+  const me = useQuery({
+    queryKey: ["profile", myUserId],
+    queryFn: async () => (await getProfiles([myUserId!]))[0] ?? null,
+    enabled: !!myUserId,
+    staleTime: 5 * 60_000,
+  });
+  const unread = useQuery({
+    queryKey: ["notifications-unread", myUserId],
+    queryFn: () => countUnreadNotifications(myUserId!),
+    enabled: !!myUserId,
+  });
+
+  if (!myUserId) return null;
+
+  const name = me.data?.display_name ?? me.data?.username ?? "Jij";
+  const count = unread.data ?? 0;
+
+  return (
+    <>
+      <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={{ justifyContent: "center", paddingHorizontal: 12 }}
+        accessibilityLabel="Persoonlijk"
+      >
+        <View>
+          <Avatar name={name} avatarUrl={me.data?.avatar_url ?? null} size="sm" />
+          {count > 0 ? (
+            <View
+              style={{
+                position: "absolute",
+                top: -2,
+                right: -2,
+                width: 10,
+                height: 10,
+                backgroundColor: flame,
+              }}
+            />
+          ) : null}
+        </View>
+      </Pressable>
+
+      <ActionSheet
+        visible={open}
+        onClose={() => setOpen(false)}
+        title={name}
+        actions={[
+          {
+            label: "Iets delen",
+            icon: "add-circle-outline",
+            onPress: () => router.push("/post-compose"),
+          },
+          {
+            label: count > 0 ? `Meldingen (${count > 99 ? "99+" : count})` : "Meldingen",
+            icon: "notifications-outline",
+            onPress: () => router.push("/notifications"),
+          },
+          {
+            label: "Bekijk profiel",
+            icon: "person-outline",
+            onPress: () => router.push("/profile"),
+          },
+          {
+            label: "Instellingen",
+            icon: "settings-outline",
+            onPress: () => router.push("/profile-edit"),
+          },
+        ]}
+      />
+    </>
   );
 }
 
@@ -355,6 +551,7 @@ function FullHeader({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const badges = useTabBadges();
 
   return (
     <View>
@@ -383,6 +580,7 @@ function FullHeader({
         <View style={{ flexDirection: "row" }}>
           {TABS.map((tab, i) => {
             const active = pathname === tab.href;
+            const badge = badges[tab.href] ?? 0;
             return (
               <Pressable
                 key={tab.href}
@@ -397,12 +595,15 @@ function FullHeader({
                 }}
                 className="py-3 px-2 items-center"
               >
-                <Text
-                  style={[feedType.label, { fontSize: 12, color: active ? feed.lav : feed.ink }]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text
+                    style={[feedType.label, { fontSize: 12, color: active ? feed.lav : feed.ink }]}
+                    numberOfLines={1}
+                  >
+                    {tab.label}
+                  </Text>
+                  <TabBadge count={badge} />
+                </View>
               </Pressable>
             );
           })}
