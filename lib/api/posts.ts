@@ -363,7 +363,21 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
     }
   }
   if (activity.status === "fulfilled") {
+    /**
+     * "X heeft een foto geplaatst" naast diezelfde foto is dezelfde
+     * gebeurtenis twee keer, en de kale melding is de mindere van de twee:
+     * de vondst zelf toont het beeld, de titel en wie het deelde.
+     *
+     * De activiteitsregel is er voor wat je **niet** al ziet — een nieuwe
+     * vriendschap, een event dat is aangemaakt — en voor vondsten die
+     * buiten de opgehaalde pagina vallen. Staat de post er wél bij, dan
+     * laten we de melding weg.
+     */
+    const shownPostIds = new Set(
+      items.filter((i) => i.type === "post").map((i) => i.id)
+    );
     for (const a of activity.value) {
+      if (a.post_id && shownPostIds.has(a.post_id)) continue;
       items.push({ type: "activity", id: a.id, created_at: a.created_at, data: a });
     }
   }
