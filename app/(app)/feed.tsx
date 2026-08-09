@@ -57,10 +57,19 @@ import {
  * pixelreferentie en `DESIGN.md` voor het systeem.
  *
  * Een gekaderde kop met de tabstrip, daaronder de woordmerk-plaat, en dan
- * één gedeeld kader met twee zones: een smalle zijbalk (alleen "iets delen"
- * plus wie je bent — de navigatie zit al in de kop) en de hoofdkolom met een
- * uitgelichte vondst van ~88vh, gevolgd door de compacte sectie met
- * wisselend grote tegels. Onder 800px stapelt alles.
+ * één gedeeld kader met twee zones: een smalle zijbalk (het persoonlijke
+ * blok — de navigatie zit al in de kop) en de hoofdkolom. Onder 800px
+ * stapelt alles.
+ *
+ * De hoofdkolom heeft twee standen, en de lezer kiest:
+ *
+ *   THEMATISCH      een uitgelichte vondst van ~88vh, daaronder rubrieken
+ *                   met wisselend grote tegels — het ritme van een uitgave
+ *   CHRONOLOGISCH   geen uitgelichte vondst, geen rubrieken: één raster
+ *                   van gelijke kaarten, nieuwste eerst
+ *
+ * Waarom die tweede stand geen kleine variant van de eerste is: zonder
+ * redactionele indeling zegt een grote tegel niets meer. Zie GridTile.
  *
  * Wat hier bewust NIET staat, en ook niet moet komen: een algoritme, een
  * bereikteller, sortering of tegelgrootte op basis van reacties. Je vrienden
@@ -216,6 +225,8 @@ export default function FeedScreen() {
   const qc = useQueryClient();
   const { width, height } = useWindowDimensions();
   const wide = width >= FEED_BREAKPOINT;
+  // Kolommen van het chronologische overzicht — zie columnsFor.
+  const gridColumns = columnsFor(width);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
    * De twee leesvoorkeuren:
@@ -287,19 +298,23 @@ export default function FeedScreen() {
         ? null
         : (items[heroIndex] as Extract<FeedItem, { type: "post" }>);
 
-    // Chronologisch: geen rubrieken, alles op volgorde in het vaste ritme.
+    /**
+     * Chronologisch: geen rubrieken, geen uitgelichte vondst, geen
+     * wisselende tegelmaten. Eén raster van gelijke kaarten, nieuwste
+     * eerst.
+     *
+     * De uitgelichte vondst hoort bij de thematische stand — daar kiest de
+     * indeling wat groot mag. Hier is de volgorde het enige wat telt, en
+     * dan is een kop van 88vh boven de lijst een tweede verhaal over
+     * dezelfde inhoud. Zie GridTile voor waarom ook de maat gelijk is.
+     */
     if (sort === "chrono") {
-      let n = 0;
-      const flat: Slot[] = rest.map((item) => {
-        n += 1;
-        return {
-          variant:
-            item.type !== "post" ? "text" : TILE_CYCLE[(n - 1) % TILE_CYCLE.length],
-          item,
-          index: n,
-        };
-      });
-      return { hero, sections: [] as Section[], leftovers: flat };
+      const flat: Slot[] = items.map((item, i) => ({
+        variant: "grid",
+        item,
+        index: i + 1,
+      }));
+      return { hero: null, sections: [] as Section[], leftovers: flat };
     }
 
     return { hero, ...buildSections(rest) };
@@ -414,13 +429,39 @@ export default function FeedScreen() {
                   >
                     {/* Ordening + leesstatus. Twee schakelaars, geen
                         instellingenscherm: dit is iets wat je terwijl je
-                        leest wil kunnen omzetten. */}
+                        leest wil kunnen omzetten.
+
+                        Daarom plakt de balk ook onder de kop zodra je hem
+                        voorbij scrollt: je bent dan midden in de lijst, en
+                        precies dán wil je kunnen wisselen van ordening of
+                        het gelezene wegdimmen. Zonder dat moest je eerst
+                        helemaal terug naar boven.
+
+                        `position: sticky` bestaat alleen op web; op native
+                        scrollt de balk gewoon mee. Het lavendel vlak en de
+                        lijn eronder zijn er zodat de kaarten er niet
+                        doorheen schijnen als hij vastzit. */}
                     <View
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
                         alignItems: "center",
+                        backgroundColor: feedColor.lav,
+                        paddingVertical: 12,
+                        // Tot de rand van de kolom, anders schijnen de
+                        // kaarten er links en rechts langs.
+                        marginHorizontal: wide ? -32 : -18,
+                        paddingHorizontal: wide ? 32 : 18,
                         marginBottom: 22,
+                        borderBottomWidth: FEED_BORDER,
+                        borderBottomColor: feedColor.ink,
+                        ...(Platform.OS === "web"
+                          ? ({
+                              position: "sticky",
+                              top: CHROME_COMPACT_H,
+                              zIndex: 4,
+                            } as any)
+                          : null),
                       }}
                     >
                       <View
@@ -503,7 +544,27 @@ export default function FeedScreen() {
                       </View>
                     ))}
 
-                    {leftovers.length > 0 ? (
+                    {sort === "chrono" && leftovers.length > 0 ? (
+                      <View style={{ marginBottom: 40 }}>
+                        <Text
+                          style={[
+                            feedType.kicker,
+                            { color: "#3A3540", letterSpacing: 0.55, marginBottom: 18 },
+                          ]}
+                        >
+                          ALLES, NIEUWSTE EERST
+                        </Text>
+                        <ChronoGrid
+                          slots={leftovers}
+                          columns={gridColumns}
+                          myUserId={myUserId}
+                          onChanged={invalidate}
+                          dimmed={dimSeen ? seen : null}
+                        />
+                      </View>
+                    ) : null}
+
+                    {sort !== "chrono" && leftovers.length > 0 ? (
                       <View style={{ marginBottom: 40 }}>
                         <Text
                           style={[
@@ -691,6 +752,79 @@ function CompactSection({
           </View>
         );
       })}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// Het chronologische overzicht
+// ---------------------------------------------------------------
+
+/** Ruimte tussen de kaarten in het raster. */
+const GRID_GAP = 16;
+
+/**
+ * Hoeveel kolommen het overzicht krijgt bij deze schermbreedte.
+ *
+ * Losse drempels en geen formule. De maat die telt is de kaart zelf: onder
+ * ongeveer 260px is hij te smal voor een kop van twee regels naast een
+ * beeld van 4:3. De drempels liggen daarom hoger dan de schermbreedte doet
+ * vermoeden — de zijbalk en de marges gaan er eerst nog af.
+ */
+function columnsFor(width: number): number {
+  if (width >= 1600) return 4;
+  if (width >= 1100) return 3;
+  if (width >= 640) return 2;
+  return 1;
+}
+
+/**
+ * Alles op volgorde, in gelijke kaarten naast elkaar.
+ *
+ * Het raster is een simpele rij die omslaat, met percentagebreedtes en de
+ * tussenruimte als binnenmarge van de cel. Geen `gap`: dat gedraagt zich
+ * op react-native-web anders dan op native, en dit is één regel meer voor
+ * een indeling die overal hetzelfde uitpakt.
+ */
+function ChronoGrid({
+  slots,
+  columns,
+  myUserId,
+  onChanged,
+  dimmed,
+}: {
+  slots: Slot[];
+  columns: number;
+  myUserId: string;
+  onChanged: () => void;
+  dimmed?: Set<string> | null;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        marginHorizontal: -GRID_GAP / 2,
+      }}
+    >
+      {slots.map((slot) => (
+        <View
+          key={slot.item.id}
+          style={{
+            width: `${100 / columns}%`,
+            padding: GRID_GAP / 2,
+            marginBottom: GRID_GAP,
+          }}
+        >
+          <CompactItem
+            slot={slot}
+            wide={columns > 1}
+            myUserId={myUserId}
+            onChanged={onChanged}
+            dimmed={dimmed}
+          />
+        </View>
+      ))}
     </View>
   );
 }

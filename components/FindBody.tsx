@@ -821,7 +821,9 @@ export type TileVariant =
   | "caption"
   | "quote"
   /** Deel van een mozaïekblok — de tegel vult zijn cel volledig. */
-  | "mosaic";
+  | "mosaic"
+  /** Eén cel in het chronologische overzicht: overal exact dezelfde vorm. */
+  | "grid";
 
 /**
  * Eén vondst in de compacte sectie.
@@ -859,6 +861,8 @@ export function FindTile({
       return <CaptionTile p={p} id={post.id} onPress={onPress} />;
     case "mosaic":
       return <MosaicTile p={p} post={post} onPress={onPress} />;
+    case "grid":
+      return <GridTile p={p} post={post} onPress={onPress} />;
     default:
       return <TextTile p={p} post={post} onPress={onPress} />;
   }
@@ -1175,6 +1179,75 @@ function QuoteBand({
           ]}
         >
           {[attribution || p.kicker, p.sharer, p.time].filter(Boolean).join(" · ")}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * De kaart van het chronologische overzicht.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DEZE ER NAAST DE ANDERE TEGELS IS
+ * ---------------------------------------------------------------
+ * De andere tegels wisselen bewust van maat en vorm: dat is het ritme van
+ * een uitgave, en het hoort bij de thematische indeling waar een redactie
+ * kiest wat groot mag. Het chronologische overzicht heeft juist géén
+ * redactie — het is alles, nieuwste eerst — en dan is wisselende maat geen
+ * ritme meer maar ruis: je gaat betekenis zoeken in een grootte die alleen
+ * uit de volgorde volgt.
+ *
+ * Deze kaart is daarom overal identiek: beeld op 4:3, dan kicker, kop van
+ * hoogstens twee regels, en wanneer. Vaste hoogte voor het tekstdeel, zodat
+ * een kop van één regel dezelfde kaart oplevert als een kop van twee.
+ */
+function GridTile({
+  p,
+  post,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  onPress?: () => void;
+}) {
+  const heroStyle = useHeroTag(post.id);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flex: 1,
+        backgroundColor: feed.post,
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+      }}
+    >
+      <View style={{ width: "100%", aspectRatio: 4 / 3, ...heroStyle }}>
+        <SafeImage
+          uri={p.image}
+          cacheKey={p.imageKey}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={150}
+          fallbackBg="bg-feed-post"
+          fallbackColor={feed.textDim}
+        />
+      </View>
+
+      <View style={{ padding: 14, minHeight: 118 }}>
+        <FeedKicker text={p.kicker} kind={post.kind} />
+        <Text
+          style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: 8 }]}
+          numberOfLines={2}
+        >
+          {p.title}
+        </Text>
+        <Text
+          style={[feedType.label, { color: feed.textDim, marginTop: 6 }]}
+          numberOfLines={1}
+        >
+          {`${p.sharer} · ${p.time}`}
         </Text>
       </View>
     </Pressable>
