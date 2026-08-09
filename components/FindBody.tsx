@@ -538,14 +538,25 @@ function partsOf(post: PostWithAuthor): FindParts {
     post.body_text?.trim() ??
     (url ? hostnameOf(url) : "Zonder titel");
 
+  /**
+   * De tekst van de vondst zelf.
+   *
+   * Beide velden vallen terug op `caption`, en bij een beeldpost is dat
+   * vaak het enige wat er is: dan stond dezelfde regel twee keer op het
+   * scherm, één keer als kop en één keer als citaatblok eronder. Is de
+   * tekst gelijk aan de kop, dan is er geen tweede tekst — dan laten we
+   * het blok gewoon weg.
+   */
+  const bodyText =
+    post.body_text?.trim() ||
+    meta.description?.trim() ||
+    post.caption?.trim() ||
+    "";
+
   return {
     kicker: KIND_LABELS[post.kind ?? "note"] ?? "Notitie",
     title,
-    body:
-      post.body_text?.trim() ||
-      meta.description?.trim() ||
-      post.caption?.trim() ||
-      "",
+    body: isSameText(bodyText, title) ? "" : bodyText,
     image: meta.image_url ?? post.image_url ?? null,
     imageKey: post.image_path ?? meta.canonical_url ?? url ?? undefined,
     source: post.source_author ?? meta.author ?? meta.site_name ?? null,
@@ -555,6 +566,15 @@ function partsOf(post: PostWithAuthor): FindParts {
     sharer: post.author?.display_name ?? post.author?.username ?? "Onbekend",
     time: formatFeedTime(post.created_at),
   };
+}
+
+/**
+ * Twee stukken tekst die hetzelfde zeggen. Hoofdletters en witruimte
+ * tellen niet mee: "Zonnengloed" en "zonnengloed " zijn één regel, geen
+ * twee.
+ */
+function isSameText(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /** "2 uur geleden" — voluit, zoals in de mockup. */
@@ -676,7 +696,11 @@ export function FindHero({
         fallbackBg="bg-feed-post"
         fallbackColor={feed.textDim}
       />
-      {post.caption?.trim() ? (
+      {/* Het onderschrift over het beeld — maar niet als het woordelijk de
+          kop hiernaast is. Bij een beeldpost zonder eigen tekst zijn dat
+          allebei de `caption`, en dan stond dezelfde regel drie keer op
+          het scherm. */}
+      {post.caption?.trim() && !isSameText(post.caption, p.title) ? (
         <Text
           style={{
             position: "absolute",
