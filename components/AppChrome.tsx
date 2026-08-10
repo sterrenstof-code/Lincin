@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -62,7 +63,8 @@ import { announce, feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/d
  * andere, net zoals hij dat met een hero-beeld doet: de grote kop krimpt
  * naar de balk in plaats van eronder weg te vallen.
  *
- * De chrome staat BUITEN de scrollende inhoud van een scherm; zie PageScroll.
+ * Waar de kop precies hangt — sticky ín de scroller op web, absoluut
+ * verankerd op native — staat in PageScroll, met de reden erbij.
  */
 
 /**
@@ -80,10 +82,11 @@ const BAR_H = 58;
  * Hoeveel de kop van boven inneemt zodra hij ingeklapt is: de balk plus
  * de opvulling eromheen (`paddingTop: 10`, `paddingBottom: 8`).
  *
- * De kop is absoluut verankerd en zweeft dus over de inhoud. Alles wat
- * zichzelf óók bovenaan vastzet — een `position: sticky` zijbalk op web —
- * moet daaronder beginnen, anders schuift het eronder weg. Vandaar dat
- * deze maat geëxporteerd wordt in plaats van dat elke pagina hem raadt.
+ * De kop blijft bovenaan staan terwijl de pagina eronder doorloopt. Alles
+ * wat zichzelf óók bovenaan vastzet — de zijbalk van de feed, de
+ * schakelbalk, het beeld van een tweeluik — moet daaronder beginnen,
+ * anders schuift het achter de kop weg. Vandaar dat deze maat geëxporteerd
+ * wordt in plaats van dat elke pagina hem raadt.
  */
 export const CHROME_COMPACT_H = BAR_H + 18;
 
@@ -802,15 +805,36 @@ export function AppChrome({
 /**
  * De scroller van een heel scherm, met de kop erboven.
  *
- * De kop staat **buiten** de scroller en is absoluut verankerd. Eerder stond
- * hij als eerste kind ín de ScrollView met `stickyHeaderIndices={[0]}`; dat
- * werkt op native, maar op react-native-web 0.21 pakt het niet betrouwbaar
- * en scrolde de kop gewoon weg.
+ * ---------------------------------------------------------------
+ * TWEE MANIEREN OM DE KOP BOVEN TE HOUDEN
+ * ---------------------------------------------------------------
+ * WEB      de kop is het eerste kind ín de scroller, met CSS
+ *          `position: sticky`.
+ * NATIVE   de kop staat buiten de scroller, absoluut verankerd, en de
+ *          inhoud krijgt bovenaan evenveel opvulling als hij hoog is.
  *
- * De inhoud krijgt bovenaan evenveel opvulling als de kop hoog is. Die
- * hoogte meten we met `onLayout` in plaats van hem te hardcoderen: hij
- * verschilt per breedte, per stand en met het al dan niet tonen van de
+ * Die opvulling meten we met `onLayout` in plaats van hem te hardcoderen:
+ * hij verschilt per breedte, per stand en met het al dan niet tonen van de
  * aankondigingsbalk.
+ *
+ * Waarom web een eigen weg gaat — twee dingen die de verankerde versie
+ * daar stukmaakten:
+ *
+ *   1. Een absoluut element vangt het muiswiel. De kop is zelf niet
+ *      scrollbaar en is géén kind van de scroller, dus een wiel-event
+ *      erboven ging nergens heen: met de cursor op de kop kon je de pagina
+ *      niet scrollen. Ligt de kop ín de scroller, dan hoort het wiel bij
+ *      dezelfde container en werkt het overal.
+ *   2. De inhoud schoof zichtbaar achter de kop langs. De kop is een balk
+ *      met lucht eromheen; door die lucht zag je de pagina doorlopen. Een
+ *      dekkend vlak lost dat op — zie `backgroundColor` hieronder — maar
+ *      alleen bij sticky staat de kop ook echt ín de bladspiegel in plaats
+ *      van erboven te zweven.
+ *
+ * Let op: dit is niet `stickyHeaderIndices`. Die prop pakt op
+ * react-native-web 0.21 niet betrouwbaar (de kop scrolde gewoon weg); de
+ * CSS-eigenschap zelf werkt er prima, en wordt in dit scherm ook al
+ * gebruikt voor de zijbalk en de schakelbalk van de feed.
  */
 export function PageScroll({
   children,
@@ -853,6 +877,20 @@ export function PageScroll({
    * browser de hele overgang overslaan.
    */
   const focused = useIsFocused();
+  const sticky = Platform.OS === "web";
+
+  const chrome = (
+    <AppChrome
+      wide={wide}
+      progress={progress}
+      announcement={compact ? null : announcement}
+      backLabel={backLabel}
+      onBack={onBack}
+      actionLabel={actionLabel}
+      onAction={onAction}
+      compact={compact}
+    />
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -861,8 +899,23 @@ export function PageScroll({
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: headerHeight, minHeight: "100%" }}
+        contentContainerStyle={{ paddingTop: sticky ? 0 : headerHeight, minHeight: "100%" }}
       >
+        {sticky ? (
+          <View
+            style={{
+              // Dekkend: een sticky kop blijft staan terwijl de pagina
+              // eronder doorloopt, en zonder vlak zie je die inhoud door
+              // de lucht rond de balk heen schuiven.
+              backgroundColor: feed.lav,
+              ...({ position: "sticky", top: 0, zIndex: 20 } as any),
+              ...chromeTag(focused),
+            }}
+          >
+            {chrome}
+          </View>
+        ) : null}
+
         <View
           style={{
             width: "100%",
@@ -875,24 +928,24 @@ export function PageScroll({
         </View>
       </ScrollView>
 
-      <View
-        style={{ position: "absolute", top: 0, left: 0, right: 0, ...chromeTag(focused) }}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          setHeaderHeight((prev) => (h > prev ? h : prev));
-        }}
-      >
-        <AppChrome
-          wide={wide}
-          progress={progress}
-          announcement={compact ? null : announcement}
-          backLabel={backLabel}
-          onBack={onBack}
-          actionLabel={actionLabel}
-          onAction={onAction}
-          compact={compact}
-        />
-      </View>
+      {sticky ? null : (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: feed.lav,
+            ...chromeTag(focused),
+          }}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            setHeaderHeight((prev) => (h > prev ? h : prev));
+          }}
+        >
+          {chrome}
+        </View>
+      )}
     </View>
   );
 }
