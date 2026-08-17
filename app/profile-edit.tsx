@@ -27,6 +27,7 @@ import {
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 export default function ProfileEditScreen() {
   const router = useRouter();
@@ -94,7 +95,7 @@ export default function ProfileEditScreen() {
         ...(newAvatarUrl !== undefined && { avatar_url: newAvatarUrl }),
       });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
-      router.back();
+      safeBack(router, "/(app)/profile");
     } catch (e: any) {
       setError(e?.message ?? "Kon profiel niet opslaan.");
     } finally {
@@ -125,7 +126,7 @@ export default function ProfileEditScreen() {
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, "/(app)/profile")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
           <Ionicons name="close" color={feed.ink} size={20} />

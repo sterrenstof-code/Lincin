@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createGroupChat } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 export default function GroupCreateScreen() {
   const router = useRouter();
@@ -75,7 +76,7 @@ export default function GroupCreateScreen() {
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, "/(app)/chats")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
           <Ionicons name="close" color={feed.ink} size={20} />

@@ -19,6 +19,7 @@ import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
 import { feed, flame } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 export default function PollComposeScreen() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function PollComposeScreen() {
         await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       }
 
-      router.back();
+      safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed");
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
     } finally {
@@ -94,7 +95,7 @@ export default function PollComposeScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
             {/* Header */}
             <View className="flex-row items-center justify-between mb-6">
-              <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+              <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text className="text-cream font-bold text-lg">

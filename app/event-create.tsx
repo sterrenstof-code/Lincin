@@ -23,6 +23,7 @@ import {
   type EventRevealMode,
 } from "@/lib/api/events";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 function plusHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 3_600_000);
@@ -121,7 +122,7 @@ export default function EventCreateScreen() {
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, "/(app)/events")}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
             <Ionicons name="close" color={feed.ink} size={20} />

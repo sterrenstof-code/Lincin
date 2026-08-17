@@ -26,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 export default function DeviceReceiveScreen() {
   const { session } = useAuth();
@@ -124,7 +125,7 @@ export default function DeviceReceiveScreen() {
         <Pressable
           onPress={() => {
             if (Platform.OS !== "web") setShowManual(false);
-            else router.back();
+            else safeBack(router, "/(app)/profile");
           }}
           className="flex-row items-center mb-6"
         >
@@ -221,7 +222,7 @@ export default function DeviceReceiveScreen() {
         >
           <Text className="text-ink-soft text-sm">Link handmatig invoeren</Text>
         </Pressable>
-        <Pressable onPress={() => router.back()} className="py-2 mt-1">
+        <Pressable onPress={() => safeBack(router, "/(app)/profile")} className="py-2 mt-1">
           <Text className="text-ink-muted text-sm">Annuleren</Text>
         </Pressable>
       </SafeAreaView>
@@ -234,7 +235,7 @@ export default function DeviceReceiveScreen() {
       {/* Header */}
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, "/(app)/profile")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
           <Ionicons name="arrow-back" color={feed.ink} size={20} />

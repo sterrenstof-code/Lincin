@@ -20,6 +20,7 @@ import { createCallPlan } from "@/lib/api/call-plans";
 import { sendMessage } from "@/lib/api/messages";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { feed, flame } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 type SlotDraft = {
   id: string;
@@ -126,7 +127,7 @@ export default function CallPlanComposeScreen() {
       } else {
         await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       }
-      router.back();
+      safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed");
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
     } finally {
@@ -142,7 +143,7 @@ export default function CallPlanComposeScreen() {
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
-              <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+              <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text className="text-cream font-bold text-lg">

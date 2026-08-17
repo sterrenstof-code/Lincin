@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 /**
  * QR-scanner: scan de code van een andere gebruiker om naar diens profiel te gaan.
@@ -46,7 +47,7 @@ export default function QRScanScreen() {
         <ScreenContainer>
           <View className="flex-row items-center px-4 py-3">
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => safeBack(router, "/(app)/friends")}
               className="w-9 h-9 bg-paper-soft items-center justify-center"
             >
               <Ionicons name="close" color={feed.ink} size={20} />
@@ -81,7 +82,7 @@ export default function QRScanScreen() {
       {/* Sluitknop over de camera */}
       <View className="absolute top-14 left-4 z-10">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, "/(app)/friends")}
           className="w-10 h-10 bg-black/50 items-center justify-center"
         >
           <Ionicons name="close" color={feed.text} size={22} />

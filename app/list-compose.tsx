@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createSharedList } from "@/lib/api/shared-lists";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { feed, flame } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
 
@@ -48,7 +49,7 @@ export default function ListComposeScreen() {
     try {
       await createSharedList({ userId: myUserId, title: title.trim(), emoji, memberIds });
       await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-      router.back();
+      safeBack(router, "/(app)/feed");
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
     } finally {
@@ -64,7 +65,7 @@ export default function ListComposeScreen() {
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-              <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+              <Pressable onPress={() => safeBack(router, "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={feed.text} size={22} />
               </Pressable>
               <Text className="text-cream font-bold text-lg">Nieuwe lijst</Text>

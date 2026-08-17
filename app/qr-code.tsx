@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { getProfile } from "@/lib/api/profiles";
 import { buildAddFriendUrl, copyToClipboard, shareText } from "@/lib/share";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 const QR_SIZE = 260;
 
@@ -55,7 +56,7 @@ export default function QRCodeScreen() {
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, "/(app)/profile")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
           <Ionicons name="close" color={feed.ink} size={20} />

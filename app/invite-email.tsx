@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { sendEmailInvite } from "@/lib/api/invites";
 import { feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 export default function InviteEmailScreen() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function InviteEmailScreen() {
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, "/(app)/friends")}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
             <Ionicons name="close" color={feed.ink} size={20} />
@@ -116,7 +117,7 @@ export default function InviteEmailScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
-                      onPress={() => router.back()}
+                      onPress={() => safeBack(router, "/(app)/friends")}
                       className="flex-1 bg-ink active:bg-ink-soft py-2.5 items-center"
                     >
                       <Text className="text-cream font-semibold text-sm">Klaar</Text>

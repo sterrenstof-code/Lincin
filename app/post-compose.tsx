@@ -22,6 +22,7 @@ import { SmartTextInput } from "@/components/SmartTextInput";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
+import { safeBack } from "@/lib/nav";
 import {
   findUrl,
   formatDuration,
@@ -230,7 +231,7 @@ export default function PostComposeScreen() {
         meta: preview ?? null,
       });
       await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-      router.back();
+      safeBack(router, "/(app)/feed");
     } catch (e: any) {
       setError(humanizeError(e));
     } finally {
@@ -250,7 +251,7 @@ export default function PostComposeScreen() {
           {/* Kop */}
           <View className="flex-row items-center px-6 py-4">
             <Pressable
-              onPress={() => (kind ? resetToTypePicker() : router.back())}
+              onPress={() => (kind ? resetToTypePicker() : safeBack(router, "/(app)/feed"))}
               hitSlop={10}
             >
               <Ionicons
