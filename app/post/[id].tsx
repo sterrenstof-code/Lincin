@@ -449,8 +449,20 @@ export default function PostDetailScreen() {
   /** Reacties — de lijst zelf, zonder omhulsel. */
   const commentsBlock = (
     <>
-      <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
-        Reacties {comments && comments.length > 0 ? `(${comments.length})` : ""}
+      <Text
+        style={[
+          feedType.kicker,
+          {
+            color: feed.inkDim,
+            letterSpacing: 0.6,
+            paddingTop: space.lg,
+            paddingBottom: space.md,
+            borderTopWidth: FEED_BORDER,
+            borderTopColor: feed.ink,
+          },
+        ]}
+      >
+        {`REACTIES${comments && comments.length > 0 ? ` (${comments.length})` : ""}`}
       </Text>
 
       {/* Geen paneel eromheen. Een reactie is geen kaartje: wie het zei
@@ -760,19 +772,44 @@ export default function PostDetailScreen() {
               contentContainerStyle={{ paddingBottom: 12 }}
               showsVerticalScrollIndicator={false}
             >
+              {/*
+                  Geen paneel om de kop van het gesprek.
+
+                  Wat het vlak deed, doet de opbouw nu zelf: de naam
+                  bovenaan, het onderschrift eronder ingesprongen tot naast
+                  de avatar — dezelfde inspringing als een reactie verderop,
+                  zodat de kolom één maatlijn heeft — en een lijn onder elk
+                  deel in plaats van een kleur eromheen.
+              */}
               {post.data ? (
-                <View className="bg-paper-soft p-4">
+                <View style={{ paddingVertical: space.lg }}>
                   {authorRow(true)}
                   {post.data.caption ? (
                     <MentionsText
                       text={post.data.caption}
-                      style={[feedType.pullSmall, { color: feed.ink, marginTop: 14 }]}
+                      style={[
+                        feedType.pullSmall,
+                        {
+                          color: feed.ink,
+                          marginTop: space.md,
+                          // Tot naast de avatar: 36 breed plus de marge
+                          // ernaast, gelijk aan een reactie.
+                          marginLeft: 36 + space.md,
+                        },
+                      ]}
                     />
                   ) : null}
                 </View>
               ) : null}
               {linkBlock}
-              <View style={{ marginTop: space.md, gap: space.sm }}>
+              <View
+                style={{
+                  gap: space.sm,
+                  paddingVertical: space.lg,
+                  borderTopWidth: FEED_BORDER,
+                  borderTopColor: feed.ink,
+                }}
+              >
                 <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
                 {/* Pillen en gezichten op één regel: het is één ding —
                     wat er met deze vondst gedaan is. */}
@@ -784,7 +821,7 @@ export default function PostDetailScreen() {
                     gap: space.sm,
                   }}
                 >
-                  <PostReactions postId={String(id)} tone="page" padded={false} />
+                  <PostReactions postId={String(id)} tone="feed" padded={false} />
                   <InteractionPeople postId={String(id)} />
                 </View>
               </View>
@@ -850,7 +887,7 @@ export default function PostDetailScreen() {
                 gap: space.sm,
               }}
             >
-              <PostReactions postId={String(id)} tone="page" padded={false} />
+              <PostReactions postId={String(id)} tone="feed" padded={false} />
               <InteractionPeople postId={String(id)} />
             </View>
           </View>
