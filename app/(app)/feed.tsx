@@ -26,9 +26,9 @@ import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
-import { CHROME_COMPACT_H, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { EventCard } from "@/components/EventCard";
-import { FeedRail, Frame, ShareButton } from "@/components/FeedChrome";
+import { Frame, ShareButton } from "@/components/FeedChrome";
 import {
   FindHero,
   FindTile,
@@ -52,8 +52,6 @@ import {
 import { withHeroTransition } from "@/lib/hero-transition";
 import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useSeenPosts } from "@/lib/read-state";
-import { countUnreadNotifications } from "@/lib/api/notifications";
-import { getProfiles } from "@/lib/api/profiles";
 import {
   collectTags,
   deletePost,
@@ -321,20 +319,6 @@ export default function FeedScreen() {
     staleTime: 60_000,
   });
 
-  // Eigen profiel voor het persoonlijke blok in de zijbalk.
-  const me = useQuery({
-    queryKey: ["profile", myUserId],
-    queryFn: async () => (await getProfiles([myUserId]))[0] ?? null,
-    staleTime: 5 * 60_000,
-  });
-
-  // Zelfde sleutel als in (app)/_layout — react-query dedupliceert, dus dit
-  // kost geen extra verzoek. Voedt het telletje naast "Meldingen".
-  const unreadNotifications = useQuery({
-    queryKey: ["notifications-unread", myUserId],
-    queryFn: () => countUnreadNotifications(myUserId),
-  });
-
   useFocusEffect(
     useCallback(() => {
       qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -432,51 +416,23 @@ export default function FeedScreen() {
             paddingTop: 0,
           }}
         >
-          {/* Eén gedeeld kader om zijbalk én hoofdkolom, zoals de mockup:
-              de zijbalk heeft een scheidingslijn rechts, geen eigen doos.
+          {/*
+              Eén kader om de hele uitgave.
 
-              De richting staat bewust in `style` en niet in een `flex-row`-
-              class: als NativeWind niet meedoet (stale CSS, Metro-cache) zou
-              de hele pagina anders stilletjes op één kolom terugvallen. */}
+              Hier zat links een zijbalk met een persoonlijk blok: je naam,
+              je avatar, "Bekijk profiel", meldingen en instellingen. Dat
+              staat allemaal al in de kop — dezelfde avatar, hetzelfde menu —
+              en twee keer dezelfde ingang op één scherm maakt geen van beide
+              duidelijker. De kolom is weg; de kop draagt het.
+          */}
           <View
             style={{
-              flexDirection: wide ? "row" : "column",
               alignItems: "stretch",
-              marginTop: 16,
+              marginTop: space.lg,
               borderWidth: FEED_BORDER,
               borderColor: feedColor.ink,
             }}
           >
-            <View
-              style={
-                wide && Platform.OS === "web"
-                  ? // `position: sticky` bestaat alleen op web. Op native
-                    // scrollt de zijbalk mee; dat is daar het verwachte gedrag.
-                    //
-                    // De bovenmarge is de hoogte van de ingeklapte kop plus
-                    // wat lucht: die kop zweeft absoluut over de pagina, dus
-                    // een zijbalk die zich op 16px vastzet kruipt eronder —
-                    // "Iets delen" verdween achter de zwarte balk.
-                    ({
-                      position: "sticky",
-                      top: CHROME_COMPACT_H + 16,
-                      alignSelf: "flex-start",
-                    } as any)
-                  : undefined
-              }
-            >
-              <FeedRail
-                wide={wide}
-                displayName={me.data?.display_name ?? me.data?.username ?? "Jij"}
-                avatarUrl={me.data?.avatar_url ?? null}
-                onShare={() => setShareOpen(true)}
-                onProfile={() => router.push("/profile")}
-                onNotifications={() => router.push("/notifications")}
-                onSettings={() => router.push("/profile-edit")}
-                unreadNotifications={unreadNotifications.data ?? 0}
-              />
-            </View>
-
             <View style={{ flex: 1, minWidth: 0 }}>
               {feed.isLoading ? (
                 <View className="items-center py-24">
@@ -599,23 +555,17 @@ export default function FeedScreen() {
                     ))}
 
                     {sort === "chrono" && leftovers.length > 0 ? (
-                      <View style={{ marginBottom: 40 }}>
-                        <Text
-                          style={[
-                            feedType.kicker,
-                            { color: "#3A3540", letterSpacing: 0.55, marginBottom: 18 },
-                          ]}
-                        >
-                          ALLES, NIEUWSTE EERST
-                        </Text>
-                        <ChronoGrid
-                          slots={leftovers}
-                          columns={gridColumns}
-                          myUserId={myUserId}
-                          onChanged={invalidate}
-                          dimmed={dimSeen ? seen : null}
-                        />
-                      </View>
+                      <SectionFrame index={0} label="Alles, nieuwste eerst">
+                        <View style={{ padding: space.lg }}>
+                          <MasonryGrid
+                            slots={leftovers}
+                            columns={gridColumns}
+                            myUserId={myUserId}
+                            onChanged={invalidate}
+                            dimmed={dimSeen ? seen : null}
+                          />
+                        </View>
+                      </SectionFrame>
                     ) : null}
 
                     {sort !== "chrono" && leftovers.length > 0 ? (
@@ -969,7 +919,26 @@ function columnsFor(width: number): number {
  * op react-native-web anders dan op native, en dit is één regel meer voor
  * een indeling die overal hetzelfde uitpakt.
  */
-function ChronoGrid({
+/**
+ * Het chronologische overzicht: metselwerk.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM KOLOMMEN EN GEEN RIJEN
+ * ---------------------------------------------------------------
+ * Hier stond een raster van gelijke cellen. Dat betekent dat élke tegel de
+ * hoogte van de hoogste in zijn rij aanneemt, en dus dat elke staande foto
+ * werd bijgesneden tot de vorm van zijn buurman. In een overzicht waar de
+ * volgorde het enige is dat telt, is de vorm van een foto juist het enige
+ * wat de een van de ander onderscheidt — dus houdt elke tegel zijn eigen
+ * hoogte en stapelen we ze in kolommen.
+ *
+ * De verdeling gaat om de beurt (kolom 0, 1, 2, 0, …) en niet naar de
+ * kortste kolom. Dat laatste vult netter, maar het vraagt de hoogtes vooraf
+ * en die kennen we pas als de foto's binnen zijn — en het maakt de volgorde
+ * onvoorspelbaar, terwijl "nieuwste eerst" hier de hele belofte is. Om de
+ * beurt leest links naar rechts, rij na rij, precies zoals het er staat.
+ */
+function MasonryGrid({
   slots,
   columns,
   myUserId,
@@ -982,30 +951,23 @@ function ChronoGrid({
   onChanged: () => void;
   dimmed?: Set<string> | null;
 }) {
+  const buckets: Slot[][] = Array.from({ length: columns }, () => []);
+  slots.forEach((slot, i) => buckets[i % columns].push(slot));
+
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        flexWrap: "wrap",
-        marginHorizontal: -GRID_GAP / 2,
-      }}
-    >
-      {slots.map((slot) => (
-        <View
-          key={slot.item.id}
-          style={{
-            width: `${100 / columns}%`,
-            padding: GRID_GAP / 2,
-            marginBottom: GRID_GAP,
-          }}
-        >
-          <CompactItem
-            slot={slot}
-            wide={columns > 1}
-            myUserId={myUserId}
-            onChanged={onChanged}
-            dimmed={dimmed}
-          />
+    <View style={{ flexDirection: "row", gap: GRID_GAP }}>
+      {buckets.map((bucket, ci) => (
+        <View key={ci} style={{ flex: 1, minWidth: 0, gap: GRID_GAP }}>
+          {bucket.map((slot) => (
+            <CompactItem
+              key={slot.item.id}
+              slot={slot}
+              wide={columns > 1}
+              myUserId={myUserId}
+              onChanged={onChanged}
+              dimmed={dimmed}
+            />
+          ))}
         </View>
       ))}
     </View>

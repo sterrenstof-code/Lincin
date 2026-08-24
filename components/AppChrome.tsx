@@ -477,7 +477,7 @@ function CompactBar({
  * De stip op de avatar is bewust géén getal. Hoevéél meldingen er liggen
  * is iets voor het blok zelf; hier hoef je alleen te weten óf er iets ligt.
  */
-function PersonalMenu() {
+function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
   const router = useRouter();
   const { session } = useAuth();
   const myUserId = session?.user.id;
@@ -504,10 +504,15 @@ function PersonalMenu() {
 
   return (
     <>
-      <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
+      <View
+        style={{
+          width: FEED_BORDER,
+          backgroundColor: tone === "dark" ? "rgba(250,248,245,0.25)" : feed.ink,
+        }}
+      />
       <Pressable
         onPress={() => setOpen(true)}
-        style={{ justifyContent: "center", paddingHorizontal: 12 }}
+        style={{ justifyContent: "center", paddingHorizontal: space.md }}
         accessibilityLabel="Persoonlijk"
       >
         <View>
@@ -621,10 +626,10 @@ function FullHeader({
             <Pressable
               onPress={onAction}
               style={({ pressed }) => ({
-                backgroundColor: pressed ? flameDeep : feed.ink,
+                backgroundColor: pressed ? announceDeep : announce,
                 borderLeftWidth: FEED_BORDER,
                 borderLeftColor: feed.ink,
-                paddingHorizontal: 16,
+                paddingHorizontal: space.lg,
                 justifyContent: "center",
               })}
             >
@@ -633,6 +638,11 @@ function FullHeader({
               </Text>
             </Pressable>
           ) : null}
+
+          {/* Jij, aan het eind van de navigatie — in beide standen van de
+              kop op dezelfde plek. De zijbalk had hetzelfde blok nog een
+              keer; zie feed.tsx voor waarom dat weg is. */}
+          <PersonalMenu tone="paper" />
         </View>
 
         <Divider />

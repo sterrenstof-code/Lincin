@@ -1400,41 +1400,70 @@ function GridTile({
   onPress?: () => void;
 }) {
   const heroStyle = useHeroTag(post.id);
+  /**
+   * De echte verhouding van de foto, zodra hij binnen is.
+   *
+   * Elke tegel op 4:3 zetten maakt van een metselwerk een tabel: alle
+   * rijen even hoog, elke staande foto bijgesneden tot liggend. In deze
+   * weergave is de hoogte juist wat het raster leven geeft, dus houdt elke
+   * foto de zijne — begrensd, want een panorama of een heel smalle foto
+   * moet de kolom niet opeten.
+   */
+  const [ratio, setRatio] = useState<number | undefined>(undefined);
 
   return (
     <Pressable
       onPress={onPress}
       style={{
-        flex: 1,
         backgroundColor: feed.post,
         borderWidth: FEED_BORDER,
         borderColor: feed.ink,
       }}
     >
-      <View style={{ width: "100%", aspectRatio: 4 / 3, ...heroStyle }}>
-        <SafeImage
-          uri={p.image}
-          cacheKey={p.imageKey}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={150}
-          fallbackBg="bg-feed-post"
-          fallbackColor={feed.textDim}
-        />
-      </View>
+      {p.image ? (
+        <View
+          style={{
+            width: "100%",
+            aspectRatio: ratio ? Math.min(Math.max(ratio, 0.62), 1.9) : 4 / 3,
+            ...heroStyle,
+          }}
+        >
+          <SafeImage
+            uri={p.image}
+            cacheKey={p.imageKey}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            contentFit="cover"
+            transition={150}
+            fallbackBg="bg-feed-post"
+            fallbackColor={feed.textDim}
+            onLoad={(e) => {
+              const { width, height } = (e as any).source ?? {};
+              if (width && height) setRatio(width / height);
+            }}
+          />
+        </View>
+      ) : null}
 
-      <View style={{ padding: 14, minHeight: 118 }}>
+      <View style={{ padding: space.lg }}>
         <FeedKicker text={p.kicker} kind={post.kind} />
         {p.title ? (
           <Text
-            style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: 8 }]}
-            numberOfLines={2}
+            style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: space.sm }]}
+            numberOfLines={3}
           >
             {p.title}
           </Text>
         ) : null}
+        {!p.image && p.body ? (
+          <Text
+            style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.textDim, marginTop: space.sm }]}
+            numberOfLines={6}
+          >
+            {p.body}
+          </Text>
+        ) : null}
         <Text
-          style={[feedType.label, { color: feed.textDim, marginTop: 6 }]}
+          style={[feedType.label, { color: feed.textDim, marginTop: space.sm }]}
           numberOfLines={1}
         >
           {`${p.sharer} · ${p.time}`}
