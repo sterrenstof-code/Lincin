@@ -35,7 +35,7 @@ import {
   feedType,
   flame,
   flameDeep,
-  gutter,
+  gutter as gutterFor,
   space,
 } from "@/lib/design/type";
 
@@ -737,7 +737,7 @@ export function AppChrome({
     return (
       <View
         style={{
-          paddingHorizontal: gutter(wide),
+          paddingHorizontal: gutterFor(wide),
           paddingTop: space.sm,
           paddingBottom: space.sm,
         }}
@@ -791,7 +791,7 @@ export function AppChrome({
         <View
           style={{
             width: "100%",
-            paddingHorizontal: gutter(wide),
+            paddingHorizontal: gutterFor(wide),
             paddingTop: space.sm,
             paddingBottom: space.sm,
             alignItems: "flex-start",
@@ -810,7 +810,7 @@ export function AppChrome({
             right: 0,
             bottom: 0,
             height: CHROME_COMPACT_H,
-            paddingHorizontal: gutter(wide),
+            paddingHorizontal: gutterFor(wide),
             paddingTop: space.sm,
             paddingBottom: space.sm,
             backgroundColor: feed.lav,
@@ -874,9 +874,9 @@ export function AppChrome({
       <Animated.View
         style={{
           width: "100%",
-          paddingHorizontal: wide ? 24 : 16,
-          paddingTop: 10,
-          paddingBottom: 8,
+          paddingHorizontal: gutterFor(wide),
+          paddingTop: space.sm,
+          paddingBottom: space.sm,
           alignItems: "flex-start",
         }}
         onLayout={(e) => setFullWidth(e.nativeEvent.layout.width - (wide ? 48 : 32))}
@@ -1091,7 +1091,7 @@ export function PageScroll({
             // Onder de kop door: precies zijn hoogte terug, zodat de plaat
             // aan de bovenrand van het venster begint.
             ...(underChrome && sticky ? { marginTop: -webHeaderHeight } : null),
-            ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
+            ...(gutter ? { paddingHorizontal: gutterFor(wide) } : null),
             ...contentStyle,
           }}
         >

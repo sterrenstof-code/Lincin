@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * De twee schakelaars boven de feed — ordening en "gelezen dimmen" —
+ * De twee schakelaars boven de feed — weergave en "gelezen dimmen" —
  * onthouden per gebruiker.
  *
  * ---------------------------------------------------------------
@@ -22,14 +22,42 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * leeg blijft voor iets wat maar twee knopjes zijn.
  */
 
-export type FeedSort = "thematic" | "chrono";
+/**
+ * Hoe de feed eruitziet.
+ *
+ *   `mosaic`  de uitgave: rubrieken bovenaan, daaronder alles in een
+ *             metselwerk waarin elke vondst zijn eigen maat houdt.
+ *   `grid`    één strak raster van gelijke vierkanten, nieuwste eerst —
+ *             alleen beeld, geen rubrieken.
+ *
+ * Het waren `thematic` en `chrono`, een keuze over de ordening. Maar wat
+ * je in de praktijk kiest is hoe je wil kíjken: bladeren door een uitgave,
+ * of alles in één keer overzien. De oude namen worden nog gelezen zodat
+ * niemand zijn bewaarde keuze kwijtraakt.
+ */
+export type FeedLayout = "mosaic" | "grid";
+
+/**
+ * Hoe de feed geordend is.
+ *
+ *   `thematic`  in rubrieken: uitgelicht, een reeks, meeste interactie,
+ *               nieuwste — een uitgave met een inhoudsopgave.
+ *   `chrono`    alles op één hoop, nieuwste eerst.
+ *
+ * Los van `layout`, want het zijn twee vragen: hoe is het geordend, en hoe
+ * ziet het eruit. Ze stonden ooit in één schakelaar en dat dwong een keuze
+ * die niet bestond — chronologisch kán ook als metselwerk, thematisch kán
+ * ook als raster.
+ */
+export type FeedOrder = "thematic" | "chrono";
 
 export type FeedPrefs = {
-  sort: FeedSort;
+  layout: FeedLayout;
+  order: FeedOrder;
   dimSeen: boolean;
 };
 
-const DEFAULTS: FeedPrefs = { sort: "thematic", dimSeen: true };
+const DEFAULTS: FeedPrefs = { layout: "mosaic", order: "thematic", dimSeen: true };
 
 function keyFor(userId: string) {
   return `lincin.feed-prefs.v1.${userId}`;
@@ -38,9 +66,19 @@ function keyFor(userId: string) {
 function parse(raw: string | null): FeedPrefs {
   if (!raw) return DEFAULTS;
   try {
-    const parsed = JSON.parse(raw) as Partial<FeedPrefs>;
+    const parsed = JSON.parse(raw) as Partial<FeedPrefs> & { sort?: string };
+    /**
+     * `sort` is de oude naam, uit de tijd dat ordening en weergave één
+     * schakelaar waren. Wie hem nog opgeslagen heeft, houdt zijn keuze:
+     * "chrono" was alles op één hoop in een raster, "thematic" de uitgave.
+     */
+    const legacyOrder =
+      parsed.sort === "chrono" ? "chrono" : parsed.sort === "thematic" ? "thematic" : undefined;
+    const legacyLayout = parsed.sort === "chrono" ? "grid" : undefined;
+
     return {
-      sort: parsed.sort === "chrono" ? "chrono" : "thematic",
+      layout: (parsed.layout ?? legacyLayout) === "grid" ? "grid" : "mosaic",
+      order: (parsed.order ?? legacyOrder) === "chrono" ? "chrono" : "thematic",
       dimSeen: typeof parsed.dimSeen === "boolean" ? parsed.dimSeen : DEFAULTS.dimSeen,
     };
   } catch {
@@ -51,7 +89,8 @@ function parse(raw: string | null): FeedPrefs {
 
 export function useFeedPrefs(userId: string): {
   prefs: FeedPrefs;
-  setSort: (sort: FeedSort) => void;
+  setLayout: (layout: FeedLayout) => void;
+  setOrder: (order: FeedOrder) => void;
   setDimSeen: (dimSeen: boolean) => void;
 } {
   const [prefs, setPrefs] = useState<FeedPrefs>(DEFAULTS);
@@ -91,8 +130,12 @@ export function useFeedPrefs(userId: string): {
     [userId]
   );
 
-  const setSort = useCallback(
-    (sort: FeedSort) => write({ ...prefs, sort }),
+  const setLayout = useCallback(
+    (layout: FeedLayout) => write({ ...prefs, layout }),
+    [prefs, write]
+  );
+  const setOrder = useCallback(
+    (order: FeedOrder) => write({ ...prefs, order }),
     [prefs, write]
   );
   const setDimSeen = useCallback(
@@ -100,5 +143,5 @@ export function useFeedPrefs(userId: string): {
     [prefs, write]
   );
 
-  return { prefs, setSort, setDimSeen };
+  return { prefs, setLayout, setOrder, setDimSeen };
 }

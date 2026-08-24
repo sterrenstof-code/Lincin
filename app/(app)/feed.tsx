@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
@@ -35,6 +36,7 @@ import {
 } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
+import { PostGrid } from "@/components/PostGrid";
 import { PostReactions } from "@/components/PostReactions";
 import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
@@ -45,6 +47,7 @@ import {
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
+  gutter,
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
@@ -271,16 +274,21 @@ export default function FeedScreen() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
    * De twee leesvoorkeuren:
-   *   `sort`     `thematic` groepeert in rubrieken (zie SECTIONS),
+   *   `order`    `thematic` groepeert in rubrieken (zie SECTIONS),
    *              `chrono` gooit alles op één hoop, nieuwste eerst.
+   *   `layout`   `mosaic` laat elke vondst zijn eigen maat houden,
+   *              `grid` legt ze in gelijke vierkanten.
    *   `dimSeen`  al bekeken vondsten worden uitgegrijsd.
+   *
+   * Ordening en weergave zijn twee vragen en dus twee keuzes: chronologisch
+   * kán als metselwerk, thematisch kán als raster.
    *
    * Beide zijn een keuze van de lezer en geen instelling die de app voor
    * je maakt — dus onthouden we ze, per gebruiker, op dit toestel. Zie
    * lib/feed-prefs.ts voor waarom dat lokaal blijft.
    */
-  const { prefs, setSort, setDimSeen } = useFeedPrefs(myUserId);
-  const { sort, dimSeen } = prefs;
+  const { prefs, setLayout, setOrder, setDimSeen } = useFeedPrefs(myUserId);
+  const { layout, order, dimSeen } = prefs;
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
   const [shareOpen, setShareOpen] = useState(false);
@@ -363,7 +371,7 @@ export default function FeedScreen() {
      * dan is een kop van 88vh boven de lijst een tweede verhaal over
      * dezelfde inhoud. Zie GridTile voor waarom ook de maat gelijk is.
      */
-    if (sort === "chrono") {
+    if (order === "chrono") {
       const flat: Slot[] = items.map((item, i) => ({
         variant: "grid",
         item,
@@ -373,7 +381,7 @@ export default function FeedScreen() {
     }
 
     return { hero, ...buildSections(rest) };
-  }, [feed.data, activeTag, sort]);
+  }, [feed.data, activeTag, order]);
 
   const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -413,7 +421,8 @@ export default function FeedScreen() {
           style={{
             width: "100%",
             alignSelf: "stretch",
-            paddingHorizontal: wide ? 24 : 16,
+            // Eén marge voor de hele pagina, dezelfde die de kop aanhoudt.
+            paddingHorizontal: gutter(wide),
             paddingTop: 0,
           }}
         >
@@ -454,13 +463,17 @@ export default function FeedScreen() {
                     />
                   ) : null}
 
-                  <View
-                    style={{
-                      paddingHorizontal: wide ? 32 : 18,
-                      paddingTop: 48,
-                      paddingBottom: 80,
-                    }}
-                  >
+                  {/*
+                      Geen tweede marge.
+
+                      Hier stond er nog 32 (of 18) bovenop de marge van de
+                      pagina, en dus begon alles wat hierin staat — de
+                      schakelaars, de rubrieken — een stuk verder naar
+                      binnen dan de kop erboven. Vier verschillende
+                      insprongen op één scherm. Alles lijnt nu uit op
+                      `gutter()`.
+                  */}
+                  <View style={{ paddingTop: space.section, paddingBottom: 80 }}>
                     {/* Ordening + leesstatus. Twee vragen, geen
                         instellingenscherm: dit is iets wat je terwijl je
                         leest wil kunnen omzetten.
@@ -485,61 +498,52 @@ export default function FeedScreen() {
                           standen van dezelfde vraag — hoe wil je kijken —
                           en dus één kader met cellen erin, net als de
                           tabstrip in de kop. */}
+                      {/*
+                          Drie knoppen, geen woorden.
+
+                          "Thematisch" en "Chronologisch" beschreven de
+                          órdening, maar wat je kiest is hoe je wil kíjken:
+                          bladeren door een uitgave, of alles in één keer
+                          overzien. Dat laat een tekening beter zien dan een
+                          woord — en het scheelt de vertaling van twee
+                          begrippen die niemand hardop gebruikt.
+                      */}
                       <View
                         style={{
+                          flexDirection: "row",
                           borderWidth: FEED_BORDER,
                           borderColor: feedColor.ink,
-                          alignSelf: "stretch",
                         }}
                       >
-                        <View style={{ flexDirection: "row" }}>
-                          <SortTab
-                            label="Thematisch"
-                            active={sort === "thematic"}
-                            onPress={() => setSort("thematic")}
-                          />
-                          <SortTab
-                            label="Chronologisch"
-                            active={sort === "chrono"}
-                            onPress={() => setSort("chrono")}
-                            divider
-                          />
-                          {/* Op een breed scherm past de derde ernaast. */}
-                          {wide ? (
-                            <SortTab
-                              label="Gelezen dimmen"
-                              active={dimSeen}
-                              onPress={() => setDimSeen(!dimSeen)}
-                              divider
-                            />
-                          ) : null}
-                        </View>
-
-                        {/*
-                            Op een smal scherm gaat hij naar de volgende
-                            regel, over de volle breedte.
-
-                            Als derde cel naast de andere twee brak "Gelezen
-                            dimmen" over twee regels terwijl zijn buren er
-                            één hadden — dan lijkt die cel voller en dus
-                            belangrijker, terwijl het de minst ingrijpende
-                            van de drie is. Een eigen regel is eerlijker dan
-                            een woord afknijpen.
-                        */}
-                        {wide ? null : (
-                          <View
-                            style={{
-                              borderTopWidth: FEED_BORDER,
-                              borderTopColor: feedColor.ink,
-                            }}
-                          >
-                            <SortTab
-                              label="Gelezen dimmen"
-                              active={dimSeen}
-                              onPress={() => setDimSeen(!dimSeen)}
-                            />
-                          </View>
-                        )}
+                        <LayoutTab
+                          kind="mosaic"
+                          active={layout === "mosaic"}
+                          onPress={() => setLayout("mosaic")}
+                        />
+                        <LayoutTab
+                          kind="grid"
+                          active={layout === "grid"}
+                          onPress={() => setLayout("grid")}
+                          divider
+                        />
+                        <LayoutTab
+                          kind="thematic"
+                          active={order === "thematic"}
+                          onPress={() => setOrder("thematic")}
+                          divider
+                        />
+                        <LayoutTab
+                          kind="chrono"
+                          active={order === "chrono"}
+                          onPress={() => setOrder("chrono")}
+                          divider
+                        />
+                        <LayoutTab
+                          kind="dim"
+                          active={dimSeen}
+                          onPress={() => setDimSeen(!dimSeen)}
+                          divider
+                        />
                       </View>
                     </View>
 
@@ -551,7 +555,7 @@ export default function FeedScreen() {
                       />
                     ) : null}
 
-                    {sort === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
+                    {order === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
                       <SectionFrame index={0} label="Nu aan de gang">
                         <View style={{ padding: space.lg, gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
@@ -587,18 +591,30 @@ export default function FeedScreen() {
                       </SectionFrame>
                     ))}
 
-                    {sort === "chrono" && leftovers.length > 0 ? (
+                    {/*
+                        Het strakke raster: gelijke vierkanten, nieuwste
+                        eerst, alleen beeld.
+
+                        Bewust alleen vondsten. Een stemming, een call of een
+                        activiteitsregel is tekst met knoppen erin; die in een
+                        vierkant persen levert een afgeknipte kaart op. Wie
+                        die wil zien, kijkt in het metselwerk — daar staan ze
+                        voluit. Dit raster is voor het overzicht: wat is er
+                        gedeeld, en hoe ziet het eruit.
+                    */}
+                    {order === "chrono" && leftovers.length > 0 ? (
                       <SectionFrame index={0} label="Alles, nieuwste eerst">
-                        {/* Dezelfde kier rondom als tussen de tegels, anders
-                            plakt de buitenste rij tegen het kader. */}
                         <View style={{ padding: space.sm }}>
-                        <MasonryGrid
-                          slots={leftovers}
-                          columns={gridColumns}
-                          myUserId={myUserId}
-                          onChanged={invalidate}
-                          dimmed={dimSeen ? seen : null}
-                        />
+                          <PostGrid
+                            posts={leftovers
+                              .map((slot) =>
+                                slot.item.type === "post" || slot.item.type === "memory"
+                                  ? slot.item.data
+                                  : null
+                              )
+                              .filter((post): post is PostWithAuthor => !!post)}
+                            emptyLabel="Nog niets gedeeld."
+                          />
                         </View>
                       </SectionFrame>
                     ) : null}
@@ -616,7 +632,7 @@ export default function FeedScreen() {
                         die elk om evenveel aandacht vragen als de
                         uitgelichte vondst bovenaan.
                     */}
-                    {sort !== "chrono" && leftovers.length > 0 ? (
+                    {order === "thematic" && leftovers.length > 0 ? (
                       <SectionFrame
                         index={liveSectionOffset + sections.length}
                         label="Verder deze week"
@@ -1371,7 +1387,7 @@ function EmptyState({
   wide: boolean;
 }) {
   return (
-    <View style={{ paddingHorizontal: wide ? 32 : 18, paddingVertical: 80 }}>
+    <View style={{ paddingVertical: 80 }}>
       <Text style={[feedType.heroSmall, { color: feedColor.ink }]}>
         {activeTag ? "Niets onder deze tag." : "Nog niets gedeeld."}
       </Text>
@@ -1488,27 +1504,51 @@ function MosaicGrid({
 }
 
 /** Eén cel van de ordening-schakelaar. */
-function SortTab({
-  label,
+/** Wat elke knop doet — ook voor wie de app met een schermlezer gebruikt. */
+const LAYOUT_TAB_LABELS: Record<
+  "mosaic" | "grid" | "thematic" | "chrono" | "dim",
+  string
+> = {
+  mosaic: "Metselwerk",
+  grid: "Raster",
+  thematic: "In rubrieken",
+  chrono: "Nieuwste eerst",
+  dim: "Gelezen dimmen",
+};
+
+const LAYOUT_TAB_ICONS = {
+  thematic: "albums-outline",
+  chrono: "time-outline",
+  dim: "eye-off-outline",
+} as const;
+
+/**
+ * Eén knop in de weergavekeuze: een tekening, geen woord.
+ *
+ * De tekening ís de uitleg — twee kolommen met blokken van verschillende
+ * hoogte tegenover negen gelijke vierkanten. Wie het één keer ziet, weet
+ * meteen wat de knop doet, in welke taal hij de app ook leest.
+ */
+function LayoutTab({
+  kind,
   active,
   onPress,
   divider = false,
 }: {
-  label: string;
+  kind: "mosaic" | "grid" | "thematic" | "chrono" | "dim";
   active: boolean;
   onPress: () => void;
   divider?: boolean;
 }) {
+  const tint = active ? feedColor.lav : feedColor.ink;
   return (
     <Pressable
       onPress={onPress}
+      accessibilityLabel={LAYOUT_TAB_LABELS[kind]}
       style={{
-        // Gelijke cellen: drie standen van dezelfde vraag horen even breed
-        // te zijn, anders leest de langste als de belangrijkste.
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: space.md,
         height: CONTROL_H,
         backgroundColor: active ? feedColor.ink : "transparent",
         ...(divider
@@ -1516,11 +1556,50 @@ function SortTab({
           : null),
       }}
     >
-      <Text
-        style={[feedType.label, { color: active ? feedColor.lav : feedColor.ink }]}
-      >
-        {label}
-      </Text>
+      {kind === "mosaic" || kind === "grid" ? (
+        <LayoutGlyph kind={kind} color={tint} />
+      ) : (
+        <Ionicons name={LAYOUT_TAB_ICONS[kind]} size={18} color={tint} />
+      )}
     </Pressable>
+  );
+}
+
+/**
+ * De tekening zelf, opgebouwd uit vlakjes.
+ *
+ * Geen icoonlettertype en geen SVG-bestand: dit zijn zes rechthoekjes, en
+ * die tekenen we met dezelfde bouwstenen als de rest van het scherm. Zo
+ * volgt hij vanzelf de kleur van de knop waar hij in staat.
+ */
+function LayoutGlyph({ kind, color }: { kind: "mosaic" | "grid"; color: string }) {
+  const box = (w: number, h: number, key: string) => (
+    <View key={key} style={{ width: w, height: h, backgroundColor: color }} />
+  );
+
+  if (kind === "grid") {
+    return (
+      <View style={{ flexDirection: "row", gap: 2 }}>
+        {[0, 1, 2].map((c) => (
+          <View key={c} style={{ gap: 2 }}>
+            {[0, 1, 2].map((r) => box(5, 5, `${c}-${r}`))}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  // Metselwerk: twee kolommen, blokken van verschillende hoogte.
+  return (
+    <View style={{ flexDirection: "row", gap: 2 }}>
+      <View style={{ gap: 2 }}>
+        {box(7, 9, "a")}
+        {box(7, 5, "b")}
+      </View>
+      <View style={{ gap: 2 }}>
+        {box(7, 5, "c")}
+        {box(7, 9, "d")}
+      </View>
+    </View>
   );
 }
