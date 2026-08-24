@@ -21,7 +21,12 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { MentionsText } from "@/components/MentionsText";
 import { useWide } from "@/components/Editorial";
-import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import {
+  AppChrome,
+  CHROME_COMPACT_H,
+  PageScroll,
+  useChromeScroll,
+} from "@/components/AppChrome";
 import { InteractionPeople } from "@/components/InteractionPeople";
 import { PostCarousel } from "@/components/PostCarousel";
 import { SafeImage } from "@/components/SafeImage";
@@ -31,6 +36,7 @@ import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import {
+  announce,
   CONTROL_H,
   feed,
   FEED_BORDER,
@@ -62,36 +68,42 @@ export default function PostDetailScreen() {
   const wide = useWide();
   const chrome = useChromeScroll();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-  /**
-   * Breedte van de gesprekskolom. Genoeg voor een reactie van twee regels,
-   * maar nooit zoveel dat de foto in de knel komt op een net-brede laptop.
-   */
-  /**
-   * De verhouding van de foto, zodra hij binnen is. Bepaalt hoe de pagina
-   * zich verdeelt — zie `conversationWidth`.
-   */
+
+  /** De verhouding van de foto, zodra hij binnen is. */
   const [imageRatio, setImageRatio] = useState<number | null>(null);
 
   /**
-   * Breedte van de gesprekskolom.
+   * Breedte van de gesprekskolom, afgeleid van de foto.
    *
-   * Een liggende foto en een kolom tekst willen allebei breedte, en dan is
-   * half om half het eerlijkst: de foto wordt niet groter van meer breedte
-   * dan hij hoog kan zijn, en het gesprek wél leesbaarder. Een staande foto
-   * is precies andersom — die heeft de hoogte al en gebruikt breedte niet,
-   * dus houdt het gesprek daar een vaste, prettige leesmaat en krijgt de
-   * plaat de rest. Vierkant zit ertussenin.
+   * ---------------------------------------------------------------
+   * WAAROM DE FOTO DE VERDELING BEPAALT
+   * ---------------------------------------------------------------
+   * De plaat vult de hoogte van het venster en wordt niet bijgesneden. Een
+   * staande foto heeft bij die hoogte dus maar wéinig breedte nodig; geef
+   * je hem meer, dan staat die ruimte leeg naast de foto — precies wat er
+   * gebeurde: een portret in het midden van een kolom van zeventig procent,
+   * met lavendel aan weerszijden.
    *
-   * Zolang we de verhouding niet kennen, gedragen we ons als bij een
-   * staande foto: dat is de smalste kolom, dus de plaat springt hooguit
-   * kleiner en nooit groter zodra de maat bekend is.
+   * Dus rekenen we terug: bij deze hoogte is de foto zó breed, en wat
+   * overblijft is voor het gesprek. Een liggende foto vraagt vanzelf meer
+   * en houdt het gesprek smal; een staande vraagt weinig en geeft het
+   * gesprek de ruimte.
+   *
+   * De grenzen zijn er voor de uitersten. Een panorama mag de kolom niet
+   * opeten (hoogstens 62%), een heel smal portret mag de foto niet tot een
+   * strookje knijpen (minstens 28%), en het gesprek blijft tussen een
+   * leesbare 320 en 620 — daarboven worden regels te lang om te lezen.
    */
   const conversationWidth = (() => {
-    const readable = Math.min(420, Math.max(300, windowWidth * 0.32));
-    if (imageRatio === null) return Math.round(readable);
-    if (imageRatio >= 1.35) return Math.round(windowWidth * 0.5);
-    if (imageRatio >= 0.95) return Math.round(windowWidth * 0.4);
-    return Math.round(readable);
+    const available = windowWidth - gutter(true) - space.xxl;
+    // Wat de plaat aan hoogte krijgt: het venster min de balk en de marge.
+    const plateHeight = windowHeight - CHROME_COMPACT_H - gutter(true);
+    const natural = imageRatio ? plateHeight * imageRatio : available * 0.6;
+    const plateWidth = Math.min(
+      Math.max(natural, available * 0.28),
+      available * 0.62
+    );
+    return Math.round(Math.min(Math.max(available - plateWidth, 320), 620));
   })();
 
   const qc = useQueryClient();
@@ -386,7 +398,17 @@ export default function PostDetailScreen() {
     <View
       style={{
         width: "100%",
-        height: fill ? "100%" : Math.round(windowHeight * 0.62),
+        /**
+         * Op breed vult de plaat de hoogte van het venster. Op smal krijgt
+         * hij de volle breedte en bepaalt de fóto hoe hoog hij wordt: een
+         * vaste hoogte van 62% van het scherm sneed elke staande foto af
+         * precies waar het onderwerp stond. Zolang de verhouding nog niet
+         * binnen is houden we 4:5 aan — de maat van een telefoonfoto, dus
+         * de sprong bij aankomst is klein.
+         */
+        ...(fill
+          ? { height: "100%" as const }
+          : { aspectRatio: imageRatio ?? 4 / 5 }),
         // Naast het gesprek staat de foto op de pagina zelf. Een plum vlak
         // eronder werd bij een staande foto een rand aan weerszijden — een
         // kader dat niemand gevraagd had. Onder een gesprek (smal) vult de
@@ -670,7 +692,18 @@ export default function PostDetailScreen() {
           </View>
         ) : null}
 
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm }}>
+        {/*
+            Eén regel, vier dingen, en maar één ervan is een vlak.
+
+            Hier stonden vier omkaderde vakjes naast elkaar: twee icoontjes,
+            een veld en een pijl, allemaal even luid. Een kader betekent
+            "hier hoort iets in"; bij een icoon is dat niet zo. Dus dragen
+            de icoontjes zichzelf, houdt het veld een zachte vulling omdat
+            je er wél in typt, en is de knop die de reactie wegstuurt het
+            enige gevulde vlak — in het oranje van de primaire actie, en
+            alleen zolang er iets te versturen valt.
+        */}
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.xs }}>
           <Pressable
             onPress={onPickCommentImage}
             style={{
@@ -678,12 +711,15 @@ export default function PostDetailScreen() {
               height: CONTROL_H,
               alignItems: "center",
               justifyContent: "center",
-              borderWidth: FEED_BORDER,
-              borderColor: pendingImage ? feed.text : feed.postRule,
             }}
           >
-            <Ionicons name="images-outline" size={18} color={feed.text} />
+            <Ionicons
+              name="images-outline"
+              size={20}
+              color={pendingImage ? announce : feed.textDim}
+            />
           </Pressable>
+
           <Pressable
             onPress={() => {
               setShowEmojiPicker((v) => !v);
@@ -698,11 +734,13 @@ export default function PostDetailScreen() {
               height: CONTROL_H,
               alignItems: "center",
               justifyContent: "center",
-              borderWidth: FEED_BORDER,
-              borderColor: showEmojiPicker ? feed.text : feed.postRule,
             }}
           >
-            <Text style={{ fontSize: 18 }}>😊</Text>
+            <Ionicons
+              name="happy-outline"
+              size={20}
+              color={showEmojiPicker ? announce : feed.textDim}
+            />
           </Pressable>
 
           <View
@@ -712,8 +750,7 @@ export default function PostDetailScreen() {
               maxHeight: 128,
               justifyContent: "center",
               paddingHorizontal: space.md,
-              borderWidth: FEED_BORDER,
-              borderColor: feed.postRule,
+              backgroundColor: "rgba(243,237,228,0.08)",
             }}
           >
             <TextInput
@@ -746,16 +783,15 @@ export default function PostDetailScreen() {
                 style={{
                   width: CONTROL_H,
                   height: CONTROL_H,
+                  borderRadius: CONTROL_H / 2,
                   alignItems: "center",
                   justifyContent: "center",
-                  borderWidth: FEED_BORDER,
-                  borderColor: canSend ? feed.text : feed.postRule,
-                  backgroundColor: canSend ? feed.text : "transparent",
+                  backgroundColor: canSend ? announce : "transparent",
                 }}
               >
                 <Ionicons
                   name="arrow-up"
-                  color={canSend ? feed.post : feed.textDim}
+                  color={canSend ? feed.text : feed.textDim}
                   size={20}
                 />
               </Pressable>

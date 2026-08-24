@@ -564,24 +564,32 @@ export default function FeedScreen() {
                       </SectionFrame>
                     ) : null}
 
+                    {/*
+                        Wat geen rubriek gevonden heeft, in hetzelfde raster
+                        als het chronologische overzicht.
+
+                        Het stond in rijen, en daar werd een enkel item de
+                        volle breedte van de kolom: een korte liggende foto
+                        die een halve pagina besloeg, met een call-kaart
+                        eronder van dezelfde breedte. Dit is de staart van
+                        de uitgave — van alles wat elders niet paste — en
+                        dan is een raster eerlijker dan een reeks banden
+                        die elk om evenveel aandacht vragen als de
+                        uitgelichte vondst bovenaan.
+                    */}
                     {sort !== "chrono" && leftovers.length > 0 ? (
-                      <View style={{ marginBottom: 40 }}>
-                        <Text
-                          style={[
-                            feedType.kicker,
-                            { color: "#3A3540", letterSpacing: 0.55, marginBottom: 18 },
-                          ]}
-                        >
-                          VERDER DEZE WEEK
-                        </Text>
-                        <CompactSection
+                      <SectionFrame
+                        index={liveSectionOffset + sections.length}
+                        label="Verder deze week"
+                      >
+                        <MasonryGrid
                           slots={leftovers}
-                          wide={wide}
+                          columns={gridColumns}
                           myUserId={myUserId}
                           onChanged={invalidate}
                           dimmed={dimSeen ? seen : null}
                         />
-                      </View>
+                      </SectionFrame>
                     ) : null}
 
                     <Colophon />
@@ -954,6 +962,18 @@ function MasonryGrid({
   dimmed?: Set<string> | null;
 }) {
   /**
+   * In een kolom bepaalt de tegel zelf zijn hoogte — er is geen rij die
+   * hem er een geeft. De vormen uit de rubrieken vullen juist de hoogte
+   * die ze krijgen, en zouden hier dus tot niets inklappen. Elke vondst
+   * krijgt daarom de rastervorm: beeld op zijn eigen verhouding, tekst
+   * eronder. Wat geen vondst is (activiteit, call, lijst) houdt zijn
+   * eigen kaart.
+   */
+  const cells = slots.map((slot) =>
+    slot.item.type === "post" ? { ...slot, variant: "grid" as TileVariant } : slot
+  );
+
+  /**
    * Op web verdeelt de browser zelf: `column-count` maakt de kolommen even
    * lang, en hij kent de hoogtes wél — hij heeft ze net gemeten. Dat is het
    * verschil met om de beurt verdelen: dat is voorspelbaar maar houdt geen
@@ -980,7 +1000,7 @@ function MasonryGrid({
           } as any
         }
       >
-        {slots.map((slot) => (
+        {cells.map((slot) => (
           <View
             key={slot.item.id}
             style={{ breakInside: "avoid", marginBottom: FEED_BORDER } as any}
@@ -1001,7 +1021,7 @@ function MasonryGrid({
   // Native kent `column-count` niet: daar blijft het om de beurt. Dezelfde
   // volgorde, alleen minder strak uitgevuld.
   const buckets: Slot[][] = Array.from({ length: columns }, () => []);
-  slots.forEach((slot, i) => buckets[i % columns].push(slot));
+  cells.forEach((slot, i) => buckets[i % columns].push(slot));
 
   return (
     <View
