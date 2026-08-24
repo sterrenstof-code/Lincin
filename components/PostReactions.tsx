@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { carbon, feed, page } from "@/lib/design/type";
+import { carbon, feed, FEED_BORDER, page } from "@/lib/design/type";
 import type { Tone } from "@/components/Editorial";
 import {
   QUICK_REACTIONS,
@@ -21,24 +21,46 @@ import { supabase } from "@/lib/supabase/client";
  * aanroepers ongewijzigd blijven; de feed geeft `feed` of `post` mee.
  */
 type Palette = {
-  /** Tekst en rand van een pil die ík heb gezet. */
+  /** Rand van elke pil, en de vulling van een pil die ík gezet heb. */
   strong: string;
+  /** Tekst óp die vulling — moet het tegenovergestelde van `strong` zijn. */
+  onStrong: string;
   /** Tekst van een pil van iemand anders. */
   dim: string;
-  /** Vulling van een niet-gekozen pil. */
+  /** Rand van de plus-knop: dezelfde pil, maar zachter. */
   fill: string;
 };
 
 function paletteFor(tone: Tone): Palette {
   switch (tone) {
     case "feed":
-      return { strong: feed.ink, dim: feed.inkDim, fill: "rgba(11,10,12,0.08)" };
+      return {
+        strong: feed.ink,
+        onStrong: feed.text,
+        dim: feed.inkDim,
+        fill: "rgba(11,10,12,0.28)",
+      };
     case "post":
-      return { strong: feed.text, dim: feed.textDim, fill: "rgba(243,237,228,0.10)" };
+      return {
+        strong: feed.text,
+        onStrong: feed.post,
+        dim: feed.textDim,
+        fill: "rgba(243,237,228,0.35)",
+      };
     case "dark":
-      return { strong: page.DEFAULT, dim: feed.inkDim, fill: "rgba(242,241,238,0.10)" };
+      return {
+        strong: page.DEFAULT,
+        onStrong: feed.ink,
+        dim: feed.inkDim,
+        fill: "rgba(242,241,238,0.35)",
+      };
     default:
-      return { strong: carbon.DEFAULT, dim: carbon.muted, fill: feed.panel };
+      return {
+        strong: carbon.DEFAULT,
+        onStrong: page.DEFAULT,
+        dim: carbon.muted,
+        fill: "rgba(11,10,12,0.28)",
+      };
   }
 }
 
@@ -111,16 +133,30 @@ export function PostReactions({
           <Pressable
             key={g.emoji}
             onPress={() => handleReaction(g.emoji)}
+            /**
+             * Waar jij zelf op geklikt hebt, is omgekeerd: vol vlak met
+             * lichte tekst, zoals de actieve tab in de kop.
+             *
+             * Het verschil was een randje: dezelfde vulling, alleen een
+             * lijn eromheen. Dat zie je niet tussen drie pillen van twintig
+             * pixels, en dan weet je niet meer of dat hartje van jou was of
+             * dat je op het punt staat er nog een te zetten. Vol of leeg is
+             * het enige verschil dat je uit een ooghoek nog leest.
+             */
             style={{
-              borderWidth: 1,
-              borderColor: g.mine ? c.strong : c.fill,
-              backgroundColor: g.mine ? "transparent" : c.fill,
+              borderWidth: FEED_BORDER,
+              borderColor: c.strong,
+              backgroundColor: g.mine ? c.strong : "transparent",
             }}
             className="flex-row items-center gap-1 px-2.5 py-1"
           >
             <Text style={{ fontSize: 13 }}>{g.emoji}</Text>
             <Text
-              style={{ fontSize: 12, fontWeight: "600", color: g.mine ? c.strong : c.dim }}
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: g.mine ? c.onStrong : c.strong,
+              }}
             >
               {g.count}
             </Text>
@@ -130,7 +166,11 @@ export function PostReactions({
         {/* Add reaction button */}
         <Pressable
           onPress={() => setPickerOpen((prev) => !prev)}
-          style={{ borderWidth: 1, borderColor: c.fill, backgroundColor: c.fill }}
+          style={{
+            borderWidth: FEED_BORDER,
+            borderColor: c.fill,
+            backgroundColor: "transparent",
+          }}
           className="flex-row items-center gap-1 px-2.5 py-1"
         >
           <Text style={{ fontSize: 13 }}>😊</Text>
