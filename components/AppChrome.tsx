@@ -34,7 +34,6 @@ import {
   FEED_BORDER,
   feedType,
   flame,
-  flameDeep,
   gutter as gutterFor,
   space,
 } from "@/lib/design/type";
@@ -1061,12 +1060,14 @@ export function PageScroll({
               // Dekkend: een sticky kop blijft staan terwijl de pagina
               // eronder doorloopt, en zonder vlak zie je die inhoud door
               // de lucht rond de balk heen schuiven.
-              backgroundColor: underChrome
-                ? progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["rgba(205,190,227,0)", feed.lav],
-                  })
-                : feed.lav,
+              /**
+               * Loopt de inhoud eronder door, dan blijft het vlak rond de
+               * balk doorzichtig — ook tijdens het scrollen. Het kwam
+               * eerder op zodra je bewoog, en dan schoof er ineens een
+               * lavendel strook over de foto die er net nog niet was. De
+               * balk zelf is dekkend; dat is genoeg om hem te kunnen lezen.
+               */
+              backgroundColor: underChrome ? "transparent" : feed.lav,
               // Negatieve `top`: de kop scrolt mee tot alleen zijn onderste
               // strook — de compacte balk — nog boven staat, en blijft daar
               // hangen. Dat is wat een collapsing header hoort te doen, en

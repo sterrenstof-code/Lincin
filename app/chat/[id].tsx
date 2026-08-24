@@ -93,6 +93,20 @@ import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, feed, FEED_BORDER, feedType, flame, flameDeep, space } from "@/lib/design/type";
 
+/**
+ * De leesmaat van een gesprek.
+ *
+ * Berichten liepen over de volle breedte van een breed scherm: regels van
+ * honderdvijftig tekens, met een tijdstip zo ver van de tekst dat je niet
+ * meer zag dat ze bij elkaar hoorden. Een gesprek is tekst, en tekst heeft
+ * een maat.
+ *
+ * Kop, berichten en tekstregel lezen alle drie deze waarde. Doen ze dat
+ * niet, dan begint de kop links, staan de berichten in het midden en loopt
+ * het invoerveld tot de rand — drie lijnen op één scherm.
+ */
+const THREAD_WIDTH = 760;
+
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
@@ -794,7 +808,20 @@ export default function ChatDetail() {
           de middenkolom terug en verandert er niets aan dit scherm. */}
       <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""} media={sharedMedia}>
         <View className="bg-paper-soft border-b border-line-paper">
-          <View className="flex-row items-center px-3 py-3 gap-2">
+          {/* Zelfde leesmaat als de berichten en de tekstregel: anders
+              begint de kop links, staan de berichten in het midden en loopt
+              het invoerveld weer tot de rand — drie verschillende lijnen op
+              één scherm. Zie THREAD_WIDTH. */}
+          <View
+            className="flex-row items-center gap-2"
+            style={{
+              width: "100%",
+              maxWidth: THREAD_WIDTH,
+              alignSelf: "center",
+              paddingHorizontal: space.md,
+              paddingVertical: space.md,
+            }}
+          >
             <Pressable
               onPress={() => safeBack(router, "/(app)/chats")}
               className="w-9 h-9 bg-paper-warm items-center justify-center"
@@ -922,7 +949,7 @@ export default function ChatDetail() {
                 paddingTop: 28,
                 gap: space.sm,
                 width: "100%",
-                maxWidth: 760,
+                maxWidth: THREAD_WIDTH,
                 alignSelf: "center",
               }}
               keyboardShouldPersistTaps="handled"
@@ -1270,6 +1297,9 @@ export default function ChatDetail() {
 
           {/* Composer */}
           <View className="border-t border-line bg-shell-soft">
+            {/* De inhoud van de balk volgt dezelfde maat; het vlak eronder
+                loopt wél door tot de rand, want dat is de bodem van het
+                scherm en geen kolom. */}
             {/* Edit bar */}
             {editingMessage && (
               <EditBar
@@ -1340,6 +1370,9 @@ export default function ChatDetail() {
                 alignItems: "flex-end",
                 gap: space.sm,
                 padding: space.md,
+                width: "100%",
+                maxWidth: THREAD_WIDTH,
+                alignSelf: "center",
               }}
             >
               {!recording && (

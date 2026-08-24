@@ -393,6 +393,17 @@ export default function PostDetailScreen() {
 
   const loading = post.isLoading || !post.data;
 
+  /**
+   * Heeft deze vondst iets te tónen?
+   *
+   * Zonder beeld is er niets om de halve pagina mee te vullen: een link,
+   * een notitie of een fragment is tekst, en tekst naast een leeg vlak
+   * zetten maakt het niet leesbaarder. Dan krijgt het gesprek de hele
+   * bladspiegel, op zijn eigen leesmaat gecentreerd.
+   */
+  const hasPlate =
+    !!post.data?.image_url || (post.data?.album_urls?.length ?? 0) > 0 || loading;
+
   /** De plaat zelf. Op breed vult hij de kolom, op smal de bladbreedte. */
   const heroBlock = (fill: boolean) => (
     <View
@@ -859,22 +870,27 @@ export default function PostDetailScreen() {
           style={{
             flex: 1,
             flexDirection: "row",
-            gap: space.xxl,
+            gap: hasPlate ? space.xxl : 0,
             paddingRight: gutter(true),
             paddingBottom: gutter(true),
+            ...(hasPlate ? null : { paddingLeft: gutter(true) }),
           }}
         >
-          <View style={{ flex: 1, minWidth: 0 }}>
-            {loading ? (
-              <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
-            ) : (
-              heroBlock(true)
-            )}
-          </View>
+          {hasPlate ? (
+            <View style={{ flex: 1, minWidth: 0 }}>
+              {loading ? (
+                <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
+              ) : (
+                heroBlock(true)
+              )}
+            </View>
+          ) : null}
 
           <View
             style={{
-              width: conversationWidth,
+              ...(hasPlate
+                ? { width: conversationWidth }
+                : { flex: 1, maxWidth: 760, alignSelf: "center" }),
               backgroundColor: feed.lav,
               // Schuift van rechts naar binnen terwijl de foto uitgroeit —
               // zie de keyframes in app/+html.tsx.
