@@ -27,7 +27,16 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { countUnreadNotifications } from "@/lib/api/notifications";
 import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
-import { announce, feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import {
+  announce,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flame,
+  flameDeep,
+  gutter,
+  space,
+} from "@/lib/design/type";
 
 /**
  * De chrome die boven élke pagina staat.
@@ -715,8 +724,21 @@ export function AppChrome({
   // gemeten hoogtes die nog moeten binnenkomen.
   if (compact) {
     return (
-      <View style={{ paddingHorizontal: wide ? 24 : 16, paddingTop: 10, paddingBottom: 8 }}>
-        <View style={{ width: "100%", maxWidth: 900 }}>
+      <View
+        style={{
+          paddingHorizontal: gutter(wide),
+          paddingTop: space.sm,
+          paddingBottom: space.sm,
+        }}
+      >
+        {/* Zo breed als de pagina eronder.
+            Hier stond `maxWidth: 900`. Dat komt uit de ingeklapte stand van
+            de thuispagina, waar de kop naar een blok in de linkerbovenhoek
+            krimpt — maar op een detailpagina is er niets om naartoe te
+            krimpen, en dan houdt de balk op waar de inhoud nog doorloopt.
+            Een foto die breder is dan zijn eigen kop leest als een fout,
+            en dat was het ook. */}
+        <View style={{ width: "100%" }}>
           <CompactBar
             backLabel={backLabel}
             onBack={onBack}
@@ -758,9 +780,9 @@ export function AppChrome({
         <View
           style={{
             width: "100%",
-            paddingHorizontal: wide ? 24 : 16,
-            paddingTop: 10,
-            paddingBottom: 8,
+            paddingHorizontal: gutter(wide),
+            paddingTop: space.sm,
+            paddingBottom: space.sm,
             alignItems: "flex-start",
           }}
         >
@@ -777,14 +799,14 @@ export function AppChrome({
             right: 0,
             bottom: 0,
             height: CHROME_COMPACT_H,
-            paddingHorizontal: wide ? 24 : 16,
-            paddingTop: 10,
-            paddingBottom: 8,
+            paddingHorizontal: gutter(wide),
+            paddingTop: space.sm,
+            paddingBottom: space.sm,
             backgroundColor: feed.lav,
             opacity: barOpacity,
           }}
         >
-          <View style={{ width: "100%", maxWidth: 900 }}>
+          <View style={{ width: "100%" }}>
             <CompactBar
               backLabel={backLabel}
               onBack={onBack}

@@ -45,9 +45,17 @@ function paletteFor(tone: Tone): Palette {
 export function PostReactions({
   postId,
   tone = "page",
+  padded = true,
 }: {
   postId: string;
   tone?: Tone;
+  /**
+   * Zet uit als de aanroeper de ruimte eromheen zelf bepaalt. Anders
+   * telt de marge van deze component op bij die van het blok eromheen, en
+   * dat zag je: de pillen stonden verder van hun eigen kop af dan van de
+   * regel eronder.
+   */
+  padded?: boolean;
 }) {
   const c = paletteFor(tone);
   const [myUserId, setMyUserId] = useState<string | null>(null);
@@ -97,7 +105,7 @@ export function PostReactions({
   }
 
   return (
-    <View className="px-4 pb-3">
+    <View className={padded ? "px-4 pb-3" : undefined}>
       <View className="flex-row flex-wrap items-center gap-1.5">
         {grouped.map((g) => (
           <Pressable

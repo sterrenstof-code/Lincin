@@ -14,11 +14,15 @@ import { getProfiles } from "@/lib/api/profiles";
 /**
  * Wie iets met deze vondst gedaan heeft.
  *
- * De pillen eronder tellen hoevéél mensen iets deden, niet wíe. Dat is
+ * De pillen ernaast tellen hoevéél mensen iets deden, niet wíe. Dat is
  * precies wat je wil weten: een hartje van je zus is iets anders dan een
  * hartje van iemand die je vaag kent. Hier staan de gezichten, en een tik
  * geeft de hele lijst met wat ieder deed — een naam aantikken brengt je
  * naar het profiel.
+ *
+ * Jezelf staat er niet bij. Je eigen hartje zie je al aan de pil die
+ * omkaderd is; er nog een regel onder zetten met je eigen gezicht en het
+ * woord "Jij" is dezelfde interactie twee keer.
  */
 export function InteractionPeople({ postId }: { postId: string }) {
   const router = useRouter();
@@ -42,6 +46,7 @@ export function InteractionPeople({ postId }: { postId: string }) {
       for (const uid of signals.boosterIds) {
         byUser.set(uid, [...(byUser.get(uid) ?? []), "omhoog geduwd"]);
       }
+      if (myUserId) byUser.delete(myUserId);
       if (byUser.size === 0) return [];
 
       const profiles = await getProfiles(Array.from(byUser.keys()));
@@ -61,7 +66,6 @@ export function InteractionPeople({ postId }: { postId: string }) {
   const nameOf = (i: number) => {
     const prof = rows[i]?.profile;
     if (!prof) return "Iemand";
-    if (prof.id === myUserId) return "Jij";
     return prof.display_name ?? prof.username;
   };
 

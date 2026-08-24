@@ -540,9 +540,27 @@ export default function PostDetailScreen() {
         </View>
       )}
 
+      {/*
+          De tekstregel.
+
+          Hier stonden drie oppervlakken naast elkaar op een vierde: een
+          lila vierkant met een emoji, een bijna-wit veld, en een zwarte
+          knop die in uitgeschakelde stand een zwart vlak op plum werd met
+          een pijl die je niet zag. Vier vlakken die niets met elkaar te
+          maken hadden.
+
+          Nu: één vlak (plum), en daarop drie kaders van dezelfde hoogte in
+          dezelfde lijn. Vlak en lijn dragen de hiërarchie — de knop die iets
+          dóet is de enige die gevuld is, en alleen wanneer hij ook echt iets
+          kan doen.
+      */}
       <View
-        className="border-t border-line bg-shell-soft"
-        style={{ padding: space.md }}
+        style={{
+          backgroundColor: feed.post,
+          borderTopWidth: FEED_BORDER,
+          borderTopColor: feed.ink,
+          padding: space.md,
+        }}
       >
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm }}>
           <Pressable
@@ -554,14 +572,28 @@ export default function PostDetailScreen() {
                 inputRef.current?.focus();
               }
             }}
-            className="bg-paper-warm items-center justify-center"
-            style={{ width: CONTROL_H, height: CONTROL_H }}
+            style={{
+              width: CONTROL_H,
+              height: CONTROL_H,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: FEED_BORDER,
+              borderColor: showEmojiPicker ? feed.text : feed.postRule,
+            }}
           >
-            <Text style={{ fontSize: 20 }}>😊</Text>
+            <Text style={{ fontSize: 18 }}>😊</Text>
           </Pressable>
+
           <View
-            className="flex-1 bg-paper-light border border-line-paper max-h-32 justify-center"
-            style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
+            style={{
+              flex: 1,
+              minHeight: CONTROL_H,
+              maxHeight: 128,
+              justifyContent: "center",
+              paddingHorizontal: space.md,
+              borderWidth: FEED_BORDER,
+              borderColor: feed.postRule,
+            }}
           >
             <TextInput
               ref={inputRef}
@@ -570,24 +602,36 @@ export default function PostDetailScreen() {
               onKeyPress={onKeyPress}
               onFocus={() => setShowEmojiPicker(false)}
               placeholder="Schrijf een reactie…"
-              placeholderTextColor={feed.inkDim}
+              placeholderTextColor={feed.textDim}
               multiline
               maxLength={500}
-              className="text-ink text-base"
-              style={{ minHeight: 24, ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {}) }}
+              style={[
+                feedType.body,
+                {
+                  color: feed.text,
+                  minHeight: 22,
+                  ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {}),
+                },
+              ]}
             />
           </View>
+
           <Pressable
             onPress={onSend}
             disabled={sending || !draft.trim()}
-            className={`items-center justify-center ${
-              sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
-            }`}
-            style={{ width: CONTROL_H, height: CONTROL_H }}
+            style={{
+              width: CONTROL_H,
+              height: CONTROL_H,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: FEED_BORDER,
+              borderColor: sending || !draft.trim() ? feed.postRule : feed.text,
+              backgroundColor: sending || !draft.trim() ? "transparent" : feed.text,
+            }}
           >
             <Ionicons
               name="arrow-up"
-              color={sending || !draft.trim() ? feed.inkDim : feed.text}
+              color={sending || !draft.trim() ? feed.textDim : feed.post}
               size={20}
             />
           </Pressable>
@@ -690,10 +734,21 @@ export default function PostDetailScreen() {
                 </View>
               ) : null}
               {linkBlock}
-              <View style={{ marginTop: space.md, gap: space.md }}>
+              <View style={{ marginTop: space.md, gap: space.sm }}>
                 <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
-                <PostReactions postId={String(id)} tone="page" />
-                <InteractionPeople postId={String(id)} />
+                {/* Pillen en gezichten op één regel: het is één ding —
+                    wat er met deze vondst gedaan is. */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: space.sm,
+                  }}
+                >
+                  <PostReactions postId={String(id)} tone="page" padded={false} />
+                  <InteractionPeople postId={String(id)} />
+                </View>
               </View>
               {commentsBlock}
             </ScrollView>
@@ -719,7 +774,7 @@ export default function PostDetailScreen() {
         onBack={() => safeBack(router, "/(app)/feed")}
         actionLabel={canModerate ? "Opties" : undefined}
         onAction={canModerate ? () => setMenuOpen(true) : undefined}
-        contentStyle={{ padding: 20, paddingBottom: 40 }}
+        contentStyle={{ padding: gutter(wide), paddingBottom: space.section }}
         gutter={false}
       >
         <View>
@@ -736,16 +791,27 @@ export default function PostDetailScreen() {
               <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
             </View>
           ) : (
-            <View style={{ marginHorizontal: -20, marginTop: -20 }}>
+            // De plaat loopt tot de rand: precies de marge van de pagina
+            // terug, zodat hij op de kop erboven uitlijnt.
+            <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
               {heroBlock(false)}
               {linkBlock}
             </View>
           )}
 
-          <View style={{ marginTop: space.lg, gap: space.md }}>
+          <View style={{ marginTop: space.lg, gap: space.sm }}>
             <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
-            <PostReactions postId={String(id)} tone="page" />
-            <InteractionPeople postId={String(id)} />
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: space.sm,
+              }}
+            >
+              <PostReactions postId={String(id)} tone="page" padded={false} />
+              <InteractionPeople postId={String(id)} />
+            </View>
           </View>
 
           {commentsBlock}
