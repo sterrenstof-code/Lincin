@@ -68,10 +68,16 @@ export type PostWithAuthor = PostRow & {
    * een vondst met één of geen foto — dan zegt `image_url` alles.
    */
   album_urls?: string[];
+  /** Hoeveel emoji er onder deze vondst staan. */
+  reaction_count: number;
+  /** Hoe vaak deze vondst omhoog geduwd is. */
+  boost_count: number;
   /**
    * Reacties + emoji + duwen bij elkaar: hoeveel er met deze vondst gedáán
-   * is. Waar een vondst met tien duimpjes en nul reacties even goed "waar
-   * over gepraat wordt" is als een met drie reacties.
+   * is. Een vondst met tien duimpjes en nul woorden is even goed waar het
+   * over gaat als een met drie reacties.
+   *
+   * Een duw weegt zwaarder dan de rest — zie `INTERACTION_WEIGHTS`.
    */
   interaction_count: number;
 };
@@ -320,17 +326,42 @@ export async function getAlbumUrls(postId: string): Promise<string[]> {
   return data.map((r) => urls.get(r.image_path)).filter((u): u is string => !!u);
 }
 
+/**
+ * Wat een handeling meetelt voor "meeste interactie".
+ *
+ * ---------------------------------------------------------------
+ * WAAROM EEN DUW ZWAARDER WEEGT
+ * ---------------------------------------------------------------
+ * Emoji en duwen telden allebei voor één. Maar ze zeggen niet hetzelfde:
+ * een emoji is een reactie op wat je ziet ("leuk"), een duw is een oordeel
+ * over wie het nog meer moet zien ("zet dit hoger"). Dat tweede is precies
+ * de vraag die deze rubriek stelt, dus telt het zwaarder — één duw weegt
+ * op tegen drie duimpjes.
+ *
+ * Een reactie in woorden weegt tussenin: er is meer moeite voor gedaan dan
+ * voor een emoji, maar het zegt niets over wie het nog meer moet zien.
+ */
+const INTERACTION_WEIGHTS = { comment: 2, reaction: 1, boost: 3 } as const;
+
 /** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
-async function countSignals(postIds: string[]): Promise<Map<string, number>> {
-  const counts = new Map<string, number>();
+async function countSignals(
+  postIds: string[]
+): Promise<Map<string, { reactions: number; boosts: number }>> {
+  const counts = new Map<string, { reactions: number; boosts: number }>();
   if (postIds.length === 0) return counts;
+
+  const bump = (postId: string, key: "reactions" | "boosts") => {
+    const entry = counts.get(postId) ?? { reactions: 0, boosts: 0 };
+    entry[key] += 1;
+    counts.set(postId, entry);
+  };
+
   const [reactions, boosts] = await Promise.all([
     supabase.from("post_reactions").select("post_id").in("post_id", postIds),
     supabase.from("post_boosts").select("post_id").in("post_id", postIds),
   ]);
-  for (const row of [...(reactions.data ?? []), ...(boosts.data ?? [])]) {
-    counts.set(row.post_id, (counts.get(row.post_id) ?? 0) + 1);
-  }
+  for (const row of reactions.data ?? []) bump(row.post_id, "reactions");
+  for (const row of boosts.data ?? []) bump(row.post_id, "boosts");
   return counts;
 }
 
@@ -350,7 +381,12 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
     comment_count: commentCounts.get(r.id) ?? 0,
     album_urls: albums.get(r.id),
-    interaction_count: (commentCounts.get(r.id) ?? 0) + (signalCounts.get(r.id) ?? 0),
+    reaction_count: signalCounts.get(r.id)?.reactions ?? 0,
+    boost_count: signalCounts.get(r.id)?.boosts ?? 0,
+    interaction_count:
+      (commentCounts.get(r.id) ?? 0) * INTERACTION_WEIGHTS.comment +
+      (signalCounts.get(r.id)?.reactions ?? 0) * INTERACTION_WEIGHTS.reaction +
+      (signalCounts.get(r.id)?.boosts ?? 0) * INTERACTION_WEIGHTS.boost,
   }));
 }
 
@@ -483,6 +519,8 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       author,
       image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
       comment_count: 0,
+      reaction_count: 0,
+      boost_count: 0,
       interaction_count: 0,
     };
     items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });

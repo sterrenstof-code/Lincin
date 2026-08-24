@@ -205,7 +205,10 @@ function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slo
        * Meest bespróken is niet hetzelfde als meeste reacties eronder: een
        * vondst met tien duimpjes en nul woorden is even goed waar het over
        * gaat. Daarom telt alles mee wat iemand met de vondst gedaan heeft —
-       * reacties, emoji en duwen samen (`interaction_count`).
+       * reacties, emoji en duwen samen, elk met hun eigen gewicht. Zie
+       * `INTERACTION_WEIGHTS` in lib/api/posts.ts: een duw weegt het
+       * zwaarst, want dat is als enige een oordeel over wie het nóg moet
+       * zien — precies de vraag die deze rubriek stelt.
        *
        * Bij gelijke stand wint de nieuwste, zodat een oude vondst met twee
        * reacties niet eeuwig bovenaan blijft staan.
@@ -423,14 +426,15 @@ export default function FeedScreen() {
               en twee keer dezelfde ingang op één scherm maakt geen van beide
               duidelijker. De kolom is weg; de kop draagt het.
           */}
-          <View
-            style={{
-              alignItems: "stretch",
-              marginTop: space.lg,
-              borderWidth: FEED_BORDER,
-              borderColor: feedColor.ink,
-            }}
-          >
+          {/*
+              Geen kader om het geheel.
+
+              Elke rubriek heeft er al een, en een kader om de kaders heen
+              zegt niets dat de pagina niet al zegt — het maakt de uitgave
+              alleen een doos in een doos. De rubrieken zelf zijn de
+              structuur.
+          */}
+          <View style={{ alignItems: "stretch", marginTop: space.lg }}>
             <View style={{ flex: 1, minWidth: 0 }}>
               {feed.isLoading ? (
                 <View className="items-center py-24">
@@ -554,6 +558,9 @@ export default function FeedScreen() {
 
                     {sort === "chrono" && leftovers.length > 0 ? (
                       <SectionFrame index={0} label="Alles, nieuwste eerst">
+                        {/* Dezelfde kier rondom als tussen de tegels, anders
+                            plakt de buitenste rij tegen het kader. */}
+                        <View style={{ padding: space.sm }}>
                         <MasonryGrid
                           slots={leftovers}
                           columns={gridColumns}
@@ -561,6 +568,7 @@ export default function FeedScreen() {
                           onChanged={invalidate}
                           dimmed={dimSeen ? seen : null}
                         />
+                        </View>
                       </SectionFrame>
                     ) : null}
 
@@ -582,6 +590,7 @@ export default function FeedScreen() {
                         index={liveSectionOffset + sections.length}
                         label="Verder deze week"
                       >
+                        <View style={{ padding: space.sm }}>
                         <MasonryGrid
                           slots={leftovers}
                           columns={gridColumns}
@@ -589,6 +598,7 @@ export default function FeedScreen() {
                           onChanged={invalidate}
                           dimmed={dimSeen ? seen : null}
                         />
+                        </View>
                       </SectionFrame>
                     ) : null}
 
@@ -991,19 +1001,19 @@ function MasonryGrid({
           {
             display: "block",
             columnCount: columns,
-            // De kier is de lijn: inkt als ondergrond, en tussen de tegels
-            // precies één lijnbreedte lucht. Zo vult het raster het hele
-            // kader in plaats van eilandjes met marges te maken, en staat
-            // er nergens een dubbele rand.
-            columnGap: FEED_BORDER,
-            backgroundColor: feedColor.ink,
+            // Een kier van één lijnbreedte was te strak: dan lopen twee
+            // donkere tegels in elkaar over en zie je niet meer waar de een
+            // ophoudt. Een klein beetje lucht — het paginavlak dat ertussen
+            // doorkomt — houdt ze uit elkaar zonder dat het losse kaartjes
+            // worden.
+            columnGap: space.sm,
           } as any
         }
       >
         {cells.map((slot) => (
           <View
             key={slot.item.id}
-            style={{ breakInside: "avoid", marginBottom: FEED_BORDER } as any}
+            style={{ breakInside: "avoid", marginBottom: space.sm } as any}
           >
             <CompactItem
               slot={slot}
@@ -1024,11 +1034,9 @@ function MasonryGrid({
   cells.forEach((slot, i) => buckets[i % columns].push(slot));
 
   return (
-    <View
-      style={{ flexDirection: "row", gap: FEED_BORDER, backgroundColor: feedColor.ink }}
-    >
+    <View style={{ flexDirection: "row", gap: space.sm }}>
       {buckets.map((bucket, ci) => (
-        <View key={ci} style={{ flex: 1, minWidth: 0, gap: FEED_BORDER }}>
+        <View key={ci} style={{ flex: 1, minWidth: 0, gap: space.sm }}>
           {bucket.map((slot) => (
             <CompactItem
               key={slot.item.id}

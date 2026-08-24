@@ -134,12 +134,23 @@ function Cell({ post }: { post: PostWithAuthor }) {
               <Text style={[feedType.label, { color: feed.text }]}>{album.length}</Text>
             </>
           ) : null}
-          <Text
-            style={[feedType.label, { color: feed.text, opacity: 0.8, flex: 1, textAlign: "right" }]}
-            numberOfLines={1}
-          >
-            {post.interaction_count > 0 ? `${post.interaction_count}` : ""}
-          </Text>
+          {/* Het aantal duwen, niet het gewogen totaal: een getal op een
+              tegel moet iets zijn dat je kunt narekenen. */}
+          {post.boost_count > 0 ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: space.xs,
+                marginLeft: "auto",
+              }}
+            >
+              <Ionicons name="arrow-up-circle" size={12} color={feed.text} />
+              <Text style={[feedType.label, { color: feed.text }]}>
+                {post.boost_count}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </>
     );
