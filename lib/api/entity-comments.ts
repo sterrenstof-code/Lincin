@@ -7,7 +7,6 @@ import {
   type Profile,
 } from "./profiles";
 import { createNotification } from "./notifications";
-import { listPostFollowers } from "./post-signals";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
@@ -187,20 +186,17 @@ export async function addEntityComment(args: {
     });
   }
 
-  // En wie de vondst volgt zonder zelf gereageerd te hebben.
-  if (args.entityType === "post") {
-    listPostFollowers(args.entityId).then((followers) => {
-      for (const uid of followers) {
-        if (uid === args.userId || uid === args.ownerId) continue;
-        createNotification({
-          userId: uid,
-          actorId: args.userId,
-          type: "followed_post_comment",
-          postId: args.entityId,
-        });
-      }
-    });
-  }
+  /**
+   * Volgers krijgen hun melding niet meer van hier maar van de database
+   * (trigger `entity_comments_notify_followers`, 0047).
+   *
+   * Vanaf hier werkte het alleen als de reactie via dít pad binnenkwam en
+   * de gebruiker bleef staan tot het verzoek klaar was — en geen van beide
+   * is gegarandeerd: reacties komen ook van de lijst onder een stemming of
+   * een gedeelde lijst, en wie meteen wegklikt annuleert wat nog onderweg
+   * was. Een melding die soms wel en soms niet komt is erger dan geen
+   * melding. Nu gebeurt het in dezelfde transactie als de reactie zelf.
+   */
 
   const profiles = await getProfiles([args.userId]);
   return {
