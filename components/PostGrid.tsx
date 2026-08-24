@@ -116,40 +116,57 @@ function Cell({ post }: { post: PostWithAuthor }) {
           fallbackBg="bg-feed-post"
           fallbackColor={feed.textDim}
         />
-        <Scrim height={72} strength={0.6} steps={8} />
+        {/* Ook in het strakke raster staat erbij van wie het is en waar het
+            over gaat. Alleen beeld is mooi als je zelf de maker bent en elke
+            foto herkent; hier kijk je naar wat vrienden delen, en dan is een
+            naam het verschil tussen bladeren en herkennen. */}
+        <Scrim height={104} strength={0.68} steps={10} />
         <View
           style={{
             position: "absolute",
             left: space.sm,
             right: space.sm,
             bottom: space.sm,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: space.xs,
           }}
         >
-          {album.length > 1 ? (
-            <>
-              <Ionicons name="copy-outline" size={12} color={feed.text} />
-              <Text style={[feedType.label, { color: feed.text }]}>{album.length}</Text>
-            </>
-          ) : null}
-          {/* Het aantal duwen, niet het gewogen totaal: een getal op een
-              tegel moet iets zijn dat je kunt narekenen. */}
-          {post.boost_count > 0 ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: space.xs,
-                marginLeft: "auto",
-              }}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
+            <Text
+              style={[feedType.label, { color: feed.text, opacity: 0.75, flex: 1 }]}
+              numberOfLines={1}
             >
-              <Ionicons name="arrow-up-circle" size={12} color={feed.text} />
-              <Text style={[feedType.label, { color: feed.text }]}>
-                {post.boost_count}
-              </Text>
-            </View>
+              {post.author?.display_name ?? post.author?.username ?? "Onbekend"}
+            </Text>
+            {album.length > 1 ? (
+              <>
+                <Ionicons name="copy-outline" size={12} color={feed.text} />
+                <Text style={[feedType.label, { color: feed.text }]}>{album.length}</Text>
+              </>
+            ) : null}
+            {/* Het aantal duwen, niet het gewogen totaal: een getal op een
+                tegel moet iets zijn dat je kunt narekenen. */}
+            {post.boost_count > 0 ? (
+              <>
+                <Ionicons name="arrow-up-circle" size={12} color={feed.text} />
+                <Text style={[feedType.label, { color: feed.text }]}>
+                  {post.boost_count}
+                </Text>
+              </>
+            ) : null}
+          </View>
+          {post.caption?.trim() ? (
+            <Text
+              style={{
+                fontFamily: feedType.tile.fontFamily,
+                fontSize: 13,
+                lineHeight: 16,
+                fontWeight: "800",
+                color: feed.text,
+                marginTop: 2,
+              }}
+              numberOfLines={2}
+            >
+              {post.caption.trim()}
+            </Text>
           ) : null}
         </View>
       </>

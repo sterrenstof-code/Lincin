@@ -940,6 +940,13 @@ export function FindTile({
   }
 }
 
+/**
+ * De twee maten die een beeldtegel kan hebben. Zie GridTile voor waarom er
+ * maar twee zijn.
+ */
+const TILE_PORTRAIT = 4 / 5;
+const TILE_LANDSCAPE = 3 / 2;
+
 /** Binnenwerk van een tegel in de vierkolomsrij. */
 const TILE_PAD = 16;
 
@@ -1401,15 +1408,17 @@ function GridTile({
 }) {
   const heroStyle = useHeroTag(post.id);
   /**
-   * De echte verhouding van de foto, zodra hij binnen is.
+   * Staand of liggend — meer maten zijn er niet.
    *
-   * Elke tegel op 4:3 zetten maakt van een metselwerk een tabel: alle
-   * rijen even hoog, elke staande foto bijgesneden tot liggend. In deze
-   * weergave is de hoogte juist wat het raster leven geeft, dus houdt elke
-   * foto de zijne — begrensd, want een panorama of een heel smalle foto
-   * moet de kolom niet opeten.
+   * Elke tegel op 4:3 zetten maakte van het metselwerk een tabel: alle
+   * rijen even hoog, elke staande foto bijgesneden tot liggend. Elke foto
+   * zijn eígen verhouding geven is het andere uiterste: dan heeft geen
+   * enkele tegel dezelfde maat als een andere en valt het raster uit
+   * elkaar. Twee maten is het midden — hoog genoeg verschil om ritme te
+   * geven, weinig genoeg om een raster te blijven.
    */
   const [ratio, setRatio] = useState<number | undefined>(undefined);
+  const shape = ratio === undefined ? TILE_LANDSCAPE : ratio < 1 ? TILE_PORTRAIT : TILE_LANDSCAPE;
 
   return (
     // Geen eigen kader: in het raster staan de tegels tegen elkaar en is de
@@ -1420,7 +1429,7 @@ function GridTile({
         <View
           style={{
             width: "100%",
-            aspectRatio: ratio ? Math.min(Math.max(ratio, 0.62), 1.9) : 4 / 3,
+            aspectRatio: shape,
             ...heroStyle,
           }}
         >

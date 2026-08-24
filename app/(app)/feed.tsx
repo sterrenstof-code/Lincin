@@ -51,7 +51,7 @@ import {
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
-import { useFeedPrefs } from "@/lib/feed-prefs";
+import { useFeedPrefs, type FeedLayout } from "@/lib/feed-prefs";
 import { useSeenPosts } from "@/lib/read-state";
 import {
   collectTags,
@@ -499,52 +499,98 @@ export default function FeedScreen() {
                           en dus één kader met cellen erin, net als de
                           tabstrip in de kop. */}
                       {/*
-                          Drie knoppen, geen woorden.
+                          Twee vragen, twee groepjes, en eronder in woorden
+                          wat er nu aan staat.
 
-                          "Thematisch" en "Chronologisch" beschreven de
-                          órdening, maar wat je kiest is hoe je wil kíjken:
-                          bladeren door een uitgave, of alles in één keer
-                          overzien. Dat laat een tekening beter zien dan een
-                          woord — en het scheelt de vertaling van twee
-                          begrippen die niemand hardop gebruikt.
+                          Vijf tekeningen op één rij lazen als één streepjes-
+                          code: je zag wel dat er iets aan of uit stond, maar
+                          niet wát. Twee dingen helpen. Ten eerste: uit
+                          elkaar zetten wat niet bij elkaar hoort — hoe het
+                          eruitziet, hoe het geordend is, en of gelezen
+                          vondsten dimmen zijn drie aparte vragen, dus drie
+                          aparte kaders. Ten tweede: de regel eronder zegt
+                          gewoon wat de stand is. Zo hoeft geen enkele
+                          tekening op zichzelf duidelijk te zijn — je leest
+                          één keer wat je gekozen hebt, en daarna herken je
+                          de vorm.
                       */}
                       <View
                         style={{
                           flexDirection: "row",
-                          borderWidth: FEED_BORDER,
-                          borderColor: feedColor.ink,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: space.sm,
                         }}
                       >
-                        <LayoutTab
-                          kind="mosaic"
-                          active={layout === "mosaic"}
-                          onPress={() => setLayout("mosaic")}
-                        />
-                        <LayoutTab
-                          kind="grid"
-                          active={layout === "grid"}
-                          onPress={() => setLayout("grid")}
-                          divider
-                        />
-                        <LayoutTab
-                          kind="thematic"
-                          active={order === "thematic"}
-                          onPress={() => setOrder("thematic")}
-                          divider
-                        />
-                        <LayoutTab
-                          kind="chrono"
-                          active={order === "chrono"}
-                          onPress={() => setOrder("chrono")}
-                          divider
-                        />
-                        <LayoutTab
-                          kind="dim"
-                          active={dimSeen}
-                          onPress={() => setDimSeen(!dimSeen)}
-                          divider
-                        />
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            borderWidth: FEED_BORDER,
+                            borderColor: feedColor.ink,
+                          }}
+                        >
+                          <LayoutTab
+                            kind="mosaic"
+                            active={layout === "mosaic"}
+                            onPress={() => setLayout("mosaic")}
+                          />
+                          <LayoutTab
+                            kind="grid"
+                            active={layout === "grid"}
+                            onPress={() => setLayout("grid")}
+                            divider
+                          />
+                        </View>
+
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            borderWidth: FEED_BORDER,
+                            borderColor: feedColor.ink,
+                          }}
+                        >
+                          <LayoutTab
+                            kind="thematic"
+                            active={order === "thematic"}
+                            onPress={() => setOrder("thematic")}
+                          />
+                          <LayoutTab
+                            kind="chrono"
+                            active={order === "chrono"}
+                            onPress={() => setOrder("chrono")}
+                            divider
+                          />
+                        </View>
+
+                        <View
+                          style={{
+                            borderWidth: FEED_BORDER,
+                            borderColor: feedColor.ink,
+                          }}
+                        >
+                          <LayoutTab
+                            kind="dim"
+                            active={dimSeen}
+                            onPress={() => setDimSeen(!dimSeen)}
+                          />
+                        </View>
                       </View>
+
+                      <Text
+                        style={[
+                          feedType.label,
+                          { color: feedColor.inkDim, marginTop: space.sm },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {[
+                          layout === "mosaic" ? "Metselwerk" : "Raster",
+                          order === "thematic" ? "in rubrieken" : "nieuwste eerst",
+                          dimSeen ? "gelezen gedimd" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
                     </View>
 
                     {tags.length > 0 ? (
@@ -605,15 +651,13 @@ export default function FeedScreen() {
                     {order === "chrono" && leftovers.length > 0 ? (
                       <SectionFrame index={0} label="Alles, nieuwste eerst">
                         <View style={{ padding: space.sm }}>
-                          <PostGrid
-                            posts={leftovers
-                              .map((slot) =>
-                                slot.item.type === "post" || slot.item.type === "memory"
-                                  ? slot.item.data
-                                  : null
-                              )
-                              .filter((post): post is PostWithAuthor => !!post)}
-                            emptyLabel="Nog niets gedeeld."
+                          <FeedBody
+                            layout={layout}
+                            slots={leftovers}
+                            columns={gridColumns}
+                            myUserId={myUserId}
+                            onChanged={invalidate}
+                            dimmed={dimSeen ? seen : null}
                           />
                         </View>
                       </SectionFrame>
@@ -638,13 +682,14 @@ export default function FeedScreen() {
                         label="Verder deze week"
                       >
                         <View style={{ padding: space.sm }}>
-                        <MasonryGrid
-                          slots={leftovers}
-                          columns={gridColumns}
-                          myUserId={myUserId}
-                          onChanged={invalidate}
-                          dimmed={dimSeen ? seen : null}
-                        />
+                          <FeedBody
+                            layout={layout}
+                            slots={leftovers}
+                            columns={gridColumns}
+                            myUserId={myUserId}
+                            onChanged={invalidate}
+                            dimmed={dimSeen ? seen : null}
+                          />
                         </View>
                       </SectionFrame>
                     ) : null}
@@ -990,6 +1035,55 @@ function columnsFor(width: number): number {
  * op react-native-web anders dan op native, en dit is één regel meer voor
  * een indeling die overal hetzelfde uitpakt.
  */
+/**
+ * De stapel vondsten, in de gekozen weergave.
+ *
+ * Hier ging het mis: de weergaveknop zette wel `layout`, maar de pagina
+ * keek er nergens naar — de ordening bepaalde óók de vorm. Dan lijkt een
+ * knop stuk terwijl hij precies doet wat hem gevraagd is. Deze plek is het
+ * enige punt waar die keuze uitkomt.
+ */
+function FeedBody({
+  layout,
+  slots,
+  columns,
+  myUserId,
+  onChanged,
+  dimmed,
+}: {
+  layout: FeedLayout;
+  slots: Slot[];
+  columns: number;
+  myUserId: string;
+  onChanged: () => void;
+  dimmed?: Set<string> | null;
+}) {
+  if (layout === "grid") {
+    return (
+      <PostGrid
+        posts={slots
+          .map((slot) =>
+            slot.item.type === "post" || slot.item.type === "memory"
+              ? slot.item.data
+              : null
+          )
+          .filter((post): post is PostWithAuthor => !!post)}
+        emptyLabel="Nog niets gedeeld."
+      />
+    );
+  }
+
+  return (
+    <MasonryGrid
+      slots={slots}
+      columns={columns}
+      myUserId={myUserId}
+      onChanged={onChanged}
+      dimmed={dimmed}
+    />
+  );
+}
+
 /**
  * Het chronologische overzicht: metselwerk.
  *
@@ -1546,7 +1640,10 @@ function LayoutTab({
       onPress={onPress}
       accessibilityLabel={LAYOUT_TAB_LABELS[kind]}
       style={{
-        flex: 1,
+        // Vaste breedte in plaats van `flex: 1`: deze knoppen staan nu in
+        // groepjes van één of twee, en dan hoort een knop niet mee te
+        // rekken met de breedte van het scherm.
+        width: CONTROL_H + space.md,
         alignItems: "center",
         justifyContent: "center",
         height: CONTROL_H,
@@ -1559,7 +1656,7 @@ function LayoutTab({
       {kind === "mosaic" || kind === "grid" ? (
         <LayoutGlyph kind={kind} color={tint} />
       ) : (
-        <Ionicons name={LAYOUT_TAB_ICONS[kind]} size={18} color={tint} />
+        <Ionicons name={LAYOUT_TAB_ICONS[kind]} size={20} color={tint} />
       )}
     </Pressable>
   );
@@ -1582,7 +1679,7 @@ function LayoutGlyph({ kind, color }: { kind: "mosaic" | "grid"; color: string }
       <View style={{ flexDirection: "row", gap: 2 }}>
         {[0, 1, 2].map((c) => (
           <View key={c} style={{ gap: 2 }}>
-            {[0, 1, 2].map((r) => box(5, 5, `${c}-${r}`))}
+            {[0, 1, 2].map((r) => box(6, 6, `${c}-${r}`))}
           </View>
         ))}
       </View>
@@ -1593,12 +1690,12 @@ function LayoutGlyph({ kind, color }: { kind: "mosaic" | "grid"; color: string }
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
       <View style={{ gap: 2 }}>
-        {box(7, 9, "a")}
-        {box(7, 5, "b")}
+        {box(9, 12, "a")}
+        {box(9, 6, "b")}
       </View>
       <View style={{ gap: 2 }}>
-        {box(7, 5, "c")}
-        {box(7, 9, "d")}
+        {box(9, 6, "c")}
+        {box(9, 12, "d")}
       </View>
     </View>
   );
