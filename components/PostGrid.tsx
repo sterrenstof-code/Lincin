@@ -6,7 +6,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { Skeleton } from "@/components/Skeleton";
 import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
-import { heroTag, withHeroTransition } from "@/lib/hero-transition";
+import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
 import type { PostWithAuthor } from "@/lib/api/posts";
 
 /**
@@ -63,24 +63,41 @@ export function PostGrid({
     <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -space.xs }}>
       {posts.map((post) => (
         <View key={post.id} style={{ width: `${100 / columns}%`, padding: space.xs }}>
-          <Pressable
-            onPress={() => withHeroTransition(() => router.push(`/post/${post.id}`))}
-            style={{
-              width: "100%",
-              aspectRatio: 1,
-              backgroundColor: feed.post,
-              borderWidth: FEED_BORDER,
-              borderColor: feed.ink,
-              // Ankerpunt van de morph: deze tegel groeit uit tot de plaat
-              // op de detailpagina.
-              ...heroTag(post.id),
-            }}
-          >
-            <Cell post={post} />
-          </Pressable>
+          <GridCell post={post} onPress={() => router.push(`/post/${post.id}`)} />
         </View>
       ))}
     </View>
+  );
+}
+
+/**
+ * Eén cel.
+ *
+ * Een eigen component en geen stuk in de lus, omdat `useHeroTag` een hook
+ * is — en die moet hier per tegel gelden. Dat "per tegel" is geen
+ * netheid: de naam mag alleen op het scherm staan dat je aankijkt. Een
+ * navigator houdt de profielpagina gemount terwijl de vondst opengaat, en
+ * twee elementen met dezelfde naam laat de browser de hele overgang
+ * overslaan. Zie lib/hero-transition.web.ts.
+ */
+function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void }) {
+  const tag = useHeroTag(post.id);
+  return (
+    <Pressable
+      onPress={() => withHeroTransition(onPress)}
+      style={{
+        width: "100%",
+        aspectRatio: 1,
+        backgroundColor: feed.post,
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        // Ankerpunt van de morph: deze tegel groeit uit tot de plaat op de
+        // detailpagina.
+        ...tag,
+      }}
+    >
+      <Cell post={post} />
+    </Pressable>
   );
 }
 
