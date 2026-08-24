@@ -104,7 +104,10 @@ export function stableCacheKey(url: string | null | undefined, size?: ImageSize)
  * zeker weten, gaat door de omzetter.
  */
 function transformable(path: string): boolean {
-  return /\.(jpe?g|png|webp|avif|gif)$/i.test(path);
+  // Gif er nadrukkelijk niet bij: de omzetter levert één beeld terug en
+  // dan staat een bewegende gif stil. Dat is precies wat je er niet mee
+  // wil. Ze zijn meestal ook al klein.
+  return /\.(jpe?g|png|webp|avif)$/i.test(path);
 }
 
 // ---------------------------------------------------------------

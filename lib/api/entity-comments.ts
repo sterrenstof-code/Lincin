@@ -9,8 +9,43 @@ import {
 import { createNotification } from "./notifications";
 import { listPostFollowers } from "./post-signals";
 import { uniqueTopic } from "@/lib/supabase/channel";
+import { IMG, signedImageUrl, signedImageUrls } from "../media";
+import { uriToBytes } from "../crypto/file";
 
 export type EntityType = "post" | "poll" | "call_plan" | "list";
+
+/**
+ * Beeld bij een reactie ligt in dezelfde bucket als de foto's van een
+ * vondst. Die heeft al de regel die we nodig hebben — je eigen map is van
+ * jou, vrienden mogen kijken — en één bucket met één regel is beter dan
+ * twee die uit elkaar kunnen lopen.
+ */
+const COMMENT_BUCKET = "posts";
+
+async function uploadCommentImage(userId: string, uri: string): Promise<string> {
+  const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
+  const ext = (match?.[1] ?? "jpg").toLowerCase();
+  const safeExt = ["gif", "png", "webp", "jpeg", "jpg", "heic"].includes(ext) ? ext : "jpg";
+  const type =
+    safeExt === "gif" ? "image/gif"
+    : safeExt === "png" ? "image/png"
+    : safeExt === "webp" ? "image/webp"
+    : safeExt === "heic" ? "image/heic"
+    : "image/jpeg";
+
+  const unique =
+    typeof (globalThis.crypto as any)?.randomUUID === "function"
+      ? (globalThis.crypto as any).randomUUID()
+      : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  const path = `${userId}/comment-${unique}.${safeExt}`;
+  const bytes = await uriToBytes(uri);
+  const blob = new Blob([bytes as any], { type });
+  const { error } = await supabase.storage
+    .from(COMMENT_BUCKET)
+    .upload(path, blob, { contentType: type, upsert: false });
+  if (error) throw error;
+  return path;
+}
 
 export type EntityComment = {
   id: string;
@@ -20,6 +55,10 @@ export type EntityComment = {
   body: string;
   created_at: string;
   author: Profile | null;
+  /** Pad van een gif of meme bij deze reactie. */
+  image_path: string | null;
+  /** Ondertekende URL bij `image_path`. */
+  image_url: string | null;
 };
 
 export async function listEntityComments(
@@ -28,7 +67,7 @@ export async function listEntityComments(
 ): Promise<EntityComment[]> {
   const { data, error } = await supabase
     .from("entity_comments")
-    .select("id, entity_type, entity_id, user_id, body, created_at")
+    .select("id, entity_type, entity_id, user_id, body, created_at, image_path")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
     .order("created_at", { ascending: true });
@@ -38,7 +77,18 @@ export async function listEntityComments(
   const authorIds = Array.from(new Set(rows.map((r: any) => r.user_id)));
   const profiles = await getProfiles(authorIds);
   const byId = Object.fromEntries(profiles.map((p) => [p.id, p]));
-  return rows.map((r: any) => ({ ...r, author: byId[r.user_id] ?? null }));
+
+  const urls = await signedImageUrls(
+    COMMENT_BUCKET,
+    rows.map((r: any) => r.image_path),
+    IMG.tile
+  );
+
+  return rows.map((r: any) => ({
+    ...r,
+    author: byId[r.user_id] ?? null,
+    image_url: r.image_path ? urls.get(r.image_path) ?? null : null,
+  }));
 }
 
 export async function countEntityComments(
@@ -60,7 +110,18 @@ export async function addEntityComment(args: {
   body: string;
   /** Optioneel: user_id van de eigenaar van de entiteit, voor notificatie */
   ownerId?: string;
+  /**
+   * Een gif of een meme bij deze reactie. Wordt geüpload naar de eigen map
+   * in de posts-bucket, waar vrienden hem mogen lezen — dezelfde regel als
+   * voor de foto's van een vondst, dus geen tweede stel policies.
+   */
+  imageUri?: string | null;
 }): Promise<EntityComment> {
+  let imagePath: string | null = null;
+  if (args.imageUri) {
+    imagePath = await uploadCommentImage(args.userId, args.imageUri);
+  }
+
   const { data, error } = await supabase
     .from("entity_comments")
     .insert({
@@ -68,10 +129,16 @@ export async function addEntityComment(args: {
       entity_id: args.entityId,
       user_id: args.userId,
       body: args.body.trim(),
+      image_path: imagePath,
     })
-    .select("id, entity_type, entity_id, user_id, body, created_at")
+    .select("id, entity_type, entity_id, user_id, body, created_at, image_path")
     .single();
-  if (error) throw error;
+  if (error) {
+    if (imagePath) {
+      await supabase.storage.from(COMMENT_BUCKET).remove([imagePath]).catch(() => {});
+    }
+    throw error;
+  }
 
   // Notificeer de eigenaar (fire-and-forget)
   if (args.ownerId && args.ownerId !== args.userId) {
@@ -136,7 +203,11 @@ export async function addEntityComment(args: {
   }
 
   const profiles = await getProfiles([args.userId]);
-  return { ...data, author: profiles[0] ?? null } as EntityComment;
+  return {
+    ...data,
+    author: profiles[0] ?? null,
+    image_url: imagePath ? await signedImageUrl(COMMENT_BUCKET, imagePath, IMG.tile) : null,
+  } as EntityComment;
 }
 
 export async function deleteEntityComment(commentId: string): Promise<void> {

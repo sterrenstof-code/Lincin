@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useIsFocused } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -23,6 +24,7 @@ import { useWide } from "@/components/Editorial";
 import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { InteractionPeople } from "@/components/InteractionPeople";
 import { PostCarousel } from "@/components/PostCarousel";
+import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
@@ -118,6 +120,12 @@ export default function PostDetailScreen() {
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  /**
+   * Een gif of een meme die klaarstaat om mee te gaan met je reactie.
+   * Beeld is hier geen bijlage maar het antwoord zelf — daarom mag de
+   * tekst leeg blijven zolang dit gevuld is.
+   */
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   // @-suggesties. Zonder vriendenlijst als startpunt: op een vondst noem
   // je net zo goed iemand die je nog niet hebt toegevoegd, en de zoektocht
   // op de server dekt beide.
@@ -211,6 +219,28 @@ export default function PostDetailScreen() {
     }
   }
 
+  /**
+   * Een gif of meme kiezen. Uit je bibliotheek, want een gif die je ergens
+   * ziet bewaar je daar ook — en een eigen zoekdienst zou een sleutel en
+   * een account bij een derde vragen voor iets wat je toestel al kan.
+   */
+  async function onPickCommentImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setCommentError("Geen toegang tot je foto's.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      // Niet comprimeren: dat maakt van een bewegende gif één beeld.
+      quality: 1,
+      allowsEditing: false,
+      selectionLimit: 1,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setPendingImage(result.assets[0].uri);
+  }
+
   function applyEmoji(name: string, emoji: string) {
     const replaced = draft.replace(/:([a-z0-9_+\-]{2,})$/i, emoji + " ");
     setDraft(replaced);
@@ -236,11 +266,11 @@ export default function PostDetailScreen() {
   async function onSend() {
     if (!myUserId || !id) return;
     const text = draft.trim();
-    if (!text) return;
+    if (!text && !pendingImage) return;
     setSending(true);
     setCommentError(null);
     // Replies: prefix met @naam
-    const body = replyTo ? `@${replyTo.name} ${text}` : text;
+    const body = replyTo && text ? `@${replyTo.name} ${text}` : text;
     try {
       const created = await addEntityComment({
         entityType: "post",
@@ -248,7 +278,9 @@ export default function PostDetailScreen() {
         userId: myUserId,
         body,
         ownerId: post.data?.user_id,
+        imageUri: pendingImage,
       });
+      setPendingImage(null);
       setDraft("");
       setReplyTo(null);
       setEmojiList(null);
@@ -610,7 +642,48 @@ export default function PostDetailScreen() {
           padding: space.md,
         }}
       >
+        {/* Wat je zo meestuurt: een gif of een meme, met een kruisje om
+            hem weer weg te halen. */}
+        {pendingImage ? (
+          <View style={{ marginBottom: space.md, alignSelf: "flex-start" }}>
+            <Image
+              source={{ uri: pendingImage }}
+              style={{ width: 120, height: 120, borderWidth: FEED_BORDER, borderColor: feed.postRule }}
+              contentFit="cover"
+            />
+            <Pressable
+              onPress={() => setPendingImage(null)}
+              hitSlop={8}
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 28,
+                height: 28,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: feed.post,
+              }}
+            >
+              <Ionicons name="close" size={16} color={feed.text} />
+            </Pressable>
+          </View>
+        ) : null}
+
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm }}>
+          <Pressable
+            onPress={onPickCommentImage}
+            style={{
+              width: CONTROL_H,
+              height: CONTROL_H,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: FEED_BORDER,
+              borderColor: pendingImage ? feed.text : feed.postRule,
+            }}
+          >
+            <Ionicons name="images-outline" size={18} color={feed.text} />
+          </Pressable>
           <Pressable
             onPress={() => {
               setShowEmojiPicker((v) => !v);
@@ -664,25 +737,30 @@ export default function PostDetailScreen() {
             />
           </View>
 
-          <Pressable
-            onPress={onSend}
-            disabled={sending || !draft.trim()}
-            style={{
-              width: CONTROL_H,
-              height: CONTROL_H,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: FEED_BORDER,
-              borderColor: sending || !draft.trim() ? feed.postRule : feed.text,
-              backgroundColor: sending || !draft.trim() ? "transparent" : feed.text,
-            }}
-          >
-            <Ionicons
-              name="arrow-up"
-              color={sending || !draft.trim() ? feed.textDim : feed.post}
-              size={20}
-            />
-          </Pressable>
+          {(() => {
+            const canSend = !sending && (!!draft.trim() || !!pendingImage);
+            return (
+              <Pressable
+                onPress={onSend}
+                disabled={!canSend}
+                style={{
+                  width: CONTROL_H,
+                  height: CONTROL_H,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: FEED_BORDER,
+                  borderColor: canSend ? feed.text : feed.postRule,
+                  backgroundColor: canSend ? feed.text : "transparent",
+                }}
+              >
+                <Ionicons
+                  name="arrow-up"
+                  color={canSend ? feed.post : feed.textDim}
+                  size={20}
+                />
+              </Pressable>
+            );
+          })()}
         </View>
       </View>
     </>
@@ -920,6 +998,18 @@ function CommentRow({
 }) {
   const time = formatCommentTime(comment.created_at);
   const name = comment.author?.display_name ?? comment.author?.username ?? "Onbekend";
+
+  /**
+   * Bestaat de reactie uit niets dan een link naar een plaatje, dan is dat
+   * plaatje de reactie — en niet een blauwe regel waar je op moet klikken
+   * om te zien wat iemand bedoelde. Precies wat er gebeurt als je een gif
+   * van het web plakt.
+   */
+  const linkedImage = /^https?:\/\/\S+\.(gif|png|jpe?g|webp)(\?\S*)?$/i.test(
+    comment.body.trim()
+  )
+    ? comment.body.trim()
+    : null;
   return (
     <View
       style={{
@@ -947,10 +1037,34 @@ function CommentRow({
           </Text>
           <Text style={[feedType.label, { color: feed.inkDim }]}>{time}</Text>
         </View>
-        <MentionsText
-          text={comment.body}
-          style={[feedType.body, { fontSize: 14, lineHeight: 20, color: feed.ink, marginTop: 2 }]}
-        />
+        {comment.body && !linkedImage ? (
+          <MentionsText
+            text={comment.body}
+            style={[feedType.body, { fontSize: 14, lineHeight: 20, color: feed.ink, marginTop: 2 }]}
+          />
+        ) : null}
+        {linkedImage ? (
+          <SafeImage
+            uri={linkedImage}
+            style={{ width: "100%", maxWidth: 260, aspectRatio: 1, marginTop: space.sm }}
+            contentFit="contain"
+            fallbackBg="bg-paper-warm"
+          />
+        ) : null}
+        {comment.image_url ? (
+          <SafeImage
+            uri={comment.image_url}
+            cacheKey={comment.image_path ?? undefined}
+            style={{
+              width: "100%",
+              maxWidth: 260,
+              aspectRatio: 1,
+              marginTop: space.sm,
+            }}
+            contentFit="cover"
+            fallbackBg="bg-paper-warm"
+          />
+        ) : null}
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginLeft: space.sm }}>
