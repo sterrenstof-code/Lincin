@@ -36,6 +36,7 @@ import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
 import { safeBack } from "@/lib/nav";
+import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
 
 export default function PostDetailScreen() {
@@ -81,13 +82,7 @@ export default function PostDetailScreen() {
       if (error) throw error;
       if (!data) return null;
       const author = await getProfile(data.user_id);
-      let imageUrl: string | null = null;
-      if (data.image_path) {
-        const { data: signed } = await supabase.storage
-          .from("posts")
-          .createSignedUrl(data.image_path, 60 * 60 * 24);
-        imageUrl = signed?.signedUrl ?? null;
-      }
+      const imageUrl = await signedImageUrl("posts", data.image_path, IMG.hero);
       return { ...data, author, image_url: imageUrl };
     },
     enabled: !!id,

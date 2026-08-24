@@ -1,6 +1,8 @@
 import { Image } from "expo-image";
 import { Text, View } from "react-native";
 
+import { IMG, resizedPublicUrl, stableCacheKey } from "@/lib/media";
+
 /**
  * Initial-circle avatar. Used everywhere a user is shown.
  * Als `lastSeenAt` meegegeven wordt, toont een activiteitsdot:
@@ -45,10 +47,15 @@ export function Avatar({
   const status = activityStatus(lastSeenAt);
   const dotColor = status === "online" ? "#22C55E" : "#9CA3AF"; // green-500 / gray-400
 
-  const inner = avatarUrl ? (
+  // De avatar staat als volledige foto in de bucket — vaak megabytes voor
+  // een cirkel van veertig pixels. We vragen hem op de maat op waarop hij
+  // getoond wordt; zie lib/media.ts.
+  const src = resizedPublicUrl(avatarUrl, IMG.avatar(s.px));
+
+  const inner = src ? (
     <View className={`${s.box} rounded-full overflow-hidden`}>
       <Image
-        source={{ uri: avatarUrl, cacheKey: avatarUrl.split("?")[0] }}
+        source={{ uri: src, cacheKey: stableCacheKey(avatarUrl, IMG.avatar(s.px)) }}
         cachePolicy="disk"
         style={{ width: s.px, height: s.px }}
         contentFit="cover"

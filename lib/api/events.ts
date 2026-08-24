@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
+import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { createActivityEvent } from "./activity-events";
@@ -249,12 +250,9 @@ export async function createEvent(args: {
 async function signCoverUrls(
   paths: (string | null)[]
 ): Promise<Map<string, string | null>> {
-  const real = Array.from(new Set(paths.filter((p): p is string => !!p)));
-  if (real.length === 0) return new Map();
-  const { data } = await supabase.storage
-    .from(EVENT_BUCKET)
-    .createSignedUrls(real, SIGNED_URL_TTL);
-  return new Map((data ?? []).map((s) => [s.path ?? "", s.signedUrl]));
+  // Verkleind én onthouden — zie lib/media.ts. Een omslagfoto is een foto
+  // van een telefoon; op ware grootte kost een lijst met events megabytes.
+  return signedImageUrls(EVENT_BUCKET, paths, IMG.tile);
 }
 
 /** Events I host or am a member of, with derived state. Counts come from a
@@ -302,13 +300,7 @@ export async function getEvent(
     is_host: boolean;
   };
 
-  let coverUrl: string | null = null;
-  if (row.cover_image_path) {
-    const { data: signed } = await supabase.storage
-      .from(EVENT_BUCKET)
-      .createSignedUrl(row.cover_image_path, SIGNED_URL_TTL);
-    coverUrl = signed?.signedUrl ?? null;
-  }
+  const coverUrl = await signedImageUrl(EVENT_BUCKET, row.cover_image_path, IMG.hero);
 
   return {
     ...row,
@@ -497,13 +489,16 @@ export async function listEventContributions(
   const authors = await getProfiles(authorIds);
   const byId = new Map(authors.map((a) => [a.id, a]));
 
-  const paths = visibleRows.map((r) => r.image_path).filter((p): p is string => !!p);
-  let urlByPath = new Map<string, string | null>();
-  if (paths.length > 0) {
-    const { data: signed } = await supabase.storage
+  // Foto's gaan verkleind door de beeldomzetter; video's niet — die moeten
+  // hun eigen bestand houden, `render/image` kent ze niet.
+  const photoPaths = visibleRows.map((r) => r.image_path).filter((p): p is string => !!p && !isVideoPath(p));
+  const videoPaths = visibleRows.map((r) => r.image_path).filter((p): p is string => !!p && isVideoPath(p));
+  const urlByPath = new Map<string, string | null>(await signedImageUrls(EVENT_BUCKET, photoPaths, IMG.tile));
+  if (videoPaths.length > 0) {
+    const { data: signedVideos } = await supabase.storage
       .from(EVENT_BUCKET)
-      .createSignedUrls(paths, SIGNED_URL_TTL);
-    urlByPath = new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
+      .createSignedUrls(videoPaths, SIGNED_URL_TTL);
+    for (const v of signedVideos ?? []) if (v.path) urlByPath.set(v.path, v.signedUrl);
   }
 
   const contributions: ContributionWithAuthor[] = visibleRows.map((r) => ({

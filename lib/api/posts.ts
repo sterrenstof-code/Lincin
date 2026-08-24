@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client";
+import { IMG, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { listFeedPolls, type PollWithDetails } from "./polls";
@@ -238,19 +239,11 @@ async function countCommentsByPost(
 }
 
 async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
-  const paths = rows.map((r) => r.image_path).filter((p): p is string => !!p);
-  if (paths.length === 0) return new Map();
-  const { data: signed, error: sErr } = await supabase.storage
-    .from(POSTS_BUCKET)
-    .createSignedUrls(paths, 60 * 60 * 24); // 24u — cache overleeft een dag navigeren
-  if (sErr) throw sErr;
-  // Rijen zonder pad of zonder URL overslaan in plaats van ze onder de
-  // lege sleutel "" te parkeren — daar kon een verkeerde foto uit komen.
-  const urls = new Map<string, string>();
-  for (const s of signed ?? []) {
-    if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
-  }
-  return urls;
+  // Tegelformaat, niet het origineel: een telefoonfoto van 5 MB in een
+  // tegel van 300 px was de reden dat de feed traag laadde. `signedImageUrls`
+  // onthoudt de URL ook, zodat dezelfde foto bij een tabwissel niet opnieuw
+  // gedownload wordt — zie lib/media.ts.
+  return signedImageUrls(POSTS_BUCKET, rows.map((r) => r.image_path), IMG.tile);
 }
 
 async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
