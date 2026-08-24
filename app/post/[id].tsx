@@ -28,7 +28,15 @@ import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import { feed, FEED_BORDER, feedType, flameDeep, gutter, space } from "@/lib/design/type";
+import {
+  CONTROL_H,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  gutter,
+  space,
+} from "@/lib/design/type";
 import {
   addEntityComment,
   deleteEntityComment,
@@ -532,8 +540,11 @@ export default function PostDetailScreen() {
         </View>
       )}
 
-      <View className="px-3 py-3 border-t border-line bg-shell-soft">
-        <View className="flex-row items-end gap-2">
+      <View
+        className="border-t border-line bg-shell-soft"
+        style={{ padding: space.md }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm }}>
           <Pressable
             onPress={() => {
               setShowEmojiPicker((v) => !v);
@@ -543,11 +554,15 @@ export default function PostDetailScreen() {
                 inputRef.current?.focus();
               }
             }}
-            className="w-11 h-11 bg-paper-warm items-center justify-center"
+            className="bg-paper-warm items-center justify-center"
+            style={{ width: CONTROL_H, height: CONTROL_H }}
           >
             <Text style={{ fontSize: 20 }}>😊</Text>
           </Pressable>
-          <View className="flex-1 bg-paper-light  border border-line-paper px-4 py-2 max-h-32">
+          <View
+            className="flex-1 bg-paper-light border border-line-paper max-h-32 justify-center"
+            style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
+          >
             <TextInput
               ref={inputRef}
               value={draft}
@@ -565,9 +580,10 @@ export default function PostDetailScreen() {
           <Pressable
             onPress={onSend}
             disabled={sending || !draft.trim()}
-            className={`w-11 h-11 items-center justify-center ${
+            className={`items-center justify-center ${
               sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
             }`}
+            style={{ width: CONTROL_H, height: CONTROL_H }}
           >
             <Ionicons
               name="arrow-up"

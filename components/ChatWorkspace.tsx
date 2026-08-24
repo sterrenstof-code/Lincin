@@ -17,7 +17,16 @@ import {
   listMyChats,
   type ChatWithMembers,
 } from "@/lib/api/chats";
-import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import {
+  CONTROL_H,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flame,
+  flameDeep,
+  ROW_H,
+  space,
+} from "@/lib/design/type";
 
 /**
  * De chat als volwaardige werkruimte op desktop: drie kolommen.
@@ -112,15 +121,14 @@ function ChatRail({
     >
       <View
         style={{
-          paddingHorizontal: 16,
-          paddingTop: 18,
-          paddingBottom: 14,
+          paddingHorizontal: space.lg,
+          paddingVertical: space.lg,
           borderBottomWidth: FEED_BORDER,
           borderBottomColor: feed.ink,
         }}
       >
         <Text
-          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
+          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: space.md }]}
         >
           GESPREKKEN
         </Text>
@@ -133,8 +141,8 @@ function ChatRail({
             borderWidth: FEED_BORDER,
             borderColor: feed.ink,
             backgroundColor: feed.panel,
-            paddingHorizontal: 12,
-            paddingVertical: 9,
+            paddingHorizontal: space.md,
+            height: CONTROL_H,
             color: feed.ink,
             fontFamily: feedType.body.fontFamily,
             fontSize: 14,
@@ -154,7 +162,7 @@ function ChatRail({
         ))}
         {visible.length === 0 ? (
           <Text
-            style={[feedType.label, { color: feed.inkDim, padding: 16 }]}
+            style={[feedType.label, { color: feed.inkDim, padding: space.lg }]}
           >
             {q ? "Niets gevonden." : "Nog geen gesprekken."}
           </Text>
@@ -182,8 +190,9 @@ function ChatRailRow({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 13,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
+        minHeight: ROW_H,
         borderBottomWidth: FEED_BORDER,
         borderBottomColor: feed.ink,
         // De open chat wordt omgekeerd, net als de actieve tab in de kop.
@@ -191,7 +200,7 @@ function ChatRailRow({
       }}
     >
       <Avatar name={title} avatarUrl={chat.avatar_url} size="sm" tint="light" />
-      <View style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
+      <View style={{ flex: 1, minWidth: 0, marginLeft: space.md }}>
         <Text
           style={[
             feedType.label,
@@ -261,9 +270,8 @@ function ChatOptionsRail({
       <ScrollView showsVerticalScrollIndicator={false}>
         <View
           style={{
-            paddingHorizontal: 20,
-            paddingTop: 18,
-            paddingBottom: 16,
+            paddingHorizontal: space.lg,
+            paddingVertical: space.lg,
             borderBottomWidth: FEED_BORDER,
             borderBottomColor: feed.ink,
           }}
@@ -276,8 +284,8 @@ function ChatOptionsRail({
         {/* Versleuteling — geen sierlijke badge maar een feit. */}
         <View
           style={{
-            paddingHorizontal: 20,
-            paddingVertical: 18,
+            paddingHorizontal: space.lg,
+            paddingVertical: space.lg,
             borderBottomWidth: FEED_BORDER,
             borderBottomColor: feed.ink,
           }}
@@ -292,7 +300,7 @@ function ChatOptionsRail({
         </View>
 
         {/* Deelnemers */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 10 }}>
+        <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm }}>
           <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.55 }]}>
             {`DEELNEMERS (${rows.length})`}
           </Text>
@@ -311,8 +319,9 @@ function ChatOptionsRail({
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                paddingHorizontal: 20,
-                paddingVertical: 11,
+                paddingHorizontal: space.lg,
+                paddingVertical: space.md,
+                minHeight: ROW_H,
               }}
             >
               <Avatar
@@ -321,7 +330,7 @@ function ChatOptionsRail({
                 size="sm"
                 tint="light"
               />
-              <View style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
+              <View style={{ flex: 1, minWidth: 0, marginLeft: space.md }}>
                 <Text
                   style={[feedType.label, { fontSize: 14, color: feed.ink }]}
                   numberOfLines={1}

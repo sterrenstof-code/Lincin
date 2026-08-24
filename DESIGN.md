@@ -104,6 +104,40 @@ Roboto.
 
 ---
 
+## 4b. Ruimte
+
+De maatlat staat in `lib/design/type.ts` en heet `space`. Alles is een
+veelvoud van vier; gebruik een trede in plaats van een los getal, net als
+bij de typeschaal.
+
+| Trede | Waarde | Waarvoor |
+|---|---|---|
+| `xs` | 4 | Tussen twee dingen die bij elkaar hóren (icoon + label) |
+| `sm` | 8 | Binnen één element |
+| `md` | 12 | Tussen regels in een blok |
+| `lg` | 16 | Tussen blokken; de marge op een telefoon |
+| `xl` | 20 | Binnenmarge van een kaart |
+| `xxl` | 24 | De marge op een breed scherm |
+| `xxxl` | 32 | Binnenmarge van een kolom binnen een kader |
+| `section` | 40 | Tussen twee rubrieken |
+
+Daarnaast drie vaste maten:
+
+- `gutter(wide)` — de marge tussen bladspiegel en vensterrand. **Kop én
+  inhoud lezen deze.** Staan ze op verschillende waarden, dan begint de
+  pagina naast zijn eigen kop.
+- `CONTROL_H` (44) — de hoogte van élke knop en élk invoerveld. Eén maat,
+  want een rij met een knop van 44, een van 52 en een veld dat met zijn
+  inhoud meegroeit staat nergens op één lijn.
+- `ROW_H` (60) — de hoogte van een rij in een lijst. Vast, zodat een naam
+  die op twee regels valt de rij niet hoger maakt dan zijn buur.
+
+Voor tekst over een foto: `Scrim` (`components/Scrim.tsx`). Geen schaduw —
+die staan niet in dit systeem — maar een verloop in twaalf stappen. Drie
+gestapelde vlakken, zoals het eerder ging, zie je als drie banden.
+
+---
+
 ## 5. Paginaopbouw
 
 Elk v3-scherm heeft dezelfde ruggengraat:

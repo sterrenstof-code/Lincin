@@ -91,7 +91,7 @@ import {
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import { CONTROL_H, feed, FEED_BORDER, feedType, flame, flameDeep, space } from "@/lib/design/type";
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -1300,12 +1300,20 @@ export default function ChatDetail() {
               </View>
             )}
 
-            <View className="flex-row items-end gap-2 px-3 py-3">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                gap: space.sm,
+                padding: space.md,
+              }}
+            >
               {!recording && (
                 <Pressable
                   onPress={() => setAttachMenuOpen(true)}
                   disabled={sending}
-                  className="w-11 h-11 bg-paper-warm active:bg-paper items-center justify-center"
+                  className="bg-paper-warm active:bg-paper items-center justify-center"
+                  style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
                   <Ionicons name="add" color={feed.ink} size={22} />
                 </Pressable>
@@ -1317,7 +1325,8 @@ export default function ChatDetail() {
                     if (!showEmojiPicker) inputRef.current?.blur();
                     else inputRef.current?.focus();
                   }}
-                  className="w-11 h-11 bg-paper-warm items-center justify-center"
+                  className="bg-paper-warm items-center justify-center"
+                  style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
                   <Text style={{ fontSize: 20 }}>😊</Text>
                 </Pressable>
@@ -1325,7 +1334,10 @@ export default function ChatDetail() {
 
               {/* Input area OR recording indicator */}
               {recording ? (
-                <View className="flex-1 flex-row items-center bg-red-950/30 border border-red-800/40 px-4 py-3 gap-3">
+                <View
+                  className="flex-1 flex-row items-center bg-red-950/30 border border-red-800/40"
+                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, gap: space.md }}
+                >
                   {/* Pulsing red dot */}
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" }} />
                   <Text className="text-red-400 font-semibold text-base flex-1">
@@ -1341,7 +1353,10 @@ export default function ChatDetail() {
                   </Pressable>
                 </View>
               ) : (
-                <View className="flex-1 bg-paper-light border border-line-paper px-4 py-2 max-h-32">
+                <View
+                  className="flex-1 bg-paper-light border border-line-paper max-h-32 justify-center"
+                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
+                >
                   <TextInput
                     ref={inputRef}
                     value={draft}
@@ -1364,7 +1379,7 @@ export default function ChatDetail() {
                 <Pressable
                   onPress={() => stopRecording(true)}
                   className="bg-red-500 active:bg-red-600 items-center justify-center"
-                  style={{ width: 52, height: 52 }}
+                  style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
                   <Ionicons name="send" color="#fff" size={20} />
                 </Pressable>
@@ -1376,7 +1391,7 @@ export default function ChatDetail() {
                   className={` items-center justify-center ${
                     sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
                   }`}
-                  style={{ width: 52, height: 52 }}
+                  style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
                   <Ionicons
                     name="arrow-up"
@@ -1395,7 +1410,7 @@ export default function ChatDetail() {
                   } : undefined}
                   disabled={sending}
                   className="bg-ink active:bg-ink-soft items-center justify-center"
-                  style={{ width: 52, height: 52 }}
+                  style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
                   <Ionicons name="mic" color={feed.text} size={22} />
                 </Pressable>

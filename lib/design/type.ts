@@ -486,6 +486,23 @@ export const space = {
 } as const;
 
 /**
+ * De hoogte van élk aanraakbaar besturingselement: een knop, een
+ * invoerveld, de knoppen naast een tekstregel.
+ *
+ * Eén maat, want een rij met een knop van 44, een van 52 en een veld dat
+ * met zijn inhoud meegroeit staat nergens op één lijn — precies wat er in
+ * de berichtenbalk gebeurde.
+ */
+export const CONTROL_H = 44;
+
+/**
+ * De hoogte van een rij in een lijst (gesprek, deelnemer, melding).
+ * Een avatar van 36 plus de marge erboven en eronder; vast, zodat een naam
+ * die op twee regels valt de rij niet hoger maakt dan zijn buur.
+ */
+export const ROW_H = 60;
+
+/**
  * De marge tussen de bladspiegel en de rand van het venster.
  *
  * Kop én inhoud lezen deze: staan ze op verschillende waarden, dan begint de
