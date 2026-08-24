@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { usePathname, useRouter, type Href } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -204,9 +204,19 @@ function TabBadge({ count, floating = false }: { count: number; floating?: boole
  * Levert `progress` (0 = groot, 1 = compact) plus de scroll-props voor de
  * scroller van het scherm.
  *
- * De kop klapt **meteen** in — na een tiental pixels — en gaat pas weer open
- * als je helemaal terug bovenaan bent. De eerdere drempel van 100vh maakte
- * dat je op korte pagina's de compacte stand nooit te zien kreeg.
+ * NATIVE klapt met een drempel: voorbij een tiental pixels animeert de kop
+ * in één beweging dicht. Dat kan daar, want de kop hangt buiten de scroller
+ * en zijn hoogte verandert de bladspiegel niet.
+ *
+ * WEB kan dat juist níet, en dat was de bug waarbij de kop bij een klein
+ * duwtje aan het wiel halverwege bleef staan: daar ligt de kop ín de
+ * scroller. Klapte hij dicht, dan werd de pagina driehonderd pixels korter,
+ * en dan schuift Chrome de scrollpositie mee om de inhoud stil te houden
+ * (scroll anchoring). Die verschuiving zette de teller weer ónder de
+ * drempel, de kop ging open, de pagina werd weer langer, en zo bleven de
+ * twee elkaar duwen. PageScroll leidt de stand daarom rechtstreeks af uit
+ * de scrollpositie: één waarde per positie, dus er valt niets te
+ * oscilleren. Zie PageScroll.
  *
  * `useNativeDriver` staat uit omdat we hoogtes animeren; dat kan de native
  * driver niet.
@@ -218,6 +228,9 @@ export function useChromeScroll() {
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Op web zet PageScroll de stand rechtstreeks uit de scrollpositie —
+      // zie daar waarom een drempel met een animatie daar niet kan.
+      if (Platform.OS === "web") return;
       const y = e.nativeEvent.contentOffset.y;
       const next = y > THRESHOLD;
       if (next === collapsed.current) return;
@@ -559,27 +572,11 @@ function FullHeader({
   return (
     <View>
       <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-        {/* Rij A — micro-utility. Hier stond rechts "Instellingen ·
-            Meldingen"; dat is persoonlijk en staat nu in het persoonlijke
-            blok van de zijbalk, bij je naam en je avatar. Zie FeedRail. */}
-        <View style={{ flexDirection: "row" }}>
-          <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-            <Text style={[feedType.micro, { color: feed.ink, fontSize: 13, fontWeight: "800" }]}>
-              Lincin
-            </Text>
-          </View>
-          <View style={{ flex: 1 }} className="px-3.5 py-2.5">
-            {wide ? (
-              <Text style={[feedType.label, { color: "#3A3540", textAlign: "right" }]}>
-                Voor je vrienden.
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        <Divider />
-
-        {/* Rij B — de tabstrip als eigen rij. */}
+        {/* De tabstrip is de bovenste rij. Hierboven stond een
+            micro-utilityregel met "Lincin" links en "Voor je vrienden."
+            rechts; die zei niets dat het woordmerk eronder niet al zegt en
+            kostte veertig pixels van een kop die toch al aan de hoge kant
+            was. */}
         <View style={{ flexDirection: "row" }}>
           {TABS.map((tab, i) => {
             const active = pathname === tab.href;
@@ -692,10 +689,27 @@ export function AppChrome({
    * De volle breedte, gemeten in plaats van geraden: een Animated-
    * interpolatie kan geen "100%" naar een getal animeren — begin- en
    * eindwaarde moeten hetzelfde type zijn.
+   *
+   * Zonder max: eerder hield deze waarde de gróótste breedte vast die hij
+   * ooit gezien had. Maakte je het venster smaller, dan bleef de kop op de
+   * oude maat staan en liep de laatste tab buiten beeld.
    */
   const [fullWidth, setFullWidth] = useState(0);
   /** Hoogte van de grote stand; gemeten zodat de kruisvervaging klopt. */
   const [stackHeight, setStackHeight] = useState(0);
+  /**
+   * Alleen als de balk er echt staat mag hij muisklikken opvangen. Hij ligt
+   * over de onderste strook van de grote stand; onzichtbaar moet hij die
+   * dus laten passeren.
+   */
+  const [barActive, setBarActive] = useState(false);
+  useEffect(() => {
+    const id = progress.addListener(({ value }) => {
+      const next = value > 0.6;
+      setBarActive((prev) => (prev === next ? prev : next));
+    });
+    return () => progress.removeListener(id);
+  }, [progress]);
 
   // In de compacte modus staat alles vast: geen interpolaties, geen
   // gemeten hoogtes die nog moeten binnenkomen.
@@ -714,6 +728,82 @@ export function AppChrome({
     );
   }
 
+  const barOpacity = progress.interpolate({
+    inputRange: [0.55, 1],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  // ---------------------------------------------------------------
+  // WEB — vaste hoogte, de balk als laag over de onderste strook
+  // ---------------------------------------------------------------
+  //
+  // De kop ligt hier ín de scroller (zie PageScroll). Dan mag zijn hoogte
+  // níet meebewegen met de inklapstand: elke pixel die hij krimpt, springt
+  // de pagina eronder omhoog, en dat duwt de scrollpositie terug — de lus
+  // waarbij de kop halverwege bleef hangen.
+  //
+  // Dus: de grote stand houdt altijd zijn eigen hoogte en scrolt gewoon weg,
+  // zoals elk ander blok op de pagina. De compacte balk ligt als laag op de
+  // onderste `CHROME_COMPACT_H` pixels en komt op tijdens het wegscrollen.
+  // Precies die strook blijft plakken — PageScroll hangt de kop op met
+  // `top: -(hoogte - CHROME_COMPACT_H)`, zodat er onderaan exact de balk
+  // overblijft. Geen animatie van hoogtes, geen sprong, niets om tegen te
+  // duwen.
+  if (Platform.OS === "web") {
+    return (
+      <View>
+        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
+
+        <View
+          style={{
+            width: "100%",
+            paddingHorizontal: wide ? 24 : 16,
+            paddingTop: 10,
+            paddingBottom: 8,
+            alignItems: "flex-start",
+          }}
+        >
+          <View style={{ width: "100%" }}>
+            <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
+          </View>
+        </View>
+
+        <Animated.View
+          pointerEvents={barActive ? "auto" : "none"}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: CHROME_COMPACT_H,
+            paddingHorizontal: wide ? 24 : 16,
+            paddingTop: 10,
+            paddingBottom: 8,
+            backgroundColor: feed.lav,
+            opacity: barOpacity,
+          }}
+        >
+          <View style={{ width: "100%", maxWidth: 900 }}>
+            <CompactBar
+              backLabel={backLabel}
+              onBack={onBack}
+              actionLabel={actionLabel}
+              onAction={onAction}
+            />
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------
+  // NATIVE — de twee standen vouwen open en dicht
+  // ---------------------------------------------------------------
+  // Hier hangt de kop buiten de scroller, met opvulling eronder die op de
+  // grootste gemeten hoogte blijft staan. Zijn hoogte raakt de bladspiegel
+  // dus niet, en kan wél animeren.
+
   /** Waar de kop naartoe krimpt: een blok in de linkerbovenhoek. */
   const COMPACT_W = wide ? 900 : 0;
   const targetW = COMPACT_W > 0 && fullWidth > COMPACT_W ? COMPACT_W : fullWidth;
@@ -729,8 +819,6 @@ export function AppChrome({
     extrapolate: "clamp",
   });
 
-  // De grote stand vouwt dicht, de balk vouwt open. Ze wisselen elkaar af
-  // in plaats van dat de ene in de andere krimpt.
   const stackH = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [stackHeight || 300, 0],
@@ -741,11 +829,6 @@ export function AppChrome({
     extrapolate: "clamp",
   });
   const barH = progress.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H] });
-  const barOpacity = progress.interpolate({
-    inputRange: [0.45, 1],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
 
   return (
     <View>
@@ -763,22 +846,14 @@ export function AppChrome({
           paddingBottom: 8,
           alignItems: "flex-start",
         }}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width - (wide ? 48 : 32);
-          setFullWidth((prev) => (w > prev ? w : prev));
-        }}
+        onLayout={(e) => setFullWidth(e.nativeEvent.layout.width - (wide ? 48 : 32))}
       >
         <Animated.View style={{ width: shellWidth ?? "100%" }}>
           {/* Grote stand */}
           <Animated.View
             style={{ height: stackH, opacity: stackOpacity, overflow: "hidden" }}
           >
-            <View
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                setStackHeight((prev) => (h > prev ? h : prev));
-              }}
-            >
+            <View onLayout={(e) => setStackHeight(e.nativeEvent.layout.height)}>
               <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
             </View>
           </Animated.View>
@@ -871,6 +946,11 @@ export function PageScroll({
 }) {
   const [headerHeight, setHeaderHeight] = useState(0);
   /**
+   * Web meet apart, en zonder max: hier moet de hóógte van nu kloppen,
+   * want hij bepaalt op welke hoogte de kop blijft plakken.
+   */
+  const [webHeaderHeight, setWebHeaderHeight] = useState(0);
+  /**
    * Alleen de kop van het scherm dat je aankijkt draagt de naam van het
    * gedeelde element. Een navigator houdt schermen gemount, en twee
    * elementen met dezelfde `view-transition-name` tegelijk in beeld laat de
@@ -878,6 +958,26 @@ export function PageScroll({
    */
   const focused = useIsFocused();
   const sticky = Platform.OS === "web";
+
+  /**
+   * Hoeveel er weg te scrollen valt voor de kop op zijn balk staat. De
+   * stand van de kop is een rechtstreekse functie van de scrollpositie —
+   * geen drempel, geen animatie, geen geheugen. Daardoor is er ook niets
+   * dat zichzelf kan opjagen: bij elke positie hoort één stand, en scroll
+   * anchoring kan hooguit een andere positie kiezen, geen andere lus.
+   */
+  const collapseRange = Math.max(1, webHeaderHeight - CHROME_COMPACT_H);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (sticky) {
+        const y = e.nativeEvent.contentOffset.y;
+        progress.setValue(Math.min(1, Math.max(0, y / collapseRange)));
+      }
+      onScroll(e);
+    },
+    [sticky, collapseRange, progress, onScroll]
+  );
 
   const chrome = (
     <AppChrome
@@ -895,20 +995,35 @@ export function PageScroll({
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        onScroll={onScroll}
+        onScroll={handleScroll}
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: sticky ? 0 : headerHeight, minHeight: "100%" }}
+        // Chrome verschuift de scrollpositie uit zichzelf zodra iets bóven
+        // de kijkhoogte van maat verandert. Dat is bedoeld als vriendelijk-
+        // heid, maar boven in deze scroller hangt een kop die van maat
+        // verandert, en dan gaat het tellen tegen zichzelf werken.
+        style={sticky ? ({ overflowAnchor: "none" } as any) : undefined}
       >
         {sticky ? (
           <View
+            onLayout={(e) => setWebHeaderHeight(e.nativeEvent.layout.height)}
             style={{
               // Dekkend: een sticky kop blijft staan terwijl de pagina
               // eronder doorloopt, en zonder vlak zie je die inhoud door
               // de lucht rond de balk heen schuiven.
               backgroundColor: feed.lav,
-              ...({ position: "sticky", top: 0, zIndex: 20 } as any),
+              // Negatieve `top`: de kop scrolt mee tot alleen zijn onderste
+              // strook — de compacte balk — nog boven staat, en blijft daar
+              // hangen. Dat is wat een collapsing header hoort te doen, en
+              // het gebeurt hier in de opmaak zelf: geen hoogte die
+              // animeert, dus ook geen pagina die eronder wegspringt.
+              ...({
+                position: "sticky",
+                top: -Math.max(0, webHeaderHeight - CHROME_COMPACT_H),
+                zIndex: 20,
+              } as any),
               ...chromeTag(focused),
             }}
           >
