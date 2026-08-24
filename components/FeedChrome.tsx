@@ -82,6 +82,40 @@ export function Frame({
  * Op desktop een kolom van 200px met een scheidingslijn rechts; onder het
  * breekpunt kantelt hij naar een liggend blok.
  */
+/**
+ * De knop om iets te delen: een oranje rondje met een plus.
+ *
+ * De enige ronding in dit ontwerp naast de avatar, en met opzet: alles
+ * hier is vierkant, dus een cirkel is per definitie geen kader, geen tegel
+ * en geen vlak — hij ligt erbovenop. Dat is precies wat hij is.
+ *
+ * Hij staat zowel in de zijbalk als los op een smal scherm; daar zweeft
+ * hij rechtsonder mee, want de zijbalk scrolt daar weg.
+ */
+export function ShareButton({
+  onPress,
+  size = 56,
+}: {
+  onPress: () => void;
+  size?: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: pressed ? announceDeep : announce,
+      })}
+    >
+      <Ionicons name="add" size={Math.round(size * 0.5)} color={feed.text} />
+    </Pressable>
+  );
+}
+
 export function FeedRail({
   displayName,
   avatarUrl,
@@ -143,28 +177,16 @@ export function FeedRail({
           de vraag "foto, link of notitie?" hoort bij het delen zelf en niet
           bij de knop ernaartoe.
       */}
-      <Pressable
-        onPress={onShare}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: compactShare ? "center" : "flex-start",
-          gap: space.md,
-          paddingHorizontal: compactShare ? 0 : space.lg,
-          width: compactShare ? 56 : undefined,
-          height: 56,
-          backgroundColor: pressed ? announceDeep : announce,
-        })}
-      >
-        <Ionicons name="add" size={26} color={feed.text} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+        <ShareButton onPress={onShare} />
         {compactShare ? null : (
           <Text
-            style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.text }]}
+            style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.ink }]}
           >
             Delen
           </Text>
         )}
-      </Pressable>
+      </View>
       <RailLink
         label="Meldingen"
         badge={unreadNotifications}

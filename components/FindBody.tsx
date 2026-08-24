@@ -1087,10 +1087,15 @@ function ImageCell({
       onPress={onPress}
       style={{ flex: 1, width: "100%", backgroundColor: feed.post, ...heroStyle }}
     >
+      {/* Absoluut en niet `height: "100%"`. Een percentage heeft een ouder
+          met een vástgelegde hoogte nodig; deze cel krijgt de zijne van
+          flexbox, en dan valt zo'n percentage terug op de eigen hoogte van
+          het beeld — vandaar de strook paginavlak die onder sommige foto's
+          bleef liggen. */}
       <SafeImage
         uri={p.image}
         cacheKey={p.imageKey}
-        style={{ width: "100%", height: "100%" }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         contentFit="cover"
         transition={150}
         fallbackBg="bg-feed-post"

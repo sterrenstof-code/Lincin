@@ -26,7 +26,7 @@ import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
 import { CHROME_COMPACT_H, PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { EventCard } from "@/components/EventCard";
-import { FeedRail, Frame } from "@/components/FeedChrome";
+import { FeedRail, Frame, ShareButton } from "@/components/FeedChrome";
 import {
   FindHero,
   FindTile,
@@ -502,41 +502,21 @@ export default function FeedScreen() {
                       paddingBottom: 80,
                     }}
                   >
-                    {/* Ordening + leesstatus. Twee schakelaars, geen
+                    {/* Ordening + leesstatus. Twee vragen, geen
                         instellingenscherm: dit is iets wat je terwijl je
                         leest wil kunnen omzetten.
 
-                        Daarom plakt de balk ook onder de kop zodra je hem
-                        voorbij scrollt: je bent dan midden in de lijst, en
-                        precies dán wil je kunnen wisselen van ordening of
-                        het gelezene wegdimmen. Zonder dat moest je eerst
-                        helemaal terug naar boven.
-
-                        `position: sticky` bestaat alleen op web; op native
-                        scrollt de balk gewoon mee. Het lavendel vlak en de
-                        lijn eronder zijn er zodat de kaarten er niet
-                        doorheen schijnen als hij vastzit. */}
+                        Hij plakte onder de kop zodra je hem voorbij scrolde.
+                        Dat is één plakkend ding te veel op een pagina waar
+                        de kop al blijft staan: je kiest je ordening als je
+                        begint, niet halverwege, en wat wél mee moet scrollen
+                        is de knop om zelf iets te delen. Zie de zijbalk. */}
                     <View
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
                         alignItems: "center",
-                        backgroundColor: feedColor.lav,
-                        paddingVertical: 12,
-                        // Tot de rand van de kolom, anders schijnen de
-                        // kaarten er links en rechts langs.
-                        marginHorizontal: wide ? -32 : -18,
-                        paddingHorizontal: wide ? 32 : 18,
-                        marginBottom: 22,
-                        borderBottomWidth: FEED_BORDER,
-                        borderBottomColor: feedColor.ink,
-                        ...(Platform.OS === "web"
-                          ? ({
-                              position: "sticky",
-                              top: CHROME_COMPACT_H,
-                              zIndex: 4,
-                            } as any)
-                          : null),
+                        marginBottom: space.xl,
                       }}
                     >
                       {/* Eén kader om alle drie de schakelaars.
@@ -667,6 +647,14 @@ export default function FeedScreen() {
           <View style={{ height: wide ? 24 : 16 }} />
         </View>
       </PageScroll>
+
+      {/* Op een smal scherm scrolt de zijbalk weg, en daarmee de enige
+          plek om zelf iets te delen. Dan zweeft hij rechtsonder mee. */}
+      {!wide ? (
+        <View style={{ position: "absolute", right: space.lg, bottom: space.lg }}>
+          <ShareButton onPress={() => setShareOpen(true)} />
+        </View>
+      ) : null}
 
       <ActionSheet
         visible={shareOpen}

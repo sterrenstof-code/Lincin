@@ -100,7 +100,11 @@ Roboto.
 ## 4. Vorm
 
 - **Alles is vierkant.** Geen `rounded-*` behalve `rounded-full` voor
-  avatars. De pillen van het oude systeem zijn weg.
+  avatars en voor de deelknop (`ShareButton`). Die twee zijn met opzet de
+  uitzondering: alles hier is een kader, een tegel of een vlak, dus een
+  cirkel is per definitie géén van drieën — hij ligt erbovenop. Dat is
+  precies wat een avatar en een primaire actie zijn. De pillen van het oude
+  systeem zijn weg.
 - **Kaders zijn echte lijnen**, geen haarlijnen: `FEED_BORDER = 1.5`.
   Het ontwerp leest als gedrukt raster.
 - **Geen schaduwen.** Hiërarchie komt uit vlak en lijn, niet uit diepte.
