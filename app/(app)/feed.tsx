@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
@@ -282,9 +283,23 @@ export default function FeedScreen() {
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
   const [shareOpen, setShareOpen] = useState(false);
+  /** Voorbij de kop gescrold? Dan krimpt de deelknop in de zijbalk. */
+  const [scrolled, setScrolled] = useState(false);
+
   // De kop staat buiten de ScrollView; deze hook koppelt de scrollstand
   // aan de inklap-animatie van de woordmerk-plaat.
   const chrome = useChromeScroll();
+
+  const onFeedScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      chrome.onScroll(e);
+      const past = e.nativeEvent.contentOffset.y > 80;
+      setScrolled((prev) => (prev === past ? prev : past));
+    },
+    // `chrome` is stabiel; alleen de handler erbinnen telt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chrome.onScroll]
+  );
 
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
@@ -396,7 +411,7 @@ export default function FeedScreen() {
       <PageScroll
         wide={wide}
         progress={chrome.progress}
-        onScroll={chrome.onScroll}
+        onScroll={onFeedScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         gutter={false}
         refreshControl={
@@ -452,6 +467,7 @@ export default function FeedScreen() {
                 wide={wide}
                 displayName={me.data?.display_name ?? me.data?.username ?? "Jij"}
                 avatarUrl={me.data?.avatar_url ?? null}
+                compactShare={scrolled}
                 onShare={() => setShareOpen(true)}
                 onProfile={() => router.push("/profile")}
                 onNotifications={() => router.push("/notifications")}
@@ -566,27 +582,21 @@ export default function FeedScreen() {
                     ) : null}
 
                     {sort === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
-                      <View style={{ marginBottom: space.section }}>
-                        <SectionBand index={0} label="Nu aan de gang" />
-                        <View style={{ height: space.lg }} />
-                        <View style={{ gap: space.lg }}>
+                      <SectionFrame index={0} label="Nu aan de gang">
+                        <View style={{ padding: space.lg, gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
                             <EventCard key={event.id} event={event} index={i + 1} />
                           ))}
                         </View>
-                      </View>
+                      </SectionFrame>
                     ) : null}
 
                     {sections.map((section, sectionIndex) => (
-                      <View key={section.key} style={{ marginBottom: space.section }}>
-                        {/* De banden vormen samen de inhoudsopgave van deze
-                            uitgave: nummer, woord, kleur. Zie
-                            components/SectionBand.tsx. */}
-                        <SectionBand
-                          index={liveSectionOffset + sectionIndex}
-                          label={section.label}
-                        />
-                        <View style={{ height: space.lg }} />
+                      <SectionFrame
+                        key={section.key}
+                        index={liveSectionOffset + sectionIndex}
+                        label={section.label}
+                      >
                         {section.layout === "mosaic" ? (
                           <MosaicGrid
                             slots={section.slots}
@@ -604,7 +614,7 @@ export default function FeedScreen() {
                             dimmed={dimSeen ? seen : null}
                           />
                         )}
-                      </View>
+                      </SectionFrame>
                     ))}
 
                     {sort === "chrono" && leftovers.length > 0 ? (
@@ -746,6 +756,38 @@ const HeroBlock = memo(function HeroBlock({
  * staan in één rij met gedeelde kaders (vier kolommen op desktop, twee
  * daaronder), precies zoals de `.tilerow` in de mockup.
  */
+/**
+ * Eén rubriek als blok: een kader met de kop als bovenste rij en de
+ * vondsten eronder.
+ *
+ * Eerder zweefde de kop boven een losse rij tegels die zijn eigen kader
+ * had. Twee kaders die niets met elkaar te maken hadden, en een kop die bij
+ * geen van beide hoorde. Eén kader zegt: dit hoort bij elkaar, en hier
+ * houdt het op.
+ */
+function SectionFrame({
+  index,
+  label,
+  children,
+}: {
+  index: number;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        marginBottom: space.section,
+        borderWidth: FEED_BORDER,
+        borderColor: feedColor.ink,
+      }}
+    >
+      <SectionBand index={index} label={label} />
+      {children}
+    </View>
+  );
+}
+
 function CompactSection({
   slots,
   wide,
@@ -794,7 +836,14 @@ function CompactSection({
 
         if (band) {
           return (
-            <View key={`band-${ri}`} style={{ marginTop: ri === 0 ? 0 : space.lg }}>
+            <View
+              key={`band-${ri}`}
+              style={
+                ri === 0
+                  ? null
+                  : { borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }
+              }
+            >
               <CompactItem
                 slot={row[0]}
                 wide={wide}
@@ -813,18 +862,22 @@ function CompactSection({
             style={{
               flexDirection: "row",
               flexWrap: wide ? "nowrap" : "wrap",
-              marginTop: ri === 0 ? 0 : space.lg,
-              borderWidth: FEED_BORDER,
-              borderColor: feedColor.ink,
-              // Geen plum vlak meer achter de tegels: de beeldtegels vullen
-              // hun cel nu zelf, en achter een teksttegel botste die kleur
-              // met de foto ernaast. Het kader is de structuur, niet het vlak.
+              // Geen eigen kader en geen eigen marge meer: de rubriek is het
+              // kader, en de rijen erbinnen worden gescheiden door een lijn.
+              // Twee kaders om elkaar heen leest als twee dingen.
+              ...(ri === 0
+                ? null
+                : { borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }),
             }}
           >
             {row.map((s, ci) => (
               <View
                 key={s.item.id}
                 style={{
+                  // De hoogte staat op de cel en niet op de tegel: dan is
+                  // elke tegel in de rij even hoog en vult de foto hem
+                  // helemaal. Zie ImageCell.
+                  height: wide ? 380 : 260,
                   ...(wide
                     ? { flex: 1 }
                     : { width: "50%" as const }),
@@ -1298,8 +1351,6 @@ function MosaicGrid({
     <View
       style={{
         flexDirection: wide ? "row" : "column",
-        borderWidth: FEED_BORDER,
-        borderColor: feedColor.ink,
         backgroundColor: feedColor.post,
       }}
     >

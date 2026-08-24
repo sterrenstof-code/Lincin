@@ -16,6 +16,10 @@ import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
  * terwijl de vondsten eronder het onderwerp zijn. Wat overblijft is wat het
  * altijd al moest zijn: het nummer, het woord, en de lijn die het van de
  * inhoud scheidt. Geen vlak, geen kleur.
+ *
+ * Hij staat als bovenste rij ín het kader van zijn rubriek — de lijn
+ * eronder is meteen de scheiding met de vondsten. Zo is elke rubriek één
+ * blok in plaats van een kop die boven een losse rij zweeft.
  */
 export function SectionBand({ index, label }: { index: number; label: string }) {
   return (
@@ -24,7 +28,8 @@ export function SectionBand({ index, label }: { index: number; label: string }) 
         flexDirection: "row",
         alignItems: "baseline",
         gap: space.md,
-        paddingBottom: space.sm,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
         borderBottomWidth: FEED_BORDER,
         borderBottomColor: feed.ink,
       }}

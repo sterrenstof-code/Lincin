@@ -85,6 +85,7 @@ export function Frame({
 export function FeedRail({
   displayName,
   avatarUrl,
+  compactShare = false,
   onShare,
   onProfile,
   onNotifications,
@@ -101,6 +102,13 @@ export function FeedRail({
   /** Ongelezen meldingen. Alleen een getal als er iets ligt. */
   unreadNotifications?: number;
   wide: boolean;
+  /**
+   * Ben je voorbij de bovenkant gescrold, dan krimpt de deelknop tot alleen
+   * de plus. Bovenaan mag hij zeggen wat hij doet; daarna weet je dat, en
+   * dan is een vlak van vijftig pixels naast je leeslijst alleen nog een
+   * vlak van vijftig pixels.
+   */
+  compactShare?: boolean;
 }) {
   const identity = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -140,18 +148,22 @@ export function FeedRail({
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
+          justifyContent: compactShare ? "center" : "flex-start",
           gap: space.md,
-          paddingHorizontal: space.lg,
+          paddingHorizontal: compactShare ? 0 : space.lg,
+          width: compactShare ? 56 : undefined,
           height: 56,
           backgroundColor: pressed ? announceDeep : announce,
         })}
       >
         <Ionicons name="add" size={26} color={feed.text} />
-        <Text
-          style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.text }]}
-        >
-          Delen
-        </Text>
+        {compactShare ? null : (
+          <Text
+            style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.text }]}
+          >
+            Delen
+          </Text>
+        )}
       </Pressable>
       <RailLink
         label="Meldingen"

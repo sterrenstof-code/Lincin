@@ -949,6 +949,7 @@ export function PageScroll({
   actionLabel,
   onAction,
   compact = false,
+  underChrome = false,
 }: {
   children: React.ReactNode;
   wide: boolean;
@@ -966,6 +967,17 @@ export function PageScroll({
   onAction?: () => void;
   /** Detailpagina: altijd de compacte balk. */
   compact?: boolean;
+  /**
+   * Laat de inhoud ónder de kop door lopen in plaats van eronder te
+   * beginnen.
+   *
+   * Voor een pagina die met een volle plaat begint: die hoort tot de
+   * bovenrand van het venster te lopen, met de balk erover, en niet pas
+   * onder een strook paginavlak te starten. Zolang je bovenaan staat is
+   * het vlak rond de balk daarom doorzichtig; zodra je scrolt komt het
+   * op, want dan schuift er tekst onderdoor.
+   */
+  underChrome?: boolean;
 }) {
   const [headerHeight, setHeaderHeight] = useState(0);
   /**
@@ -1022,7 +1034,10 @@ export function PageScroll({
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: sticky ? 0 : headerHeight, minHeight: "100%" }}
+        contentContainerStyle={{
+          paddingTop: sticky || underChrome ? 0 : headerHeight,
+          minHeight: "100%",
+        }}
         // Chrome verschuift de scrollpositie uit zichzelf zodra iets bóven
         // de kijkhoogte van maat verandert. Dat is bedoeld als vriendelijk-
         // heid, maar boven in deze scroller hangt een kop die van maat
@@ -1030,13 +1045,18 @@ export function PageScroll({
         style={sticky ? ({ overflowAnchor: "none" } as any) : undefined}
       >
         {sticky ? (
-          <View
+          <Animated.View
             onLayout={(e) => setWebHeaderHeight(e.nativeEvent.layout.height)}
             style={{
               // Dekkend: een sticky kop blijft staan terwijl de pagina
               // eronder doorloopt, en zonder vlak zie je die inhoud door
               // de lucht rond de balk heen schuiven.
-              backgroundColor: feed.lav,
+              backgroundColor: underChrome
+                ? progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["rgba(205,190,227,0)", feed.lav],
+                  })
+                : feed.lav,
               // Negatieve `top`: de kop scrolt mee tot alleen zijn onderste
               // strook — de compacte balk — nog boven staat, en blijft daar
               // hangen. Dat is wat een collapsing header hoort te doen, en
@@ -1051,13 +1071,16 @@ export function PageScroll({
             }}
           >
             {chrome}
-          </View>
+          </Animated.View>
         ) : null}
 
         <View
           style={{
             width: "100%",
             alignSelf: "stretch",
+            // Onder de kop door: precies zijn hoogte terug, zodat de plaat
+            // aan de bovenrand van het venster begint.
+            ...(underChrome && sticky ? { marginTop: -webHeaderHeight } : null),
             ...(gutter ? { paddingHorizontal: wide ? 24 : 16 } : null),
             ...contentStyle,
           }}
@@ -1073,7 +1096,7 @@ export function PageScroll({
             top: 0,
             left: 0,
             right: 0,
-            backgroundColor: feed.lav,
+            backgroundColor: underChrome ? "transparent" : feed.lav,
             ...chromeTag(focused),
           }}
           onLayout={(e) => {

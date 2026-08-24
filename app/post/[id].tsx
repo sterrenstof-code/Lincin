@@ -782,6 +782,9 @@ export default function PostDetailScreen() {
         onAction={canModerate ? () => setMenuOpen(true) : undefined}
         contentStyle={{ padding: gutter(wide), paddingBottom: space.section }}
         gutter={false}
+        // De plaat begint aan de bovenrand van het venster, met de balk
+        // erover — niet pas onder een strook paginavlak.
+        underChrome
       >
         <View>
           {loading ? (

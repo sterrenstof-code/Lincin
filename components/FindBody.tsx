@@ -1045,10 +1045,10 @@ function TallTile({
   post: PostWithAuthor;
   onPress?: () => void;
 }) {
-  return <ImageCell p={p} post={post} ratio={3 / 4} onPress={onPress} />;
+  return <ImageCell p={p} post={post} onPress={onPress} />;
 }
 
-/** t-d: vierkant beeld, verder gelijk aan de staande. */
+/** t-d: gelijk aan de staande — de rij bepaalt de hoogte, niet de tegel. */
 function CaptionTile({
   p,
   post,
@@ -1058,22 +1058,25 @@ function CaptionTile({
   post: PostWithAuthor;
   onPress?: () => void;
 }) {
-  return <ImageCell p={p} post={post} ratio={1} onPress={onPress} />;
+  return <ImageCell p={p} post={post} onPress={onPress} />;
 }
 
 /**
- * De gedeelde vorm van een beeldtegel: beeld op ware breedte, sluier
- * onderaan, en daarop de herkomst en — als die er is — de kop.
+ * De gedeelde vorm van een beeldtegel: de foto vult de cel, met een sluier
+ * onderaan waarop de herkomst staat en — als die er is — de kop.
+ *
+ * Geen eigen verhouding meer. Die had elke tegel wel (staand 3:4, vierkant
+ * 1:1), maar in een rij van vier is de hoogste de baas: onder de kortere
+ * foto's bleef een lap paginavlak liggen, en dan is de tegel niet de foto
+ * maar een foto op een vlak. De rij geeft de hoogte, elke foto vult hem.
  */
 function ImageCell({
   p,
   post,
-  ratio,
   onPress,
 }: {
   p: FindParts;
   post: PostWithAuthor;
-  ratio: number;
   onPress?: () => void;
 }) {
   const heroStyle = useHeroTag(post.id);
@@ -1082,7 +1085,7 @@ function ImageCell({
   return (
     <Pressable
       onPress={onPress}
-      style={{ width: "100%", aspectRatio: ratio, backgroundColor: feed.post, ...heroStyle }}
+      style={{ flex: 1, width: "100%", backgroundColor: feed.post, ...heroStyle }}
     >
       <SafeImage
         uri={p.image}
