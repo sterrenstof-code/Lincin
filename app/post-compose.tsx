@@ -72,6 +72,10 @@ export default function PostComposeScreen() {
   const myUserId = session!.user.id;
 
   /** null = stap 1 (soort kiezen). */
+  /**
+   * Heeft de aanroeper het soort al meegegeven, dan slaan we de keuzelijst
+   * over: twee keer dezelfde vraag stellen is één keer te veel.
+   */
   const [kind, setKind] = useState<ComposeKind | null>(null);
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
@@ -102,8 +106,23 @@ export default function PostComposeScreen() {
   // De praktijk is rommelig: Android zet de URL vaak in `text`, iOS stuurt
   // soms tekst mét een URL erin. We vissen de URL eruit en houden de rest
   // over als toelichting. Het zetten van `kind` slaat stap 1 over.
-  const shared = useLocalSearchParams<{ title?: string; text?: string; url?: string }>();
+  const shared = useLocalSearchParams<{
+    title?: string;
+    text?: string;
+    url?: string;
+    /** Vooraf gekozen soort — de plus in de zijbalk vraagt het al. */
+    kind?: string;
+  }>();
   const sharedHandled = useRef(false);
+
+  /** Het soort dat de aanroeper al koos. */
+  useEffect(() => {
+    const preset = typeof shared.kind === "string" ? shared.kind : null;
+    if (!preset) return;
+    if (KINDS.some((k) => k.id === preset)) setKind(preset as ComposeKind);
+    // Eén keer: daarna mag de gebruiker gewoon terug naar de keuzelijst.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (sharedHandled.current) return;

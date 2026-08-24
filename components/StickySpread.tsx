@@ -1,7 +1,7 @@
 import { Platform, useWindowDimensions, View, type ViewStyle } from "react-native";
 import type { ReactNode } from "react";
 
-import { feed, FEED_BORDER } from "@/lib/design/type";
+import { feed, FEED_BORDER, space } from "@/lib/design/type";
 
 /**
  * De tweeluik-opmaak die de horizontale gelaagdheid doorbreekt.
@@ -131,8 +131,11 @@ export function SpreadBlock({
   return (
     <View
       style={{
-        paddingHorizontal: 28,
-        paddingVertical: 32,
+        // Was 28/32. Een blok met een kop en twee regels eronder kreeg
+        // daarmee meer lucht dan inhoud, en de kolom werd een reeks
+        // vlakken in plaats van één stuk.
+        paddingHorizontal: space.xl,
+        paddingVertical: space.xl,
         backgroundColor: filled ? feed.post : "transparent",
         ...(last
           ? null

@@ -768,16 +768,22 @@ export function FindHero({
           venster: de kop zweeft absoluut over de pagina, dus op `0` schoof
           de bovenkant van het beeld eronder weg. */}
       <StickySpread media={media} stickyTop={CHROME_COMPACT_H} ratio={1.15}>
-        {/* Blok 1 — de kop */}
-        <SpreadBlock>
+        {/* Blok 1 — waar het over gaat, en van wie.
+            Dit waren twee blokken: kop, en daaronder een tweede vlak met de
+            naam, de tijd en een omkaderde knop "Delen". Drie dingen die bij
+            elkaar horen, uit elkaar getrokken over twee kaders en zo'n
+            driehonderd pixels. Nu één blok: kicker, kop, en één regel
+            eronder met wie het deelde, wanneer, en waar het vandaan komt. */}
+        <SpreadBlock last={!p.body && !footer}>
           <Text
             style={[
               feedType.kicker,
-              { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: 12 },
+              { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: space.sm },
             ]}
           >
             {`VONDST · ${p.kicker.toUpperCase()}`}
           </Text>
+
           {p.title ? (
             <Pressable onPress={onPress}>
               <Text style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}>
@@ -785,45 +791,33 @@ export function FindHero({
               </Text>
             </Pressable>
           ) : null}
-        </SpreadBlock>
 
-        {/* Blok 2 — wie en wanneer */}
-        <SpreadBlock>
-          <Text
-            style={[
-              feedType.label,
-              { fontSize: 15, fontWeight: "700", color: feed.ink, marginBottom: 6 },
-            ]}
-            numberOfLines={1}
-          >
-            {p.sharer}
-          </Text>
-          <Text style={[feedType.label, { color: "#3A3540", lineHeight: 17 }]}>
-            {`Gedeeld · ${p.time}`}
-          </Text>
-          {p.host || p.source || p.reading ? (
-            <Text
-              style={[feedType.label, { color: "#3A3540", lineHeight: 17 }]}
-              numberOfLines={1}
-            >
-              {[p.source ?? p.host, p.reading].filter(Boolean).join(" · ")}
-            </Text>
-          ) : null}
-          <Pressable
-            onPress={onMenu ?? onPress}
+          <View
             style={{
-              marginTop: 16,
-              borderWidth: FEED_BORDER,
-              borderColor: feed.ink,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: space.sm,
+              marginTop: space.lg,
             }}
           >
-            <Text style={[feedType.kicker, { color: feed.ink, letterSpacing: 0.55 }]}>
-              Delen ↗
+            <Text
+              style={[feedType.label, { fontSize: 14, fontWeight: "700", color: feed.ink }]}
+              numberOfLines={1}
+            >
+              {p.sharer}
             </Text>
-          </Pressable>
+            <Text style={[feedType.label, { color: feed.inkDim }]} numberOfLines={1}>
+              {[p.time, p.source ?? p.host, p.reading].filter(Boolean).join(" · ")}
+            </Text>
+            {/* Delen is één van de dingen die je met een vondst kunt doen,
+                niet dé actie: een regel, geen kader. */}
+            <Pressable onPress={onMenu ?? onPress} style={{ marginLeft: "auto" }}>
+              <Text style={[feedType.label, { color: flameDeep, fontWeight: "700" }]}>
+                Delen ↗
+              </Text>
+            </Pressable>
+          </View>
         </SpreadBlock>
 
         {/* Blok 3 — de tekst van de vondst zelf, op plum zodat de kolom
@@ -1033,6 +1027,15 @@ function CoverBand({
 }
 
 /** t-a: hoge beeldtegel met de kop over een scrim. */
+/**
+ * t-a: staand beeld dat de hele cel vult.
+ *
+ * Hier stond een kleine foto met een marge van zestien rondom, op een plum
+ * vlak. Wat je zag was vooral dat vlak: de foto haalde nog geen twee derde
+ * van de cel, en de rest was kleur die met de foto botste. Een tegel over
+ * een foto hóórt de foto te zijn — dus vult hij de cel, en staat wat je
+ * erover moet weten eroverheen.
+ */
 function TallTile({
   p,
   post,
@@ -1042,48 +1045,89 @@ function TallTile({
   post: PostWithAuthor;
   onPress?: () => void;
 }) {
+  return <ImageCell p={p} post={post} ratio={3 / 4} onPress={onPress} />;
+}
+
+/** t-d: vierkant beeld, verder gelijk aan de staande. */
+function CaptionTile({
+  p,
+  post,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  onPress?: () => void;
+}) {
+  return <ImageCell p={p} post={post} ratio={1} onPress={onPress} />;
+}
+
+/**
+ * De gedeelde vorm van een beeldtegel: beeld op ware breedte, sluier
+ * onderaan, en daarop de herkomst en — als die er is — de kop.
+ */
+function ImageCell({
+  p,
+  post,
+  ratio,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  ratio: number;
+  onPress?: () => void;
+}) {
+  const heroStyle = useHeroTag(post.id);
+  const album = post.album_urls ?? [];
+
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View style={{ marginBottom: 10 }}>
-        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
-      </View>
-      <View style={{ width: "100%", aspectRatio: 3 / 4, marginBottom: 12, ...useHeroTag(post.id) }}>
-        <SafeImage
-          uri={p.image}
-          cacheKey={p.imageKey}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={150}
-          fallbackBg="bg-feed-post"
-          fallbackColor={feed.textDim}
-        />
-        {/* Alleen een sluier als er iets overheen staat. Zonder titel is
-            een donkere band onderaan een foto niets dan een donkere band. */}
+    <Pressable
+      onPress={onPress}
+      style={{ width: "100%", aspectRatio: ratio, backgroundColor: feed.post, ...heroStyle }}
+    >
+      <SafeImage
+        uri={p.image}
+        cacheKey={p.imageKey}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        transition={150}
+        fallbackBg="bg-feed-post"
+        fallbackColor={feed.textDim}
+      />
+
+      <Scrim height={p.title ? 130 : 78} />
+
+      <View
+        style={{
+          position: "absolute",
+          left: space.md,
+          right: space.md,
+          bottom: space.md,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ flex: 1 }}>
+            <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+          </View>
+          {album.length > 1 ? (
+            <Text style={[feedType.label, { color: feed.text, marginLeft: space.sm }]}>
+              {`${album.length} ▦`}
+            </Text>
+          ) : null}
+        </View>
         {p.title ? (
-          <>
-            <Scrim height={110} />
-            <View
-              style={{
-                position: "absolute",
-                left: space.md,
-                right: space.md,
-                bottom: space.md,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: feedType.tile.fontFamily,
-                  fontSize: 15,
-                  lineHeight: 17,
-                  fontWeight: "800",
-                  color: feed.text,
-                }}
-                numberOfLines={3}
-              >
-                {p.title}
-              </Text>
-            </View>
-          </>
+          <Text
+            style={{
+              fontFamily: feedType.tile.fontFamily,
+              fontSize: 15,
+              lineHeight: 18,
+              fontWeight: "800",
+              color: feed.text,
+              marginTop: space.xs,
+            }}
+            numberOfLines={2}
+          >
+            {p.title}
+          </Text>
         ) : null}
       </View>
     </Pressable>
@@ -1114,7 +1158,7 @@ function NoteTile({
       onPress={onPress}
       style={{ flex: 1, padding: TILE_PAD, justifyContent: "space-between" }}
     >
-      <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+      <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} tone="feed" />
 
       <Text
         style={[
@@ -1123,7 +1167,7 @@ function NoteTile({
             fontSize: 20,
             lineHeight: 24,
             fontWeight: "800",
-            color: feed.text,
+            color: feed.ink,
             marginTop: space.md,
           },
         ]}
@@ -1135,15 +1179,15 @@ function NoteTile({
       {p.host || p.source ? (
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: space.md }}>
           <Text
-            style={[feedType.label, { color: feed.textDim, flex: 1 }]}
+            style={[feedType.label, { color: feed.inkDim, flex: 1 }]}
             numberOfLines={1}
           >
             {p.source ?? p.host}
           </Text>
-          {p.url ? <Text style={[feedType.label, { color: feed.teal }]}>↗</Text> : null}
+          {p.url ? <Text style={[feedType.label, { color: flameDeep }]}>↗</Text> : null}
         </View>
       ) : (
-        <Text style={[feedType.label, { color: feed.textDim, marginTop: space.md }]}>
+        <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.md }]}>
           {p.time}
         </Text>
       )}
@@ -1163,14 +1207,20 @@ function TextTile({
 }) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View style={{ marginBottom: 10 }}>
-        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+      <View style={{ marginBottom: space.md }}>
+        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} tone="feed" />
       </View>
       {p.title ? (
         <Text
           style={[
             feedType.tile,
-            { fontSize: 20, lineHeight: 23, fontWeight: "800", color: feed.text, marginBottom: 8 },
+            {
+              fontSize: 20,
+              lineHeight: 23,
+              fontWeight: "800",
+              color: feed.ink,
+              marginBottom: space.sm,
+            },
           ]}
           numberOfLines={3}
         >
@@ -1179,7 +1229,7 @@ function TextTile({
       ) : null}
       {p.body ? (
         <Text
-          style={[feedType.body, { fontSize: 12, lineHeight: 18, color: feed.textDim }]}
+          style={[feedType.body, { fontSize: 12, lineHeight: 18, color: feed.inkDim }]}
           numberOfLines={5}
         >
           {p.body}
@@ -1224,7 +1274,7 @@ function StatTile({
       style={{ flex: 1, padding: TILE_PAD, justifyContent: "center" }}
     >
       <View style={{ marginBottom: space.md }}>
-        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} tone="feed" />
       </View>
       {numeral ? (
         <Text
@@ -1234,7 +1284,7 @@ function StatTile({
               fontSize: 32,
               lineHeight: 36,
               letterSpacing: -1.2,
-              color: feed.teal,
+              color: flameDeep,
               marginBottom: space.sm,
             },
           ]}
@@ -1246,54 +1296,11 @@ function StatTile({
       <Text
         style={[
           feedType.body,
-          { fontSize: 13, lineHeight: 18, fontWeight: "600", color: feed.textDim },
+          { fontSize: 13, lineHeight: 18, fontWeight: "600", color: feed.inkDim },
         ]}
         numberOfLines={4}
       >
         {p.body || p.title}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** t-d: kleine vierkante foto met onderschrift eronder. */
-function CaptionTile({
-  p,
-  post,
-  onPress,
-}: {
-  p: FindParts;
-  post: PostWithAuthor;
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View
-        style={{ width: "100%", aspectRatio: 1, marginBottom: space.md, ...useHeroTag(post.id) }}
-      >
-        <SafeImage
-          uri={p.image}
-          cacheKey={p.imageKey}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={150}
-          fallbackBg="bg-feed-post"
-          fallbackColor={feed.textDim}
-        />
-      </View>
-      {p.title ? (
-        <Text
-          style={[
-            feedType.tile,
-            { fontSize: 14, lineHeight: 18, fontWeight: "700", color: feed.text, marginBottom: 4 },
-          ]}
-          numberOfLines={2}
-        >
-          {p.title}
-        </Text>
-      ) : null}
-      <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
-        {`${p.kicker} · ${p.sharer}`}
       </Text>
     </Pressable>
   );

@@ -60,12 +60,17 @@ behalve in de aankondigingsbalk.
 |---|---|---|
 | `flame` | `#E63329` | Citaten, indexcijfers, vullingen, lijnwerk |
 | `flame-deep` | `#A81C13` | **Alles onder ~16px** — de DEFAULT haalt op lavendel geen 4.5:1 |
-| `announce` | `#E66B3F` | Uitsluitend de aankondigingsbalk. Nergens anders. |
+| `announce` | `#E66B3F` | De aankondigingsbalk **en de primaire actie** (delen, toevoegen, opties). `announceDeep` `#C4552C` is dezelfde kleur ingedrukt. |
 | `brand` | `#5B8DEF` | Alleen het logo en de e2e-badge |
 | `teal` / `gold` | `#4FBDB0` / `#E3A84B` | Alleen de tegels in de feed |
 
 `flame` en `announce` hebben bewust aparte namen zodat een zoek-vervang op
 het rood de oranje balk niet meeneemt.
+
+De primaire actie stond eerder in flame-rood. Rood is hier het accent van
+de redactie — citaten, indexcijfers, lijnwerk — en een knop die iets dóet
+hoort niet dezelfde kleur te hebben als een aanhalingsteken. Er is er
+hoogstens één per scherm.
 
 ---
 
@@ -136,28 +141,17 @@ Voor tekst over een foto: `Scrim` (`components/Scrim.tsx`). Geen schaduw —
 die staan niet in dit systeem — maar een verloop in twaalf stappen. Drie
 gestapelde vlakken, zoals het eerder ging, zie je als drie banden.
 
-### Rubriekbanden
+### Rubriekkoppen
 
-De kop van een rubriek is een volle gekleurde band met een nummer en een
-woord (`components/SectionBand.tsx`), samen de inhoudsopgave van de
-uitgave: in één oogopslag zie je hoeveel rubrieken er zijn en waar je bent.
-Naar het voorbeeld van een inhoudsopgave die uit niets anders bestaat dan
-zulke balken.
+De kop van een rubriek is een nummer, een woord en een lijn
+(`components/SectionBand.tsx`) — samen de inhoudsopgave van de uitgave: in
+één oogopslag zie je hoeveel rubrieken er zijn en waar je bent.
 
-| Token | Waarde | Tekst erop |
-|---|---|---|
-| `band[0]` | `#0F3A5C` diepblauw | crème |
-| `band[1]` | `#6FA3D6` lucht | inkt |
-| `band[2]` | `#A9BD5E` olijf | inkt |
-| `band[3]` | `#E3D24F` geel | inkt |
-
-`bandFor(index)` geeft de band die bij die plek hoort; na vier loopt hij
-rond. De kleur komt uit de plék en niet uit de betekenis van de rubriek —
-het is een register, geen codering die je moet leren.
-
-**Deze vier kleuren gelden alleen voor die banden.** Vlakken, tekst en
-accenten blijven lavendel, inkt en flame. Ze dragen nooit inhoud, nooit een
-knop, nooit een kaart. Eén band, één woord, één nummer.
+Geen vlak en geen eigen kleur. Dat is geprobeerd (volle gekleurde balken,
+naar het voorbeeld van een inhoudsopgave die daaruit bestaat) en het deed
+het werk wel, maar het bracht een tweede palet mee op een pagina die het
+met lavendel, inkt en één rood afkan — en dan is de kop het luidste wat er
+staat terwijl de vondsten eronder het onderwerp zijn.
 
 ---
 

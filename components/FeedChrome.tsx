@@ -1,9 +1,17 @@
+import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
-import { BoxButton } from "@/components/Editorial";
-import { feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
+import {
+  announce,
+  announceDeep,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flame,
+  space,
+} from "@/lib/design/type";
 
 /**
  * De chrome van het feed-scherm: het kader en het persoonlijke blok.
@@ -118,9 +126,33 @@ export function FeedRail({
 
   const actions = (
     <>
-      {/* Hergebruikt BoxButton met de feed-toon — geen tweede knop-
-          component voor dit scherm. */}
-      <BoxButton tone="feed" label="Iets delen" filled block onPress={onShare} />
+      {/*
+          Delen was een zwarte balk met "Iets delen" erin, tussen twee
+          tekstregels die net zo breed waren. Eén van de drie was de reden
+          dat je hier komt, en dat zag je er niet aan af.
+
+          Nu één groot oranje vlak met een plus. Wát je deelt kies je erna:
+          de vraag "foto, link of notitie?" hoort bij het delen zelf en niet
+          bij de knop ernaartoe.
+      */}
+      <Pressable
+        onPress={onShare}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.md,
+          paddingHorizontal: space.lg,
+          height: 56,
+          backgroundColor: pressed ? announceDeep : announce,
+        })}
+      >
+        <Ionicons name="add" size={26} color={feed.text} />
+        <Text
+          style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.text }]}
+        >
+          Delen
+        </Text>
+      </Pressable>
       <RailLink
         label="Meldingen"
         badge={unreadNotifications}

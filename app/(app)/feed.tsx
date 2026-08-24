@@ -39,6 +39,7 @@ import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import {
+  CONTROL_H,
   feed as feedColor,
   FEED_BORDER,
   FEED_BREAKPOINT,
@@ -279,6 +280,8 @@ export default function FeedScreen() {
   const { prefs, setSort, setDimSeen } = useFeedPrefs(myUserId);
   const { sort, dimSeen } = prefs;
   const { seen } = useSeenPosts();
+  /** Wát je deelt kies je na de plus — zie de zijbalk. */
+  const [shareOpen, setShareOpen] = useState(false);
   // De kop staat buiten de ScrollView; deze hook koppelt de scrollstand
   // aan de inklap-animatie van de woordmerk-plaat.
   const chrome = useChromeScroll();
@@ -449,7 +452,7 @@ export default function FeedScreen() {
                 wide={wide}
                 displayName={me.data?.display_name ?? me.data?.username ?? "Jij"}
                 avatarUrl={me.data?.avatar_url ?? null}
-                onShare={() => router.push("/post-compose")}
+                onShare={() => setShareOpen(true)}
                 onProfile={() => router.push("/profile")}
                 onNotifications={() => router.push("/notifications")}
                 onSettings={() => router.push("/profile-edit")}
@@ -520,12 +523,18 @@ export default function FeedScreen() {
                           : null),
                       }}
                     >
+                      {/* Eén kader om alle drie de schakelaars.
+                          Ze stonden in twee losse doosjes die op een smal
+                          scherm onder elkaar vielen: twee kaders, twee
+                          hoogtes, en een gat ertussen. Het zijn drie
+                          standen van dezelfde vraag — hoe wil je kijken —
+                          en dus één kader met cellen erin, net als de
+                          tabstrip in de kop. */}
                       <View
                         style={{
                           flexDirection: "row",
                           borderWidth: FEED_BORDER,
                           borderColor: feedColor.ink,
-                          marginRight: 12,
                         }}
                       >
                         <SortTab
@@ -539,27 +548,13 @@ export default function FeedScreen() {
                           onPress={() => setSort("chrono")}
                           divider
                         />
+                        <SortTab
+                          label="Gelezen dimmen"
+                          active={dimSeen}
+                          onPress={() => setDimSeen(!dimSeen)}
+                          divider
+                        />
                       </View>
-
-                      <Pressable
-                        onPress={() => setDimSeen(!dimSeen)}
-                        style={{
-                          borderWidth: FEED_BORDER,
-                          borderColor: feedColor.ink,
-                          paddingHorizontal: 12,
-                          paddingVertical: 9,
-                          backgroundColor: dimSeen ? feedColor.ink : "transparent",
-                        }}
-                      >
-                        <Text
-                          style={[
-                            feedType.label,
-                            { color: dimSeen ? feedColor.lav : feedColor.ink },
-                          ]}
-                        >
-                          Gelezen dimmen
-                        </Text>
-                      </Pressable>
                     </View>
 
                     {tags.length > 0 ? (
@@ -662,6 +657,34 @@ export default function FeedScreen() {
           <View style={{ height: wide ? 24 : 16 }} />
         </View>
       </PageScroll>
+
+      <ActionSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title="Wat wil je delen?"
+        actions={[
+          {
+            label: "Foto's",
+            icon: "images-outline",
+            onPress: () => router.push("/post-compose?kind=image"),
+          },
+          {
+            label: "Een link",
+            icon: "link-outline",
+            onPress: () => router.push("/post-compose?kind=link"),
+          },
+          {
+            label: "Een fragment",
+            icon: "text-outline",
+            onPress: () => router.push("/post-compose?kind=fragment"),
+          },
+          {
+            label: "Een notitie",
+            icon: "create-outline",
+            onPress: () => router.push("/post-compose?kind=note"),
+          },
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -771,7 +794,7 @@ function CompactSection({
 
         if (band) {
           return (
-            <View key={`band-${ri}`} style={{ marginTop: ri === 0 ? 0 : 16 }}>
+            <View key={`band-${ri}`} style={{ marginTop: ri === 0 ? 0 : space.lg }}>
               <CompactItem
                 slot={row[0]}
                 wide={wide}
@@ -790,10 +813,12 @@ function CompactSection({
             style={{
               flexDirection: "row",
               flexWrap: wide ? "nowrap" : "wrap",
-              marginTop: ri === 0 ? 0 : 16,
+              marginTop: ri === 0 ? 0 : space.lg,
               borderWidth: FEED_BORDER,
               borderColor: feedColor.ink,
-              backgroundColor: feedColor.post,
+              // Geen plum vlak meer achter de tegels: de beeldtegels vullen
+              // hun cel nu zelf, en achter een teksttegel botste die kleur
+              // met de foto ernaast. Het kader is de structuur, niet het vlak.
             }}
           >
             {row.map((s, ci) => (
@@ -1177,6 +1202,7 @@ function TagChip({
     >
       <Text
         style={[feedType.label, { color: active ? feedColor.lav : feedColor.ink }]}
+        numberOfLines={1}
       >
         {label}
       </Text>
@@ -1326,8 +1352,13 @@ function SortTab({
     <Pressable
       onPress={onPress}
       style={{
-        paddingHorizontal: 14,
-        paddingVertical: 9,
+        // Gelijke cellen: drie standen van dezelfde vraag horen even breed
+        // te zijn, anders leest de langste als de belangrijkste.
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: space.md,
+        height: CONTROL_H,
         backgroundColor: active ? feedColor.ink : "transparent",
         ...(divider
           ? { borderLeftWidth: FEED_BORDER, borderLeftColor: feedColor.ink }

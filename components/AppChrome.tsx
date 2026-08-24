@@ -29,6 +29,7 @@ import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
 import {
   announce,
+  announceDeep,
   feed,
   FEED_BORDER,
   feedType,
@@ -447,10 +448,10 @@ function CompactBar({
           style={({ pressed }) => ({
             justifyContent: "center",
             paddingHorizontal: 18,
-            backgroundColor: pressed ? flameDeep : "#E63329",
+            backgroundColor: pressed ? announceDeep : announce,
           })}
         >
-          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: "#FFFFFF" }]}>
+          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.text }]}>
             {actionLabel}
           </Text>
         </Pressable>
