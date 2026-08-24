@@ -77,19 +77,24 @@ export function MentionsText({
 } & TextProps) {
   const router = useRouter();
   const parts = tokenize(text);
-  const linkClass = isMine
-    ? "text-cream font-bold underline"
-    : "text-brand font-bold underline";
+  /**
+   * Een genoemde naam is vet, geen link in een andere kleur. Blauw is in
+   * dit ontwerp alleen het merk en de e2e-badge, en een onderstreepte
+   * blauwe naam midden in een reactie leest als een website die je
+   * verlaat. Een URL blíjft onderstreept — die gaat wél ergens heen.
+   */
+  const mentionClass = isMine ? "text-cream font-bold" : "text-ink font-bold";
+  const urlClass = isMine ? "text-cream underline" : "text-ink-soft underline";
 
   return (
     <Text {...rest} className={className} selectable>
       {parts.map((part, i) =>
         part.type === "mention" ? (
-          <Text key={i} onPress={() => router.push(`/user/${part.value}`)} className={linkClass}>
+          <Text key={i} onPress={() => router.push(`/user/${part.value}`)} className={mentionClass}>
             @{part.value}
           </Text>
         ) : part.type === "url" ? (
-          <Text key={i} onPress={() => openUrl(part.value)} className={`${linkClass} font-normal`}>
+          <Text key={i} onPress={() => openUrl(part.value)} className={urlClass}>
             {part.value}
           </Text>
         ) : (

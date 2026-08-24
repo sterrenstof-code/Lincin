@@ -423,19 +423,21 @@ export default function PostDetailScreen() {
         Reacties {comments && comments.length > 0 ? `(${comments.length})` : ""}
       </Text>
 
+      {/* Geen paneel eromheen. Een reactie is geen kaartje: wie het zei
+          staat vooraan, wat er staat springt in tot onder die naam, en een
+          lijn op diezelfde inspringing scheidt de een van de ander. Vlak,
+          uitlijning en ruimte doen het werk dat een achtergrondkleur deed. */}
       {comments === null ? (
-        <View className="bg-paper-soft  p-4 gap-3">
+        <View style={{ gap: space.md, paddingVertical: space.md }}>
           <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
           <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
         </View>
       ) : comments.length === 0 ? (
-        <View className="bg-paper-soft  p-5">
-          <Text className="text-ink-soft text-sm leading-5">
-            Nog geen reacties. Stuur de eerste hieronder.
-          </Text>
-        </View>
+        <Text style={[feedType.body, { color: feed.inkDim, paddingVertical: space.md }]}>
+          Nog geen reacties. Stuur de eerste hieronder.
+        </Text>
       ) : (
-        <View className="bg-paper-soft  overflow-hidden">
+        <View>
           {comments.map((c, i) => (
             <CommentRow
               key={c.id}
@@ -852,23 +854,44 @@ function CommentRow({
   const time = formatCommentTime(comment.created_at);
   const name = comment.author?.display_name ?? comment.author?.username ?? "Onbekend";
   return (
-    <View className={`flex-row px-4 py-3 ${isLast ? "" : "border-b border-line-paper/60"}`}>
+    <View
+      style={{
+        flexDirection: "row",
+        paddingVertical: space.md,
+        ...(isLast
+          ? null
+          : { borderBottomWidth: 1, borderBottomColor: "rgba(11,10,12,0.12)" }),
+      }}
+    >
       <Pressable onPress={onAvatarPress} hitSlop={6}>
-        <Avatar name={name} size="sm" />
+        <Avatar name={name} avatarUrl={comment.author?.avatar_url} size="sm" />
       </Pressable>
-      <View className="flex-1 ml-3">
-        <View className="flex-row items-baseline">
-          <Text className="text-ink font-semibold text-sm">{name}</Text>
-          <Text className="text-ink-muted text-xs ml-2">{time}</Text>
+
+      {/* De tekst springt in tot naast de avatar en blijft daar: naam en
+          reactie staan op dezelfde lijn onder elkaar, en die lijn is wat
+          een reactie van de volgende scheidt. */}
+      <View style={{ flex: 1, minWidth: 0, marginLeft: space.md }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: space.sm }}>
+          <Text
+            style={[feedType.label, { fontSize: 14, fontWeight: "700", color: feed.ink }]}
+            numberOfLines={1}
+          >
+            {name}
+          </Text>
+          <Text style={[feedType.label, { color: feed.inkDim }]}>{time}</Text>
         </View>
-        <MentionsText text={comment.body} className="text-ink text-sm leading-5 mt-0.5" />
+        <MentionsText
+          text={comment.body}
+          style={[feedType.body, { fontSize: 14, lineHeight: 20, color: feed.ink, marginTop: 2 }]}
+        />
       </View>
-      <View className="flex-row items-center gap-1 ml-2">
-        <Pressable onPress={onReply} hitSlop={8} className="p-1">
+
+      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: space.sm }}>
+        <Pressable onPress={onReply} hitSlop={8} style={{ padding: space.xs }}>
           <Ionicons name="return-down-back-outline" color={feed.inkDim} size={16} />
         </Pressable>
         {canDelete && (
-          <Pressable onPress={onDelete} hitSlop={8} className="p-1">
+          <Pressable onPress={onDelete} hitSlop={8} style={{ padding: space.xs }}>
             <Ionicons name="trash-outline" color={feed.inkDim} size={16} />
           </Pressable>
         )}

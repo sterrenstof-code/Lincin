@@ -1,6 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { ReactNode } from "react";
-import { Pressable, Text, View, type ViewStyle } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  Text,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import {
@@ -116,6 +123,53 @@ export function ShareButton({
   );
 }
 
+/**
+ * De deelknop met zijn woord ernaast.
+ *
+ * Bovenaan staat er "Delen" naast het rondje; ben je voorbij de kop, dan
+ * blijft alleen het rondje over. Dat gebeurt niet met een sprong maar met
+ * een beweging: het woord vervaagt en schuift naar het rondje toe terwijl
+ * de ruimte die het innam dichttrekt. Een element dat plots verdwijnt leest
+ * als een fout; hetzelfde element dat wegtrekt leest als een keuze.
+ */
+function ShareAction({ onPress, compact }: { onPress: () => void; compact: boolean }) {
+  const open = useRef(new Animated.Value(compact ? 0 : 1)).current;
+
+  useEffect(() => {
+    Animated.timing(open, {
+      toValue: compact ? 0 : 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      // Breedte animeren kan de native driver niet.
+      useNativeDriver: false,
+    }).start();
+  }, [compact, open]);
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <ShareButton onPress={onPress} />
+      <Animated.View
+        style={{
+          opacity: open,
+          marginLeft: open.interpolate({ inputRange: [0, 1], outputRange: [0, space.md] }),
+          maxWidth: open.interpolate({ inputRange: [0, 1], outputRange: [0, 160] }),
+          transform: [
+            { translateX: open.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+          ],
+          overflow: "hidden",
+        }}
+      >
+        <Text
+          style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.ink }]}
+          numberOfLines={1}
+        >
+          Delen
+        </Text>
+      </Animated.View>
+    </View>
+  );
+}
+
 export function FeedRail({
   displayName,
   avatarUrl,
@@ -177,16 +231,7 @@ export function FeedRail({
           de vraag "foto, link of notitie?" hoort bij het delen zelf en niet
           bij de knop ernaartoe.
       */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-        <ShareButton onPress={onShare} />
-        {compactShare ? null : (
-          <Text
-            style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.ink }]}
-          >
-            Delen
-          </Text>
-        )}
-      </View>
+      <ShareAction onPress={onShare} compact={compactShare} />
       <RailLink
         label="Meldingen"
         badge={unreadNotifications}
