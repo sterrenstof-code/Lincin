@@ -346,6 +346,26 @@ export async function joinEventByCode(joinCode: string): Promise<JoinEventResult
 }
 
 /** Openstaande toegangsverzoeken van een event. Alleen de host krijgt rijen. */
+/**
+ * Wie er meedoet, met hun profiel. De host vooraan — die staat er als
+ * gastheer en niet als gast.
+ */
+export async function listEventMembers(eventId: string): Promise<
+  { user_id: string; role: string | null; profile: Profile | null }[]
+> {
+  const { data, error } = await supabase
+    .from("event_members")
+    .select("user_id, role")
+    .eq("event_id", eventId);
+  if (error || !data || data.length === 0) return [];
+
+  const profiles = await getProfiles(data.map((m) => m.user_id));
+  const byId = new Map(profiles.map((prof) => [prof.id, prof]));
+  return data
+    .map((m) => ({ user_id: m.user_id, role: m.role ?? null, profile: byId.get(m.user_id) ?? null }))
+    .sort((a, b) => (a.role === "host" ? -1 : b.role === "host" ? 1 : 0));
+}
+
 export async function listEventJoinRequests(
   eventId: string
 ): Promise<EventJoinRequest[]> {

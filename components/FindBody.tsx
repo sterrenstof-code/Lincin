@@ -859,6 +859,8 @@ export type TileVariant =
   | "stat"
   | "caption"
   | "quote"
+  /** Alleen een kop, of een kop met een bron. Geen beeld, geen lopende tekst. */
+  | "note"
   /** Deel van een mozaïekblok — de tegel vult zijn cel volledig. */
   | "mosaic"
   /** Eén cel in het chronologische overzicht: overal exact dezelfde vorm. */
@@ -871,6 +873,41 @@ export type TileVariant =
  * soort aan de gepaste maat te koppelen en anders terugvalt op het vaste
  * ritme. De tegel zelf beslist niets over haar eigen maat.
  */
+/**
+ * Welke vorm past bij deze vondst?
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT NIET MEER OM DE BEURT GAAT
+ * ---------------------------------------------------------------
+ * De vorm van een tegel werd bepaald door zijn plaats in de rij: eerste
+ * tall, tweede text, derde stat, vierde caption. Dat gaf een mooi ritme
+ * zolang elke vondst toevallig had wat die vorm nodig heeft — en dat is
+ * precies wat een vondst niet altijd heeft.
+ *
+ * Wat je dan kreeg, en wat er ook stond: een foto zonder onderschrift die
+ * in de tekstvorm viel werd een leeg vlak met alleen "Beeld · Waveman"
+ * erboven. Een notitie zonder cijfers in de cijfervorm kreeg het
+ * volgnummer van de tegel als getal — 04 — alsof dat iets betekende. En
+ * een artikel zonder voorbeeld-afbeelding in de beeldvorm werd een grijs
+ * plaatshoudertje.
+ *
+ * Dus kiest de inhoud de vorm, en niet de plaats. `alt` wisselt alleen
+ * nog tussen twee vormen die állebei kunnen: het ritme blijft, de lege
+ * vlakken zijn weg.
+ */
+export function tileShapeFor(post: PostWithAuthor, alt: number): TileVariant {
+  const p = partsOf(post);
+  const hasImage = !!p.image;
+  const hasBody = p.body.trim().length > 0;
+  // Een écht getal in de tekst — niet het volgnummer van de tegel.
+  const hasNumber = /\b\d{1,4}\s*%?\b/.test(p.body);
+
+  if (hasImage) return alt % 2 === 0 ? "tall" : "caption";
+  if (hasNumber) return "stat";
+  if (hasBody) return "text";
+  return "note";
+}
+
 export function FindTile({
   post,
   variant,
@@ -897,7 +934,9 @@ export function FindTile({
     case "stat":
       return <StatTile p={p} post={post} index={index} onPress={onPress} />;
     case "caption":
-      return <CaptionTile p={p} id={post.id} onPress={onPress} />;
+      return <CaptionTile p={p} post={post} onPress={onPress} />;
+    case "note":
+      return <NoteTile p={p} post={post} onPress={onPress} />;
     case "mosaic":
       return <MosaicTile p={p} post={post} onPress={onPress} />;
     case "grid":
@@ -1018,30 +1057,96 @@ function TallTile({
           fallbackBg="bg-feed-post"
           fallbackColor={feed.textDim}
         />
-        {/* Scrim. Geen gradient-dependency: drie gestapelde vlakken met
-            oplopende dekking lezen op deze maat identiek. */}
-        <View
-          pointerEvents="none"
-          style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
-        >
-          <View style={{ height: 26, backgroundColor: "rgba(0,0,0,0.22)" }} />
-          <View style={{ height: 26, backgroundColor: "rgba(0,0,0,0.44)" }} />
-          <View style={{ backgroundColor: "rgba(0,0,0,0.62)", padding: 10 }}>
-            <Text
+        {/* Alleen een sluier als er iets overheen staat. Zonder titel is
+            een donkere band onderaan een foto niets dan een donkere band. */}
+        {p.title ? (
+          <>
+            <Scrim height={110} />
+            <View
               style={{
-                fontFamily: feedType.tile.fontFamily,
-                fontSize: 15,
-                lineHeight: 17,
-                fontWeight: "800",
-                color: "#FFFFFF",
+                position: "absolute",
+                left: space.md,
+                right: space.md,
+                bottom: space.md,
               }}
-              numberOfLines={3}
             >
-              {p.title}
-            </Text>
-          </View>
-        </View>
+              <Text
+                style={{
+                  fontFamily: feedType.tile.fontFamily,
+                  fontSize: 15,
+                  lineHeight: 17,
+                  fontWeight: "800",
+                  color: feed.text,
+                }}
+                numberOfLines={3}
+              >
+                {p.title}
+              </Text>
+            </View>
+          </>
+        ) : null}
       </View>
+    </Pressable>
+  );
+}
+
+/**
+ * t-e: alleen een kop, en wat er verder over de vondst te zeggen valt.
+ *
+ * Voor de vondst die niets heeft om te tónen: een link zonder
+ * voorbeeldbeeld, een korte notitie, een gedeeld artikel waarvan alleen de
+ * titel bekend is. Die viel eerder in een beeldvorm en werd een grijs
+ * plaatshoudertje. Hier is de tekst het beeld: de kop groot, de bron
+ * eronder, en de kicker erboven zodat je nog steeds ziet wat voor soort
+ * vondst het is.
+ */
+function NoteTile({
+  p,
+  post,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ flex: 1, padding: TILE_PAD, justifyContent: "space-between" }}
+    >
+      <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+
+      <Text
+        style={[
+          feedType.tile,
+          {
+            fontSize: 20,
+            lineHeight: 24,
+            fontWeight: "800",
+            color: feed.text,
+            marginTop: space.md,
+          },
+        ]}
+        numberOfLines={5}
+      >
+        {p.title ?? p.body ?? ""}
+      </Text>
+
+      {p.host || p.source ? (
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: space.md }}>
+          <Text
+            style={[feedType.label, { color: feed.textDim, flex: 1 }]}
+            numberOfLines={1}
+          >
+            {p.source ?? p.host}
+          </Text>
+          {p.url ? <Text style={[feedType.label, { color: feed.teal }]}>↗</Text> : null}
+        </View>
+      ) : (
+        <Text style={[feedType.label, { color: feed.textDim, marginTop: space.md }]}>
+          {p.time}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -1102,27 +1207,42 @@ function StatTile({
   index: number;
   onPress?: () => void;
 }) {
+  /**
+   * Het getal moet uit de vondst zelf komen. Stond hier niets, dan viel
+   * dit terug op het volgnummer van de tegel — "04" in koeienletters
+   * boven een notitie die niets met vier te maken had. `tileShapeFor`
+   * kiest deze vorm nu alleen als er écht een getal staat; de leestijd
+   * blijft als tweede keus, en anders is er geen cijferregel.
+   */
   const inText = p.body.match(/\b(\d{1,4})\s*(%)?\b/);
-  const numeral = inText
-    ? `${inText[1]}${inText[2] ?? ""}`
-    : p.reading
-    ? p.reading
-    : String(index).padStart(2, "0");
+  const numeral = inText ? `${inText[1]}${inText[2] ?? ""}` : p.reading ?? null;
+  void index;
 
   return (
     <Pressable
       onPress={onPress}
       style={{ flex: 1, padding: TILE_PAD, justifyContent: "center" }}
     >
-      <Text
-        style={[
-          feedType.numeral,
-          { fontSize: 32, lineHeight: 36, letterSpacing: -1.2, color: feed.teal, marginBottom: 8 },
-        ]}
-        numberOfLines={1}
-      >
-        {numeral}
-      </Text>
+      <View style={{ marginBottom: space.md }}>
+        <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
+      </View>
+      {numeral ? (
+        <Text
+          style={[
+            feedType.numeral,
+            {
+              fontSize: 32,
+              lineHeight: 36,
+              letterSpacing: -1.2,
+              color: feed.teal,
+              marginBottom: space.sm,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {numeral}
+        </Text>
+      ) : null}
       <Text
         style={[
           feedType.body,
@@ -1137,10 +1257,20 @@ function StatTile({
 }
 
 /** t-d: kleine vierkante foto met onderschrift eronder. */
-function CaptionTile({ p, id, onPress }: { p: FindParts; id: string; onPress?: () => void }) {
+function CaptionTile({
+  p,
+  post,
+  onPress,
+}: {
+  p: FindParts;
+  post: PostWithAuthor;
+  onPress?: () => void;
+}) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1, padding: TILE_PAD }}>
-      <View style={{ width: "100%", aspectRatio: 1, marginBottom: 10, ...useHeroTag(id) }}>
+      <View
+        style={{ width: "100%", aspectRatio: 1, marginBottom: space.md, ...useHeroTag(post.id) }}
+      >
         <SafeImage
           uri={p.image}
           cacheKey={p.imageKey}

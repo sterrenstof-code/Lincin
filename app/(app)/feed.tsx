@@ -26,7 +26,12 @@ import { listMyEvents } from "@/lib/api/events";
 import { CHROME_COMPACT_H, PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { EventCard } from "@/components/EventCard";
 import { FeedRail, Frame } from "@/components/FeedChrome";
-import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
+import {
+  FindHero,
+  FindTile,
+  tileShapeFor,
+  type TileVariant,
+} from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
@@ -162,8 +167,11 @@ const WORD_KINDS: FindKind[] = ["fragment", "fact", "idea", "note"];
 type Slot = { variant: TileVariant; item: FeedItem; index: number };
 type Section = { key: string; label: string; layout: SectionLayout; slots: Slot[] };
 
-/** De tegelmaten binnen een gewone tegelrij, op volgorde. */
-const TILE_CYCLE: TileVariant[] = ["tall", "text", "stat", "caption"];
+/**
+ * De vorm van een tegel volgt niet meer zijn plaats in de rij maar zijn
+ * inhoud — zie `tileShapeFor` in components/FindBody.tsx, met daar de
+ * uitleg waarom een vaste beurtrol lege tegels opleverde.
+ */
 
 /**
  * Bouwt de rubrieken. Elke vondst komt hoogstens één keer voor: een rubriek
@@ -227,7 +235,7 @@ function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slo
         def.layout === "cover" ? "cover"
         : def.layout === "mosaic" ? "mosaic"
         : def.layout === "words" ? (i === 0 ? "quote" : "text")
-        : TILE_CYCLE[i % TILE_CYCLE.length];
+        : tileShapeFor(item.data, i);
       return { variant, item, index: counter };
     });
     sections.push({ key: def.key, label: def.label, layout: def.layout, slots });
@@ -241,7 +249,7 @@ function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slo
     if (item.type !== "post" && !others.includes(item)) continue;
     counter += 1;
     const variant: TileVariant =
-      item.type !== "post" ? "text" : TILE_CYCLE[leftovers.length % TILE_CYCLE.length];
+      item.type !== "post" ? "text" : tileShapeFor(item.data, leftovers.length);
     leftovers.push({ variant, item, index: counter });
   }
 

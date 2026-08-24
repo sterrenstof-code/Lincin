@@ -27,6 +27,7 @@ import {
   getEvent,
   listEventContributions,
   listEventJoinRequests,
+  listEventMembers,
   setEventJoinPolicy,
   subscribeToEventContributions,
   buildEventJoinUrl,
@@ -59,6 +60,7 @@ export default function EventDetailScreen() {
   const [copied, setCopied] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [guestsOpen, setGuestsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const event = useQuery({
@@ -77,6 +79,13 @@ export default function EventDetailScreen() {
    * host, dus deze query is voor een gast simpelweg leeg — geen aparte
    * enable-voorwaarde nodig die pas klopt zodra `event` binnen is.
    */
+  /** De gasten zelf — namen en gezichten, niet alleen een aantal. */
+  const members = useQuery({
+    queryKey: ["event-members", eventId],
+    queryFn: () => listEventMembers(eventId),
+    enabled: !!eventId,
+  });
+
   const joinRequests = useQuery({
     queryKey: ["event-join-requests", eventId],
     queryFn: () => listEventJoinRequests(eventId),
@@ -369,6 +378,37 @@ export default function EventDetailScreen() {
                 >
                   {`${ev.members_count} gasten · ${ev.contributions_count} foto's`}
                 </Text>
+
+                {/* En wie dat dan zijn. Een aantal zegt hoevéél mensen er
+                    komen; de gezichten zeggen of jouw mensen erbij zijn, en
+                    dat is wat je wil weten. */}
+                {(members.data ?? []).length > 0 ? (
+                  <Pressable
+                    onPress={() => setGuestsOpen(true)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      alignSelf: wide ? "flex-end" : "flex-start",
+                      marginTop: space.sm,
+                    }}
+                  >
+                    {(members.data ?? []).slice(0, 6).map((m, i) => (
+                      <View key={m.user_id} style={{ marginLeft: i === 0 ? 0 : -space.sm }}>
+                        <Avatar
+                          name={m.profile?.display_name ?? m.profile?.username}
+                          avatarUrl={m.profile?.avatar_url}
+                          size="sm"
+                          tint="light"
+                        />
+                      </View>
+                    ))}
+                    {(members.data ?? []).length > 6 ? (
+                      <Text style={[feedType.label, { color: feed.ink, marginLeft: space.sm }]}>
+                        {`+${(members.data ?? []).length - 6}`}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                ) : null}
                 <Text
                   style={[
                     feedType.label,
@@ -471,6 +511,23 @@ export default function EventDetailScreen() {
               Event-media is niet end-to-end versleuteld zoals je chats.
             </Text>
           </View>
+
+          {/* De volledige gastenlijst. */}
+          <ActionSheet
+            visible={guestsOpen}
+            onClose={() => setGuestsOpen(false)}
+            title={`Gasten (${(members.data ?? []).length})`}
+            actions={(members.data ?? []).map((m) => ({
+              label: `${m.profile?.display_name ?? m.profile?.username ?? "Onbekend"}${
+                m.role === "host" ? " · gastheer" : ""
+              }`,
+              icon: "person-outline" as const,
+              onPress: () => {
+                const handle = m.profile?.username;
+                if (handle) router.push(`/user/${handle}`);
+              },
+            }))}
+          />
 
           {/* Beheer van de host: wie mag binnen, en wie wacht. */}
           <Modal

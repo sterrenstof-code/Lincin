@@ -329,7 +329,11 @@ export default function PostDetailScreen() {
       style={{
         width: "100%",
         height: fill ? "100%" : Math.round(windowHeight * 0.62),
-        backgroundColor: feed.post,
+        // Naast het gesprek staat de foto op de pagina zelf. Een plum vlak
+        // eronder werd bij een staande foto een rand aan weerszijden — een
+        // kader dat niemand gevraagd had. Onder een gesprek (smal) vult de
+        // foto zijn vlak wél, en dan is het vlak zijn achtergrond.
+        backgroundColor: fill ? "transparent" : feed.post,
         justifyContent: "flex-end",
         // Zelfde naam als de tegel in de feed: de browser morpht het ene
         // vlak naar het andere.
@@ -688,15 +692,17 @@ export default function PostDetailScreen() {
           onAction={canModerate ? () => setMenuOpen(true) : undefined}
         />
 
-        {/* Dezelfde marge als de kop erboven — `gutter()` is voor beide de
-            bron. Stond hier 20 tegenover de 24 van de balk, en dan begint de
-            pagina vier pixels naast zijn eigen kop. */}
+        {/* De foto loopt tot de rand van het venster: links geen marge, geen
+            vlak eronder. Een lijst met marges eromheen maakt van een foto
+            een kaartje, en dit is geen kaartje — dit ís de pagina. De
+            gesprekskolom rechts houdt zijn eigen marge, want tekst tegen een
+            vensterrand leest niet. */}
         <View
           style={{
             flex: 1,
             flexDirection: "row",
             gap: space.xxl,
-            paddingHorizontal: gutter(true),
+            paddingRight: gutter(true),
             paddingBottom: gutter(true),
           }}
         >
