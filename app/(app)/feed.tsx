@@ -28,7 +28,7 @@ import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { EventCard } from "@/components/EventCard";
-import { Frame, ShareButton } from "@/components/FeedChrome";
+import { ShareButton } from "@/components/FeedChrome";
 import {
   FindHero,
   FindTile,
@@ -842,7 +842,12 @@ function CompactSection({
           );
         }
 
-        // De tegelrij: één kader eromheen, scheidingslijnen ertussen.
+        /** Zit er een foto in deze rij? Dan geeft de rij de hoogte. */
+        const rowHasImage = row.some(
+          (s) => s.variant === "tall" || s.variant === "caption"
+        );
+
+        // De tegelrij: scheidingslijnen ertussen, kader van de rubriek.
         return (
           <View
             key={`row-${ri}`}
@@ -861,10 +866,17 @@ function CompactSection({
               <View
                 key={s.item.id}
                 style={{
-                  // De hoogte staat op de cel en niet op de tegel: dan is
-                  // elke tegel in de rij even hoog en vult de foto hem
-                  // helemaal. Zie ImageCell.
-                  height: wide ? 380 : 260,
+                  /**
+                   * De hoogte staat op de cel en niet op de tegel: dan is
+                   * elke tegel in de rij even hoog en vult de foto hem
+                   * helemaal (zie ImageCell).
+                   *
+                   * Máár alleen als er een foto in de rij zit. Een rij met
+                   * enkel notities kreeg dezelfde 380 pixels, en dan staat
+                   * het woord "test" bovenaan een vlak van een halve
+                   * pagina. Zonder beeld bepaalt de tekst de hoogte.
+                   */
+                  ...(rowHasImage ? { height: wide ? 380 : 260 } : null),
                   ...(wide
                     ? { flex: 1 }
                     : { width: "50%" as const }),
@@ -932,11 +944,7 @@ function columnsFor(width: number): number {
  * wat de een van de ander onderscheidt — dus houdt elke tegel zijn eigen
  * hoogte en stapelen we ze in kolommen.
  *
- * De verdeling gaat om de beurt (kolom 0, 1, 2, 0, …) en niet naar de
- * kortste kolom. Dat laatste vult netter, maar het vraagt de hoogtes vooraf
- * en die kennen we pas als de foto's binnen zijn — en het maakt de volgorde
- * onvoorspelbaar, terwijl "nieuwste eerst" hier de hele belofte is. Om de
- * beurt leest links naar rechts, rij na rij, precies zoals het er staat.
+ * Wie de kolommen vult, verschilt per platform — zie hieronder.
  */
 function MasonryGrid({
   slots,
@@ -951,6 +959,44 @@ function MasonryGrid({
   onChanged: () => void;
   dimmed?: Set<string> | null;
 }) {
+  /**
+   * Op web verdeelt de browser zelf: `column-count` maakt de kolommen even
+   * lang, en hij kent de hoogtes wél — hij heeft ze net gemeten. Dat is het
+   * verschil met om de beurt verdelen: dat is voorspelbaar maar houdt geen
+   * rekening met wat er ín een tegel zit, en dan eindigt de ene kolom een
+   * halve pagina eerder dan de andere.
+   *
+   * `display: block` moet erbij, want react-native-web zet elke View op
+   * flex en een flexcontainer kent geen kolommen. `break-inside: avoid`
+   * houdt een tegel heel; zonder dat knipt de browser hem halverwege af.
+   */
+  if (Platform.OS === "web") {
+    return (
+      <View
+        style={
+          { display: "block", columnCount: columns, columnGap: GRID_GAP } as any
+        }
+      >
+        {slots.map((slot) => (
+          <View
+            key={slot.item.id}
+            style={{ breakInside: "avoid", marginBottom: GRID_GAP } as any}
+          >
+            <CompactItem
+              slot={slot}
+              wide={columns > 1}
+              myUserId={myUserId}
+              onChanged={onChanged}
+              dimmed={dimmed}
+            />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  // Native kent `column-count` niet: daar blijft het om de beurt. Dezelfde
+  // volgorde, alleen minder strak uitgevuld.
   const buckets: Slot[][] = Array.from({ length: columns }, () => []);
   slots.forEach((slot, i) => buckets[i % columns].push(slot));
 
@@ -1022,9 +1068,18 @@ const CompactItem = memo(function CompactItem({
   // Deze kaarten draaien nog op het warme shell/paper-palet en zijn nog niet
   // herstijld — ze staan daarom in een licht paneel met een etiket erboven,
   // net zoals in het vorige feed-ontwerp. Zie DESIGN.md §5.
+  // Géén eigen kader: deze kaart staat ín het kader van zijn rubriek, en de
+  // rij eromheen trekt de scheidingslijn al. Twee lijnen tegen elkaar aan
+  // lezen als een dubbele rand — precies wat er stond.
   return (
-    <Frame filled style={{ padding: 12, ...(dimStyle ?? {}) }}>
-      <View style={{ marginBottom: 8 }}>
+    <View
+      style={{
+        backgroundColor: feedColor.panel,
+        padding: space.md,
+        ...(dimStyle ?? {}),
+      }}
+    >
+      <View style={{ marginBottom: space.sm }}>
         <Meta tone="feed" caps>
           {label}
         </Meta>
@@ -1034,7 +1089,7 @@ const CompactItem = memo(function CompactItem({
       {item.type === "shared_list" && <SharedListCard list={item.data} />}
       {item.type === "activity" && <ActivityCard event={item.data} />}
       {item.type === "memory" && <MemoryCard post={item.data} />}
-    </Frame>
+    </View>
   );
 });
 

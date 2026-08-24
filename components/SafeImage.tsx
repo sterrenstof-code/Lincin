@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, type ImageProps } from "expo-image";
 import { useState } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
+import { Skeleton } from "@/components/Skeleton";
 import { feed } from "@/lib/design/type";
 
 /**
@@ -22,6 +23,7 @@ export function SafeImage({
   fallbackColor = feed.inkDim,
   iconSize = 32,
   containerStyle,
+  skeleton = true,
   ...rest
 }: Omit<ImageProps, "source"> & {
   uri: string | null | undefined;
@@ -32,8 +34,14 @@ export function SafeImage({
   fallbackColor?: string;
   iconSize?: number;
   containerStyle?: StyleProp<ViewStyle>;
+  /**
+   * Een kloppend vlak zolang de foto onderweg is. Uit te zetten voor beeld
+   * dat al een eigen wachtstand heeft.
+   */
+  skeleton?: boolean;
 }) {
   const [errored, setErrored] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (!uri || errored) {
     return (
@@ -47,11 +55,28 @@ export function SafeImage({
   }
 
   return (
-    <Image
-      {...rest}
-      source={{ uri, cacheKey: cacheKey ?? uri }}
-      cachePolicy="disk"
-      onError={() => setErrored(true)}
-    />
+    <>
+      {/*
+          Zolang de foto onderweg is staat er een pulserend vlak op zijn
+          plek. Niet uit cosmetica: zonder dat is er een gat in de bladspiegel
+          dat pas dichtgaat als de foto binnen is, en op een trage lijn leest
+          dat als een pagina die stuk is. Het vlak ligt eróver en niet
+          eronder, zodat het exact de maat van het beeld heeft, wat de
+          aanroeper die maat ook geeft.
+      */}
+      <Image
+        {...rest}
+        source={{ uri, cacheKey: cacheKey ?? uri }}
+        cachePolicy="disk"
+        onError={() => setErrored(true)}
+        onLoadEnd={() => setLoaded(true)}
+      />
+      {skeleton && !loaded ? (
+        <Skeleton
+          className="bg-paper-warm"
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      ) : null}
+    </>
   );
 }

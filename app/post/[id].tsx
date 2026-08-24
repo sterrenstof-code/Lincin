@@ -64,7 +64,33 @@ export default function PostDetailScreen() {
    * Breedte van de gesprekskolom. Genoeg voor een reactie van twee regels,
    * maar nooit zoveel dat de foto in de knel komt op een net-brede laptop.
    */
-  const conversationWidth = Math.round(Math.min(420, Math.max(300, windowWidth * 0.32)));
+  /**
+   * De verhouding van de foto, zodra hij binnen is. Bepaalt hoe de pagina
+   * zich verdeelt — zie `conversationWidth`.
+   */
+  const [imageRatio, setImageRatio] = useState<number | null>(null);
+
+  /**
+   * Breedte van de gesprekskolom.
+   *
+   * Een liggende foto en een kolom tekst willen allebei breedte, en dan is
+   * half om half het eerlijkst: de foto wordt niet groter van meer breedte
+   * dan hij hoog kan zijn, en het gesprek wél leesbaarder. Een staande foto
+   * is precies andersom — die heeft de hoogte al en gebruikt breedte niet,
+   * dus houdt het gesprek daar een vaste, prettige leesmaat en krijgt de
+   * plaat de rest. Vierkant zit ertussenin.
+   *
+   * Zolang we de verhouding niet kennen, gedragen we ons als bij een
+   * staande foto: dat is de smalste kolom, dus de plaat springt hooguit
+   * kleiner en nooit groter zodra de maat bekend is.
+   */
+  const conversationWidth = (() => {
+    const readable = Math.min(420, Math.max(300, windowWidth * 0.32));
+    if (imageRatio === null) return Math.round(readable);
+    if (imageRatio >= 1.35) return Math.round(windowWidth * 0.5);
+    if (imageRatio >= 0.95) return Math.round(windowWidth * 0.4);
+    return Math.round(readable);
+  })();
 
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -358,6 +384,10 @@ export default function PostDetailScreen() {
           // is hij de kop van de pagina en mag hij bijsnijden.
           contentFit={fill ? "contain" : "cover"}
           transition={150}
+          onLoad={(e) => {
+            const { width, height } = (e as any).source ?? {};
+            if (width && height) setImageRatio(width / height);
+          }}
         />
       ) : null}
 
