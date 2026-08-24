@@ -26,7 +26,7 @@ import {
 } from "@/lib/api/friends";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { listUserPosts } from "@/lib/api/posts";
-import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import { feed, feedType, flameDeep, space } from "@/lib/design/type";
 
 
 export default function UserProfileScreen() {
@@ -149,16 +149,19 @@ export default function UserProfileScreen() {
           <Text style={[feedType.label, { color: feed.ink, marginLeft: 4 }]}>Terug</Text>
         </Pressable>
 
-        {/* Hero — links uitgelijnd, niet gecentreerd. Een profiel is hier
-            een redactionele kop met een portret, geen visitekaartje. */}
-        <View
-          style={{
-            borderWidth: FEED_BORDER,
-            borderColor: feed.ink,
-            backgroundColor: feed.post,
-            padding: wide ? 32 : 24,
-          }}
-        >
+        {/*
+            De kop van een profiel: een portret, een naam, en wat je met
+            deze persoon kunt.
+
+            Dit was een plum vlak van bijna een halve pagina met de naam in
+            koeienletters, de bio eronder gecentreerd, en een knop over de
+            volle breedte. Veel ruimte voor drie regels tekst — en een
+            gekleurd vlak dat het profiel losknipt van de vondsten eronder,
+            terwijl het dezelfde pagina is. Nu staat het op het paginavlak,
+            op één regel: portret links, naam en bio ernaast, de knop waar
+            hij hoort.
+        */}
+        <View style={{ paddingVertical: space.lg }}>
           {relation.kind === "loading" ? (
             <>
               <Skeleton className="w-20 h-20 bg-paper-warm" />
@@ -172,47 +175,56 @@ export default function UserProfileScreen() {
               <View className="w-20 h-20 bg-paper-warm items-center justify-center">
                 <Ionicons name="help" color={feed.ink} size={32} />
               </View>
-              <Text style={[feedType.heroSmall, { color: feed.text, marginTop: 16 }]}>
+              <Text style={[feedType.heroSmall, { color: feed.ink, marginTop: space.lg }]}>
                 Niet gevonden
               </Text>
-              <Text style={[feedType.body, { color: feed.textDim, marginTop: 8 }]}>
+              <Text style={[feedType.body, { color: feed.inkDim, marginTop: space.sm }]}>
                 @{username} bestaat niet (of heeft een andere handle).
               </Text>
             </>
           ) : (
             <>
-              <Text
-                style={[feedType.kicker, { color: flame, letterSpacing: 0.55, marginBottom: 16 }]}
-              >
-                PROFIEL
-              </Text>
-              <Avatar name={heroName} avatarUrl={profile.data?.avatar_url} size="hero" tint="warm" />
-              {profile.data?.display_name ? (
-                <Text
-                  style={[
-                    wide ? feedType.hero : feedType.heroSmall,
-                    { color: feed.text, marginTop: 18 },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {profile.data.display_name}
-                </Text>
-              ) : null}
-              <Text style={[feedType.label, { fontSize: 14, color: feed.textDim, marginTop: 6 }]}>
-                @{profile.data?.username ?? username}
-              </Text>
-              {profile.data?.bio ? (
-                <Text
-                  style={[
-                    feedType.body,
-                    { color: feed.textDim, marginTop: 14, textAlign: "center", maxWidth: 460 },
-                  ]}
-                >
-                  {profile.data.bio}
-                </Text>
-              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.lg }}>
+                <Avatar
+                  name={heroName}
+                  avatarUrl={profile.data?.avatar_url}
+                  size="hero"
+                  tint="warm"
+                />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {profile.data?.display_name ? (
+                    <Text
+                      style={[
+                        feedType.heroSmall,
+                        { fontSize: wide ? 34 : 26, lineHeight: wide ? 38 : 30, color: feed.ink },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {profile.data.display_name}
+                    </Text>
+                  ) : null}
+                  <Text
+                    style={[
+                      feedType.label,
+                      { fontSize: 14, color: feed.inkDim, marginTop: space.xs },
+                    ]}
+                  >
+                    @{profile.data?.username ?? username}
+                  </Text>
+                  {profile.data?.bio ? (
+                    <Text
+                      style={[
+                        feedType.body,
+                        { color: feed.inkDim, marginTop: space.sm, maxWidth: 520 },
+                      ]}
+                    >
+                      {profile.data.bio}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
 
-              <View className="w-full mt-5">
+              <View style={{ marginTop: space.lg, maxWidth: 320 }}>
                 <ActionButton
                   relation={relation}
                   username={username}

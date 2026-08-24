@@ -178,6 +178,24 @@ export default function ChatDetail() {
 
   // Initial load + realtime
   // Laad vrienden voor @mention autocomplete
+  /**
+   * Het beeld dat in dit gesprek gedeeld is, nieuwste eerst.
+   *
+   * Uit de berichten die hier al ontsleuteld in het geheugen staan — een
+   * eigen vraag aan de server zou hetzelfde werk nog eens doen, en zonder
+   * de sleutels die in die berichten zitten heb je er toch niets aan. De
+   * kolom rechts toont er hoogstens negen; zie ChatMediaThumb.
+   */
+  const sharedMedia = useMemo(() => {
+    const out: AttachmentInfo[] = [];
+    for (let i = (messages?.length ?? 0) - 1; i >= 0; i--) {
+      const attachment = messages?.[i]?.content?.attachment;
+      if (attachment?.type === "image") out.push(attachment);
+      if (out.length >= 12) break;
+    }
+    return out;
+  }, [messages]);
+
   useEffect(() => {
     if (!myUserId) return;
     listMyFriendships(myUserId).then((fs) => {
@@ -774,7 +792,7 @@ export default function ChatDetail() {
       {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
           de middenkolom terug en verandert er niets aan dit scherm. */}
-      <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""}>
+      <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""} media={sharedMedia}>
         <View className="bg-paper-soft border-b border-line-paper">
           <View className="flex-row items-center px-3 py-3 gap-2">
             <Pressable
@@ -890,7 +908,23 @@ export default function ChatDetail() {
               data={[...(messages ?? [])].reverse()}
               keyExtractor={(m) => m.id}
               inverted
-              contentContainerStyle={{ padding: 16, paddingTop: 28, gap: 6 }}
+              /**
+                 * De draad krijgt een leesmaat.
+                 *
+                 * Op een breed scherm liep een bericht over de volle
+                 * kolom: regels van honderdvijftig tekens, en een tijd
+                 * die zo ver van de tekst stond dat je niet meer zag dat
+                 * ze bij elkaar hoorden. Een gesprek is tekst, en tekst
+                 * heeft een maat — dezelfde als elders in de app.
+                 */
+              contentContainerStyle={{
+                padding: space.lg,
+                paddingTop: 28,
+                gap: space.sm,
+                width: "100%",
+                maxWidth: 760,
+                alignSelf: "center",
+              }}
               keyboardShouldPersistTaps="handled"
               onScrollBeginDrag={() => setSelectedMsgId(null)}
               onScroll={(e) => {

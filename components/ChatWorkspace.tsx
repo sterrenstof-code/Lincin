@@ -11,6 +11,8 @@ import {
 } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
+import { ChatMediaThumb } from "@/components/ChatMediaThumb";
+import type { AttachmentInfo } from "@/lib/api/messages";
 import {
   chatTitle,
   listChatMembers,
@@ -49,6 +51,12 @@ import {
  */
 
 /** Breekpunt waarboven de gesprekkenlijst links meekomt. */
+/**
+ * Drie miniaturen per rij in een kolom van 300 min de marges. Vast en niet
+ * gemeten: deze kolom heeft altijd dezelfde breedte.
+ */
+const MEDIA_THUMB = 84;
+
 export const CHAT_RAIL_BREAKPOINT = 900;
 /** Breekpunt waarboven ook de optiekolom rechts meekomt. */
 export const CHAT_OPTIONS_BREAKPOINT = 1280;
@@ -56,11 +64,21 @@ export const CHAT_OPTIONS_BREAKPOINT = 1280;
 export function ChatWorkspace({
   chatId,
   myUserId,
+  media,
   children,
 }: {
   /** De open chat, zodat de lijst links hem kan markeren. */
   chatId: string;
   myUserId: string;
+  /**
+   * De beelden die in dit gesprek gedeeld zijn, nieuwste eerst.
+   *
+   * Komen van het chatscherm en niet uit een eigen vraag aan de server:
+   * bijlagen zijn versleuteld, en de sleutels zitten in de berichten die
+   * daar al ontsleuteld in het geheugen staan. Ze hier opnieuw ophalen zou
+   * hetzelfde werk twee keer doen.
+   */
+  media?: AttachmentInfo[];
   /** Het bestaande chatscherm. */
   children: ReactNode;
 }) {
@@ -79,7 +97,9 @@ export function ChatWorkspace({
           wegduwt. */}
       <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
 
-      {showOptions ? <ChatOptionsRail chatId={chatId} myUserId={myUserId} /> : null}
+      {showOptions ? (
+        <ChatOptionsRail chatId={chatId} myUserId={myUserId} media={media} />
+      ) : null}
     </View>
   );
 }
@@ -244,9 +264,11 @@ function ChatRailRow({
 function ChatOptionsRail({
   chatId,
   myUserId,
+  media,
 }: {
   chatId: string;
   myUserId: string;
+  media?: AttachmentInfo[];
 }) {
   const router = useRouter();
 
@@ -298,6 +320,48 @@ function ChatOptionsRail({
             valt hier niet onder.
           </Text>
         </View>
+
+        {/*
+            Gedeeld beeld.
+
+            Een gesprek is een lint: wat gisteren gedeeld is, is vandaag
+            twintig berichten terug. Deze strook haalt het weer naar voren —
+            hoogstens negen, want elk beeld is een download plus een
+            ontsleuteling (zie ChatMediaThumb), en dat doe je niet voor een
+            gesprek van duizend berichten.
+        */}
+        {(media?.length ?? 0) > 0 ? (
+          <View style={{ borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }}>
+            <View
+              style={{
+                paddingHorizontal: space.lg,
+                paddingTop: space.lg,
+                paddingBottom: space.md,
+              }}
+            >
+              <Text style={[feedType.kicker, { color: feed.ink, letterSpacing: 0.55 }]}>
+                GEDEELD BEELD
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: space.xs,
+                paddingHorizontal: space.lg,
+                paddingBottom: space.lg,
+              }}
+            >
+              {media!.slice(0, 9).map((attachment) => (
+                <ChatMediaThumb
+                  key={attachment.path}
+                  attachment={attachment}
+                  size={MEDIA_THUMB}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {/* Deelnemers */}
         <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm }}>

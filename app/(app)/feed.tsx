@@ -380,8 +380,18 @@ export default function FeedScreen() {
       return { hero: null, sections: [] as Section[], leftovers: flat };
     }
 
+    /**
+     * In rastervorm is er geen uitgelichte plaat: een affiche van bijna een
+     * scherm hoog boven een raster is een tweede verhaal over dezelfde
+     * inhoud. De vondst die anders de plaat kreeg, doet dan gewoon mee in
+     * de rubrieken — anders zou hij van de pagina verdwijnen.
+     */
+    if (layout === "grid") {
+      return { hero: null, ...buildSections(items) };
+    }
+
     return { hero, ...buildSections(rest) };
-  }, [feed.data, activeTag, order]);
+  }, [feed.data, activeTag, order, layout]);
 
   const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -483,14 +493,7 @@ export default function FeedScreen() {
                         de kop al blijft staan: je kiest je ordening als je
                         begint, niet halverwege, en wat wél mee moet scrollen
                         is de knop om zelf iets te delen. Zie de zijbalk. */}
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        marginBottom: space.xl,
-                      }}
-                    >
+                    <View style={{ marginBottom: space.xl }}>
                       {/* Eén kader om alle drie de schakelaars.
                           Ze stonden in twee losse doosjes die op een smal
                           scherm onder elkaar vielen: twee kaders, twee
@@ -579,7 +582,7 @@ export default function FeedScreen() {
                       <Text
                         style={[
                           feedType.label,
-                          { color: feedColor.inkDim, marginTop: space.sm },
+                          { color: feedColor.inkDim, marginTop: space.md },
                         ]}
                         numberOfLines={1}
                       >
@@ -617,7 +620,25 @@ export default function FeedScreen() {
                         index={liveSectionOffset + sectionIndex}
                         label={section.label}
                       >
-                        {section.layout === "mosaic" ? (
+                        {/*
+                            In rastervorm krijgt élke rubriek hetzelfde
+                            vierkante raster. Anders veranderde er bij het
+                            omzetten alleen iets in het laatste blok
+                            onderaan, en dan lijkt de knop stuk: je klikt en
+                            er gebeurt niets in wat je ziet.
+                        */}
+                        {layout === "grid" ? (
+                          <View style={{ padding: space.sm }}>
+                            <FeedBody
+                              layout="grid"
+                              slots={section.slots}
+                              columns={gridColumns}
+                              myUserId={myUserId}
+                              onChanged={invalidate}
+                              dimmed={dimSeen ? seen : null}
+                            />
+                          </View>
+                        ) : section.layout === "mosaic" ? (
                           <MosaicGrid
                             slots={section.slots}
                             wide={wide}
