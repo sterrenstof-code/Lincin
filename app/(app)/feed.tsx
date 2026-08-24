@@ -487,28 +487,59 @@ export default function FeedScreen() {
                           tabstrip in de kop. */}
                       <View
                         style={{
-                          flexDirection: "row",
                           borderWidth: FEED_BORDER,
                           borderColor: feedColor.ink,
+                          alignSelf: "stretch",
                         }}
                       >
-                        <SortTab
-                          label="Thematisch"
-                          active={sort === "thematic"}
-                          onPress={() => setSort("thematic")}
-                        />
-                        <SortTab
-                          label="Chronologisch"
-                          active={sort === "chrono"}
-                          onPress={() => setSort("chrono")}
-                          divider
-                        />
-                        <SortTab
-                          label="Gelezen dimmen"
-                          active={dimSeen}
-                          onPress={() => setDimSeen(!dimSeen)}
-                          divider
-                        />
+                        <View style={{ flexDirection: "row" }}>
+                          <SortTab
+                            label="Thematisch"
+                            active={sort === "thematic"}
+                            onPress={() => setSort("thematic")}
+                          />
+                          <SortTab
+                            label="Chronologisch"
+                            active={sort === "chrono"}
+                            onPress={() => setSort("chrono")}
+                            divider
+                          />
+                          {/* Op een breed scherm past de derde ernaast. */}
+                          {wide ? (
+                            <SortTab
+                              label="Gelezen dimmen"
+                              active={dimSeen}
+                              onPress={() => setDimSeen(!dimSeen)}
+                              divider
+                            />
+                          ) : null}
+                        </View>
+
+                        {/*
+                            Op een smal scherm gaat hij naar de volgende
+                            regel, over de volle breedte.
+
+                            Als derde cel naast de andere twee brak "Gelezen
+                            dimmen" over twee regels terwijl zijn buren er
+                            één hadden — dan lijkt die cel voller en dus
+                            belangrijker, terwijl het de minst ingrijpende
+                            van de drie is. Een eigen regel is eerlijker dan
+                            een woord afknijpen.
+                        */}
+                        {wide ? null : (
+                          <View
+                            style={{
+                              borderTopWidth: FEED_BORDER,
+                              borderTopColor: feedColor.ink,
+                            }}
+                          >
+                            <SortTab
+                              label="Gelezen dimmen"
+                              active={dimSeen}
+                              onPress={() => setDimSeen(!dimSeen)}
+                            />
+                          </View>
+                        )}
                       </View>
                     </View>
 
