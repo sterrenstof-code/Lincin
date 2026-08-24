@@ -448,6 +448,41 @@ export const feed = {
 export const FEED_BREAKPOINT = 800;
 
 // ---------------------------------------------------------------
+// RUBRIEKBANDEN — de kleuren van de inhoudsopgave
+// ---------------------------------------------------------------
+
+/**
+ * Vier vlakke kleuren voor de banden boven een rubriek.
+ *
+ * ---------------------------------------------------------------
+ * WAAR DIT VANDAAN KOMT EN WAT HET NIET IS
+ * ---------------------------------------------------------------
+ * Naar het voorbeeld van een inhoudsopgave die uit niets anders bestaat
+ * dan volle gekleurde balken met een nummer en een woord erin: je ziet in
+ * één oogopslag hoeveel rubrieken er zijn en waar je bent, zonder één
+ * lijn uitleg. Dat is de eenvoud die we overnemen — niet een nieuw palet
+ * voor de app.
+ *
+ * Ze gelden dus **alleen voor die banden**. Vlakken, tekst en accenten
+ * blijven lavendel, inkt en flame; deze kleuren dragen nooit inhoud, nooit
+ * een knop, nooit een kaart. Eén band, één woord, één nummer.
+ *
+ * `on` is de tekstkleur die erop hoort — donkere banden dragen crème,
+ * lichte inkt. Niet zelf kiezen: dat is precies waar contrast wegloopt.
+ */
+export const band = [
+  { fill: "#0F3A5C", on: "#F3EDE4" }, // diepblauw
+  { fill: "#6FA3D6", on: "#0B0A0C" }, // lucht
+  { fill: "#A9BD5E", on: "#0B0A0C" }, // olijf
+  { fill: "#E3D24F", on: "#0B0A0C" }, // geel
+] as const;
+
+/** De band die bij deze plek in de uitgave hoort. Loopt rond na vier. */
+export function bandFor(index: number): (typeof band)[number] {
+  return band[index % band.length];
+}
+
+// ---------------------------------------------------------------
 // RUIMTE — de maatlat waar het raster op staat
 // ---------------------------------------------------------------
 

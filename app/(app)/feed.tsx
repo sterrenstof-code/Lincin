@@ -35,6 +35,7 @@ import {
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
+import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -42,7 +43,6 @@ import {
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
-  flameDeep,
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
@@ -379,6 +379,12 @@ export default function FeedScreen() {
   }, [qc, myUserId]);
 
   const empty = !hero && sections.length === 0 && leftovers.length === 0;
+  /**
+   * Staan er lopende events bovenaan, dan is dat rubriek 01 en schuift de
+   * rest een plaats op. De nummering telt wat je ziet, niet wat er in de
+   * lijst met definities staat.
+   */
+  const liveSectionOffset = (liveEvents.data?.length ?? 0) > 0 ? 1 : 0;
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
@@ -566,14 +572,8 @@ export default function FeedScreen() {
 
                     {sort === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
                       <View style={{ marginBottom: space.section }}>
-                        <Text
-                          style={[
-                            feedType.kicker,
-                            { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
-                          ]}
-                        >
-                          NU AAN DE GANG
-                        </Text>
+                        <SectionBand index={0} label="Nu aan de gang" />
+                        <View style={{ height: space.lg }} />
                         <View style={{ gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
                             <EventCard key={event.id} event={event} index={i + 1} />
@@ -582,16 +582,16 @@ export default function FeedScreen() {
                       </View>
                     ) : null}
 
-                    {sections.map((section) => (
+                    {sections.map((section, sectionIndex) => (
                       <View key={section.key} style={{ marginBottom: space.section }}>
-                        <Text
-                          style={[
-                            feedType.kicker,
-                            { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
-                          ]}
-                        >
-                          {section.label.toUpperCase()}
-                        </Text>
+                        {/* De banden vormen samen de inhoudsopgave van deze
+                            uitgave: nummer, woord, kleur. Zie
+                            components/SectionBand.tsx. */}
+                        <SectionBand
+                          index={liveSectionOffset + sectionIndex}
+                          label={section.label}
+                        />
+                        <View style={{ height: space.lg }} />
                         {section.layout === "mosaic" ? (
                           <MosaicGrid
                             slots={section.slots}
