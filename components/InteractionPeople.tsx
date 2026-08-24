@@ -20,9 +20,15 @@ import { getProfiles } from "@/lib/api/profiles";
  * geeft de hele lijst met wat ieder deed — een naam aantikken brengt je
  * naar het profiel.
  *
- * Jezelf staat er niet bij. Je eigen hartje zie je al aan de pil die
- * omkaderd is; er nog een regel onder zetten met je eigen gezicht en het
- * woord "Jij" is dezelfde interactie twee keer.
+ * Iedereen staat erbij, jezelf ook. Dat was even niet zo — je eigen hartje
+ * zie je immers al aan de omkaderde pil — maar dat gold alleen voor
+ * emoji, en het maakte de regel bovendien onvoorspelbaar: soms stond er
+ * iets, soms niets, zonder dat je wist waarom. Wie iets met deze vondst
+ * deed hoort er te staan, en anders is er niets te zien in plaats van een
+ * halve lijst.
+ *
+ * Hij staat op dezelfde regel als de pillen, niet eronder: het is één ding —
+ * wat er met deze vondst gedaan is.
  */
 export function InteractionPeople({ postId }: { postId: string }) {
   const router = useRouter();
@@ -46,7 +52,6 @@ export function InteractionPeople({ postId }: { postId: string }) {
       for (const uid of signals.boosterIds) {
         byUser.set(uid, [...(byUser.get(uid) ?? []), "omhoog geduwd"]);
       }
-      if (myUserId) byUser.delete(myUserId);
       if (byUser.size === 0) return [];
 
       const profiles = await getProfiles(Array.from(byUser.keys()));
@@ -66,8 +71,15 @@ export function InteractionPeople({ postId }: { postId: string }) {
   const nameOf = (i: number) => {
     const prof = rows[i]?.profile;
     if (!prof) return "Iemand";
+    if (prof.id === myUserId) return "Jij";
     return prof.display_name ?? prof.username;
   };
+
+  /**
+   * Jij vooraan. Niet uit beleefdheid: je herkent je eigen gezicht het
+   * snelst, en dan zie je in één oogopslag of je zelf al gereageerd hebt.
+   */
+  rows.sort((a, b) => (a.userId === myUserId ? -1 : b.userId === myUserId ? 1 : 0));
 
   // "Jij, Mie en 3 anderen" — twee namen en dan een aantal. Vijf namen op
   // een rij leest niemand meer als namen.
