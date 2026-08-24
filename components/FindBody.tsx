@@ -1412,14 +1412,10 @@ function GridTile({
   const [ratio, setRatio] = useState<number | undefined>(undefined);
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        backgroundColor: feed.post,
-        borderWidth: FEED_BORDER,
-        borderColor: feed.ink,
-      }}
-    >
+    // Geen eigen kader: in het raster staan de tegels tegen elkaar en is de
+    // kier ertussen de lijn (het raster heeft inkt als ondergrond). Twee
+    // kaders tegen elkaar aan geven een dubbele lijn.
+    <Pressable onPress={onPress} style={{ backgroundColor: feed.post }}>
       {p.image ? (
         <View
           style={{

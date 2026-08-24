@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -6,8 +5,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,6 +18,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { ModalShell } from "@/components/ModalShell";
 import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
@@ -556,15 +554,13 @@ export default function FeedScreen() {
 
                     {sort === "chrono" && leftovers.length > 0 ? (
                       <SectionFrame index={0} label="Alles, nieuwste eerst">
-                        <View style={{ padding: space.lg }}>
-                          <MasonryGrid
-                            slots={leftovers}
-                            columns={gridColumns}
-                            myUserId={myUserId}
-                            onChanged={invalidate}
-                            dimmed={dimSeen ? seen : null}
-                          />
-                        </View>
+                        <MasonryGrid
+                          slots={leftovers}
+                          columns={gridColumns}
+                          myUserId={myUserId}
+                          onChanged={invalidate}
+                          dimmed={dimSeen ? seen : null}
+                        />
                       </SectionFrame>
                     ) : null}
 
@@ -905,8 +901,6 @@ function CompactSection({
 // Het chronologische overzicht
 // ---------------------------------------------------------------
 
-/** Ruimte tussen de kaarten in het raster. */
-const GRID_GAP = 16;
 
 /**
  * Hoeveel kolommen het overzicht krijgt bij deze schermbreedte.
@@ -974,13 +968,22 @@ function MasonryGrid({
     return (
       <View
         style={
-          { display: "block", columnCount: columns, columnGap: GRID_GAP } as any
+          {
+            display: "block",
+            columnCount: columns,
+            // De kier is de lijn: inkt als ondergrond, en tussen de tegels
+            // precies één lijnbreedte lucht. Zo vult het raster het hele
+            // kader in plaats van eilandjes met marges te maken, en staat
+            // er nergens een dubbele rand.
+            columnGap: FEED_BORDER,
+            backgroundColor: feedColor.ink,
+          } as any
         }
       >
         {slots.map((slot) => (
           <View
             key={slot.item.id}
-            style={{ breakInside: "avoid", marginBottom: GRID_GAP } as any}
+            style={{ breakInside: "avoid", marginBottom: FEED_BORDER } as any}
           >
             <CompactItem
               slot={slot}
@@ -1001,9 +1004,11 @@ function MasonryGrid({
   slots.forEach((slot, i) => buckets[i % columns].push(slot));
 
   return (
-    <View style={{ flexDirection: "row", gap: GRID_GAP }}>
+    <View
+      style={{ flexDirection: "row", gap: FEED_BORDER, backgroundColor: feedColor.ink }}
+    >
       {buckets.map((bucket, ci) => (
-        <View key={ci} style={{ flex: 1, minWidth: 0, gap: GRID_GAP }}>
+        <View key={ci} style={{ flex: 1, minWidth: 0, gap: FEED_BORDER }}>
           {bucket.map((slot) => (
             <CompactItem
               key={slot.item.id}
@@ -1178,79 +1183,61 @@ function usePostMenu(
         ]}
       />
 
-      <Modal
+      <ModalShell
         visible={editOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditOpen(false)}
+        onClose={() => setEditOpen(false)}
+        title="Toelichting bewerken"
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(11,10,12,0.55)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{ borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }}
-            className="bg-feed-panel px-6 pt-6 pb-9"
+        <View style={{ padding: space.lg }}>
+          <TextInput
+            value={editCaption}
+            onChangeText={setEditCaption}
+            placeholder="Schrijf iets…"
+            placeholderTextColor={feedColor.inkDim}
+            multiline
+            autoFocus
+            maxLength={1000}
+            style={[
+              feedType.body,
+              {
+                color: feedColor.ink,
+                minHeight: 96,
+                maxHeight: 190,
+                borderWidth: FEED_BORDER,
+                borderColor: feedColor.ink,
+                paddingHorizontal: space.md,
+                paddingVertical: space.md,
+              },
+              Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+            ]}
+          />
+          <Pressable
+            onPress={async () => {
+              setSaving(true);
+              try {
+                await updatePostCaption(post.id, editCaption);
+                setEditOpen(false);
+                onChanged();
+              } catch (e: any) {
+                console.warn("updatePostCaption", e?.message ?? e);
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            style={{
+              marginTop: space.lg,
+              backgroundColor: feedColor.ink,
+              paddingVertical: space.lg,
+              alignItems: "center",
+            }}
           >
-            <View className="flex-row items-center mb-4">
-              <View className="flex-1">
-                <Meta tone="feed" strong>
-                  Toelichting bewerken
-                </Meta>
-              </View>
-              <Pressable onPress={() => setEditOpen(false)} hitSlop={8}>
-                <Ionicons name="close" color={feedColor.ink} size={22} />
-              </Pressable>
-            </View>
-            <TextInput
-              value={editCaption}
-              onChangeText={setEditCaption}
-              placeholder="Schrijf iets…"
-              placeholderTextColor={feedColor.inkDim}
-              multiline
-              autoFocus
-              maxLength={1000}
-              style={[
-                feedType.body,
-                {
-                  color: feedColor.ink,
-                  minHeight: 96,
-                  maxHeight: 190,
-                  borderWidth: FEED_BORDER,
-                  borderColor: feedColor.ink,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                },
-                Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
-              ]}
-            />
-            <Pressable
-              onPress={async () => {
-                setSaving(true);
-                try {
-                  await updatePostCaption(post.id, editCaption);
-                  setEditOpen(false);
-                  onChanged();
-                } catch (e: any) {
-                  console.warn("updatePostCaption", e?.message ?? e);
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
-              className="mt-4 bg-feed-ink py-4 items-center"
-            >
-              <Text style={[feedType.label, { color: feedColor.text }]}>
-                {saving ? "Bewaren…" : "Bewaren"}
-              </Text>
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+            <Text style={[feedType.label, { color: feedColor.text }]}>
+              {saving ? "Bewaren…" : "Bewaren"}
+            </Text>
+          </Pressable>
+        </View>
+      </ModalShell>
     </>
   ) : null;
 

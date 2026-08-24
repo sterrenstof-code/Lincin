@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Pressable, Text, View } from "react-native";
-import { feed } from "@/lib/design/type";
+import { Pressable, Text, View } from "react-native";
+
+import { ModalShell } from "@/components/ModalShell";
+import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
 
 export type ActionSheetAction = {
   label: string;
@@ -11,9 +13,12 @@ export type ActionSheetAction = {
 };
 
 /**
- * Cross-platform bottom action sheet styled like the rest of the app.
- * Slides up on mobile, fades over content on desktop web. Tap the backdrop
- * or the Annuleer pill to dismiss.
+ * Een lijstje met wat je kunt doen, in het midden van het scherm.
+ *
+ * Stond eerder onderaan, als blad dat omhoog schoof. Dat is een patroon van
+ * een telefoon-app; op een breed scherm is de onderrand juist de plek waar
+ * je níet kijkt, en een blad dat vanaf daar komt zetten trekt de aandacht
+ * naar de verkeerde hoek. Zie ModalShell voor de vorm en de beweging.
  */
 export function ActionSheet({
   visible,
@@ -27,87 +32,52 @@ export function ActionSheet({
   actions: ActionSheetAction[];
 }) {
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        {/* Dim backdrop — tap to dismiss */}
-        <Pressable
-          onPress={onClose}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.55)",
-          }}
-        />
-
-        {/* Sheet — capped at 600px and centered on wide screens */}
-        <View
-          style={{
-            width: "100%",
-            maxWidth: 600,
-            alignSelf: "center",
-          }}
-        >
-          <View className="bg-paper pt-5 pb-8 px-4 mx-2">
-            <View className="self-center w-10 h-1 bg-line-paper mb-4" />
-            {title && (
-              <Text className="text-xs uppercase tracking-wider text-ink-muted text-center mb-3">
-                {title}
-              </Text>
+    <ModalShell visible={visible} onClose={onClose} title={title}>
+      <View>
+        {actions.map((action, i) => (
+          <Pressable
+            key={action.label}
+            onPress={async () => {
+              onClose();
+              // Kleine vertraging zodat de overgang klaar is voor een
+              // volgend venster (bijvoorbeeld een bevestiging) opengaat.
+              setTimeout(() => {
+                Promise.resolve(action.onPress()).catch(() => {});
+              }, 60);
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: space.md,
+              paddingHorizontal: space.lg,
+              paddingVertical: space.lg,
+              ...(i === actions.length - 1
+                ? null
+                : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
+            }}
+          >
+            {action.icon && (
+              <Ionicons
+                name={action.icon}
+                size={20}
+                color={action.destructive ? "#B23A1C" : feed.ink}
+              />
             )}
-            <View className="bg-paper-soft overflow-hidden">
-              {actions.map((action, i) => (
-                <Pressable
-                  key={action.label}
-                  onPress={async () => {
-                    onClose();
-                    // Tiny delay so the sheet animation finishes before any
-                    // follow-up modal (confirm dialog) opens — feels less jarring.
-                    setTimeout(() => {
-                      Promise.resolve(action.onPress()).catch(() => {});
-                    }, 60);
-                  }}
-                  className={`flex-row items-center px-4 py-4 ${
-                    i === actions.length - 1
-                      ? ""
-                      : "border-b border-line-paper/60"
-                  }`}
-                >
-                  {action.icon && (
-                    <Ionicons
-                      name={action.icon}
-                      size={20}
-                      color={action.destructive ? "#B23A1C" : feed.ink}
-                    />
-                  )}
-                  <Text
-                    className={`ml-3 font-semibold text-base ${
-                      action.destructive ? "" : "text-ink"
-                    }`}
-                    style={action.destructive ? { color: "#B23A1C" } : undefined}
-                  >
-                    {action.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Pressable
-              onPress={onClose}
-              className="mt-3 bg-paper-warm active:bg-paper py-3 items-center"
+            <Text
+              style={[
+                feedType.tile,
+                {
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: action.destructive ? "#B23A1C" : feed.ink,
+                },
+              ]}
             >
-              <Text className="text-ink font-semibold">Annuleer</Text>
-            </Pressable>
-          </View>
-        </View>
+              {action.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
-    </Modal>
+    </ModalShell>
   );
 }
