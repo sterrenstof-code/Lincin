@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -467,7 +469,6 @@ export default function FeedScreen() {
                 wide={wide}
                 displayName={me.data?.display_name ?? me.data?.username ?? "Jij"}
                 avatarUrl={me.data?.avatar_url ?? null}
-                compactShare={scrolled}
                 onShare={() => setShareOpen(true)}
                 onProfile={() => router.push("/profile")}
                 onNotifications={() => router.push("/notifications")}
@@ -648,13 +649,12 @@ export default function FeedScreen() {
         </View>
       </PageScroll>
 
-      {/* Op een smal scherm scrolt de zijbalk weg, en daarmee de enige
-          plek om zelf iets te delen. Dan zweeft hij rechtsonder mee. */}
-      {!wide ? (
-        <View style={{ position: "absolute", right: space.lg, bottom: space.lg }}>
-          <ShareButton onPress={() => setShareOpen(true)} />
-        </View>
-      ) : null}
+      {/* De enige knop waarmee je zelf iets toevoegt, en dus de enige die
+          altijd bereikbaar hoort te zijn. Hij stond in het persoonlijke
+          paneel van de zijbalk, en dat paneel scrolt weg. Nu zweeft hij
+          los over de pagina — op elk schermformaat, want het argument is
+          op een breed scherm niet anders. */}
+      <FloatingShare onPress={() => setShareOpen(true)} lifted={scrolled} />
 
       <ActionSheet
         visible={shareOpen}
@@ -744,6 +744,55 @@ const HeroBlock = memo(function HeroBlock({
  * staan in één rij met gedeelde kaders (vier kolommen op desktop, twee
  * daaronder), precies zoals de `.tilerow` in de mockup.
  */
+/**
+ * De zwevende deelknop.
+ *
+ * Hij komt op bij het openen van de pagina in plaats van er te staan: een
+ * knop die over de inhoud ligt en er zomaar ís, leest als iets dat is
+ * blijven hangen. `lifted` is de scrollstand — voorbij de kop wordt hij
+ * een tikje kleiner, zodat hij minder van de leeslijst afpakt zonder ooit
+ * weg te zijn.
+ */
+function FloatingShare({ onPress, lifted }: { onPress: () => void; lifted: boolean }) {
+  const enter = useRef(new Animated.Value(0)).current;
+  const shrink = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter]);
+
+  useEffect(() => {
+    Animated.timing(shrink, {
+      toValue: lifted ? 1 : 0,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [lifted, shrink]);
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        right: space.xl,
+        bottom: space.xl,
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
+          { scale: shrink.interpolate({ inputRange: [0, 1], outputRange: [1, 0.86] }) },
+        ],
+      }}
+    >
+      <ShareButton onPress={onPress} />
+    </Animated.View>
+  );
+}
+
 /**
  * Eén rubriek als blok: een kader met de kop als bovenste rij en de
  * vondsten eronder.

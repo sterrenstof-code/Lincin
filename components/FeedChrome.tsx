@@ -1,13 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, type ReactNode } from "react";
-import {
-  Animated,
-  Easing,
-  Pressable,
-  Text,
-  View,
-  type ViewStyle,
-} from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import {
@@ -17,7 +10,6 @@ import {
   FEED_BORDER,
   feedType,
   flame,
-  space,
 } from "@/lib/design/type";
 
 /**
@@ -123,57 +115,9 @@ export function ShareButton({
   );
 }
 
-/**
- * De deelknop met zijn woord ernaast.
- *
- * Bovenaan staat er "Delen" naast het rondje; ben je voorbij de kop, dan
- * blijft alleen het rondje over. Dat gebeurt niet met een sprong maar met
- * een beweging: het woord vervaagt en schuift naar het rondje toe terwijl
- * de ruimte die het innam dichttrekt. Een element dat plots verdwijnt leest
- * als een fout; hetzelfde element dat wegtrekt leest als een keuze.
- */
-function ShareAction({ onPress, compact }: { onPress: () => void; compact: boolean }) {
-  const open = useRef(new Animated.Value(compact ? 0 : 1)).current;
-
-  useEffect(() => {
-    Animated.timing(open, {
-      toValue: compact ? 0 : 1,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      // Breedte animeren kan de native driver niet.
-      useNativeDriver: false,
-    }).start();
-  }, [compact, open]);
-
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <ShareButton onPress={onPress} />
-      <Animated.View
-        style={{
-          opacity: open,
-          marginLeft: open.interpolate({ inputRange: [0, 1], outputRange: [0, space.md] }),
-          maxWidth: open.interpolate({ inputRange: [0, 1], outputRange: [0, 160] }),
-          transform: [
-            { translateX: open.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
-          ],
-          overflow: "hidden",
-        }}
-      >
-        <Text
-          style={[feedType.tile, { fontSize: 16, fontWeight: "800", color: feed.ink }]}
-          numberOfLines={1}
-        >
-          Delen
-        </Text>
-      </Animated.View>
-    </View>
-  );
-}
-
 export function FeedRail({
   displayName,
   avatarUrl,
-  compactShare = false,
   onShare,
   onProfile,
   onNotifications,
@@ -190,13 +134,6 @@ export function FeedRail({
   /** Ongelezen meldingen. Alleen een getal als er iets ligt. */
   unreadNotifications?: number;
   wide: boolean;
-  /**
-   * Ben je voorbij de bovenkant gescrold, dan krimpt de deelknop tot alleen
-   * de plus. Bovenaan mag hij zeggen wat hij doet; daarna weet je dat, en
-   * dan is een vlak van vijftig pixels naast je leeslijst alleen nog een
-   * vlak van vijftig pixels.
-   */
-  compactShare?: boolean;
 }) {
   const identity = (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -223,15 +160,14 @@ export function FeedRail({
   const actions = (
     <>
       {/*
-          Delen was een zwarte balk met "Iets delen" erin, tussen twee
-          tekstregels die net zo breed waren. Eén van de drie was de reden
-          dat je hier komt, en dat zag je er niet aan af.
+          Delen staat hier niet meer.
 
-          Nu één groot oranje vlak met een plus. Wát je deelt kies je erna:
-          de vraag "foto, link of notitie?" hoort bij het delen zelf en niet
-          bij de knop ernaartoe.
+          Het was eerst een zwarte balk met "Iets delen", daarna een oranje
+          rondje met een woord ernaast — maar in beide gevallen ín dit
+          paneel, en dat paneel scrolt weg. De enige knop waarmee je zelf
+          iets toevoegt hoort altijd bereikbaar te zijn, en dus nergens ín.
+          Hij zweeft nu los over de pagina; zie ShareButton in feed.tsx.
       */}
-      <ShareAction onPress={onShare} compact={compactShare} />
       <RailLink
         label="Meldingen"
         badge={unreadNotifications}
