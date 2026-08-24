@@ -6,6 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -39,7 +40,7 @@ import { useHeroTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
-import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function EventDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const event = useQuery({
@@ -80,6 +82,9 @@ export default function EventDetailScreen() {
     queryFn: () => listEventJoinRequests(eventId),
     refetchInterval: 60_000,
   });
+
+  /** Hoeveel mensen op je goedkeuring wachten — telt in de knop. */
+  const pendingCount = (joinRequests.data ?? []).length;
 
   useEffect(() => {
     const channel = subscribeToEventContributions(eventId, () => {
@@ -177,7 +182,12 @@ export default function EventDetailScreen() {
     router.push(`/event-link/${eventId}`);
   }
 
-  async function pickFromGallery(mediaTypes: ("images" | "videos")[]) {
+  /**
+   * Uit je bibliotheek. Foto's én video's in dezelfde keuze, en meer dan
+   * één tegelijk: na een middag samen kies je niet zes keer achter elkaar
+   * één bestand.
+   */
+  async function pickFromGallery(mediaTypes: ("images" | "videos")[] = ["images", "videos"]) {
     setAddMenuOpen(false);
     setError(null);
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -189,21 +199,25 @@ export default function EventDetailScreen() {
       mediaTypes,
       quality: 0.85,
       allowsEditing: false,
-      selectionLimit: 1,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
     });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
+    if (result.canceled || result.assets.length === 0) return;
 
     setUploading(true);
     try {
-      await contributeToEvent({
-        eventId,
-        userId: myUserId,
-        imageUri: asset.uri,
-        mimeType:
-          asset.mimeType ??
-          (asset.type === "video" ? "video/mp4" : "image/jpeg"),
-      });
+      // Eén voor één: de bucket kijkt per bestand naar de grootte, en een
+      // fout op de vierde mag de eerste drie niet ongedaan maken.
+      for (const asset of result.assets) {
+        await contributeToEvent({
+          eventId,
+          userId: myUserId,
+          imageUri: asset.uri,
+          mimeType:
+            asset.mimeType ??
+            (asset.type === "video" ? "video/mp4" : "image/jpeg"),
+        });
+      }
       await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
       await qc.invalidateQueries({ queryKey: ["event", eventId] });
     } catch (e: any) {
@@ -392,16 +406,33 @@ export default function EventDetailScreen() {
             </View>
           </View>
 
-          {/* ============ ACTIES — één gekaderde rij ============ */}
+          {/* ============ ACTIES — één kader ============
+              Alles wat je met dit event kunt doen staat in hetzelfde kader,
+              op één rij van gelijke cellen. Wat de host instelt — wie er
+              binnen mag, wie er staat te wachten — zat eerder als tweede
+              omkaderd blok eronder; dat is beheer en geen actie, en het
+              hoort dus niet in de leesrichting van de pagina. Het zit nu
+              achter de laatste cel, met een teller als er iemand wacht. */}
           <View
             style={{
+              marginHorizontal: wide ? space.xxxl : space.lg,
+              marginTop: space.xl,
+              borderWidth: FEED_BORDER,
+              borderColor: feed.ink,
               flexDirection: "row",
-              borderBottomWidth: FEED_BORDER,
-              borderBottomColor: feed.ink,
             }}
           >
             <ActionCell label="Bewaren" onPress={onCopyInvite} icon="download-outline" />
             <ActionCell label="Uitnodigen" onPress={onOpenInvite} icon="qr-code-outline" />
+            {ev.is_host ? (
+              <ActionCell
+                label={
+                  pendingCount > 0 ? `Instellingen · ${pendingCount}` : "Instellingen"
+                }
+                onPress={() => setSettingsOpen(true)}
+                icon="options-outline"
+              />
+            ) : null}
             <ActionCell
               label={uploading ? "Bezig…" : "Voeg toe"}
               onPress={() => setAddMenuOpen(true)}
@@ -413,89 +444,24 @@ export default function EventDetailScreen() {
           </View>
 
           {copied ? (
-            <Text style={[feedType.label, { color: flameDeep, textAlign: "center", paddingTop: 10 }]}>
+            <Text
+              style={[
+                feedType.label,
+                { color: flameDeep, textAlign: "center", paddingTop: space.md },
+              ]}
+            >
               Link gekopieerd
             </Text>
           ) : null}
           {error ? (
-            <Text style={[feedType.label, { color: flameDeep, textAlign: "center", paddingTop: 10 }]}>
+            <Text
+              style={[
+                feedType.label,
+                { color: flameDeep, textAlign: "center", paddingTop: space.md },
+              ]}
+            >
               {error}
             </Text>
-          ) : null}
-
-          {/* ============ TOEGANG — alleen voor de host ============
-              Wie mag binnen, en wie staat er te wachten. Dit staat direct
-              onder de actierij omdat het het enige is op deze pagina waar
-              iemand ánders op wacht. */}
-          {ev.is_host ? (
-            <View
-              style={{
-                marginHorizontal: wide ? 32 : 18,
-                marginTop: 20,
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-              }}
-            >
-              <View style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 }}>
-                <Text
-                  style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}
-                >
-                  TOEGANG
-                </Text>
-                <Text style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.inkDim }]}>
-                  {ev.join_policy === "closed"
-                    ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
-                    : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: "row", borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
-                <PolicyCell
-                  label="Gesloten"
-                  active={ev.join_policy === "closed"}
-                  onPress={() => onChangeJoinPolicy("closed")}
-                />
-                <PolicyCell
-                  label="Open"
-                  active={ev.join_policy === "open"}
-                  onPress={() => onChangeJoinPolicy("open")}
-                  last
-                />
-              </View>
-
-              {(joinRequests.data ?? []).length > 0 ? (
-                <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
-                  <View style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6 }}>
-                    <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.55 }]}>
-                      {`${(joinRequests.data ?? []).length} WACHT${
-                        (joinRequests.data ?? []).length === 1 ? "" : "EN"
-                      } OP JE`}
-                    </Text>
-                  </View>
-                  {(joinRequests.data ?? []).map((request) => (
-                    <JoinRequestRow
-                      key={request.user_id}
-                      request={request}
-                      onApprove={() => onApproveRequest(request)}
-                      onDecline={() => onDeclineRequest(request)}
-                    />
-                  ))}
-                </View>
-              ) : ev.join_policy === "closed" ? (
-                <View
-                  style={{
-                    borderTopWidth: FEED_BORDER,
-                    borderTopColor: feed.ink,
-                    paddingHorizontal: 18,
-                    paddingVertical: 14,
-                  }}
-                >
-                  <Text style={[feedType.label, { color: feed.inkDim }]}>
-                    Geen openstaande verzoeken.
-                  </Text>
-                </View>
-              ) : null}
-            </View>
           ) : null}
 
           {/* Privacy note: event media is not end-to-end encrypted like chats. */}
@@ -505,6 +471,129 @@ export default function EventDetailScreen() {
               Event-media is niet end-to-end versleuteld zoals je chats.
             </Text>
           </View>
+
+          {/* Beheer van de host: wie mag binnen, en wie wacht. */}
+          <Modal
+            visible={settingsOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setSettingsOpen(false)}
+          >
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Pressable
+                onPress={() => setSettingsOpen(false)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(11,10,12,0.55)",
+                }}
+              />
+              <View
+                style={{
+                  width: "100%",
+                  maxWidth: 520,
+                  alignSelf: "center",
+                  marginHorizontal: space.lg,
+                  backgroundColor: feed.lav,
+                  borderWidth: FEED_BORDER,
+                  borderColor: feed.ink,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: space.lg,
+                    paddingVertical: space.lg,
+                    borderBottomWidth: FEED_BORDER,
+                    borderBottomColor: feed.ink,
+                  }}
+                >
+                  <Text
+                    style={[
+                      feedType.kicker,
+                      { color: flameDeep, letterSpacing: 0.55, flex: 1 },
+                    ]}
+                  >
+                    TOEGANG
+                  </Text>
+                  <Pressable onPress={() => setSettingsOpen(false)} hitSlop={8}>
+                    <Ionicons name="close" color={feed.ink} size={20} />
+                  </Pressable>
+                </View>
+
+                <View style={{ paddingHorizontal: space.lg, paddingVertical: space.lg }}>
+                  <Text
+                    style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.inkDim }]}
+                  >
+                    {ev.join_policy === "closed"
+                      ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
+                      : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    borderTopWidth: FEED_BORDER,
+                    borderTopColor: feed.ink,
+                  }}
+                >
+                  <PolicyCell
+                    label="Gesloten"
+                    active={ev.join_policy === "closed"}
+                    onPress={() => onChangeJoinPolicy("closed")}
+                  />
+                  <PolicyCell
+                    label="Open"
+                    active={ev.join_policy === "open"}
+                    onPress={() => onChangeJoinPolicy("open")}
+                    last
+                  />
+                </View>
+
+                {pendingCount > 0 ? (
+                  <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+                    <View
+                      style={{
+                        paddingHorizontal: space.lg,
+                        paddingTop: space.md,
+                        paddingBottom: space.sm,
+                      }}
+                    >
+                      <Text style={[feedType.kicker, { color: feed.ink, letterSpacing: 0.55 }]}>
+                        {`${pendingCount} WACHT${pendingCount === 1 ? "" : "EN"} OP JE`}
+                      </Text>
+                    </View>
+                    {(joinRequests.data ?? []).map((request) => (
+                      <JoinRequestRow
+                        key={request.user_id}
+                        request={request}
+                        onApprove={() => onApproveRequest(request)}
+                        onDecline={() => onDeclineRequest(request)}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      borderTopWidth: FEED_BORDER,
+                      borderTopColor: feed.ink,
+                      paddingHorizontal: space.lg,
+                      paddingVertical: space.lg,
+                    }}
+                  >
+                    <Text style={[feedType.label, { color: feed.inkDim }]}>
+                      Geen openstaande verzoeken.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </Modal>
 
           <ActionSheet
             visible={addMenuOpen}
@@ -517,14 +606,9 @@ export default function EventDetailScreen() {
                 onPress: onOpenCamera,
               },
               {
-                label: "Kies foto uit galerij",
+                label: "Uit je bibliotheek — foto's en video's",
                 icon: "images-outline",
-                onPress: () => pickFromGallery(["images"]),
-              },
-              {
-                label: "Kies video uit galerij",
-                icon: "videocam-outline",
-                onPress: () => pickFromGallery(["videos"]),
+                onPress: () => pickFromGallery(),
               },
               {
                 label: "Voeg link toe",
