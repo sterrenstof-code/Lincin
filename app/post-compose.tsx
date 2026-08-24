@@ -79,7 +79,11 @@ export default function PostComposeScreen() {
   const [sourceAuthor, setSourceAuthor] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  /**
+   * Meerdere foto's mogen: samen zijn ze één vondst met een album, en in
+   * de feed blader je erdoorheen. De eerste is de omslag.
+   */
+  const [imageUris, setImageUris] = useState<string[]>([]);
 
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [unfurling, setUnfurling] = useState(false);
@@ -189,16 +193,20 @@ export default function PostComposeScreen() {
       : await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ["images"],
           quality: 0.85,
-          selectionLimit: 1,
+          allowsMultipleSelection: true,
+          // Ruim genoeg voor een middag fotograferen, niet zo ruim dat één
+          // vondst een half fotoalbum wordt.
+          selectionLimit: 20,
         });
-    if (result.canceled || !result.assets[0]) return;
-    setImageUri(result.assets[0].uri);
+    if (result.canceled || result.assets.length === 0) return;
+    // Aanvullen en niet vervangen: "Meer toevoegen" moet ook echt toevoegen.
+    setImageUris((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 20));
   }
 
   const canSubmit = !submitting && !!kind && (() => {
     if (URL_KINDS.includes(kind)) return url.trim().length > 3;
     if (BODY_KINDS.includes(kind)) return body.trim().length > 0;
-    if (kind === "image") return !!imageUri;
+    if (kind === "image") return imageUris.length > 0;
     return note.trim().length > 0;
   })();
 
@@ -221,7 +229,7 @@ export default function PostComposeScreen() {
       await createFind({
         userId: myUserId,
         kind: resolveKind(),
-        imageUri: imageUri ?? undefined,
+        imageUris,
         linkUrl: url.trim() || null,
         caption: note.trim() || null,
         bodyText: BODY_KINDS.includes(kind) ? body.trim() || null : null,
@@ -376,23 +384,57 @@ export default function PostComposeScreen() {
                 {/* --- Foto --- */}
                 {kind === "image" && (
                   <View>
-                    {imageUri ? (
+                    {imageUris.length > 0 ? (
                       <View>
                         <SafeImage
-                          uri={imageUri}
+                          uri={imageUris[0]}
                           style={{ width: "100%", aspectRatio: 1 }}
                           contentFit="cover"
                           fallbackBg="bg-feed-post"
                           fallbackColor={feed.inkDim}
                         />
+
+                        {/* De rest van het album als strook eronder. */}
+                        {imageUris.length > 1 && (
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 6, padding: 6 }}
+                          >
+                            {imageUris.slice(1).map((uri, i) => (
+                              <Pressable
+                                key={`${uri}-${i}`}
+                                onPress={() =>
+                                  setImageUris((prev) => prev.filter((_, idx) => idx !== i + 1))
+                                }
+                              >
+                                <SafeImage
+                                  uri={uri}
+                                  style={{ width: 72, height: 72 }}
+                                  contentFit="cover"
+                                  fallbackBg="bg-feed-post"
+                                  fallbackColor={feed.inkDim}
+                                />
+                              </Pressable>
+                            ))}
+                          </ScrollView>
+                        )}
+
                         <View className="flex-row px-6 py-4">
                           <Pressable onPress={() => pickImage(false)}>
-                            <Meta tone="feed" strong>Wijzig</Meta>
+                            <Meta tone="feed" strong>
+                              {imageUris.length > 1 ? "Meer toevoegen" : "Meer foto's"}
+                            </Meta>
                           </Pressable>
                           <Meta tone="feed" dim style={{ marginHorizontal: 10 }}>/</Meta>
-                          <Pressable onPress={() => setImageUri(null)}>
+                          <Pressable onPress={() => setImageUris([])}>
                             <Meta tone="feed" dim>Verwijder</Meta>
                           </Pressable>
+                          {imageUris.length > 1 && (
+                            <Meta tone="feed" dim style={{ marginLeft: 12 }}>
+                              {`${imageUris.length} foto's · tik om er een weg te halen`}
+                            </Meta>
+                          )}
                         </View>
                         <Rule tone="feed" />
                       </View>
@@ -531,7 +573,7 @@ export default function PostComposeScreen() {
     setNote("");
     setSourceAuthor("");
     setSourceTitle("");
-    setImageUri(null);
+    setImageUris([]);
     setPreview(null);
     setError(null);
     lastUnfurled.current = "";

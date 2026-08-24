@@ -654,6 +654,26 @@ export type Database = {
         Relationships: [];
       };
 
+      // 0045_post_images — meerdere foto's onder één vondst
+      post_images: {
+        Row: {
+          id: string;
+          post_id: string;
+          image_path: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          image_path: string;
+          position?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["post_images"]["Insert"]>;
+        Relationships: [];
+      };
+
       pending_invites: {
         Row: {
           id: string;

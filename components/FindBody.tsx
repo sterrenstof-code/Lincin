@@ -13,6 +13,7 @@ import {
 
 import { CHROME_COMPACT_H } from "@/components/AppChrome";
 import { Embed } from "@/components/Embed";
+import { PostCarousel } from "@/components/PostCarousel";
 import { SafeImage } from "@/components/SafeImage";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
@@ -437,6 +438,15 @@ function ImageBody({ post, onPress }: { post: PostWithAuthor; onPress?: () => vo
   const [ratio, setRatio] = useState<number | undefined>(undefined);
   return (
     <View>
+      {(post.album_urls?.length ?? 0) > 1 ? (
+        <View className="mt-4 bg-page-alt">
+          <PostCarousel
+            urls={post.album_urls!}
+            style={{ width: "100%", aspectRatio: 1 }}
+            onPressImage={onPress}
+          />
+        </View>
+      ) : (
       <Pressable onPress={onPress} className="mt-4 bg-page-alt">
         <SafeImage
           uri={post.image_url}
@@ -455,6 +465,7 @@ function ImageBody({ post, onPress }: { post: PostWithAuthor; onPress?: () => vo
           }}
         />
       </Pressable>
+      )}
       {post.caption?.trim() ? (
         <View className={`${PAD} pt-3`}>
           <Text style={[type.caption, { color: carbon.soft }]}>{post.caption.trim()}</Text>
@@ -684,18 +695,27 @@ export function FindHero({
 }) {
   const p = partsOf(post);
 
+  const album = post.album_urls ?? [];
+
   const media = (
     <Pressable onPress={onPress} style={{ flex: 1 }}>
-      <SafeImage
-        uri={p.image}
-        cacheKey={p.imageKey}
-        style={{ width: "100%", height: "100%" }}
-        contentFit="cover"
-        transition={150}
-        fallbackIcon="sparkles-outline"
-        fallbackBg="bg-feed-post"
-        fallbackColor={feed.textDim}
-      />
+      {album.length > 1 ? (
+        // Een reeks foto's bij één vondst: blader erdoor in plaats van
+        // alleen de omslag te tonen. De tik op een foto opent de vondst,
+        // net als bij één foto.
+        <PostCarousel urls={album} style={{ flex: 1 }} onPressImage={onPress} />
+      ) : (
+        <SafeImage
+          uri={p.image}
+          cacheKey={p.imageKey}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={150}
+          fallbackIcon="sparkles-outline"
+          fallbackBg="bg-feed-post"
+          fallbackColor={feed.textDim}
+        />
+      )}
       {/* Het onderschrift over het beeld — maar niet als het woordelijk de
           kop hiernaast is. Bij een beeldpost zonder eigen tekst zijn dat
           allebei de `caption`, en dan stond dezelfde regel drie keer op

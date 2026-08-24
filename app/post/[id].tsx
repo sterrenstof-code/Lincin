@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { MentionsText } from "@/components/MentionsText";
 import { useWide } from "@/components/Editorial";
 import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { PostCarousel } from "@/components/PostCarousel";
 import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
@@ -32,7 +33,7 @@ import {
   subscribeToEntityComments,
   type EntityComment,
 } from "@/lib/api/entity-comments";
-import { deletePost, type PostWithAuthor } from "@/lib/api/posts";
+import { deletePost, getAlbumUrls, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
@@ -99,8 +100,18 @@ export default function PostDetailScreen() {
       if (error) throw error;
       if (!data) return null;
       const author = await getProfile(data.user_id);
-      const imageUrl = await signedImageUrl("posts", data.image_path, IMG.hero);
-      return { ...data, author, image_url: imageUrl };
+      const [imageUrl, albumUrls] = await Promise.all([
+        signedImageUrl("posts", data.image_path, IMG.hero),
+        getAlbumUrls(String(id)),
+      ]);
+      // `album_urls` blijft optioneel, net als op PostWithAuthor: de feed
+      // in de cache dient als beginwaarde en moet dezelfde vorm hebben.
+      return {
+        ...data,
+        author,
+        image_url: imageUrl,
+        ...(albumUrls.length > 0 ? { album_urls: albumUrls } : null),
+      } as PostWithAuthor;
     },
     enabled: !!id,
     initialData: () => {
@@ -311,7 +322,15 @@ export default function PostDetailScreen() {
         ...heroStyle,
       }}
     >
-      {post.data?.image_path && post.data.image_url ? (
+      {(post.data?.album_urls?.length ?? 0) > 1 ? (
+        // Een album: blader erdoorheen op de plek waar anders de ene foto
+        // staat. Zelfde vlak, zelfde maat, alleen meer om te zien.
+        <PostCarousel
+          urls={post.data!.album_urls!}
+          style={{ position: "absolute", width: "100%", height: "100%" }}
+          contentFit={fill ? "contain" : "cover"}
+        />
+      ) : post.data?.image_path && post.data.image_url ? (
         <Image
           source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
           cachePolicy="disk"

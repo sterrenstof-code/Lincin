@@ -63,6 +63,17 @@ export type PostWithAuthor = PostRow & {
   image_url: string | null;
   /** Aantal reacties op deze post (via embedded PostgREST count). */
   comment_count: number;
+  /**
+   * Alle foto's van een album, op volgorde, inclusief de omslag. Leeg bij
+   * een vondst met één of geen foto — dan zegt `image_url` alles.
+   */
+  album_urls?: string[];
+  /**
+   * Reacties + emoji + duwen bij elkaar: hoeveel er met deze vondst gedáán
+   * is. Waar een vondst met tien duimpjes en nul reacties even goed "waar
+   * over gepraat wordt" is als een met drie reacties.
+   */
+  interaction_count: number;
 };
 
 const POSTS_BUCKET = "posts";
@@ -137,6 +148,12 @@ export async function createFind(args: {
   userId: string;
   kind?: FindKind;
   imageUri?: string;
+  /**
+   * Meer foto's bij dezelfde vondst — een album. De eerste is de omslag en
+   * belandt ook in `posts.image_path`, zodat alles wat één foto verwacht
+   * ongewijzigd blijft werken.
+   */
+  imageUris?: string[];
   caption?: string | null;
   linkUrl?: string | null;
   bodyText?: string | null;
@@ -162,17 +179,29 @@ export async function createFind(args: {
   const postId = cryptoRandomId();
   let imagePath: string | null = null;
 
-  if (args.imageUri) {
-    const ext = extFromUri(args.imageUri);
-    imagePath = `${args.userId}/${postId}.${ext}`;
+  const uris = args.imageUris?.length ? args.imageUris : args.imageUri ? [args.imageUri] : [];
+  const uploadedPaths: string[] = [];
+
+  for (let i = 0; i < uris.length; i++) {
+    const uri = uris[i];
+    const ext = extFromUri(uri);
+    // De eerste houdt het pad dat hij altijd had; de volgende krijgen een
+    // teller erachter. Zo blijft één-foto-per-vondst bit voor bit hetzelfde.
+    const path = i === 0 ? `${args.userId}/${postId}.${ext}` : `${args.userId}/${postId}-${i}.${ext}`;
     const contentType = contentTypeForExt(ext);
-    const bytes = await uriToBytes(args.imageUri);
+    const bytes = await uriToBytes(uri);
     const blob = new Blob([bytes as any], { type: contentType });
     const { error: upErr } = await supabase.storage
       .from(POSTS_BUCKET)
-      .upload(imagePath, blob, { contentType, upsert: false });
-    if (upErr) throw upErr;
+      .upload(path, blob, { contentType, upsert: false });
+    if (upErr) {
+      // Wat al geüpload was weer weg: een halve vondst is geen vondst.
+      await supabase.storage.from(POSTS_BUCKET).remove(uploadedPaths).catch(() => {});
+      throw upErr;
+    }
+    uploadedPaths.push(path);
   }
+  imagePath = uploadedPaths[0] ?? null;
 
   const { data, error: insErr } = await supabase
     .from("posts")
@@ -192,10 +221,18 @@ export async function createFind(args: {
     .select(POST_COLUMNS)
     .single();
   if (insErr) {
-    if (imagePath) {
-      await supabase.storage.from(POSTS_BUCKET).remove([imagePath]).catch(() => {});
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from(POSTS_BUCKET).remove(uploadedPaths).catch(() => {});
     }
     throw insErr;
+  }
+
+  // Een album legt álle foto's vast, ook de omslag: dan is er één lijst om
+  // door te bladeren in plaats van "de omslag plus de rest".
+  if (uploadedPaths.length > 1) {
+    await supabase.from("post_images").insert(
+      uploadedPaths.map((path, position) => ({ post_id: postId, image_path: path, position }))
+    );
   }
   // Activiteitsmoment registreren — fire-and-forget
   createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as any).id }).catch(() => {});
@@ -246,12 +283,65 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   return signedImageUrls(POSTS_BUCKET, rows.map((r) => r.image_path), IMG.tile);
 }
 
+/**
+ * De extra foto's van albums, in één vraag voor de hele lijst.
+ * Vondsten zonder album staan er niet in — die kosten dus ook niets.
+ */
+async function attachAlbums(postIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (postIds.length === 0) return out;
+  const { data } = await supabase
+    .from("post_images")
+    .select("post_id, image_path, position")
+    .in("post_id", postIds)
+    .order("position", { ascending: true });
+  if (!data || data.length === 0) return out;
+
+  const urls = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.tile);
+  for (const row of data) {
+    const url = urls.get(row.image_path);
+    if (!url) continue;
+    const list = out.get(row.post_id) ?? [];
+    list.push(url);
+    out.set(row.post_id, list);
+  }
+  return out;
+}
+
+/** De foto's van één album, op detailmaat. Leeg als het geen album is. */
+export async function getAlbumUrls(postId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("post_images")
+    .select("image_path, position")
+    .eq("post_id", postId)
+    .order("position", { ascending: true });
+  if (!data || data.length === 0) return [];
+  const urls = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.hero);
+  return data.map((r) => urls.get(r.image_path)).filter((u): u is string => !!u);
+}
+
+/** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
+async function countSignals(postIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (postIds.length === 0) return counts;
+  const [reactions, boosts] = await Promise.all([
+    supabase.from("post_reactions").select("post_id").in("post_id", postIds),
+    supabase.from("post_boosts").select("post_id").in("post_id", postIds),
+  ]);
+  for (const row of [...(reactions.data ?? []), ...(boosts.data ?? [])]) {
+    counts.set(row.post_id, (counts.get(row.post_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
   if (rows.length === 0) return [];
   const authorIds = Array.from(new Set(rows.map((r) => r.user_id)));
   const authors = await getProfiles(authorIds);
   const byId = new Map(authors.map((a) => [a.id, a]));
   const urlByPath = await attachSignedUrls(rows);
+  const albums = await attachAlbums(rows.map((r) => r.id));
+  const signalCounts = await countSignals(rows.map((r) => r.id));
   const commentCounts = await countCommentsByPost(rows.map((r) => r.id));
 
   return rows.map((r) => ({
@@ -259,6 +349,8 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
     comment_count: commentCounts.get(r.id) ?? 0,
+    album_urls: albums.get(r.id),
+    interaction_count: (commentCounts.get(r.id) ?? 0) + (signalCounts.get(r.id) ?? 0),
   }));
 }
 
@@ -391,6 +483,7 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       author,
       image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
       comment_count: 0,
+      interaction_count: 0,
     };
     items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });
   }

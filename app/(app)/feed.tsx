@@ -22,7 +22,9 @@ import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { Meta } from "@/components/Editorial";
+import { listMyEvents } from "@/lib/api/events";
 import { CHROME_COMPACT_H, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { EventCard } from "@/components/EventCard";
 import { FeedRail, Frame } from "@/components/FeedChrome";
 import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
@@ -113,7 +115,7 @@ import {
  */
 
 /** Hoe een rubriek zijn vondsten kiest. */
-type SectionRule = "discussed" | "recent" | "visual" | "words";
+type SectionRule = "discussed" | "recent" | "visual" | "words" | "album";
 
 /** Hoe een rubriek zijn vondsten toont. */
 type SectionLayout = "cover" | "tiles" | "mosaic" | "words";
@@ -129,6 +131,9 @@ type SectionDef = {
 
 const SECTIONS: SectionDef[] = [
   { key: "featured",  label: "Uitgelicht",              rule: "discussed", layout: "cover",  limit: 1 },
+  // Een reeks foto's krijgt de grote plaat: daar valt doorheen te bladeren,
+  // en dat is precies wat een tegel van een halve kolom onmogelijk maakt.
+  { key: "album",     label: "Een reeks",               rule: "album",     layout: "cover",  limit: 1 },
   { key: "discussed", label: "Waar over gepraat wordt", rule: "discussed", layout: "tiles",  limit: 4 },
   { key: "recent",    label: "Nieuw deze week",         rule: "recent",    layout: "tiles",  limit: 4 },
   { key: "visual",    label: "Beeld",                   rule: "visual",    layout: "mosaic", limit: 5 },
@@ -169,19 +174,30 @@ function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slo
     } else if (rule === "words") {
       pool = pool.filter((p) => WORD_KINDS.includes(p.data.kind ?? "note"));
     }
+    if (rule === "album") {
+      // Alleen wat écht een reeks is; één foto is geen album.
+      pool = pool.filter((p) => (p.data.album_urls?.length ?? 0) > 1);
+    }
     if (rule === "discussed") {
-      // Meest besproken eerst. Bij gelijk aantal wint de nieuwste, zodat een
-      // oude post met twee reacties niet eeuwig bovenaan blijft staan.
+      /**
+       * Meest bespróken is niet hetzelfde als meeste reacties eronder: een
+       * vondst met tien duimpjes en nul woorden is even goed waar het over
+       * gaat. Daarom telt alles mee wat iemand met de vondst gedaan heeft —
+       * reacties, emoji en duwen samen (`interaction_count`).
+       *
+       * Bij gelijke stand wint de nieuwste, zodat een oude vondst met twee
+       * reacties niet eeuwig bovenaan blijft staan.
+       */
       pool = [...pool].sort((a, b) => {
-        const d = (b.data.comment_count ?? 0) - (a.data.comment_count ?? 0);
+        const d = (b.data.interaction_count ?? 0) - (a.data.interaction_count ?? 0);
         if (d !== 0) return d;
         return (
           new Date(b.data.created_at).getTime() -
           new Date(a.data.created_at).getTime()
         );
       });
-      // Zonder enige reactie is er niets om "besproken" aan te noemen.
-      pool = pool.filter((p) => (p.data.comment_count ?? 0) > 0);
+      // Zonder dat iemand iets gedaan heeft, valt er niets uit te lichten.
+      pool = pool.filter((p) => (p.data.interaction_count ?? 0) > 0);
     }
     return pool.slice(0, limit);
   }
@@ -249,6 +265,18 @@ export default function FeedScreen() {
     queryKey: ["unified-feed", myUserId],
     queryFn: () => listUnifiedFeed(myUserId),
     refetchOnWindowFocus: true,
+  });
+
+  /**
+   * Wat er nú aan de gang is. Een lopend event is het enige in deze app
+   * met een klok erop: het is straks voorbij, en dan is de kans om erbij
+   * te zijn ook voorbij. Daarom staat het bovenaan de thematische stand en
+   * niet ergens tussen de vondsten van vorige week.
+   */
+  const liveEvents = useQuery({
+    queryKey: ["live-events", myUserId],
+    queryFn: async () => (await listMyEvents(myUserId)).filter((e) => e.is_active),
+    staleTime: 60_000,
   });
 
   // Eigen profiel voor het persoonlijke blok in de zijbalk.
@@ -512,6 +540,24 @@ export default function FeedScreen() {
                         active={activeTag}
                         onPick={(t) => setActiveTag(t === activeTag ? null : t)}
                       />
+                    ) : null}
+
+                    {sort === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
+                      <View style={{ marginBottom: 40 }}>
+                        <Text
+                          style={[
+                            feedType.kicker,
+                            { color: flameDeep, letterSpacing: 0.55, marginBottom: 18 },
+                          ]}
+                        >
+                          NU AAN DE GANG
+                        </Text>
+                        <View style={{ gap: 16 }}>
+                          {liveEvents.data!.slice(0, 2).map((event, i) => (
+                            <EventCard key={event.id} event={event} index={i + 1} />
+                          ))}
+                        </View>
+                      </View>
                     ) : null}
 
                     {sections.map((section) => (
