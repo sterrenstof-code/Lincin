@@ -93,6 +93,28 @@ export function chromeTag(enabled = true): ViewStyle {
 }
 
 /**
+ * De naam van de **gesprekskolom** naast een vondst.
+ *
+ * Die kolom bestaat alleen op de detailpagina: er is dus niets om naartoe
+ * te morphen, en de browser zou hem gewoon laten opkomen. Door hem een
+ * naam te geven kan hij zijn eigen beweging krijgen — hij schuift van
+ * rechts naar binnen terwijl de foto uitgroeit. Zie de keyframes in
+ * `app/+html.tsx`.
+ *
+ * Waarom dat de moeite is: bij de referentie waar dit op lijkt vult het
+ * beeld eerst het hele kader en schuift de omkadering er daarna náást in.
+ * Zonder eigen beweging kwam die kolom er gewoon plots te staan, en dan
+ * lijkt de foto niet te groeien maar te verspringen.
+ */
+export const ASIDE_TRANSITION_NAME = "lincin-aside";
+
+/** Markeert de gesprekskolom. Alleen op het scherm dat je aankijkt. */
+export function asideTag(enabled = true): ViewStyle {
+  if (!HERO_TRANSITION_SUPPORTED || !enabled) return {};
+  return { viewTransitionName: ASIDE_TRANSITION_NAME } as unknown as ViewStyle;
+}
+
+/**
  * Voert de navigatie uit als gedeelde-element-overgang.
  *
  * De `"hero"`-richting is het enige verschil met een gewone navigatie: de

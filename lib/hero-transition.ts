@@ -60,6 +60,15 @@ export function chromeTag(enabled = true): ViewStyle {
   return {};
 }
 
+/** Zie de webvariant. Op native heeft de gesprekskolom geen eigen morph. */
+export const ASIDE_TRANSITION_NAME = "lincin-aside";
+
+/** Zie de webvariant. Op native leeg. */
+export function asideTag(enabled = true): ViewStyle {
+  void enabled;
+  return {};
+}
+
 /**
  * Voer een navigatie uit binnen een overgang. Op native gewoon uitvoeren
  * — `withPageTransition` is daar zelf ook een no-op.

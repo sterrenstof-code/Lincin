@@ -127,6 +127,27 @@ export default function Root({ children }: PropsWithChildren) {
   object-position: top left;
 }
 
+/* ---- 1c. De kolom naast het beeld: schuift naar binnen ----
+   De gesprekskolom van een vondst bestaat alleen op de detailpagina. Zonder
+   eigen beweging komt hij er plots te staan, en dan lijkt de foto niet te
+   groeien maar te verspringen. Hij schuift daarom van rechts naar binnen,
+   ná het beeld: eerst groeit de plaat, dan komt de omkadering ernaast.
+
+   Alleen de nieuwe stand: er is geen oude om vandaan te komen. */
+::view-transition-group(lincin-aside) {
+  animation-duration: 520ms;
+}
+@keyframes lincin-aside-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: none; }
+}
+::view-transition-new(lincin-aside) {
+  animation: lincin-aside-in 420ms cubic-bezier(0.22, 1, 0.36, 1) 100ms both;
+}
+::view-transition-old(lincin-aside) {
+  animation: lincin-page-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 /* ---- 2. De pagina: kruisvervagen met een stijging ---- */
 @keyframes lincin-page-out {
   from { opacity: 1; }
@@ -167,7 +188,8 @@ export default function Root({ children }: PropsWithChildren) {
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-old(root),
-  ::view-transition-new(root) {
+  ::view-transition-new(root),
+  ::view-transition-new(lincin-aside) {
     animation-duration: 1ms !important;
   }
 }

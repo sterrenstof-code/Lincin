@@ -446,3 +446,72 @@ export const feed = {
  * de zijbalk is smal genoeg om al vanaf 800px naast de inhoud te passen.
  */
 export const FEED_BREAKPOINT = 800;
+
+// ---------------------------------------------------------------
+// RUIMTE — de maatlat waar het raster op staat
+// ---------------------------------------------------------------
+
+/**
+ * Eén ruimtemaat voor de hele app, in stappen van vier.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT ER IS
+ * ---------------------------------------------------------------
+ * Het systeem had wél tokens voor kleur en type maar niet voor ruimte, en
+ * dat is precies waar het uit elkaar liep: de kop hield 24 aan, een
+ * detailpagina 20, een rubriek 40, een kaart 18. Vier waarden die alle vier
+ * "een marge" bedoelden, en op het scherm zag je ze niet uitlijnen.
+ *
+ * Gebruik een trede. Staat de maat die je nodig hebt er niet in, voeg er dan
+ * één toe in plaats van een los getal te strooien — dat is dezelfde regel
+ * als bij de typeschaal.
+ */
+export const space = {
+  /** 4 — tussen twee dingen die bij elkaar hóren (icoon en label). */
+  xs: 4,
+  /** 8 — binnen één element. */
+  sm: 8,
+  /** 12 — tussen regels in een blok. */
+  md: 12,
+  /** 16 — tussen blokken; de marge op een telefoon. */
+  lg: 16,
+  /** 20 — binnenmarge van een kaart. */
+  xl: 20,
+  /** 24 — de marge op een breed scherm. */
+  xxl: 24,
+  /** 32 — binnenmarge van een kolom binnen een kader. */
+  xxxl: 32,
+  /** 40 — tussen twee rubrieken. */
+  section: 40,
+} as const;
+
+/**
+ * De marge tussen de bladspiegel en de rand van het venster.
+ *
+ * Kop én inhoud lezen deze: staan ze op verschillende waarden, dan begint de
+ * pagina vier pixels naast zijn eigen kop en dat zie je meteen.
+ */
+export function gutter(wide: boolean): number {
+  return wide ? space.xxl : space.lg;
+}
+
+/**
+ * Het donkere verloop onder een foto waar tekst over staat.
+ *
+ * Geen schaduw — die staan niet in dit systeem — maar een sluier: een
+ * verloop van niets naar bijna-zwart, zodat de naam van de uploader leesbaar
+ * is zonder dat er een balk over het beeld ligt. In stappen van 6% in plaats
+ * van in drie brokken; drie brokken zag je als drie banden.
+ *
+ * `height` is hoe hoog de sluier wordt; de onderste stap is de donkerste.
+ */
+export function scrimSteps(strength = 0.72, steps = 12): string[] {
+  const out: string[] = [];
+  for (let i = 1; i <= steps; i++) {
+    // Kwadratisch: bovenaan bijna niets, onderaan vol. Lineair leest als een
+    // grijze doos over de onderste helft van de foto.
+    const t = (i / steps) ** 2;
+    out.push(`rgba(11,10,12,${(t * strength).toFixed(3)})`);
+  }
+  return out;
+}

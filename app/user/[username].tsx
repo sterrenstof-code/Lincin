@@ -1,22 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  Dimensions,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
+import { PostGrid } from "@/components/PostGrid";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
-import { Skeleton, SkeletonGallery } from "@/components/Skeleton";
+import { Skeleton } from "@/components/Skeleton";
 import { safeBack } from "@/lib/nav";
 import { useAuth } from "@/lib/auth/provider";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
@@ -30,7 +28,6 @@ import { getProfileByUsername } from "@/lib/api/profiles";
 import { listUserPosts } from "@/lib/api/posts";
 import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function UserProfileScreen() {
   const router = useRouter();
@@ -246,64 +243,19 @@ export default function UserProfileScreen() {
             >
               GEDEELDE VONDSTEN
             </Text>
-            {posts.isLoading ? (
-              <SkeletonGallery />
-            ) : (posts.data?.length ?? 0) === 0 ? (
-              <View className="bg-paper-soft p-5">
-                <Text className="text-ink-soft text-sm leading-5">
-                  {relation.kind === "self"
-                    ? "Je hebt nog niks gedeeld. Plaats je eerste post vanaf de Feed-tab."
-                    : `@${profile.data?.username ?? username} heeft nog niets gedeeld.`}
-                </Text>
-              </View>
-            ) : (
-              <View className="flex-row flex-wrap" style={{ marginHorizontal: -3 }}>
-                {posts.data!.map((p) => (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => router.push(`/post/${p.id}`)}
-                    className="w-1/3 p-[3px]"
-                  >
-                    <View className="bg-paper-warm" style={{ aspectRatio: 1, borderRadius: 12, overflow: "hidden" }}>
-                      {p.image_url ? (
-                        <Image
-                          source={{ uri: p.image_url, cacheKey: p.image_path ?? p.id }}
-                          cachePolicy="disk"
-                          style={{ width: "100%", height: "100%" }}
-                          contentFit="cover"
-                          transition={150}
-                        />
-                      ) : p.link_url ? (
-                        <View className="flex-1 items-center justify-center p-2">
-                          <View className="w-8 h-8 bg-paper items-center justify-center mb-1">
-                            <Ionicons name="link" color={feed.ink} size={14} />
-                          </View>
-                          <Text
-                            className="text-ink-soft text-[9px] text-center leading-3"
-                            numberOfLines={2}
-                          >
-                            {(() => { try { return new URL(p.link_url).hostname.replace(/^www\./, ""); } catch { return p.link_url; } })()}
-                          </Text>
-                        </View>
-                      ) : p.caption ? (
-                        <View className="flex-1 justify-center p-2.5">
-                          <Text
-                            className="text-ink text-[11px] font-medium leading-4"
-                            numberOfLines={4}
-                          >
-                            {p.caption}
-                          </Text>
-                        </View>
-                      ) : (
-                        <View className="flex-1 items-center justify-center">
-                          <Ionicons name="text" color="#8C7B6B" size={20} />
-                        </View>
-                      )}
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            {/* Zelfde raster als op je eigen profiel, en dus ook dezelfde
+                beweging naar de volledige plaat. Hier stond een eigen
+                variant met afgeronde hoeken en losse kleurwaarden — twee
+                rasters voor hetzelfde ding. Zie components/PostGrid.tsx. */}
+            <PostGrid
+              posts={posts.data}
+              loading={posts.isLoading}
+              emptyLabel={
+                relation.kind === "self"
+                  ? "Je hebt nog niks gedeeld. Plaats je eerste vondst vanaf de feed."
+                  : `@${profile.data?.username ?? username} heeft nog niets gedeeld.`
+              }
+            />
           </View>
         )}
 

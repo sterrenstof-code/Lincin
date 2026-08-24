@@ -49,6 +49,7 @@ export function PostSignalBar({
       await togglePostBoost({ postId, userId: myUserId, ownerId, boosted });
     } finally {
       qc.invalidateQueries({ queryKey: ["post-signals", postId, myUserId] });
+      qc.invalidateQueries({ queryKey: ["post-people", postId, myUserId] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     }
   }

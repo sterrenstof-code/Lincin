@@ -15,6 +15,7 @@ import { CHROME_COMPACT_H } from "@/components/AppChrome";
 import { Embed } from "@/components/Embed";
 import { PostCarousel } from "@/components/PostCarousel";
 import { SafeImage } from "@/components/SafeImage";
+import { Scrim } from "@/components/Scrim";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
 import {
@@ -26,6 +27,7 @@ import {
   flameDeep,
   page,
   rule,
+  space,
   type,
 } from "@/lib/design/type";
 import {
@@ -527,7 +529,15 @@ function NoteBody({ post }: { post: PostWithAuthor }) {
 /** Wat een vondst aan de tegels aanbiedt, ongeacht haar `kind`. */
 type FindParts = {
   kicker: string;
-  title: string;
+  /**
+   * De kop van de vondst, of `null` als er niets is om te zetten.
+   *
+   * Hier stond eerder "Zonder titel". Dat is een label voor een ontbrekend
+   * veld in een formulier, geen kop: bij een reeks foto's zonder tekst
+   * stond het zes keer naast elkaar op het scherm, en het zei van geen
+   * enkele foto iets. Geen titel is nu géén regel.
+   */
+  title: string | null;
   body: string;
   image: string | null;
   imageKey: string | undefined;
@@ -543,11 +553,11 @@ function partsOf(post: PostWithAuthor): FindParts {
   const meta = (post.meta ?? {}) as FindMeta;
   const url = post.link_url ?? meta.canonical_url ?? null;
   const title =
-    meta.title ??
-    post.source_title ??
-    post.caption?.trim() ??
-    post.body_text?.trim() ??
-    (url ? hostnameOf(url) : "Zonder titel");
+    meta.title ||
+    post.source_title ||
+    post.caption?.trim() ||
+    post.body_text?.trim() ||
+    (url ? hostnameOf(url) : null);
 
   /**
    * De tekst van de vondst zelf.
@@ -567,7 +577,7 @@ function partsOf(post: PostWithAuthor): FindParts {
   return {
     kicker: KIND_LABELS[post.kind ?? "note"] ?? "Notitie",
     title,
-    body: isSameText(bodyText, title) ? "" : bodyText,
+    body: isSameText(bodyText, title ?? "") ? "" : bodyText,
     image: meta.image_url ?? post.image_url ?? null,
     imageKey: post.image_path ?? meta.canonical_url ?? url ?? undefined,
     source: post.source_author ?? meta.author ?? meta.site_name ?? null,
@@ -696,9 +706,16 @@ export function FindHero({
   const p = partsOf(post);
 
   const album = post.album_urls ?? [];
+  const heroTagForPost = useHeroTag(post.id);
 
   const media = (
-    <Pressable onPress={onPress} style={{ flex: 1 }}>
+    <Pressable
+      onPress={onPress}
+      // De uitgelichte plaat droeg geen naam, en dus morphte juist de
+      // grootste foto van de feed níet naar de detailpagina: die wisselde
+      // hard terwijl elke kleine tegel wél groeide. Zelfde naam als daar.
+      style={{ flex: 1, ...heroTagForPost }}
+    >
       {album.length > 1 ? (
         // Een reeks foto's bij één vondst: blader erdoor in plaats van
         // alleen de omslag te tonen. De tik op een foto opent de vondst,
@@ -720,13 +737,13 @@ export function FindHero({
           kop hiernaast is. Bij een beeldpost zonder eigen tekst zijn dat
           allebei de `caption`, en dan stond dezelfde regel drie keer op
           het scherm. */}
-      {post.caption?.trim() && !isSameText(post.caption, p.title) ? (
+      {post.caption?.trim() && !isSameText(post.caption, p.title ?? "") ? (
         <Text
           style={{
             position: "absolute",
-            left: 20,
-            bottom: 20,
-            right: 20,
+            left: space.xl,
+            bottom: space.xl,
+            right: space.xl,
             fontFamily: feedType.caption.fontFamily,
             fontSize: 13,
             fontStyle: "italic",
@@ -761,11 +778,13 @@ export function FindHero({
           >
             {`VONDST · ${p.kicker.toUpperCase()}`}
           </Text>
-          <Pressable onPress={onPress}>
-            <Text style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}>
-              {p.title}
-            </Text>
-          </Pressable>
+          {p.title ? (
+            <Pressable onPress={onPress}>
+              <Text style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}>
+                {p.title}
+              </Text>
+            </Pressable>
+          ) : null}
         </SpreadBlock>
 
         {/* Blok 2 — wie en wanneer */}
@@ -937,7 +956,7 @@ function CoverBand({
             ]}
             numberOfLines={4}
           >
-            {p.title.toUpperCase()}
+            {(p.title ?? "").toUpperCase()}
           </Text>
         </View>
         <Text
@@ -1042,15 +1061,17 @@ function TextTile({
       <View style={{ marginBottom: 10 }}>
         <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
       </View>
-      <Text
-        style={[
-          feedType.tile,
-          { fontSize: 20, lineHeight: 23, fontWeight: "800", color: feed.text, marginBottom: 8 },
-        ]}
-        numberOfLines={3}
-      >
-        {p.title}
-      </Text>
+      {p.title ? (
+        <Text
+          style={[
+            feedType.tile,
+            { fontSize: 20, lineHeight: 23, fontWeight: "800", color: feed.text, marginBottom: 8 },
+          ]}
+          numberOfLines={3}
+        >
+          {p.title}
+        </Text>
+      ) : null}
       {p.body ? (
         <Text
           style={[feedType.body, { fontSize: 12, lineHeight: 18, color: feed.textDim }]}
@@ -1130,15 +1151,17 @@ function CaptionTile({ p, id, onPress }: { p: FindParts; id: string; onPress?: (
           fallbackColor={feed.textDim}
         />
       </View>
-      <Text
-        style={[
-          feedType.tile,
-          { fontSize: 14, lineHeight: 18, fontWeight: "700", color: feed.text, marginBottom: 4 },
-        ]}
-        numberOfLines={2}
-      >
-        {p.title}
-      </Text>
+      {p.title ? (
+        <Text
+          style={[
+            feedType.tile,
+            { fontSize: 14, lineHeight: 18, fontWeight: "700", color: feed.text, marginBottom: 4 },
+          ]}
+          numberOfLines={2}
+        >
+          {p.title}
+        </Text>
+      ) : null}
       <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
         {`${p.kicker} · ${p.sharer}`}
       </Text>
@@ -1158,7 +1181,7 @@ function QuoteBand({
   wide: boolean;
   onPress?: () => void;
 }) {
-  const quote = p.body || p.title;
+  const quote = p.body || p.title || "";
   const attribution = [p.source, post.source_title].filter(Boolean).join(", ");
 
   return (
@@ -1257,12 +1280,14 @@ function GridTile({
 
       <View style={{ padding: 14, minHeight: 118 }}>
         <FeedKicker text={p.kicker} kind={post.kind} />
-        <Text
-          style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: 8 }]}
-          numberOfLines={2}
-        >
-          {p.title}
-        </Text>
+        {p.title ? (
+          <Text
+            style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: 8 }]}
+            numberOfLines={2}
+          >
+            {p.title}
+          </Text>
+        ) : null}
         <Text
           style={[feedType.label, { color: feed.textDim, marginTop: 6 }]}
           numberOfLines={1}
@@ -1311,35 +1336,47 @@ function MosaicTile({
         />
       </View>
 
-      {/* Scrim alleen onderaan, zodat het beeld zelf zo vrij mogelijk blijft. */}
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <View pointerEvents="none">
-          <View style={{ height: 24, backgroundColor: "rgba(0,0,0,0.16)" }} />
-          <View style={{ height: 24, backgroundColor: "rgba(0,0,0,0.38)" }} />
-        </View>
-        <View style={{ backgroundColor: "rgba(0,0,0,0.62)", padding: 12 }}>
-          <Text
-            style={[
-              feedType.kicker,
-              { color: "#FFFFFF", opacity: 0.7, letterSpacing: 0.5, marginBottom: 4 },
-            ]}
-            numberOfLines={1}
-          >
-            {`${p.kicker} · ${p.sharer}`.toUpperCase()}
-          </Text>
+      {/* De sluier loopt door tot achter de tekst in plaats van erin over te
+          gaan: eerst twee vlakken en dan een derde met een eigen kleur zag je
+          als drie banden over de foto liggen. Zie components/Scrim.tsx. */}
+      <Scrim height={140} />
+
+      {/* Eén tekstblok, altijd op dezelfde plek en met dezelfde marge —
+          ongeacht of er een titel is. Zonder titel schuift de naam van de
+          uploader dus niet naar onderen. */}
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: space.md,
+        }}
+      >
+        <Text
+          style={[
+            feedType.kicker,
+            { color: feed.text, opacity: 0.72, letterSpacing: 0.5 },
+          ]}
+          numberOfLines={1}
+        >
+          {`${p.kicker} · ${p.sharer}`.toUpperCase()}
+        </Text>
+        {p.title ? (
           <Text
             style={{
               fontFamily: feedType.tile.fontFamily,
               fontSize: 14,
               lineHeight: 17,
               fontWeight: "800",
-              color: "#FFFFFF",
+              color: feed.text,
+              marginTop: space.xs,
             }}
             numberOfLines={2}
           >
             {p.title}
           </Text>
-        </View>
+        ) : null}
       </View>
     </Pressable>
   );

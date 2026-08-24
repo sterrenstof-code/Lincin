@@ -7,12 +7,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
+import { PostGrid } from "@/components/PostGrid";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
-import { feed, flameDeep } from "@/lib/design/type";
+import { feed, feedType, flameDeep, space } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
+import { listUserPosts } from "@/lib/api/posts";
 import { uriToBytes } from "@/lib/crypto/file";
 import { bytesToBase64 } from "@/lib/crypto/base64";
 import { loadIdentity } from "@/lib/crypto/keys";
@@ -24,7 +26,6 @@ import {
 } from "@/lib/crypto/sync";
 import { confirm } from "@/lib/confirm";
 import { getPushStatus, sendTestPush, type PushStatus } from "@/lib/push";
-import { buildAddFriendUrl, copyToClipboard, shareText } from "@/lib/share";
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -35,7 +36,6 @@ export default function ProfileScreen() {
   const myUserId = session!.user.id;
 
   const [pubkey, setPubkey] = useState<string | null>(null);
-  const [copyHint, setCopyHint] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
@@ -44,6 +44,12 @@ export default function ProfileScreen() {
   const [keySync, setKeySync] = useState<KeySyncStatus | null>(null);
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyMsg, setKeyMsg] = useState<string | null>(null);
+
+  const myPosts = useQuery({
+    queryKey: ["posts-by-user", myUserId],
+    queryFn: () => listUserPosts(myUserId, 60),
+    enabled: !!myUserId,
+  });
 
   const profile = useQuery({
     queryKey: ["profile", myUserId],
@@ -109,16 +115,10 @@ export default function ProfileScreen() {
     setPushBusy(false);
   }
 
-  function flashCopyHint(text: string) {
-    setCopyHint(text);
-    setTimeout(() => setCopyHint(null), 1600);
-  }
-
   const username = profile.data?.username ?? "";
   const displayName = profile.data?.display_name;
   const heroName = displayName ?? username;
   const avatarUrl = profile.data?.avatar_url ?? null;
-  const addUrl = username ? buildAddFriendUrl(username) : "";
 
   async function onPickAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -141,27 +141,6 @@ export default function ProfileScreen() {
     } finally {
       setAvatarUploading(false);
     }
-  }
-
-  async function onCopyHandle() {
-    if (!username) return;
-    const ok = await copyToClipboard(`@${username}`);
-    if (ok) flashCopyHint("Handle gekopieerd");
-  }
-
-  async function onCopyUrl() {
-    if (!addUrl) return;
-    const ok = await copyToClipboard(addUrl);
-    if (ok) flashCopyHint("Link gekopieerd");
-  }
-
-  async function onShareUrl() {
-    if (!addUrl) return;
-    const result = await shareText({
-      title: "Voeg me toe op Lincin",
-      message: `Voeg me toe op Lincin: ${addUrl}`,
-    });
-    if (result === "copied") flashCopyHint("Link gekopieerd");
   }
 
   return (
@@ -208,45 +187,24 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* ---- Link up ---- */}
-        <View className="bg-paper p-4 mb-3">
-          <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-            Link up
-          </Text>
-          <View className="flex-row gap-2 mb-2">
-            <Pressable
-              onPress={() => router.push("/qr-scan")}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft py-3.5 px-4"
-            >
-              <Ionicons name="qr-code-outline" color={feed.text} size={20} />
-              <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
-            </Pressable>
-            <Pressable
-              onPress={onShareUrl}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper py-3.5 px-4"
-            >
-              <Ionicons name="share-outline" color={feed.ink} size={20} />
-              <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
-            </Pressable>
-          </View>
-          <Pressable
-            onPress={() => router.push("/invite-email")}
-            className="flex-row items-center justify-center gap-2 py-2.5"
-          >
-            <Ionicons name="mail-outline" color={feed.inkDim} size={15} />
-            <Text className="text-ink-muted text-xs">
-              Iemand uitnodigen die nog niet op Lincin zit
-            </Text>
-          </Pressable>
-        </View>
-
-        {copyHint && (
-          <View className="items-center mb-3">
-            <View className="bg-paper-warm px-3 py-1">
-              <Text className="text-ink text-xs font-medium">✓ {copyHint}</Text>
-            </View>
-          </View>
-        )}
+        {/* ---- Alles wat je gedeeld hebt ---- */}
+        {/*
+            Hier stond het "Link up"-blok: scan een linc, deel je linc,
+            nodig iemand uit. Dat hoort bij Vrienden — daar staan die drie
+            knoppen ook al — en niet op de pagina over je account. Wat hier
+            wél hoort is je eigen werk: het raster van je vondsten, met
+            dezelfde beweging naar de volledige plaat als vanuit de feed.
+        */}
+        <Text
+          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg }]}
+        >
+          JOUW VONDSTEN
+        </Text>
+        <PostGrid
+          posts={myPosts.data}
+          loading={myPosts.isLoading}
+          emptyLabel="Je hebt nog niets gedeeld. Plaats je eerste vondst vanaf de feed."
+        />
 
         {/* ---- Profile actions ---- */}
         <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -20,12 +21,14 @@ import { Avatar } from "@/components/Avatar";
 import { MentionsText } from "@/components/MentionsText";
 import { useWide } from "@/components/Editorial";
 import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { InteractionPeople } from "@/components/InteractionPeople";
 import { PostCarousel } from "@/components/PostCarousel";
+import { Scrim } from "@/components/Scrim";
 import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flameDeep, gutter, space } from "@/lib/design/type";
 import {
   addEntityComment,
   deleteEntityComment,
@@ -37,7 +40,7 @@ import { deletePost, getAlbumUrls, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
-import { useHeroTag } from "@/lib/hero-transition";
+import { asideTag, useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
 import { safeBack } from "@/lib/nav";
 import { useMentions } from "@/lib/useMentions";
@@ -60,6 +63,9 @@ export default function PostDetailScreen() {
   // Alleen het scherm dat je aankijkt draagt de naam van het gedeelde
   // element — zie useHeroTag.
   const heroStyle = useHeroTag(String(id));
+  // Alleen het scherm dat je aankijkt draagt de naam; twee elementen met
+  // dezelfde naam laat de browser de hele overgang overslaan.
+  const asideStyle = asideTag(useIsFocused());
   const { session } = useAuth();
   const myUserId = session?.user.id;
 
@@ -346,17 +352,8 @@ export default function PostDetailScreen() {
       {/* Op smal ligt de naam op de foto; op breed staat hij rechts. */}
       {!fill && post.data ? (
         <>
-          {post.data.image_url ? (
-            <View
-              pointerEvents="none"
-              style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
-            >
-              <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.16)" }} />
-              <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.38)" }} />
-              <View style={{ height: 180, backgroundColor: "rgba(0,0,0,0.62)" }} />
-            </View>
-          ) : null}
-          <View style={{ padding: 20 }}>
+          {post.data.image_url ? <Scrim height={260} /> : null}
+          <View style={{ padding: space.xl }}>
             {authorRow(false)}
             {post.data.caption ? (
               <Text
@@ -631,7 +628,18 @@ export default function PostDetailScreen() {
           onAction={canModerate ? () => setMenuOpen(true) : undefined}
         />
 
-        <View style={{ flex: 1, flexDirection: "row", gap: 20, padding: 20, paddingTop: 0 }}>
+        {/* Dezelfde marge als de kop erboven — `gutter()` is voor beide de
+            bron. Stond hier 20 tegenover de 24 van de balk, en dan begint de
+            pagina vier pixels naast zijn eigen kop. */}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            gap: space.xxl,
+            paddingHorizontal: gutter(true),
+            paddingBottom: gutter(true),
+          }}
+        >
           <View style={{ flex: 1, minWidth: 0 }}>
             {loading ? (
               <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
@@ -640,7 +648,15 @@ export default function PostDetailScreen() {
             )}
           </View>
 
-          <View style={{ width: conversationWidth, backgroundColor: feed.lav }}>
+          <View
+            style={{
+              width: conversationWidth,
+              backgroundColor: feed.lav,
+              // Schuift van rechts naar binnen terwijl de foto uitgroeit —
+              // zie de keyframes in app/+html.tsx.
+              ...asideStyle,
+            }}
+          >
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: 12 }}
@@ -658,9 +674,10 @@ export default function PostDetailScreen() {
                 </View>
               ) : null}
               {linkBlock}
-              <View style={{ marginTop: 12, gap: 10 }}>
+              <View style={{ marginTop: space.md, gap: space.md }}>
                 <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
                 <PostReactions postId={String(id)} tone="page" />
+                <InteractionPeople postId={String(id)} />
               </View>
               {commentsBlock}
             </ScrollView>
@@ -709,9 +726,10 @@ export default function PostDetailScreen() {
             </View>
           )}
 
-          <View style={{ marginTop: 14, gap: 10 }}>
+          <View style={{ marginTop: space.lg, gap: space.md }}>
             <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
             <PostReactions postId={String(id)} tone="page" />
+            <InteractionPeople postId={String(id)} />
           </View>
 
           {commentsBlock}

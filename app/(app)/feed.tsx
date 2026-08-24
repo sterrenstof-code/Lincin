@@ -38,6 +38,7 @@ import {
   FEED_BREAKPOINT,
   feedType,
   flameDeep,
+  space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
 import { useFeedPrefs } from "@/lib/feed-prefs";
@@ -129,15 +130,28 @@ type SectionDef = {
   limit: number;
 };
 
+/**
+ * De rubrieken van de thematische stand — vast, in deze volgorde.
+ *
+ * Vast, want een uitgave met elke keer andere kopjes is geen uitgave: je
+ * leert waar je moet kijken doordat het er altijd staat. Een rubriek die
+ * niets te tonen heeft valt weg, maar hij verhuist nooit.
+ *
+ * Boven deze rij staat nog "Nu aan de gang" (lopende events); die komt niet
+ * uit de vondsten en heeft daarom geen regel hier.
+ */
 const SECTIONS: SectionDef[] = [
-  { key: "featured",  label: "Uitgelicht",              rule: "discussed", layout: "cover",  limit: 1 },
-  // Een reeks foto's krijgt de grote plaat: daar valt doorheen te bladeren,
-  // en dat is precies wat een tegel van een halve kolom onmogelijk maakt.
-  { key: "album",     label: "Een reeks",               rule: "album",     layout: "cover",  limit: 1 },
-  { key: "discussed", label: "Waar over gepraat wordt", rule: "discussed", layout: "tiles",  limit: 4 },
-  { key: "recent",    label: "Nieuw deze week",         rule: "recent",    layout: "tiles",  limit: 4 },
-  { key: "visual",    label: "Beeld",                   rule: "visual",    layout: "mosaic", limit: 5 },
-  { key: "words",     label: "In woorden",              rule: "words",     layout: "words",  limit: 3 },
+  // De uitgelichte vondst: die waar het meest mee gedaan is, op de volle
+  // plaat met de redactionele opmaak.
+  { key: "featured",   label: "Uitgelicht",        rule: "discussed", layout: "cover",  limit: 1 },
+  // Een reeks foto's krijgt óók de grote plaat: daar valt doorheen te
+  // bladeren, en dat is precies wat een tegel van een halve kolom
+  // onmogelijk maakt.
+  { key: "album",      label: "Een reeks",         rule: "album",     layout: "cover",  limit: 1 },
+  { key: "interacted", label: "Meeste interactie", rule: "discussed", layout: "tiles",  limit: 4 },
+  { key: "newest",     label: "Nieuwste",          rule: "recent",    layout: "tiles",  limit: 4 },
+  { key: "visual",     label: "Beeld",             rule: "visual",    layout: "mosaic", limit: 5 },
+  { key: "words",      label: "In woorden",        rule: "words",     layout: "words",  limit: 3 },
 ];
 
 /** Soorten die in de beeldrubriek thuishoren. */
@@ -543,16 +557,16 @@ export default function FeedScreen() {
                     ) : null}
 
                     {sort === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
-                      <View style={{ marginBottom: 40 }}>
+                      <View style={{ marginBottom: space.section }}>
                         <Text
                           style={[
                             feedType.kicker,
-                            { color: flameDeep, letterSpacing: 0.55, marginBottom: 18 },
+                            { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
                           ]}
                         >
                           NU AAN DE GANG
                         </Text>
-                        <View style={{ gap: 16 }}>
+                        <View style={{ gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
                             <EventCard key={event.id} event={event} index={i + 1} />
                           ))}
@@ -561,11 +575,11 @@ export default function FeedScreen() {
                     ) : null}
 
                     {sections.map((section) => (
-                      <View key={section.key} style={{ marginBottom: 40 }}>
+                      <View key={section.key} style={{ marginBottom: space.section }}>
                         <Text
                           style={[
                             feedType.kicker,
-                            { color: flameDeep, letterSpacing: 0.55, marginBottom: 18 },
+                            { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
                           ]}
                         >
                           {section.label.toUpperCase()}
