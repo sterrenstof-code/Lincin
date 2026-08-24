@@ -1,7 +1,13 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
-import { getProfiles, type Profile } from "./profiles";
+import {
+  getProfiles,
+  getProfilesByUsernames,
+  mentionedUsernames,
+  type Profile,
+} from "./profiles";
 import { createNotification } from "./notifications";
+import { listPostFollowers } from "./post-signals";
 import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type EntityType = "post" | "poll" | "call_plan" | "list";
@@ -97,6 +103,37 @@ export async function addEntityComment(args: {
         });
       }
     });
+
+  // Genoemd worden is persoonlijker dan meelezen: wie in de tekst staat,
+  // hoort het te weten. Fire-and-forget, net als de rest hierboven.
+  const handles = mentionedUsernames(args.body);
+  if (handles.length > 0) {
+    getProfilesByUsernames(handles).then((profiles) => {
+      for (const prof of profiles) {
+        createNotification({
+          userId: prof.id,
+          actorId: args.userId,
+          type: "mention",
+          postId: args.entityType === "post" ? args.entityId : null,
+        });
+      }
+    });
+  }
+
+  // En wie de vondst volgt zonder zelf gereageerd te hebben.
+  if (args.entityType === "post") {
+    listPostFollowers(args.entityId).then((followers) => {
+      for (const uid of followers) {
+        if (uid === args.userId || uid === args.ownerId) continue;
+        createNotification({
+          userId: uid,
+          actorId: args.userId,
+          type: "followed_post_comment",
+          postId: args.entityId,
+        });
+      }
+    });
+  }
 
   const profiles = await getProfiles([args.userId]);
   return { ...data, author: profiles[0] ?? null } as EntityComment;

@@ -161,6 +161,9 @@ function NotificationRow({
     item.type === "event_join_request" ? `${actorName} vraagt toegang tot ${eventName}` :
     item.type === "event_join_approved" ? `${actorName} liet je toe tot ${eventName}` :
     item.type === "event_contribution" ? `${actorName} plaatste iets in ${eventName}` :
+    item.type === "mention"           ? `${actorName} noemde je` :
+    item.type === "post_boost"        ? `${actorName} duwde jouw vondst omhoog` :
+    item.type === "followed_post_comment" ? `${actorName} reageerde op een vondst die je volgt` :
     `${actorName} deed iets`;
 
   // Prefer the comment body as snippet (especially useful for emoji-only comments).

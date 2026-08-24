@@ -17,9 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
+import { MentionsText } from "@/components/MentionsText";
 import { useWide } from "@/components/Editorial";
 import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { PostReactions } from "@/components/PostReactions";
+import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
@@ -37,6 +39,7 @@ import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
 import { safeBack } from "@/lib/nav";
+import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
 
@@ -74,6 +77,14 @@ export default function PostDetailScreen() {
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  // @-suggesties. Zonder vriendenlijst als startpunt: op een vondst noem
+  // je net zo goed iemand die je nog niet hebt toegevoegd, en de zoektocht
+  // op de server dekt beide.
+  const {
+    mentionList,
+    onChangeText: onMentionChange,
+    applyMention,
+  } = useMentions({ draft, setDraft, candidates: [] });
   const inputRef = useRef<TextInput>(null);
 
   const post = useQuery({
@@ -138,6 +149,7 @@ export default function PostDetailScreen() {
   function onDraftChange(text: string) {
     const converted = replaceEmoticons(text);
     setDraft(converted);
+    onMentionChange(converted);
     // Emoji autocomplete
     const match = converted.match(/:([a-z0-9_+\-]{2,})$/i);
     if (match) {
@@ -425,6 +437,29 @@ export default function PostDetailScreen() {
         </View>
       )}
 
+      {mentionList && mentionList.length > 0 && (
+        <View className="px-3 pb-1">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
+          >
+            {mentionList.map((c) => (
+              <Pressable
+                key={c.id}
+                onPress={() => applyMention(c.username)}
+                className="bg-paper px-3 py-2 flex-row items-center gap-2"
+              >
+                <Avatar name={c.display} avatarUrl={c.avatarUrl} size="xs" />
+                <Text className="text-ink text-sm font-semibold">{c.display}</Text>
+                <Text className="text-ink-muted text-xs">@{c.username}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {emojiList && emojiList.length > 0 && (
         <View className="px-3 pb-1">
           <ScrollView
@@ -596,14 +631,16 @@ export default function PostDetailScreen() {
                 <View className="bg-paper-soft p-4">
                   {authorRow(true)}
                   {post.data.caption ? (
-                    <Text style={[feedType.pullSmall, { color: feed.ink, marginTop: 14 }]}>
-                      {post.data.caption}
-                    </Text>
+                    <MentionsText
+                      text={post.data.caption}
+                      style={[feedType.pullSmall, { color: feed.ink, marginTop: 14 }]}
+                    />
                   ) : null}
                 </View>
               ) : null}
               {linkBlock}
-              <View style={{ marginTop: 12 }}>
+              <View style={{ marginTop: 12, gap: 10 }}>
+                <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
                 <PostReactions postId={String(id)} tone="page" />
               </View>
               {commentsBlock}
@@ -653,7 +690,8 @@ export default function PostDetailScreen() {
             </View>
           )}
 
-          <View style={{ marginTop: 14 }}>
+          <View style={{ marginTop: 14, gap: 10 }}>
+            <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
             <PostReactions postId={String(id)} tone="page" />
           </View>
 
@@ -695,7 +733,7 @@ function CommentRow({
           <Text className="text-ink font-semibold text-sm">{name}</Text>
           <Text className="text-ink-muted text-xs ml-2">{time}</Text>
         </View>
-        <Text className="text-ink text-sm leading-5 mt-0.5">{comment.body}</Text>
+        <MentionsText text={comment.body} className="text-ink text-sm leading-5 mt-0.5" />
       </View>
       <View className="flex-row items-center gap-1 ml-2">
         <Pressable onPress={onReply} hitSlop={8} className="p-1">

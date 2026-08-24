@@ -17,7 +17,11 @@ export type NotificationRow = {
     | "event_join"
     | "event_join_request"
     | "event_join_approved"
-    | "event_contribution";
+    | "event_contribution"
+    // 0044 — wat je met een vondst kunt doen zonder te typen
+    | "post_boost"
+    | "mention"
+    | "followed_post_comment";
   post_id: string | null;
   comment_id: string | null;
   event_id: string | null;

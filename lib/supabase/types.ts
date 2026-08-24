@@ -78,6 +78,8 @@ export type Database = {
           created_at: string;
           /** 0035_last_seen — voedt de activiteitsindicator. */
           last_seen_at: string | null;
+          /** 0044_bio_follows_boosts — vrije tekst op je profiel. */
+          bio: string | null;
         };
         Insert: {
           id: string;
@@ -88,6 +90,7 @@ export type Database = {
           identity_privkey?: string | null;
           created_at?: string;
           last_seen_at?: string | null;
+          bio?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
@@ -617,6 +620,37 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["post_reactions"]["Insert"]>;
+        Relationships: [];
+      };
+
+      // 0044_bio_follows_boosts
+      post_follows: {
+        Row: {
+          post_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["post_follows"]["Insert"]>;
+        Relationships: [];
+      };
+
+      post_boosts: {
+        Row: {
+          post_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["post_boosts"]["Insert"]>;
         Relationships: [];
       };
 

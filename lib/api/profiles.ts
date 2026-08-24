@@ -46,6 +46,48 @@ export async function searchProfilesByUsername(
   return data ?? [];
 }
 
+/**
+ * Zoek profielen voor de @-suggesties. Anders dan
+ * `searchProfilesByUsername` kijkt dit ook in de weergavenaam en ook
+ * midden in een woord: je typt zelden de eerste letters van een handle,
+ * je typt de naam zoals je die kent.
+ */
+export async function searchProfilesForMention(
+  query: string,
+  excludeUserId?: string,
+  limit = 8
+): Promise<Profile[]> {
+  const q = query.trim().toLowerCase();
+  const cols = "id, username, display_name, avatar_url, identity_pubkey, last_seen_at";
+
+  let req = supabase.from("profiles").select(cols).limit(limit);
+  if (q) req = req.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
+  else req = req.order("last_seen_at", { ascending: false, nullsFirst: false });
+  if (excludeUserId) req = req.neq("id", excludeUserId);
+
+  const { data, error } = await req;
+  if (error) return [];
+  return data ?? [];
+}
+
+/** Profielen bij een reeks handles — voor het omzetten van @vermeldingen. */
+export async function getProfilesByUsernames(usernames: string[]): Promise<Profile[]> {
+  const unique = Array.from(new Set(usernames.map((u) => u.toLowerCase()))).filter(Boolean);
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .in("username", unique);
+  if (error) return [];
+  return data ?? [];
+}
+
+/** De handles die in een tekst genoemd worden, zonder de @. */
+export function mentionedUsernames(text: string | null | undefined): string[] {
+  if (!text) return [];
+  return Array.from(text.matchAll(/@([a-z0-9._]{3,32})/gi)).map((m) => m[1].toLowerCase());
+}
+
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
