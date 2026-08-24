@@ -18,7 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { useWide } from "@/components/Editorial";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { AppChrome, PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { PostReactions } from "@/components/PostReactions";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
@@ -43,7 +44,12 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  /**
+   * Breedte van de gesprekskolom. Genoeg voor een reactie van twee regels,
+   * maar nooit zoveel dat de foto in de knel komt op een net-brede laptop.
+   */
+  const conversationWidth = Math.round(Math.min(420, Math.max(300, windowWidth * 0.32)));
 
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -234,11 +240,297 @@ export default function PostDetailScreen() {
     }
   }
 
-  return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      {/* De oude kopregel is weg: terug-knop en optiemenu zitten nu
-          in de compacte chrome hierboven. */}
+  /** Naam, avatar en doorklik naar het profiel — op de foto of ernaast. */
+  const authorRow = (onPaper: boolean) => (
+    <Pressable
+      onPress={() => post.data?.author?.username && router.push(`/user/${post.data.author.username}`)}
+      className="flex-row items-center"
+    >
+      <Avatar
+        name={post.data?.author?.display_name ?? post.data?.author?.username}
+        avatarUrl={post.data?.author?.avatar_url}
+        size="md"
+        tint="warm"
+      />
+      <View className="flex-1 ml-3">
+        <Text
+          style={[
+            feedType.label,
+            { fontSize: 15, fontWeight: "700", color: onPaper ? feed.ink : "#FFFFFF" },
+          ]}
+        >
+          {post.data?.author?.display_name ?? post.data?.author?.username ?? "Onbekend"}
+        </Text>
+        <Text
+          style={[feedType.label, { color: onPaper ? feed.inkDim : "rgba(255,255,255,0.7)" }]}
+        >
+          @{post.data?.author?.username ?? "?"}
+        </Text>
+      </View>
+      <Ionicons
+        name="chevron-forward"
+        color={onPaper ? feed.inkDim : "rgba(255,255,255,0.7)"}
+        size={18}
+      />
+    </Pressable>
+  );
 
+  // ---------------------------------------------------------------
+  // De stukken van deze pagina
+  // ---------------------------------------------------------------
+  //
+  // Ze staan hier als losse blokken en niet als één boom, omdat de
+  // pagina twee indelingen heeft: op een telefoon staat het gesprek
+  // ónder de foto, op een breed scherm ernáást. Zelfde stukken, andere
+  // volgorde — zie de twee `return`s onderaan.
+
+  const loading = post.isLoading || !post.data;
+
+  /** De plaat zelf. Op breed vult hij de kolom, op smal de bladbreedte. */
+  const heroBlock = (fill: boolean) => (
+    <View
+      style={{
+        width: "100%",
+        height: fill ? "100%" : Math.round(windowHeight * 0.62),
+        backgroundColor: feed.post,
+        justifyContent: "flex-end",
+        // Zelfde naam als de tegel in de feed: de browser morpht het ene
+        // vlak naar het andere.
+        ...heroStyle,
+      }}
+    >
+      {post.data?.image_path && post.data.image_url ? (
+        <Image
+          source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
+          cachePolicy="disk"
+          style={{ position: "absolute", width: "100%", height: "100%" }}
+          // Naast het gesprek is de foto het onderwerp en niet de vulling
+          // van een vlak: hij moet hélemaal te zien zijn. Onder een gesprek
+          // is hij de kop van de pagina en mag hij bijsnijden.
+          contentFit={fill ? "contain" : "cover"}
+          transition={150}
+        />
+      ) : null}
+
+      {/* Op smal ligt de naam op de foto; op breed staat hij rechts. */}
+      {!fill && post.data ? (
+        <>
+          {post.data.image_url ? (
+            <View
+              pointerEvents="none"
+              style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+            >
+              <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.16)" }} />
+              <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.38)" }} />
+              <View style={{ height: 180, backgroundColor: "rgba(0,0,0,0.62)" }} />
+            </View>
+          ) : null}
+          <View style={{ padding: 20 }}>
+            {authorRow(false)}
+            {post.data.caption ? (
+              <Text
+                style={[
+                  post.data.image_path ? feedType.pullSmall : feedType.pull,
+                  { color: "#FFFFFF", marginTop: 16 },
+                ]}
+              >
+                {post.data.caption}
+              </Text>
+            ) : null}
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+
+  /** De bron-strook onder een link-vondst. */
+  const linkBlock = post.data?.link_url ? (
+    <Pressable
+      onPress={() =>
+        post.data?.link_url && require("expo-linking").openURL(post.data.link_url).catch(() => {})
+      }
+      style={{
+        borderTopWidth: FEED_BORDER,
+        borderBottomWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        backgroundColor: feed.panel,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>BRON</Text>
+        <Text style={[feedType.tile, { color: feed.ink, marginTop: 4 }]} numberOfLines={1}>
+          {(() => {
+            try {
+              return new URL(post.data!.link_url!).hostname.replace(/^www\./, "");
+            } catch {
+              return post.data!.link_url;
+            }
+          })()}
+        </Text>
+      </View>
+      <Text style={[feedType.label, { color: feed.ink }]}>Openen ↗</Text>
+    </Pressable>
+  ) : null;
+
+  /** Reacties — de lijst zelf, zonder omhulsel. */
+  const commentsBlock = (
+    <>
+      <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
+        Reacties {comments && comments.length > 0 ? `(${comments.length})` : ""}
+      </Text>
+
+      {comments === null ? (
+        <View className="bg-paper-soft  p-4 gap-3">
+          <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
+          <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
+        </View>
+      ) : comments.length === 0 ? (
+        <View className="bg-paper-soft  p-5">
+          <Text className="text-ink-soft text-sm leading-5">
+            Nog geen reacties. Stuur de eerste hieronder.
+          </Text>
+        </View>
+      ) : (
+        <View className="bg-paper-soft  overflow-hidden">
+          {comments.map((c, i) => (
+            <CommentRow
+              key={c.id}
+              comment={c}
+              isLast={i === comments.length - 1}
+              canDelete={canModerate || c.user_id === myUserId}
+              onDelete={() => onDeleteComment(c.id)}
+              onAvatarPress={() => c.author?.username && router.push(`/user/${c.author.username}`)}
+              onReply={() => {
+                const name = c.author?.username ?? c.author?.display_name ?? "reactie";
+                setReplyTo({ id: c.id, name });
+              }}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+
+  /** Alles wat onder de tekstregel hangt: fout, emoji's, antwoord-op. */
+  const composerBlock = (
+    <>
+      {commentError && (
+        <View className="bg-red-100 border border-red-300  mx-5 mb-2 px-4 py-3">
+          <Text className="text-red-800 text-sm font-semibold mb-1">Kon reactie niet plaatsen</Text>
+          <Text className="text-red-800 text-xs leading-5">{commentError}</Text>
+        </View>
+      )}
+
+      {emojiList && emojiList.length > 0 && (
+        <View className="px-3 pb-1">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
+          >
+            {emojiList.map(({ name, emoji }) => (
+              <Pressable
+                key={name}
+                onPress={() => applyEmoji(name, emoji)}
+                className="bg-paper  px-3 py-2 flex-row items-center gap-2"
+              >
+                <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                <Text className="text-ink-muted text-xs">:{name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {replyTo && (
+        <View className="flex-row items-center px-4 py-2 gap-3 border-t border-line-paper/60">
+          <View className="w-0.5 self-stretch bg-brand" />
+          <Text className="flex-1 text-ink-muted text-xs">
+            Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
+          </Text>
+          <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+            <Ionicons name="close" color={feed.inkDim} size={18} />
+          </Pressable>
+        </View>
+      )}
+
+      {showEmojiPicker && (
+        <View className="bg-paper-soft border-t border-line-paper" style={{ height: 200 }}>
+          <ScrollView
+            contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {POST_EMOJIS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                onPress={() => {
+                  setDraft((d) => d + emoji);
+                  inputRef.current?.focus();
+                }}
+                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ fontSize: 22 }}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <View className="px-3 py-3 border-t border-line bg-shell-soft">
+        <View className="flex-row items-end gap-2">
+          <Pressable
+            onPress={() => {
+              setShowEmojiPicker((v) => !v);
+              if (!showEmojiPicker) {
+                inputRef.current?.blur();
+              } else {
+                inputRef.current?.focus();
+              }
+            }}
+            className="w-11 h-11 bg-paper-warm items-center justify-center"
+          >
+            <Text style={{ fontSize: 20 }}>😊</Text>
+          </Pressable>
+          <View className="flex-1 bg-paper-light  border border-line-paper px-4 py-2 max-h-32">
+            <TextInput
+              ref={inputRef}
+              value={draft}
+              onChangeText={onDraftChange}
+              onKeyPress={onKeyPress}
+              onFocus={() => setShowEmojiPicker(false)}
+              placeholder="Schrijf een reactie…"
+              placeholderTextColor={feed.inkDim}
+              multiline
+              maxLength={500}
+              className="text-ink text-base"
+              style={{ minHeight: 24, ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {}) }}
+            />
+          </View>
+          <Pressable
+            onPress={onSend}
+            disabled={sending || !draft.trim()}
+            className={`w-11 h-11 items-center justify-center ${
+              sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
+            }`}
+          >
+            <Ionicons
+              name="arrow-up"
+              color={sending || !draft.trim() ? feed.inkDim : feed.text}
+              size={20}
+            />
+          </Pressable>
+        </View>
+      </View>
+    </>
+  );
+
+  const shell = (children: React.ReactNode) => (
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
       {deleteError && (
         <View className="bg-red-100 border border-red-300  mx-5 mt-2 px-4 py-3">
           <Text className="text-red-800 text-sm">{deleteError}</Text>
@@ -259,25 +551,90 @@ export default function PostDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        {/* Detailpagina: dezelfde kop, maar met een terug-knop in plaats van
-            de tabstrip. Zo voelt dit als een eigen pagina binnen dezelfde
-            site, en niet als een zesde tabblad. */}
-        <PageScroll
-          wide={wide}
+        {children}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+
+  // ---------------------------------------------------------------
+  // BREED — de foto links, het gesprek ernaast
+  // ---------------------------------------------------------------
+  //
+  // Onder de foto is een gesprek een voetnoot: je moet erheen scrollen en
+  // de foto is dan weg. Ernáást staat het naast het onderwerp waar het
+  // over gaat, en blijft de foto in beeld terwijl je meeleest en typt.
+  // De pagina zelf scrolt hier niet; alleen de kolom met reacties.
+  if (wide) {
+    return shell(
+      <View style={{ flex: 1 }}>
+        <AppChrome
+          wide
           progress={chrome.progress}
-          onScroll={chrome.onScroll}
-          scrollEventThrottle={chrome.scrollEventThrottle}
           compact
           backLabel="Terug naar de feed"
           onBack={() => safeBack(router, "/(app)/feed")}
           actionLabel={canModerate ? "Opties" : undefined}
           onAction={canModerate ? () => setMenuOpen(true) : undefined}
-          contentStyle={{ padding: 20, paddingBottom: 40 }}
-          gutter={false}
-        >
-          <View>
-          {/* Post card */}
-          {post.isLoading || !post.data ? (
+        />
+
+        <View style={{ flex: 1, flexDirection: "row", gap: 20, padding: 20, paddingTop: 0 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            {loading ? (
+              <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
+            ) : (
+              heroBlock(true)
+            )}
+          </View>
+
+          <View style={{ width: conversationWidth, backgroundColor: feed.lav }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 12 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {post.data ? (
+                <View className="bg-paper-soft p-4">
+                  {authorRow(true)}
+                  {post.data.caption ? (
+                    <Text style={[feedType.pullSmall, { color: feed.ink, marginTop: 14 }]}>
+                      {post.data.caption}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {linkBlock}
+              <View style={{ marginTop: 12 }}>
+                <PostReactions postId={String(id)} tone="page" />
+              </View>
+              {commentsBlock}
+            </ScrollView>
+            {composerBlock}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------
+  // SMAL — de foto bovenaan, het gesprek eronder
+  // ---------------------------------------------------------------
+  return shell(
+    <>
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
+        backLabel="Terug naar de feed"
+        onBack={() => safeBack(router, "/(app)/feed")}
+        actionLabel={canModerate ? "Opties" : undefined}
+        onAction={canModerate ? () => setMenuOpen(true) : undefined}
+        contentStyle={{ padding: 20, paddingBottom: 40 }}
+        gutter={false}
+      >
+        <View>
+          {loading ? (
             <View className="bg-paper-soft  overflow-hidden">
               <View className="flex-row items-center px-4 py-3">
                 <Skeleton className="w-11 h-11 bg-paper-warm" />
@@ -291,272 +648,25 @@ export default function PostDetailScreen() {
             </View>
           ) : (
             <View style={{ marginHorizontal: -20, marginTop: -20 }}>
-              {/* De foto is het vlak, niet de inhoud van een kaartje: volle
-                  breedte, en de deler + toelichting staan eroverheen. Zonder
-                  foto valt hij terug op een plumvlak, zodat de bladspiegel
-                  hetzelfde blijft. */}
-              <View
-                style={{
-                  width: "100%",
-                  // Het doel van de morph: een plaat over de volle breedte,
-                  // bijna schermhoog. De tegel in de feed is klein en staat
-                  // ergens in het raster; die groeit hier naartoe. Zonder
-                  // deze maat is er niets om naartoe te groeien en leest de
-                  // overgang als een gewone paginawissel.
-                  height: post.data.image_url
-                    ? Math.round(windowHeight * (wide ? 0.82 : 0.62))
-                    : undefined,
-                  backgroundColor: feed.post,
-                  justifyContent: "flex-end",
-                  // Zelfde naam als de tegel in de feed: de browser morpht
-                  // het ene vlak naar het andere.
-                  ...heroStyle,
-                }}
-              >
-                {post.data.image_path && post.data.image_url ? (
-                  <Image
-                    source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
-                    cachePolicy="disk"
-                    style={{ position: "absolute", width: "100%", height: "100%" }}
-                    contentFit="cover"
-                    transition={150}
-                  />
-                ) : null}
-
-                {/* Scrim — drie gestapelde vlakken i.p.v. een gradient. */}
-                {post.data.image_url ? (
-                  <View
-                    pointerEvents="none"
-                    style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
-                  >
-                    <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.16)" }} />
-                    <View style={{ height: 60, backgroundColor: "rgba(0,0,0,0.38)" }} />
-                    <View style={{ height: 180, backgroundColor: "rgba(0,0,0,0.62)" }} />
-                  </View>
-                ) : null}
-
-                <View style={{ padding: 20 }}>
-                  <Pressable
-                    onPress={() =>
-                      post.data?.author?.username &&
-                      router.push(`/user/${post.data.author.username}`)
-                    }
-                    className="flex-row items-center"
-                  >
-                    <Avatar
-                      name={post.data.author?.display_name ?? post.data.author?.username}
-                      size="md"
-                      tint="warm"
-                    />
-                    <View className="flex-1 ml-3">
-                      <Text style={[feedType.label, { fontSize: 15, fontWeight: "700", color: "#FFFFFF" }]}>
-                        {post.data.author?.display_name ?? post.data.author?.username ?? "Onbekend"}
-                      </Text>
-                      <Text style={[feedType.label, { color: "rgba(255,255,255,0.7)" }]}>
-                        @{post.data.author?.username ?? "?"}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" color="rgba(255,255,255,0.7)" size={18} />
-                  </Pressable>
-
-                  {post.data.caption ? (
-                    <Text
-                      style={[
-                        post.data.image_path ? feedType.pullSmall : feedType.pull,
-                        { color: "#FFFFFF", marginTop: 16 },
-                      ]}
-                    >
-                      {post.data.caption}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-
-              {post.data.link_url ? (
-                <Pressable
-                  onPress={() =>
-                    post.data?.link_url &&
-                    require("expo-linking").openURL(post.data.link_url).catch(() => {})
-                  }
-                  style={{
-                    borderTopWidth: FEED_BORDER,
-                    borderBottomWidth: FEED_BORDER,
-                    borderColor: feed.ink,
-                    backgroundColor: feed.panel,
-                    paddingHorizontal: 20,
-                    paddingVertical: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-                      BRON
-                    </Text>
-                    <Text
-                      style={[feedType.tile, { color: feed.ink, marginTop: 4 }]}
-                      numberOfLines={1}
-                    >
-                      {(() => { try { return new URL(post.data.link_url).hostname.replace(/^www\./, ""); } catch { return post.data.link_url; } })()}
-                    </Text>
-                  </View>
-                  <Text style={[feedType.label, { color: feed.ink }]}>Openen ↗</Text>
-                </Pressable>
-              ) : null}
+              {heroBlock(false)}
+              {linkBlock}
             </View>
           )}
 
-          {/* Comments */}
-          <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
-            Reacties {comments && comments.length > 0 ? `(${comments.length})` : ""}
-          </Text>
-
-          {comments === null ? (
-            <View className="bg-paper-soft  p-4 gap-3">
-              <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
-              <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
-            </View>
-          ) : comments.length === 0 ? (
-            <View className="bg-paper-soft  p-5">
-              <Text className="text-ink-soft text-sm leading-5">Nog geen reacties. Stuur de eerste hieronder.</Text>
-            </View>
-          ) : (
-            <View className="bg-paper-soft  overflow-hidden">
-              {comments.map((c, i) => (
-                <CommentRow
-                  key={c.id}
-                  comment={c}
-                  isLast={i === comments.length - 1}
-                  canDelete={canModerate || c.user_id === myUserId}
-                  onDelete={() => onDeleteComment(c.id)}
-                  onAvatarPress={() => c.author?.username && router.push(`/user/${c.author.username}`)}
-                  onReply={() => {
-                    const name = c.author?.username ?? c.author?.display_name ?? "reactie";
-                    setReplyTo({ id: c.id, name });
-                  }}
-                />
-              ))}
-            </View>
-          )}
+          <View style={{ marginTop: 14 }}>
+            <PostReactions postId={String(id)} tone="page" />
           </View>
-        </PageScroll>
 
-        {commentError && (
-          <View className="bg-red-100 border border-red-300  mx-5 mb-2 px-4 py-3">
-            <Text className="text-red-800 text-sm font-semibold mb-1">Kon reactie niet plaatsen</Text>
-            <Text className="text-red-800 text-xs leading-5">{commentError}</Text>
-          </View>
-        )}
-
-        {/* Emoji autocomplete */}
-        {emojiList && emojiList.length > 0 && (
-          <View className="px-3 pb-1">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
-            >
-              {emojiList.map(({ name, emoji }) => (
-                <Pressable
-                  key={name}
-                  onPress={() => applyEmoji(name, emoji)}
-                  className="bg-paper  px-3 py-2 flex-row items-center gap-2"
-                >
-                  <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                  <Text className="text-ink-muted text-xs">:{name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Reply bar */}
-        {replyTo && (
-          <View className="flex-row items-center px-4 py-2 gap-3 border-t border-line-paper/60">
-            <View className="w-0.5 self-stretch bg-brand" />
-            <Text className="flex-1 text-ink-muted text-xs">
-              Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
-            </Text>
-            <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
-              <Ionicons name="close" color={feed.inkDim} size={18} />
-            </Pressable>
-          </View>
-        )}
-
-        {/* Emoji picker */}
-        {showEmojiPicker && (
-          <View className="bg-paper-soft border-t border-line-paper" style={{ height: 200 }}>
-            <ScrollView
-              contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 8 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {POST_EMOJIS.map((emoji) => (
-                <Pressable
-                  key={emoji}
-                  onPress={() => {
-                    setDraft((d) => d + emoji);
-                    inputRef.current?.focus();
-                  }}
-                  style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-                >
-                  <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Composer */}
-        <View className="px-3 py-3 border-t border-line bg-shell-soft">
-          <View className="flex-row items-end gap-2">
-            <Pressable
-              onPress={() => {
-                setShowEmojiPicker((v) => !v);
-                if (!showEmojiPicker) {
-                  inputRef.current?.blur();
-                } else {
-                  inputRef.current?.focus();
-                }
-              }}
-              className="w-11 h-11 bg-paper-warm items-center justify-center"
-            >
-              <Text style={{ fontSize: 20 }}>😊</Text>
-            </Pressable>
-            <View className="flex-1 bg-paper-light  border border-line-paper px-4 py-2 max-h-32">
-              <TextInput
-                ref={inputRef}
-                value={draft}
-                onChangeText={onDraftChange}
-                onKeyPress={onKeyPress}
-                onFocus={() => setShowEmojiPicker(false)}
-                placeholder="Schrijf een reactie…"
-                placeholderTextColor={feed.inkDim}
-                multiline
-                maxLength={500}
-                className="text-ink text-base"
-                style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
-              />
-            </View>
-            <Pressable
-              onPress={onSend}
-              disabled={sending || !draft.trim()}
-              className={`w-11 h-11 items-center justify-center ${
-                sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
-              }`}
-            >
-              <Ionicons
-                name="arrow-up"
-                color={sending || !draft.trim() ? feed.inkDim : feed.text}
-                size={20}
-              />
-            </Pressable>
-          </View>
+          {commentsBlock}
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </PageScroll>
+
+      {composerBlock}
+    </>
   );
 }
+
+
 
 function CommentRow({
   comment,
