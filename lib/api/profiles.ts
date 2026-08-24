@@ -7,6 +7,8 @@ export type Profile = {
   avatar_url: string | null;
   identity_pubkey: string;
   last_seen_at?: string | null;
+  /** 0044 — vrije tekst bovenaan het profiel. */
+  bio?: string | null;
 };
 
 export const USERNAME_REGEX = /^[a-z0-9._]+$/;
@@ -33,7 +35,7 @@ export async function searchProfilesByUsername(
 
   let req = supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .ilike("username", `${q}%`)
     .limit(20);
 
@@ -58,7 +60,7 @@ export async function searchProfilesForMention(
   limit = 8
 ): Promise<Profile[]> {
   const q = query.trim().toLowerCase();
-  const cols = "id, username, display_name, avatar_url, identity_pubkey, last_seen_at";
+  const cols = "id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio";
 
   let req = supabase.from("profiles").select(cols).limit(limit);
   if (q) req = req.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
@@ -76,7 +78,7 @@ export async function getProfilesByUsernames(usernames: string[]): Promise<Profi
   if (unique.length === 0) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .in("username", unique);
   if (error) return [];
   return data ?? [];
@@ -91,7 +93,7 @@ export function mentionedUsernames(text: string | null | undefined): string[] {
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -103,7 +105,7 @@ export async function getProfileByUsername(
 ): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .eq("username", username.toLowerCase())
     .maybeSingle();
   if (error) throw error;
@@ -114,7 +116,7 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
   if (userIds.length === 0) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .in("id", userIds);
   if (error) throw error;
   return data ?? [];
@@ -146,7 +148,12 @@ export async function uploadAvatar(
 
 export async function updateMyProfile(
   userId: string,
-  changes: { username?: string; display_name?: string | null; avatar_url?: string | null }
+  changes: {
+    username?: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+    bio?: string | null;
+  }
 ): Promise<Profile> {
   // Niet `Record<string, unknown>`: dat is te breed voor de Update-vorm van
   // de tabel, waardoor `.update(patch)` niet meer typecheckt.
@@ -154,6 +161,7 @@ export async function updateMyProfile(
     username?: string;
     display_name?: string | null;
     avatar_url?: string | null;
+    bio?: string | null;
   } = {};
   if (changes.username !== undefined) {
     const u = changes.username.trim().toLowerCase();
@@ -168,12 +176,16 @@ export async function updateMyProfile(
   if (changes.avatar_url !== undefined) {
     patch.avatar_url = changes.avatar_url;
   }
+  if (changes.bio !== undefined) {
+    const b = changes.bio?.trim();
+    patch.bio = b && b.length > 0 ? b : null;
+  }
 
   const { data, error } = await supabase
     .from("profiles")
     .update(patch)
     .eq("id", userId)
-    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio")
     .single();
 
   if (error) {

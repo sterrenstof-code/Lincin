@@ -69,6 +69,50 @@ export async function listFeedActivityEvents(
   }));
 }
 
+/**
+ * Alles wat één persoon gedaan heeft, nieuwste eerst en per bladzijde.
+ *
+ * Gepagineerd en niet in één keer: wie de app een jaar gebruikt heeft,
+ * heeft honderden regels, en die allemaal ophalen om er twintig te tonen
+ * is werk waar niemand om vroeg. `hasMore` komt uit één rij extra ophalen
+ * dan je toont — goedkoper dan een aparte telling.
+ */
+export async function listActivityByActor(
+  actorId: string,
+  opts: { limit?: number; offset?: number } = {}
+): Promise<{ events: ActivityEventWithActor[]; hasMore: boolean }> {
+  const limit = opts.limit ?? 20;
+  const offset = opts.offset ?? 0;
+
+  const { data, error } = await supabase
+    .from("activity_events")
+    .select("id, actor_id, kind, post_id, event_id, friend_id, created_at")
+    .eq("actor_id", actorId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit); // één extra: die verklapt of er meer is
+  if (error) throw error;
+
+  const all = (data ?? []) as ActivityEventRow[];
+  const hasMore = all.length > limit;
+  const rows = hasMore ? all.slice(0, limit) : all;
+  if (rows.length === 0) return { events: [], hasMore: false };
+
+  const friendIds = Array.from(
+    new Set(rows.map((r) => r.friend_id).filter((id): id is string => !!id))
+  );
+  const profiles = await getProfiles(Array.from(new Set([actorId, ...friendIds])));
+  const byId = new Map(profiles.map((prof) => [prof.id, prof]));
+
+  return {
+    events: rows.map((r) => ({
+      ...r,
+      actor: byId.get(r.actor_id) ?? null,
+      friend_profile: r.friend_id ? byId.get(r.friend_id) ?? null : null,
+    })),
+    hasMore,
+  };
+}
+
 /** Haal posts op van precies een jaar geleden (± 1 dag) voor "On this day". */
 export async function listMemoryPosts(myUserId: string) {
   const oneYearAgo = new Date();

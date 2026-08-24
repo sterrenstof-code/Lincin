@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
+import { ActivityHistory } from "@/components/ActivityHistory";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
@@ -196,6 +197,15 @@ export default function ProfileScreen() {
           <Text className="text-ink-muted text-xs mt-1">
             {session?.user.email}
           </Text>
+          {profile.data?.bio ? (
+            <Text className="text-ink-soft text-sm leading-5 text-center mt-3 px-6" style={{ maxWidth: 460 }}>
+              {profile.data.bio}
+            </Text>
+          ) : (
+            <Pressable onPress={() => router.push("/profile-edit")} className="mt-3">
+              <Text className="text-ink-muted text-xs underline">Voeg een bio toe</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* ---- Link up ---- */}
@@ -427,6 +437,13 @@ export default function ProfileScreen() {
         </View>
 
         </>}
+
+        {/* ---- Alles wat je gedaan hebt ---- */}
+        <ActivityHistory
+          userId={myUserId}
+          title="Jouw activiteit"
+          emptyLabel="Zodra je iets deelt of ergens aan meedoet, staat het hier."
+        />
 
         {/* ---- Sign out ---- */}
         <Pressable

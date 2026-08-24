@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ActivityHistory } from "@/components/ActivityHistory";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
@@ -188,7 +189,7 @@ export default function UserProfileScreen() {
               >
                 PROFIEL
               </Text>
-              <Avatar name={heroName} size="hero" tint="warm" />
+              <Avatar name={heroName} avatarUrl={profile.data?.avatar_url} size="hero" tint="warm" />
               {profile.data?.display_name ? (
                 <Text
                   style={[
@@ -203,6 +204,16 @@ export default function UserProfileScreen() {
               <Text style={[feedType.label, { fontSize: 14, color: feed.textDim, marginTop: 6 }]}>
                 @{profile.data?.username ?? username}
               </Text>
+              {profile.data?.bio ? (
+                <Text
+                  style={[
+                    feedType.body,
+                    { color: feed.textDim, marginTop: 14, textAlign: "center", maxWidth: 460 },
+                  ]}
+                >
+                  {profile.data.bio}
+                </Text>
+              ) : null}
 
               <View className="w-full mt-5">
                 <ActionButton
@@ -295,6 +306,15 @@ export default function UserProfileScreen() {
             )}
           </View>
         )}
+
+        {/* Activiteit — wat deze persoon gedaan heeft, per bladzijde. */}
+        {relation.kind !== "not-found" && profile.data?.id ? (
+          <ActivityHistory
+            userId={profile.data.id}
+            title="Activiteit"
+            emptyLabel="Nog geen activiteit om te tonen."
+          />
+        ) : null}
       </PageScroll>
     </SafeAreaView>
   );

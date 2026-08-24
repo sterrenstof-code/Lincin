@@ -37,6 +37,7 @@ export default function ProfileEditScreen() {
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,7 @@ export default function ProfileEditScreen() {
       if (p) {
         setUsername(p.username);
         setDisplayName(p.display_name ?? "");
+        setBio(p.bio ?? "");
         setAvatarUrl(p.avatar_url);
       }
       setLoading(false);
@@ -92,6 +94,7 @@ export default function ProfileEditScreen() {
       await updateMyProfile(myUserId, {
         username: username.toLowerCase(),
         display_name: displayName,
+        bio: bio.trim() ? bio.trim() : null,
         ...(newAvatarUrl !== undefined && { avatar_url: newAvatarUrl }),
       });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
@@ -215,6 +218,26 @@ export default function ProfileEditScreen() {
               />
               <Text className="text-ink-muted text-xs mt-2">
                 Dit zien je vrienden in chats en op je posts.
+              </Text>
+
+              <View className="h-6" />
+
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+                Bio (optioneel)
+              </Text>
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Waar ben je mee bezig?"
+                placeholderTextColor={feed.inkDim}
+                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
+                multiline
+                numberOfLines={3}
+                maxLength={280}
+                style={{ minHeight: 88, textAlignVertical: "top" }}
+              />
+              <Text className="text-ink-muted text-xs mt-2">
+                Twee regels over jezelf, bovenaan je profiel. {280 - bio.length} tekens over.
               </Text>
             </View>
 
