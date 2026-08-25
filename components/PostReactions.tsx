@@ -39,28 +39,28 @@ function paletteFor(tone: Tone): Palette {
         strong: feed.ink,
         onStrong: feed.text,
         dim: feed.inkDim,
-        fill: color("ink", 0.28),
+        fill: color("ink", "pillSoft"),
       };
     case "post":
       return {
         strong: feed.text,
         onStrong: feed.post,
         dim: feed.textDim,
-        fill: color("postText", 0.35),
+        fill: color("postText", "pill"),
       };
     case "dark":
       return {
         strong: page.DEFAULT,
         onStrong: feed.ink,
         dim: feed.inkDim,
-        fill: color("page", 0.35),
+        fill: color("page", "pill"),
       };
     default:
       return {
         strong: carbon.DEFAULT,
         onStrong: page.DEFAULT,
         dim: carbon.muted,
-        fill: color("ink", 0.28),
+        fill: color("ink", "pillSoft"),
       };
   }
 }

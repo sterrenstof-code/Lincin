@@ -10,6 +10,8 @@
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
+import { propVarCss } from "@/lib/design/theme";
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="nl">
@@ -235,6 +237,27 @@ html, body {
 `,
           }}
         />
+
+        {/* ---------------------------------------------------------------
+            De kleurvariabelen voor kleur-*props*.
+
+            `global.css` levert `--c-ink` (het triplet) en daar leest élke
+            Tailwind-klasse uit. Een kleur die als prop in een style-object
+            staat kan daar niet direct bij: react-native-web haalt zulke
+            waarden door `normalizeColor`, en dat laat alleen een waarde
+            ongemoeid die letterlijk met `var(` begint. `rgb(var(--c-ink)
+            / 1)` sneuvelt daar zonder één waarschuwing — de stijl valt
+            gewoon weg, en dan staat er een venster zonder vulling.
+
+            Deze laag lost dat op: `--p-ink` ís die uitdrukking, en een
+            prop leest `var(--p-ink)`. Ze verwijzen naar `--c-*`, dus ze
+            schuiven nog steeds mee met de stand en hoeven niet per stand
+            herhaald te worden.
+
+            Zie `propVarName` in lib/design/theme.ts voor het volledige
+            verhaal. Web-only: native heeft geen variabelen nodig.
+            --------------------------------------------------------------- */}
+        <style dangerouslySetInnerHTML={{ __html: propVarCss() }} />
 
         {/* ScrollViewStyleReset verwijdert de default body-scroll-styling. */}
         <ScrollViewStyleReset />

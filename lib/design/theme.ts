@@ -91,10 +91,38 @@ export type Token =
   | "brand";
 
 /** Doorzichtigheden die per stand verschillen. */
-export type AlphaToken = "postDim" | "postRule" | "linePaper" | "inkDim" | "onDark";
+export type AlphaToken =
+  | "postDim"
+  | "postRule"
+  | "linePaper"
+  | "inkDim"
+  | "onDark"
+  /** De vulling van een reactiepil. */
+  | "pill"
+  | "pillSoft";
 
 type Palette = Record<Token, string>;
 type Alphas = Record<AlphaToken, number>;
+
+/**
+ * Alle tokennamen, in volgorde. `app/+html.tsx` loopt hier doorheen om de
+ * `--p-*`-variabelen uit te schrijven; zie `color()` onderaan voor waarom
+ * die bestaan.
+ */
+export const TOKENS: Token[] = [
+  "page", "panel", "paperWarm", "paperLight",
+  "shell", "shellSoft",
+  "desk", "deskInk", "deskSoft", "deskMuted", "deskPanel",
+  "ink", "inkSoft", "inkMuted",
+  "cream", "creamSoft", "creamMuted",
+  "post", "postText", "postFill",
+  "flame", "flameDeep", "announce", "announceDeep",
+  "teal", "gold", "brand",
+];
+
+export const ALPHA_TOKENS: AlphaToken[] = [
+  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft",
+];
 
 /**
  * DONKER — het bestaande systeem, hex voor hex.
@@ -139,6 +167,8 @@ const DARK_ALPHA: Alphas = {
   linePaper: 0.25,
   inkDim: 0.58,
   onDark: 0.22,
+  pill: 0.35,
+  pillSoft: 0.28,
 };
 
 /**
@@ -198,6 +228,8 @@ const LIGHT_ALPHA: Alphas = {
   linePaper: 0.2,
   inkDim: 0.58,
   onDark: 0.22,
+  pill: 0.35,
+  pillSoft: 0.28,
 };
 
 export const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };
@@ -210,6 +242,33 @@ export function varName(token: Token): string {
 
 export function alphaVarName(token: AlphaToken): string {
   return `--a-${token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
+}
+
+/**
+ * De naam van de kant-en-klare kleurvariabele voor een prop.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT EEN APARTE VARIABELE IS
+ * ---------------------------------------------------------------
+ * react-native-web haalt élke kleur-prop door `normalizeColor`, en dat
+ * laat maar één soort CSS-uitdrukking ongemoeid: een waarde die letterlijk
+ * met `var(` begínt (zie `modules/isWebColor`). Alles anders gaat door
+ * `processColor`, die van `rgb(var(--c-ink) / 1)` niets kan maken en
+ * `undefined` teruggeeft — waarna de stijl stílletjes wegvalt. Geen
+ * waarschuwing, geen fout; een venster zonder vulling.
+ *
+ * Vandaar deze tweede laag: `--p-ink` is gedefinieerd áls
+ * `rgb(var(--c-ink) / 1)` en een prop leest `var(--p-ink)`. Dat begint met
+ * `var(`, dus het komt er ongeschonden doorheen, en omdat de variabele
+ * naar `--c-ink` verwijst schuift hij nog steeds mee met de stand.
+ *
+ * De definities staan in `app/+html.tsx` — web-only, want native heeft
+ * ze niet nodig.
+ */
+export function propVarName(token: Token, alpha?: AlphaToken): string {
+  const base = token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+  if (!alpha) return `--p-${base}`;
+  return `--p-${base}--${alpha.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
 }
 
 // ===============================================================
@@ -371,18 +430,30 @@ export function loadStoredPreference() {
  * geldt. Daar is de wissel dus wél een hertekening — zie `ThemeGate` in
  * `app/_layout.tsx`.
  */
-export function color(token: Token, alpha?: number | AlphaToken): string {
-  if (isWeb) {
-    const a =
-      alpha === undefined
-        ? "1"
-        : typeof alpha === "number"
-          ? String(alpha)
-          : `var(${alphaVarName(alpha)})`;
-    return `rgb(var(${varName(token)}) / ${a})`;
-  }
-  const triplet = PALETTE[scheme][token];
-  const a = alpha === undefined ? 1 : typeof alpha === "number" ? alpha : ALPHA[scheme][alpha];
-  const [r, g, b] = triplet.split(" ");
+export function color(token: Token, alpha?: AlphaToken): string {
+  if (isWeb) return `var(${propVarName(token, alpha)})`;
+  const [r, g, b] = PALETTE[scheme][token].split(" ");
+  const a = alpha === undefined ? 1 : ALPHA[scheme][alpha];
   return a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/**
+ * De `--p-*`-definities als één stuk CSS. Zie `propVarName` voor het
+ * waarom; `app/+html.tsx` zet dit in de <head>.
+ *
+ * Ze staan bewust in `:root` en worden niet herhaald onder `.dark:root`:
+ * ze verwijzen naar `--c-*`, en díe wisselen. Eén lijst dus, geen tweede
+ * om uit de pas te laten lopen.
+ */
+export function propVarCss(): string {
+  const lines: string[] = [];
+  for (const token of TOKENS) {
+    lines.push(`  ${propVarName(token)}: rgb(var(${varName(token)}) / 1);`);
+    for (const a of ALPHA_TOKENS) {
+      lines.push(
+        `  ${propVarName(token, a)}: rgb(var(${varName(token)}) / var(${alphaVarName(a)}));`,
+      );
+    }
+  }
+  return `:root {\n${lines.join("\n")}\n}`;
 }
