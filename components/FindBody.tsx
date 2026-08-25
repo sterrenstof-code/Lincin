@@ -1012,7 +1012,7 @@ function CoverBand({
       <View
         style={{
           minHeight: 200,
-          backgroundColor: "#3A2A46",
+          backgroundColor: feed.postFill,
           ...useHeroTag(post.id),
           ...(wide
             ? { flex: 1, borderLeftWidth: FEED_BORDER, borderLeftColor: feed.ink }

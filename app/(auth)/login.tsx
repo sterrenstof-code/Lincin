@@ -367,7 +367,7 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <Text className="text-xs text-cream-muted mt-8 text-center">
+          <Text className="text-xs text-ink-muted mt-8 text-center">
             End-to-end versleuteld. Lincin's servers zien enkel ciphertext.
           </Text>
         </View>

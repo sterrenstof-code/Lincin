@@ -173,7 +173,7 @@ export function EventCard({
       {showImage ? (
         <View
           style={{
-            backgroundColor: "#3A2A46",
+            backgroundColor: feed.postFill,
             minHeight: 200,
             ...heroStyle,
             ...(twoColumn

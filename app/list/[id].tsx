@@ -25,7 +25,7 @@ import {
   type ListItem,
 } from "@/lib/api/shared-lists";
 import { supabase } from "@/lib/supabase/client";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -81,8 +81,8 @@ export default function ListDetailScreen() {
 
   if (loading || !list) {
     return (
-      <SafeAreaView className="flex-1 bg-shell items-center justify-center">
-        <ActivityIndicator color={feed.text} />
+      <SafeAreaView className="flex-1 bg-desk items-center justify-center">
+        <ActivityIndicator color={desk.ink} />
       </SafeAreaView>
     );
   }
@@ -96,7 +96,7 @@ export default function ListDetailScreen() {
   const checked = list.items.filter((i) => i.checked);
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
       <ScreenContainer>
         <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
@@ -104,18 +104,18 @@ export default function ListDetailScreen() {
             {/* Header */}
             <View className="flex-row items-center mb-4 gap-3">
               <Pressable onPress={() => router.back()} className="w-9 h-9 items-center justify-center">
-                <Ionicons name="arrow-back" color={feed.text} size={22} />
+                <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text style={{ fontSize: 28 }}>{list.emoji}</Text>
-              <Text className="text-cream font-bold text-xl flex-1" numberOfLines={2}>{list.title}</Text>
+              <Text className="text-desk-ink font-bold text-xl flex-1" numberOfLines={2}>{list.title}</Text>
             </View>
 
             {/* Progress */}
             {total > 0 && (
               <View className="mb-4">
                 <View className="flex-row items-center justify-between mb-1.5">
-                  <Text className="text-cream-soft text-xs">{done} van {total} gedaan</Text>
-                  <Text className="text-cream-soft text-xs font-bold">{pct}%</Text>
+                  <Text className="text-desk-soft text-xs">{done} van {total} gedaan</Text>
+                  <Text className="text-desk-soft text-xs font-bold">{pct}%</Text>
                 </View>
                 <View className="h-2 bg-paper overflow-hidden">
                   <View className="h-full bg-teal-500" style={{ width: `${pct}%` }} />
@@ -151,7 +151,7 @@ export default function ListDetailScreen() {
           </ScrollView>
 
           {/* Add item bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-shell border-t border-line px-4 py-3 flex-row items-center gap-3">
+          <View className="absolute bottom-0 left-0 right-0 bg-desk border-t border-line px-4 py-3 flex-row items-center gap-3">
             <TextInput
               ref={inputRef}
               value={draft}
@@ -168,7 +168,7 @@ export default function ListDetailScreen() {
               disabled={!draft.trim() || adding}
               className={`w-10 h-10 items-center justify-center ${draft.trim() ? "bg-flame" : "bg-paper-soft"}`}
             >
-              {adding ? <ActivityIndicator size="small" color={feed.text} /> : <Ionicons name="add" color={draft.trim() ? feed.text : feed.inkDim} size={20} />}
+              {adding ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} /> : <Ionicons name="add" color={draft.trim() ? creamOnDark.DEFAULT : feed.inkDim} size={20} />}
             </Pressable>
           </View>
         </KeyboardAvoidingView>

@@ -98,7 +98,7 @@ export default function GroupAddMembersScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
@@ -107,19 +107,19 @@ export default function GroupAddMembersScreen() {
         >
           <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
-        <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+        <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
           Leden toevoegen
         </Text>
         <Pressable
           onPress={onSubmit}
           disabled={!canSubmit}
           className={` px-4 py-2 ${
-            canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
+            canSubmit ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
           }`}
         >
           <Text
             className={`font-semibold ${
-              canSubmit ? "text-ink" : "text-cream-muted"
+              canSubmit ? "text-desk" : "text-desk-muted"
             }`}
           >
             {submitting ? "Bezig…" : "Voeg toe"}
@@ -144,10 +144,10 @@ export default function GroupAddMembersScreen() {
 
           <View className="mt-5">
             <View className="flex-row items-end justify-between mb-3 px-1">
-              <Text className="text-xs uppercase tracking-wider text-cream-muted">
+              <Text className="text-xs uppercase tracking-wider text-desk-muted">
                 Jouw vrienden
               </Text>
-              <Text className="text-cream-soft text-xs">
+              <Text className="text-desk-soft text-xs">
                 {selected.size} geselecteerd
               </Text>
             </View>

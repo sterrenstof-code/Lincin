@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { downloadEncryptedAttachment, type AttachmentInfo } from "@/lib/api/messages";
 import { base64ToBytes } from "@/lib/crypto/base64";
 import { bytesToDisplayUri, decryptFileBytes } from "@/lib/crypto/file";
-import { feed, space } from "@/lib/design/type";
+import { creamOnDark, feed, space } from "@/lib/design/type";
 
 /**
  * Eén gedeeld beeld uit een gesprek, klein.
@@ -128,7 +128,7 @@ export function ChatMediaThumb({
               backgroundColor: "rgba(11,10,12,0.6)",
             }}
           >
-            <Ionicons name="close" color={feed.text} size={20} />
+            <Ionicons name="close" color={creamOnDark.DEFAULT} size={20} />
           </View>
         </Pressable>
       </Modal>

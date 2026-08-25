@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/lib/auth/provider";
 import { contributeToEvent } from "@/lib/api/events";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, feed } from "@/lib/design/type";
 
 /**
  * Full-screen camera met paper-cream shutter controls. Tap shutter →
@@ -96,7 +96,7 @@ export default function EventCameraScreen() {
   if (!permission) {
     return (
       <View className="flex-1 bg-shell items-center justify-center">
-        <ActivityIndicator color={feed.text} />
+        <ActivityIndicator color={creamOnDark.DEFAULT} />
       </View>
     );
   }
@@ -167,7 +167,7 @@ export default function EventCameraScreen() {
             onPress={() => router.back()}
             className="w-11 h-11 bg-shell/70 items-center justify-center"
           >
-            <Ionicons name="close" color={feed.text} size={22} />
+            <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
           </Pressable>
           <View className="flex-row gap-2">
             <Pressable
@@ -176,7 +176,7 @@ export default function EventCameraScreen() {
             >
               <Ionicons
                 name={flash === "on" ? "flash" : "flash-off"}
-                color={feed.text}
+                color={creamOnDark.DEFAULT}
                 size={20}
               />
             </Pressable>
@@ -184,7 +184,7 @@ export default function EventCameraScreen() {
               onPress={flipCamera}
               className="w-11 h-11 bg-shell/70 items-center justify-center"
             >
-              <Ionicons name="camera-reverse-outline" color={feed.text} size={22} />
+              <Ionicons name="camera-reverse-outline" color={creamOnDark.DEFAULT} size={22} />
             </Pressable>
           </View>
         </View>
@@ -259,7 +259,7 @@ export default function EventCameraScreen() {
                 disabled={sending}
                 className="w-11 h-11 bg-shell/70 items-center justify-center"
               >
-                <Ionicons name="close" color={feed.text} size={22} />
+                <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
               </Pressable>
             </View>
           </SafeAreaView>

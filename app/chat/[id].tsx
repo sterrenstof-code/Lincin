@@ -91,7 +91,7 @@ import {
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { CONTROL_H, feed, FEED_BORDER, feedType, flame, flameDeep, space } from "@/lib/design/type";
+import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, space } from "@/lib/design/type";
 
 /**
  * De leesmaat van een gesprek.
@@ -1291,7 +1291,7 @@ export default function ChatDetail() {
                 elevation: 4,
               }}
             >
-              <Ionicons name="chevron-down" color={feed.text} size={20} />
+              <Ionicons name="chevron-down" color={creamOnDark.DEFAULT} size={20} />
             </Pressable>
           )}
 
@@ -1322,7 +1322,7 @@ export default function ChatDetail() {
                     {replyTo.senderName.toUpperCase()}
                   </Text>
                   <Text
-                    style={[feedType.label, { color: feed.textDim, marginTop: 3 }]}
+                    style={[feedType.label, { color: creamOnDark.muted, marginTop: 3 }]}
                     numberOfLines={1}
                   >
                     {replyTo.previewText}
@@ -1462,7 +1462,7 @@ export default function ChatDetail() {
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? feed.inkDim : feed.text}
+                    color={sending || !draft.trim() ? feed.inkDim : creamOnDark.DEFAULT}
                     size={22}
                   />
                 </Pressable>
@@ -1479,7 +1479,7 @@ export default function ChatDetail() {
                   className="bg-ink active:bg-ink-soft items-center justify-center"
                   style={{ width: CONTROL_H, height: CONTROL_H }}
                 >
-                  <Ionicons name="mic" color={feed.text} size={22} />
+                  <Ionicons name="mic" color={creamOnDark.DEFAULT} size={22} />
                 </Pressable>
               )}
             </View>
@@ -1842,7 +1842,7 @@ function EditBar({
         autoFocus
         multiline
         className="flex-1 text-base"
-        style={{ minHeight: 24, maxHeight: 80, color: feed.text }}
+        style={{ minHeight: 24, maxHeight: 80, color: creamOnDark.DEFAULT }}
       />
       <Pressable onPress={() => onConfirm(value)} hitSlop={8} className="p-1">
         <Ionicons name="checkmark" color="#22c55e" size={22} />
@@ -2021,7 +2021,7 @@ function MessageBubble({
             <View className={`flex-row items-center gap-2 px-1 py-0.5`}>
               <ActivityIndicator
                 size="small"
-                color={isMine ? feed.text : "#8C7B6B"}
+                color={isMine ? creamOnDark.DEFAULT : "#8C7B6B"}
               />
               <Text className={`italic text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
                 wordt ontsleuteld…
@@ -2071,7 +2071,7 @@ function MessageBubble({
                   selectable={false}
                   style={[
                     feedType.label,
-                    { color: isMine ? feed.textDim : feed.inkDim, marginTop: 3 },
+                    { color: isMine ? creamOnDark.muted : feed.inkDim, marginTop: 3 },
                   ]}
                   numberOfLines={2}
                 >
@@ -2367,7 +2367,7 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" color={feed.text} size={20} />
+              <Ionicons name="close" color={creamOnDark.DEFAULT} size={20} />
             </Pressable>
           </SafeAreaView>
 
@@ -2482,11 +2482,11 @@ function VoiceMessageBubble({
         }`}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={isMine ? feed.text : feed.ink} />
+          <ActivityIndicator size="small" color={isMine ? creamOnDark.DEFAULT : feed.ink} />
         ) : (
           <Ionicons
             name={isPlaying ? "pause" : "play"}
-            color={isMine ? feed.text : feed.ink}
+            color={isMine ? creamOnDark.DEFAULT : feed.ink}
             size={18}
           />
         )}
@@ -2592,7 +2592,7 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" color={feed.text} size={20} />
+              <Ionicons name="close" color={creamOnDark.DEFAULT} size={20} />
             </Pressable>
           </SafeAreaView>
 
@@ -2689,7 +2689,7 @@ function AttachmentView({
       >
         <Ionicons
           name="document-outline"
-          color={isMine ? feed.text : feed.ink}
+          color={isMine ? creamOnDark.DEFAULT : feed.ink}
           size={20}
         />
       </View>
@@ -2713,7 +2713,7 @@ function AttachmentView({
         >
           <Ionicons
             name="download-outline"
-            color={isMine ? feed.text : feed.ink}
+            color={isMine ? creamOnDark.DEFAULT : feed.ink}
             size={18}
           />
         </Pressable>

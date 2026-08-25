@@ -1,3 +1,102 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===============================================================
+   DE TWEE STANDEN
+   ===============================================================
+
+   Élk kleurtoken in `tailwind.config.js` en élke kleur-prop uit
+   `lib/design/type.ts` leest een van deze variabelen. Wisselt de klasse
+   `dark` op <html>, dan schuift het hele palet mee — geen enkel scherm
+   weet ervan.
+
+   De waarden staan als `R G B` zodat één variabele zowel dekkend als
+   doorzichtig gebruikt kan worden: `rgb(var(--c-ink) / 0.58)`. Ze horen
+   letterlijk gelijk te blijven aan `PALETTE` in `lib/design/theme.ts` —
+   dat bestand is de leesbare versie mét de redenering erbij.
+
+   `:root` is de LICHTE stand en `.dark:root` de donkere. Dat is de
+   volgorde die NativeWind aanhoudt, niet een uitspraak over welke stand
+   de standaard is: die staat in `lib/design/theme.ts` op `system`.
+   =============================================================== */
+
+:root {
+  /* ---- Vlakken ---- */
+  --c-page: 239 239 236;
+  --c-panel: 255 255 255;
+  --c-paper-warm: 226 226 222;
+  --c-paper-light: 247 247 245;
+  --c-shell: 11 10 12;
+  --c-shell-soft: 38 38 43;
+  --c-post: 255 255 255;
+  --c-post-fill: 231 231 227;
+  --c-desk: 247 247 245;
+  --c-desk-panel: 226 226 222;
+
+  /* ---- Tekst ---- */
+  --c-ink: 11 10 12;
+  --c-ink-soft: 68 68 74;
+  --c-ink-muted: 122 122 128;
+  --c-cream: 247 247 245;
+  --c-cream-soft: 220 220 217;
+  --c-cream-muted: 160 160 156;
+  --c-post-text: 11 10 12;
+  --c-desk-ink: 11 10 12;
+  --c-desk-soft: 68 68 74;
+  --c-desk-muted: 122 122 128;
+
+  /* ---- Accent ---- */
+  --c-flame: 212 85 31;
+  --c-flame-deep: 168 62 18;
+  --c-announce: 230 107 63;
+  --c-announce-deep: 196 85 44;
+  --c-teal: 31 143 130;
+  --c-gold: 168 122 28;
+  --c-brand: 63 111 208;
+
+  /* ---- Doorzichtigheden die per stand verschillen ---- */
+  --a-post-dim: 0.58;
+  --a-post-rule: 0.18;
+  --a-line-paper: 0.2;
+  --a-ink-dim: 0.58;
+  --a-on-dark: 0.22;
+}
+
+.dark:root {
+  --c-page: 205 190 227;
+  --c-panel: 239 233 245;
+  --c-paper-warm: 191 172 219;
+  --c-paper-light: 245 241 250;
+  --c-shell: 11 10 12;
+  --c-shell-soft: 46 33 56;
+  --c-post: 46 33 56;
+  --c-post-fill: 58 42 70;
+  --c-desk: 11 10 12;
+  --c-desk-panel: 46 33 56;
+
+  --c-ink: 11 10 12;
+  --c-ink-soft: 58 53 64;
+  --c-ink-muted: 107 100 116;
+  --c-cream: 243 237 228;
+  --c-cream-soft: 217 210 228;
+  --c-cream-muted: 167 159 181;
+  --c-post-text: 243 237 228;
+  --c-desk-ink: 243 237 228;
+  --c-desk-soft: 217 210 228;
+  --c-desk-muted: 167 159 181;
+
+  --c-flame: 230 51 41;
+  --c-flame-deep: 168 28 19;
+  --c-announce: 230 107 63;
+  --c-announce-deep: 196 85 44;
+  --c-teal: 79 189 176;
+  --c-gold: 227 168 75;
+  --c-brand: 91 141 239;
+
+  --a-post-dim: 0.62;
+  --a-post-rule: 0.22;
+  --a-line-paper: 0.25;
+  --a-ink-dim: 0.58;
+  --a-on-dark: 0.22;
+}

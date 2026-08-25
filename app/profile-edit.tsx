@@ -26,7 +26,7 @@ import {
   validateUsername,
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 export default function ProfileEditScreen() {
@@ -125,7 +125,7 @@ export default function ProfileEditScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
@@ -134,17 +134,17 @@ export default function ProfileEditScreen() {
         >
           <Ionicons name="close" color={feed.ink} size={20} />
         </Pressable>
-        <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+        <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
           Profiel bewerken
         </Text>
         <Pressable
           onPress={onSave}
           disabled={!canSave}
           className={` px-4 py-2 ${
-            canSave ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
+            canSave ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
           }`}
         >
-          <Text className={`font-semibold ${canSave ? "text-ink" : "text-cream-muted"}`}>
+          <Text className={`font-semibold ${canSave ? "text-desk" : "text-desk-muted"}`}>
             {saving ? "Bezig…" : "Bewaren"}
           </Text>
         </Pressable>
@@ -156,7 +156,7 @@ export default function ProfileEditScreen() {
       >
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color={feed.text} />
+            <ActivityIndicator color={desk.ink} />
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
@@ -170,10 +170,10 @@ export default function ProfileEditScreen() {
                   size="hero"
                 />
                 <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
-                  <Ionicons name="camera" color={feed.text} size={14} />
+                  <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
                 </View>
               </Pressable>
-              <Text className="text-cream-muted text-xs mt-2">
+              <Text className="text-desk-muted text-xs mt-2">
                 Tik om foto te wijzigen
               </Text>
             </View>

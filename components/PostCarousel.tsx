@@ -16,7 +16,7 @@ import {
 } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
-import { feed, feedType, space } from "@/lib/design/type";
+import { creamOnDark, feed, feedType, space } from "@/lib/design/type";
 
 /**
  * Door een album bladeren.
@@ -163,7 +163,7 @@ export function PostCarousel({
               backgroundColor: "rgba(11,10,12,0.55)",
             }}
           >
-            <Text style={[feedType.label, { color: feed.text, fontSize: 11 }]}>
+            <Text style={[feedType.label, { color: creamOnDark.DEFAULT, fontSize: 11 }]}>
               {`${index + 1} / ${urls.length}`}
             </Text>
           </View>
@@ -214,7 +214,7 @@ export function PostCarousel({
                   style={{
                     height: 5,
                     borderRadius: 999,
-                    backgroundColor: feed.text,
+                    backgroundColor: creamOnDark.DEFAULT,
                     // Alleen de actieve is een streepje; de rest blijft een
                     // stip. De overgang loopt mee met het vegen.
                     width: active.interpolate({
@@ -258,7 +258,7 @@ function Arrow({ side, onPress }: { side: "left" | "right"; onPress: () => void 
       <Ionicons
         name={side === "left" ? "chevron-back" : "chevron-forward"}
         size={20}
-        color={feed.text}
+        color={creamOnDark.DEFAULT}
       />
     </Pressable>
   );

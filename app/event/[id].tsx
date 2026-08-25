@@ -41,7 +41,7 @@ import { useHeroTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
-import { feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
+import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -507,7 +507,7 @@ export default function EventDetailScreen() {
           {/* Privacy note: event media is not end-to-end encrypted like chats. */}
           <View className="flex-row items-center justify-center mt-3 px-4">
             <Ionicons name="information-circle-outline" color={feed.inkDim} size={13} />
-            <Text className="text-cream-muted text-[11px] ml-1.5 text-center">
+            <Text className="text-ink-muted text-[11px] ml-1.5 text-center">
               Event-media is niet end-to-end versleuteld zoals je chats.
             </Text>
           </View>
@@ -750,7 +750,7 @@ function PolicyCell({
       <Text
         style={[
           feedType.label,
-          { fontSize: 12, fontWeight: "700", color: active ? feed.text : feed.ink },
+          { fontSize: 12, fontWeight: "700", color: active ? creamOnDark.DEFAULT : feed.ink },
         ]}
       >
         {label}
@@ -821,7 +821,7 @@ function JoinRequestRow({
           backgroundColor: pressed ? flameDeep : feed.ink,
         })}
       >
-        <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.text }]}>
+        <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
           Toelaten
         </Text>
       </Pressable>
@@ -878,7 +878,7 @@ function ContributionTile({
               pointerEvents="none"
               className="absolute top-2 left-2 bg-shell/70 px-2 py-0.5 flex-row items-center"
             >
-              <Ionicons name="videocam" color={feed.text} size={11} />
+              <Ionicons name="videocam" color={creamOnDark.DEFAULT} size={11} />
             </View>
           </>
         ) : c.image_url ? (
@@ -902,11 +902,11 @@ function ContributionTile({
             hitSlop={8}
             className="absolute top-2 right-2 w-7 h-7 bg-shell/70 items-center justify-center"
           >
-            <Ionicons name="trash-outline" color={feed.text} size={14} />
+            <Ionicons name="trash-outline" color={creamOnDark.DEFAULT} size={14} />
           </Pressable>
         )}
       </View>
-      <Text className="text-cream-muted text-[11px] mt-1 px-1" numberOfLines={1}>
+      <Text className="text-ink-muted text-[11px] mt-1 px-1" numberOfLines={1}>
         {c.author?.display_name ?? c.author?.username ?? "Onbekend"}
       </Text>
     </View>
@@ -963,11 +963,11 @@ function ActionCell({
         opacity: disabled ? 0.5 : 1,
       })}
     >
-      <Ionicons name={icon} color={filled ? feed.text : feed.ink} size={15} />
+      <Ionicons name={icon} color={filled ? creamOnDark.DEFAULT : feed.ink} size={15} />
       <Text
         style={[
           feedType.label,
-          { fontSize: 13, fontWeight: "700", color: filled ? feed.text : feed.ink, marginLeft: 8 },
+          { fontSize: 13, fontWeight: "700", color: filled ? creamOnDark.DEFAULT : feed.ink, marginLeft: 8 },
         ]}
       >
         {label}

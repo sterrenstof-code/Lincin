@@ -1,5 +1,7 @@
 import { Platform, type TextStyle } from "react-native";
 
+import { color, subscribeScheme } from "./theme";
+
 /**
  * Typografisch systeem — editorial / Zwitsers.
  *
@@ -347,68 +349,72 @@ export const type = {
 
 /**
  * ---------------------------------------------------------------
- * ÉÉN ZWART, ÉÉN GEBROKEN WIT — en ze staan gelijk aan Tailwind
+ * KLEUR ALS PROP — en waarom het geen hexwaarden meer zijn
  * ---------------------------------------------------------------
- * Deze waarden liepen uit de pas met `tailwind.config.js`. Daar wees
- * `ink` naar #0B0A0C en hier naar #1A1714; `cream` naar #F3EDE4 daar en
- * #F5E8D3 hier; `page` naar #CDBEE3 daar en #F2F1EE hier. Twee zwarten
- * van vier hexpunten uit elkaar zie je niet, en dat is precies waarom
- * het bleef staan: `text-ink` (klasse) en `ink.DEFAULT` (prop) gaven een
- * andere kleur zonder dat iets het meldde.
+ * Deze waarden liepen ooit uit de pas met `tailwind.config.js`: `ink` wees
+ * daar naar #0B0A0C en hier naar #1A1714, `cream` naar #F3EDE4 daar en
+ * #F5E8D3 hier. Twee zwarten van vier hexpunten uit elkaar zie je niet, en
+ * dat is precies waarom het bleef staan.
  *
- * Sinds de v3-uitrol is er één systeem. Deze objecten wijzen daarom nu
- * naar dezelfde waarden als het `feed`-object hieronder en als de
- * Tailwind-tokens. Ze blijven bestaan onder hun eigen naam omdat vier
- * componenten (Editorial, FindBody, CommentsSection, PostReactions) er
- * met een editoriale bedoeling naar verwijzen — `carbon.muted` zegt daar
- * iets anders dan `feed.textDim`.
+ * Nu kán dat niet meer: allebei lezen ze dezelfde variabele. Wat hier
+ * `carbon.DEFAULT` heet en daar `ink`, is letterlijk `--c-ink` — één
+ * waarde, gedefinieerd in `global.css`, uitgelegd in `lib/design/theme.ts`.
  *
- * De pre-v3 exports `ink`, `cream` en `line` zijn weg: nergens
- * geïmporteerd, en ze hielden een tweede palet in leven. De
- * Tailwind-klassen `text-ink`/`text-cream` bestaan gewoon nog — die
- * komen uit `tailwind.config.js`, niet hieruit.
+ * Op web is een prop dus een stukje CSS (`rgb(var(--c-ink) / 1)`), en dat
+ * betekent dat een kleur die in een style-object staat net zo goed meeschuift
+ * met de stand als een klasse — zonder dat React iets hertekent.
+ *
+ * Op native bestaan variabelen niet. Daar worden deze bindingen opnieuw
+ * opgebouwd zodra de stand wisselt (`subscribeScheme` onderaan) en hertekent
+ * `ThemeGate` in `app/_layout.tsx` de boom.
+ *
+ * De namen blijven bestaan omdat vier componenten (Editorial, FindBody,
+ * CommentsSection, PostReactions) er met een editoriale bedoeling naar
+ * verwijzen — `carbon.muted` zegt daar iets anders dan `feed.textDim`.
  */
 
 /** Inkt op een licht vlak. Gelijk aan `feed.ink` en aan `ink` in Tailwind. */
-export const carbon = {
-  DEFAULT: "#0B0A0C",
-  soft: "#3A3540",
-  muted: "#6B6474",
-} as const;
+export let carbon = {
+  DEFAULT: color("ink"),
+  soft: color("inkSoft"),
+  muted: color("inkMuted"),
+};
 
 /** De lichte vlakken. Gelijk aan `page`/`paper` in Tailwind. */
-export const page = {
-  DEFAULT: "#CDBEE3",
-  alt: "#EFE9F5",
-  sheet: "#F5F1FA",
-} as const;
+export let page = {
+  DEFAULT: color("page"),
+  alt: color("panel"),
+  sheet: color("paperLight"),
+};
 
 /** Twee lijngewichten: inkt voor rubrieken, gedempt tussen rijen. */
-export const rule = {
-  strong: "#0B0A0C",
-  soft: "rgba(11,10,12,0.25)",
-  onDark: "rgba(243,237,228,0.22)",
-} as const;
+export let rule = {
+  strong: color("ink"),
+  soft: color("ink", "linePaper"),
+  onDark: color("cream", "onDark"),
+};
 
 /**
- * Het scherpe drukwerk-rood. Draagt ALLE redactionele accenten:
- * citaattekens, indexcijfers, kickers, lijnwerk, gevulde knoppen.
- * Moet gelijk blijven aan `flame.DEFAULT` in tailwind.config.js.
+ * Het scherpe accent. Draagt ALLE redactionele accenten: citaattekens,
+ * indexcijfers, kickers, lijnwerk, gevulde knoppen.
+ *
+ * Donker is dat het drukwerkrood #E63329, licht de diepe oranje #D4551F.
+ * Op lavendel staat rood rustig; op een wit blad met verder alleen grijzen
+ * is rood náást de oranje balk één warme kleur te veel.
  */
-export const flame = "#E63329";
+export let flame = color("flame");
 
 /**
- * Klein-tekst-veilige variant. De DEFAULT haalt op lavendel geen 4.5:1,
- * dus alles onder ~16px gebruikt deze: kickers, categorielabels.
+ * Klein-tekst-veilige variant. De DEFAULT haalt op het paginavlak geen
+ * 4.5:1, dus alles onder ~16px gebruikt deze: kickers, categorielabels.
  */
-export const flameDeep = "#A81C13";
+export let flameDeep = color("flameDeep");
 
 /**
- * Het warme oranje van de aankondigingsbalk — en van niets anders.
- * Bewust een eigen naam zodat het rood hierboven vrij te vervangen is
- * zonder de balk mee te nemen.
+ * Het warme oranje van de aankondigingsbalk — en van niets anders. In
+ * béide standen dezelfde kleur: dit is wat de app herkenbaar maakt.
  */
-export const announce = "#E66B3F";
+export let announce = color("announce");
 
 /**
  * Dezelfde oranje, ingedrukt. Voor de primaire actie: delen, toevoegen,
@@ -416,7 +422,7 @@ export const announce = "#E66B3F";
  * de redactie — citaten, indexcijfers, lijnwerk. Een knop die iets dóet
  * hoort niet dezelfde kleur te hebben als een aanhalingsteken.
  */
-export const announceDeep = "#C4552C";
+export let announceDeep = color("announceDeep");
 
 /** Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat. */
 export const WIDE_BREAKPOINT = 900;
@@ -426,27 +432,69 @@ export const WIDE_BREAKPOINT = 900;
 // gebruik je de `feed-*` Tailwind-tokens.
 // ---------------------------------------------------------------
 
-export const feed = {
+export let feed = {
   /** Paginavlak van de feed. */
-  lav: "#CDBEE3",
-  /** Tekst én kaders. Kaders altijd op FEED_BORDER (1.5px). */
-  ink: "#0B0A0C",
-  /** Secundaire tekst op `lav` — inkt op 58%. */
-  inkDim: "rgba(11,10,12,0.58)",
+  lav: color("page"),
+  /** Tekst én kaders óp dat vlak. Kaders altijd op FEED_BORDER (1.5px). */
+  ink: color("ink"),
+  /** Secundaire tekst op het paginavlak — inkt op 58%. */
+  inkDim: color("ink", "inkDim"),
   /** Enkel het zijbalk-paneel. Nadrukkelijk NIET voor posts. */
-  panel: "#EFE9F5",
-  /** Élk post-oppervlak: cover-band, tegels, quote-band. */
-  post: "#2E2138",
+  panel: color("panel"),
+  /**
+   * Élk post-oppervlak: cover-band, tegels, quote-band.
+   *
+   * Dit is het énige vlak dat volledig kantelt tussen de twee standen —
+   * plum in de donkere, wit in de lichte. `text`, `textDim` en `postRule`
+   * hieronder kantelen mee; zonder dat staat er crème op wit.
+   *
+   * Staat er tekst op een vlak dat in béide standen donker blijft (de balk
+   * bovenaan, een gevulde zwarte knop, een camerascherm), gebruik dan
+   * `cream` uit Tailwind of `creamOnDark` hieronder — niet `feed.text`.
+   */
+  post: color("post"),
+  /** Het vlak waar een foto nog moet landen. Kantelt mee met `post`. */
+  postFill: color("postFill"),
   /** Primaire tekst op `post`. */
-  text: "#F3EDE4",
+  text: color("postText"),
   /** Bijschrift/metadata op `post`. */
-  textDim: "rgba(243,237,228,0.62)",
-  /** Lijn binnen een post-oppervlak — licht, want op donker. */
-  postRule: "rgba(243,237,228,0.22)",
+  textDim: color("postText", "postDim"),
+  /** Lijn binnen een post-oppervlak. */
+  postRule: color("postText", "postRule"),
   /** Secundaire accenten, opgehelderd zodat ze op `post` overeind blijven. */
-  teal: "#4FBDB0",
-  gold: "#E3A84B",
-} as const;
+  teal: color("teal"),
+  gold: color("gold"),
+};
+
+/**
+ * Tekst op een vlak dat in béide standen donker blijft.
+ *
+ * De balk bovenaan, een gevulde zwarte of oranje knop, een camerascherm,
+ * een eigen chatbubbel: die vlakken kantelen niet mee, dus hun tekst mag
+ * dat ook niet. `feed.text` doet dat wél — dat is de tegenhanger van het
+ * kaartoppervlak — en stond hier eerder ten onrechte.
+ */
+/**
+ * Het werkblad van de niet-gemigreerde schermen, als prop.
+ *
+ * Zie `desk` in `tailwind.config.js` en de uitleg in `lib/design/theme.ts`:
+ * vlak én tekst kantelen samen, zodat die schermen in de donkere stand
+ * blijven wat ze waren en in de lichte stand een blad worden.
+ */
+export let desk = {
+  DEFAULT: color("desk"),
+  ink: color("deskInk"),
+  soft: color("deskSoft"),
+  muted: color("deskMuted"),
+  panel: color("deskPanel"),
+};
+
+export let creamOnDark = {
+  DEFAULT: color("cream"),
+  soft: color("creamSoft"),
+  muted: color("creamMuted"),
+  rule: color("cream", "onDark"),
+};
 
 /**
  * Breekpunt waarop de feed van twee kolommen (zijbalk + hoofdkolom)
@@ -539,4 +587,56 @@ export function scrimSteps(strength = 0.72, steps = 12): string[] {
     out.push(`rgba(11,10,12,${(t * strength).toFixed(3)})`);
   }
   return out;
+}
+
+/**
+ * Native kent geen CSS-variabelen: daar staat in élke binding hierboven de
+ * échte kleur van de stand die op dát moment gold. Wisselt de stand, dan
+ * moeten ze opnieuw opgebouwd worden. Op web is dit een no-op — daar staat
+ * er al een variabele in en doet de browser het werk.
+ *
+ * De bindingen zijn `let` en geen `const` juist hiervoor: een import is een
+ * levende verwijzing, dus wie `feed.ink` leest krijgt na deze herbouw
+ * vanzelf de nieuwe waarde.
+ */
+if (Platform.OS !== "web") {
+  subscribeScheme(() => {
+    carbon = { DEFAULT: color("ink"), soft: color("inkSoft"), muted: color("inkMuted") };
+    page = { DEFAULT: color("page"), alt: color("panel"), sheet: color("paperLight") };
+    rule = {
+      strong: color("ink"),
+      soft: color("ink", "linePaper"),
+      onDark: color("cream", "onDark"),
+    };
+    flame = color("flame");
+    flameDeep = color("flameDeep");
+    announce = color("announce");
+    announceDeep = color("announceDeep");
+    feed = {
+      lav: color("page"),
+      ink: color("ink"),
+      inkDim: color("ink", "inkDim"),
+      panel: color("panel"),
+      post: color("post"),
+      postFill: color("postFill"),
+      text: color("postText"),
+      textDim: color("postText", "postDim"),
+      postRule: color("postText", "postRule"),
+      teal: color("teal"),
+      gold: color("gold"),
+    };
+    desk = {
+      DEFAULT: color("desk"),
+      ink: color("deskInk"),
+      soft: color("deskSoft"),
+      muted: color("deskMuted"),
+      panel: color("deskPanel"),
+    };
+    creamOnDark = {
+      DEFAULT: color("cream"),
+      soft: color("creamSoft"),
+      muted: color("creamMuted"),
+      rule: color("cream", "onDark"),
+    };
+  });
 }

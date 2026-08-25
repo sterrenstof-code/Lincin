@@ -84,7 +84,7 @@ export default function SetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell">
+    <SafeAreaView className="flex-1 bg-desk">
       <ScreenContainer>
         <KeyboardAvoidingView
           className="flex-1"

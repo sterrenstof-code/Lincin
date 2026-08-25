@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     const isDev = typeof __DEV__ !== "undefined" && __DEV__;
     return (
-      <View className="flex-1 bg-shell items-center justify-center px-8">
+      <View className="flex-1 bg-desk items-center justify-center px-8">
         <View className="bg-paper p-6 w-full max-w-md">
           <Text className="text-ink text-2xl font-bold mb-2">
             Er ging iets mis.

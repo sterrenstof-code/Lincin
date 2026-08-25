@@ -42,6 +42,7 @@ import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import {
+  creamOnDark,
   CONTROL_H,
   feed as feedColor,
   FEED_BORDER,
@@ -1422,7 +1423,7 @@ function usePostMenu(
               alignItems: "center",
             }}
           >
-            <Text style={[feedType.label, { color: feedColor.text }]}>
+            <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>
               {saving ? "Bewaren…" : "Bewaren"}
             </Text>
           </Pressable>
@@ -1534,7 +1535,7 @@ function Colophon() {
         alignItems: "center",
       }}
     >
-      <Text style={[feedType.cover, { color: feedColor.text }]}>Je bent bij.</Text>
+      <Text style={[feedType.cover, { color: creamOnDark.DEFAULT }]}>Je bent bij.</Text>
       <Text
         style={[
           feedType.body,

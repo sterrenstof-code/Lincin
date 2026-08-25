@@ -19,6 +19,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Avatar } from "@/components/Avatar";
 import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth/provider";
@@ -29,6 +30,7 @@ import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
 import {
   announce,
+  creamOnDark,
   announceDeep,
   feed,
   FEED_BORDER,
@@ -450,7 +452,7 @@ function CompactBar({
             backgroundColor: pressed ? announceDeep : announce,
           })}
         >
-          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.text }]}>
+          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
             {actionLabel}
           </Text>
         </Pressable>
@@ -557,6 +559,7 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
             onPress: () => router.push("/profile-edit"),
           },
         ]}
+        footer={<ThemeSwitch />}
       />
     </>
   );
@@ -632,7 +635,7 @@ function FullHeader({
                 justifyContent: "center",
               })}
             >
-              <Text style={[feedType.label, { fontSize: 12, color: feed.text }]}>
+              <Text style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT }]}>
                 {actionLabel}
               </Text>
             </Pressable>

@@ -18,7 +18,7 @@ import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
 import { createSharedList } from "@/lib/api/shared-lists";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
@@ -58,7 +58,7 @@ export default function ListComposeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScreenContainer>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
@@ -66,16 +66,16 @@ export default function ListComposeScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
               <Pressable onPress={() => safeBack(router, "/(app)/feed")} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color={feed.text} size={22} />
+                <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
-              <Text className="text-cream font-bold text-lg">Nieuwe lijst</Text>
+              <Text className="text-desk-ink font-bold text-lg">Nieuwe lijst</Text>
               <Pressable
                 onPress={onSubmit}
                 disabled={!canSubmit}
                 className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
               >
                 {submitting
-                  ? <ActivityIndicator size="small" color={feed.text} />
+                  ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
                   : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>Aanmaken</Text>
                 }
               </Pressable>
@@ -128,10 +128,10 @@ export default function ListComposeScreen() {
                           </View>
                           {selected && (
                             <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame items-center justify-center">
-                              <Ionicons name="checkmark" color={feed.text} size={10} />
+                              <Ionicons name="checkmark" color={creamOnDark.DEFAULT} size={10} />
                             </View>
                           )}
-                          <Text className={`text-[11px] max-w-[56px] text-center ${selected ? "text-flame font-semibold" : "text-cream-soft"}`} numberOfLines={1}>
+                          <Text className={`text-[11px] max-w-[56px] text-center ${selected ? "text-flame font-semibold" : "text-desk-soft"}`} numberOfLines={1}>
                             {p.display_name ?? p.username}
                           </Text>
                         </Pressable>

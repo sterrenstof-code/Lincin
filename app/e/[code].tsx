@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { joinEventByCode } from "@/lib/api/events";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, feed, flame } from "@/lib/design/type";
 
 /**
  * Landing voor /e/{join_code}: roept de join_event RPC aan.
@@ -55,7 +55,7 @@ export default function JoinEventScreen() {
   }, [code, loading, session, router, qc]);
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
         <View className="flex-1 items-center justify-center px-6">
           {error ? (
@@ -73,7 +73,7 @@ export default function JoinEventScreen() {
                 onPress={() => router.replace("/(app)/feed")}
                 className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
               >
-                <Text className="text-cream font-semibold">Naar Lincin</Text>
+                <Text className="text-desk-ink font-semibold">Naar Lincin</Text>
               </Pressable>
             </View>
           ) : pending ? (
@@ -93,13 +93,13 @@ export default function JoinEventScreen() {
                 onPress={() => router.replace("/(app)/events")}
                 className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
               >
-                <Text className="text-cream font-semibold">Naar Lincin</Text>
+                <Text className="text-desk-ink font-semibold">Naar Lincin</Text>
               </Pressable>
             </View>
           ) : (
             <View className="bg-paper p-8 w-full items-center">
               <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
-                <Ionicons name="sparkles" color={feed.text} size={24} />
+                <Ionicons name="sparkles" color={creamOnDark.DEFAULT} size={24} />
               </View>
               <Text className="text-ink font-bold text-xl text-center mb-1">
                 Je doet mee

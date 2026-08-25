@@ -14,7 +14,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { SkeletonListCard } from "@/components/Skeleton";
-import { feed, flameDeep } from "@/lib/design/type";
+import { creamOnDark, feed, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   acceptFriendRequest,
@@ -130,7 +130,7 @@ export default function FriendsScreen() {
                 onPress={() => router.push("/qr-scan")}
                 className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft py-3.5 px-4"
               >
-                <Ionicons name="qr-code-outline" color={feed.text} size={20} />
+                <Ionicons name="qr-code-outline" color={creamOnDark.DEFAULT} size={20} />
                 <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
               </Pressable>
               <Pressable
@@ -315,7 +315,7 @@ function ProfileRow({
         className="bg-ink active:bg-ink-soft px-4 py-2 flex-row items-center"
       >
         {actionIcon && (
-          <Ionicons name={actionIcon} color={feed.text} size={14} style={{ marginRight: 4 }} />
+          <Ionicons name={actionIcon} color={creamOnDark.DEFAULT} size={14} style={{ marginRight: 4 }} />
         )}
         <Text className="text-cream font-semibold text-sm">{actionLabel}</Text>
       </Pressable>

@@ -22,7 +22,7 @@ import {
   type EventJoinPolicy,
   type EventRevealMode,
 } from "@/lib/api/events";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 function plusHours(date: Date, hours: number): Date {
@@ -118,7 +118,7 @@ export default function EventCreateScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
@@ -127,17 +127,17 @@ export default function EventCreateScreen() {
           >
             <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
-          <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
             Nieuw event
           </Text>
           <Pressable
             onPress={onSubmit}
             disabled={!canSubmit}
             className={` px-4 py-2 ${
-              canSubmit ? "bg-cream active:bg-cream-soft" : "bg-shell-soft"
+              canSubmit ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
             }`}
           >
-            <Text className={`font-semibold ${canSubmit ? "text-ink" : "text-cream-muted"}`}>
+            <Text className={`font-semibold ${canSubmit ? "text-desk" : "text-desk-muted"}`}>
               {submitting ? "Bezig…" : "Maak"}
             </Text>
           </Pressable>
@@ -399,7 +399,7 @@ function ChoiceOption({
     >
       <Ionicons
         name={active ? "radio-button-on" : "radio-button-off"}
-        color={active ? feed.text : feed.inkDim}
+        color={active ? creamOnDark.DEFAULT : feed.inkDim}
         size={20}
       />
       <View className="flex-1 ml-3">

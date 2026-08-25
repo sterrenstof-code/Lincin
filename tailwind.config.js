@@ -1,3 +1,41 @@
+/**
+ * De kleurtokens voor klassen. De tweelingbroer hiervan staat in
+ * `lib/design/type.ts` (dezelfde kleuren, maar als prop) en het systeem
+ * eromheen in `DESIGN.md`.
+ *
+ * ---------------------------------------------------------------
+ * WAT HIER SINDS DE TWEE STANDEN VERANDERD IS
+ * ---------------------------------------------------------------
+ * Er staan geen hexwaarden meer in dit bestand. Élk token wijst naar een
+ * CSS-variabele, en die variabelen krijgen hun waarde in `global.css`:
+ * één set onder `:root` (licht) en één onder `.dark:root` (donker). De
+ * leesbare versie mét de redenering per kleur staat in
+ * `lib/design/theme.ts`.
+ *
+ * De tokennamen zijn precies dezelfde gebleven — ~1000 klassegebruiken in
+ * 37 schermen wijzen ernaar. Dat is dezelfde zet als bij de v3-uitrol: de
+ * namen houden, de waarden verplaatsen. Alleen gebeurt het nu niet meer
+ * bij een commit maar op het moment dat iemand van stand wisselt.
+ */
+
+/**
+ * Een token dat standaard níet dekkend is — een lijn op 25%, een
+ * bijschrift op 58%.
+ *
+ * Tailwind geeft bij een klasse zónder modifier (`border-line-paper`) niet
+ * `undefined` mee maar zijn eigen `var(--tw-border-opacity)`. Daar is niets
+ * aan te zien, dus herkennen we die vorm en zetten we onze eigen
+ * standaarddoorzichtigheid ervoor in de plaats. Mét modifier
+ * (`border-line-paper/60`) komt er een echt getal binnen en gebruiken we dat.
+ */
+const withAlpha = (v, defaultAlpha) => ({ opacityValue } = {}) => {
+  const bare = opacityValue === undefined || String(opacityValue).startsWith("var(--tw-");
+  return `rgb(var(${v}) / ${bare ? defaultAlpha : opacityValue})`;
+};
+
+/** Een dekkend token. De modifier (`bg-shell/70`) werkt gewoon. */
+const solid = (v) => `rgb(var(${v}) / <alpha-value>)`;
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -6,107 +44,112 @@ module.exports = {
     "./lib/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
+  // De stand hangt aan een klasse op <html>, niet aan de mediaquery: anders
+  // kan iemand die licht kiest terwijl zijn systeem donker staat niet uit de
+  // donkere stand komen. Zie `applyWeb` in lib/design/theme.ts.
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // =========================================================
-        // HET SYSTEEM — lavendel / plum / inkt, met één rood accent.
-        //
-        // Sinds de v3-uitrol is dit het palet van de HELE app, niet
-        // meer alleen de feed. De semantische namen hieronder
-        // (shell/paper/ink/cream/page/carbon) zijn bewust blijven
-        // bestaan: ~1000 klassegebruiken in 37 schermen wijzen
-        // ernaar, en door de wáárden te herwijzen schuift alles in
-        // één keer mee zonder die schermen aan te raken.
-        //
-        // De oude warme waarden staan in de git-historie als je wil
-        // vergelijken. Het systeem zelf staat in `DESIGN.md`; deze
-        // waarden moeten gelijk blijven aan die in `lib/design/type.ts`.
-        // =========================================================
-
         // ---- Vlakken ----
         page: {
-          DEFAULT: "#CDBEE3", // lavendel — het paginavlak
-          alt: "#EFE9F5",     // lichter paneel, voor afwisseling
+          DEFAULT: solid("--c-page"), // het paginavlak
+          alt: solid("--c-panel"),    // lichter paneel
         },
-        sheet: "#EFE9F5",     // licht vlak, voor beeldkaders
+        sheet: solid("--c-panel"),    // licht vlak, voor beeldkaders
         paper: {
-          DEFAULT: "#CDBEE3", // lavendel
-          soft: "#EFE9F5",    // paneel
-          warm: "#BFACDB",    // iets dieper lavendel, voor banden
-          light: "#F5F1FA",   // bijna wit met een lila zweem
+          DEFAULT: solid("--c-page"),
+          soft: solid("--c-panel"),
+          warm: solid("--c-paper-warm"),
+          light: solid("--c-paper-light"),
         },
         shell: {
-          DEFAULT: "#0B0A0C", // inkt — de donkere app-omlijsting
-          soft: "#2E2138",    // plum — élk donker kaart-oppervlak
+          DEFAULT: solid("--c-shell"),     // de balk bovenaan — zwart in béide standen
+          soft: solid("--c-shell-soft"),   // donker vlak bínnen die balk
+        },
+
+        // Het werkblad van de niet-gemigreerde schermen (DESIGN.md §8): een
+        // vlak dat, net als `feed-post`, samen met zijn tekst kantelt. Zwart
+        // met crème in de donkere stand — exact wat die schermen nu al zijn —
+        // en een blad met inkt in de lichte.
+        desk: {
+          DEFAULT: solid("--c-desk"),
+          ink: solid("--c-desk-ink"),
+          soft: solid("--c-desk-soft"),
+          muted: solid("--c-desk-muted"),
+          panel: solid("--c-desk-panel"),
         },
 
         // ---- Tekst ----
         ink: {
-          DEFAULT: "#0B0A0C", // op lavendel
-          soft: "#3A3540",
-          muted: "#6B6474",
+          DEFAULT: solid("--c-ink"),
+          soft: solid("--c-ink-soft"),
+          muted: solid("--c-ink-muted"),
         },
         carbon: {
-          DEFAULT: "#0B0A0C",
-          soft: "#3A3540",
-          muted: "#6B6474",
+          DEFAULT: solid("--c-ink"),
+          soft: solid("--c-ink-soft"),
+          muted: solid("--c-ink-muted"),
         },
+        // Tekst op zwart, op plum-in-de-balk en op de oranje knop. Blijft in
+        // béide standen licht — de vlakken waar hij op staat blijven donker.
         cream: {
-          DEFAULT: "#F3EDE4", // op inkt of plum
-          soft: "#D9D2E4",
-          muted: "#A79FB5",
+          DEFAULT: solid("--c-cream"),
+          soft: solid("--c-cream-soft"),
+          muted: solid("--c-cream-muted"),
         },
 
         // ---- Accent ----
-        // Het scherpe drukwerk-rood uit de referenties. Vervangt het
-        // oude warme oranje (#E66B3F) overal; `bg-flame` en
-        // `text-flame` blijven dus werken en worden alleen roder.
-        // `deep` is de variant die klein gezet nog leest op lavendel —
-        // de DEFAULT haalt op die achtergrond geen 4.5:1.
+        // Donker: het drukwerkrood. Licht: de oranje, dieper gezet zodat hij
+        // op wit blijft staan. `deep` is in beide standen de variant die
+        // klein gezet nog 4.5:1 haalt.
         flame: {
-          DEFAULT: "#E63329", // citaten, indexcijfers, vullingen, lijnwerk
-          deep: "#A81C13",    // kickers, categorielabels, kleine tekst
+          DEFAULT: solid("--c-flame"),
+          deep: solid("--c-flame-deep"),
+        },
+        // De aankondigingsbalk en de primaire actie. Dezelfde oranje in
+        // beide standen — dat is de kleur die de app herkenbaar maakt.
+        announce: {
+          DEFAULT: solid("--c-announce"),
+          deep: solid("--c-announce-deep"),
         },
 
-        // Het warme oranje van de aankondigingsbalk. Dat is de ENIGE plek
-        // waar het nog voorkomt — het rood hierboven draagt alle andere
-        // accenten. Bewust een eigen naam, zodat een latere zoek-vervang op
-        // `flame` de balk niet per ongeluk meeneemt.
-        announce: "#E66B3F",
-
-        // ---- Feed-specifiek (ongewijzigd) ----
+        // ---- Het kaartoppervlak ----
+        // `post` kantelt als enige vlak volledig mee: plum in de donkere
+        // stand, wit in de lichte. Zijn tekst (`feed-text`) en zijn lijn
+        // (`feed-rule`) kantelen mee, anders staat er crème op wit.
         feed: {
-          lav: "#CDBEE3",
-          ink: "#0B0A0C",
-          panel: "#EFE9F5",
-          post: "#2E2138",
-          text: "#F3EDE4",
-          dim: "rgba(243,237,228,0.62)",
+          lav: solid("--c-page"),
+          ink: solid("--c-ink"),
+          panel: solid("--c-panel"),
+          post: solid("--c-post"),
+          fill: solid("--c-post-fill"), // beeldvlak in afwachting van de foto
+          text: solid("--c-post-text"),
+          dim: withAlpha("--c-post-text", "var(--a-post-dim)"),
+          rule: withAlpha("--c-post-text", "var(--a-post-rule)"),
         },
 
-        // Secundaire accenten. Enkel voor de tegels in de feed —
-        // buiten de feed draagt het rood het accent alleen.
-        teal: "#4FBDB0",
-        gold: "#E3A84B",
+        // Secundaire accenten. Enkel voor de tegels in de feed.
+        teal: solid("--c-teal"),
+        gold: solid("--c-gold"),
 
-        brand: "#5B8DEF",   // Lincin-blauw — logo / e2e-badge only
+        brand: solid("--c-brand"), // logo / e2e-badge only
         line: {
-          DEFAULT: "#0B0A0C",
-          paper: "rgba(11,10,12,0.25)",
+          DEFAULT: solid("--c-ink"),
+          paper: withAlpha("--c-ink", "var(--a-line-paper)"),
         },
 
         // ---- Legacy aliases (uitfaseren) ----
         bg: {
-          DEFAULT: "#0B0A0C",
-          soft: "#2E2138",
-          card: "#EFE9F5",
+          DEFAULT: solid("--c-ink"),
+          soft: solid("--c-shell-soft"),
+          card: solid("--c-panel"),
         },
         accent: {
-          DEFAULT: "#0B0A0C",
-          soft: "#3A3540",
+          DEFAULT: solid("--c-ink"),
+          soft: solid("--c-ink-soft"),
         },
-        muted: "#6B6474",
+        muted: solid("--c-ink-muted"),
       },
     },
   },

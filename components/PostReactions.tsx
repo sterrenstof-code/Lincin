@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { color } from "@/lib/design/theme";
 import { carbon, feed, FEED_BORDER, page } from "@/lib/design/type";
 import type { Tone } from "@/components/Editorial";
 import {
@@ -38,28 +39,28 @@ function paletteFor(tone: Tone): Palette {
         strong: feed.ink,
         onStrong: feed.text,
         dim: feed.inkDim,
-        fill: "rgba(11,10,12,0.28)",
+        fill: color("ink", 0.28),
       };
     case "post":
       return {
         strong: feed.text,
         onStrong: feed.post,
         dim: feed.textDim,
-        fill: "rgba(243,237,228,0.35)",
+        fill: color("postText", 0.35),
       };
     case "dark":
       return {
         strong: page.DEFAULT,
         onStrong: feed.ink,
         dim: feed.inkDim,
-        fill: "rgba(242,241,238,0.35)",
+        fill: color("page", 0.35),
       };
     default:
       return {
         strong: carbon.DEFAULT,
         onStrong: page.DEFAULT,
         dim: carbon.muted,
-        fill: "rgba(11,10,12,0.28)",
+        fill: color("ink", 0.28),
       };
   }
 }

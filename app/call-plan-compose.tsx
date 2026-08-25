@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createCallPlan } from "@/lib/api/call-plans";
 import { sendMessage } from "@/lib/api/messages";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 type SlotDraft = {
@@ -136,7 +136,7 @@ export default function CallPlanComposeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScreenContainer>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
@@ -144,9 +144,9 @@ export default function CallPlanComposeScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
               <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color={feed.text} size={22} />
+                <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
-              <Text className="text-cream font-bold text-lg">
+              <Text className="text-desk-ink font-bold text-lg">
                 {chatId ? "Call plannen in chat" : "Videocall plannen"}
               </Text>
               <Pressable
@@ -155,7 +155,7 @@ export default function CallPlanComposeScreen() {
                 className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
               >
                 {submitting
-                  ? <ActivityIndicator size="small" color={feed.text} />
+                  ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
                   : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
                       {chatId ? "Versturen" : "Plaatsen"}
                     </Text>
@@ -186,7 +186,7 @@ export default function CallPlanComposeScreen() {
 
             {/* Tijdsloten — tabbladen */}
             <View className="mt-5 px-5">
-              <Text className="text-cream-soft text-xs uppercase tracking-wider mb-3">Tijdsloten</Text>
+              <Text className="text-desk-soft text-xs uppercase tracking-wider mb-3">Tijdsloten</Text>
 
               {/* Slot tabs */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
@@ -196,9 +196,9 @@ export default function CallPlanComposeScreen() {
                     <Pressable
                       key={slot.id}
                       onPress={() => setActiveSlotId(slot.id)}
-                      className={`flex-row items-center gap-1.5 px-4 py-2 border ${active ? "bg-cream border-cream" : "bg-paper-soft border-paper-soft"}`}
+                      className={`flex-row items-center gap-1.5 px-4 py-2 border ${active ? "bg-desk-ink border-desk-ink" : "bg-paper-soft border-paper-soft"}`}
                     >
-                      <Text className={`text-sm font-semibold ${active ? "text-ink" : "text-ink-muted"}`}>
+                      <Text className={`text-sm font-semibold ${active ? "text-desk" : "text-ink-muted"}`}>
                         {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
                       </Text>
                       {slots.length > 1 && (
@@ -272,7 +272,7 @@ export default function CallPlanComposeScreen() {
             {/* Uitnodigen — enkel zichtbaar als je vrienden hebt */}
             {friends.length > 0 && (
               <View className="mt-5 px-5">
-                <Text className="text-cream-soft text-xs uppercase tracking-wider mb-3">
+                <Text className="text-desk-soft text-xs uppercase tracking-wider mb-3">
                   Uitnodigen
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
@@ -296,12 +296,12 @@ export default function CallPlanComposeScreen() {
                             size="md"
                           />
                         </View>
-                        <Text className={`text-[11px] font-semibold max-w-[56px] text-center ${selected ? "text-flame" : "text-cream-soft"}`} numberOfLines={1}>
+                        <Text className={`text-[11px] font-semibold max-w-[56px] text-center ${selected ? "text-flame" : "text-desk-soft"}`} numberOfLines={1}>
                           {p.display_name ?? p.username}
                         </Text>
                         {selected && (
                           <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame items-center justify-center">
-                            <Ionicons name="checkmark" color={feed.text} size={10} />
+                            <Ionicons name="checkmark" color={creamOnDark.DEFAULT} size={10} />
                           </View>
                         )}
                       </Pressable>
@@ -309,7 +309,7 @@ export default function CallPlanComposeScreen() {
                   })}
                 </ScrollView>
                 {invitedIds.length > 0 && (
-                  <Text className="text-cream-soft text-xs mt-2">
+                  <Text className="text-desk-soft text-xs mt-2">
                     {invitedIds.length} {invitedIds.length === 1 ? "persoon" : "personen"} uitgenodigd · anderen zien deze call niet
                   </Text>
                 )}

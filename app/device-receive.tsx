@@ -25,7 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 export default function DeviceReceiveScreen() {
@@ -111,8 +111,8 @@ export default function DeviceReceiveScreen() {
   // ── Laadspinner tijdens verwerking ──────────────────────────────────────────
   if (processing) {
     return (
-      <SafeAreaView className="flex-1 bg-shell items-center justify-center gap-4">
-        <ActivityIndicator color={feed.text} size="large" />
+      <SafeAreaView className="flex-1 bg-desk items-center justify-center gap-4">
+        <ActivityIndicator color={desk.ink} size="large" />
         <Text className="text-ink-soft text-sm">Sleutels worden overgedragen…</Text>
       </SafeAreaView>
     );
@@ -121,7 +121,7 @@ export default function DeviceReceiveScreen() {
   // ── Handmatige invoer (desktop web of camera geweigerd) ─────────────────────
   if (showManual) {
     return (
-      <SafeAreaView className="flex-1 bg-shell px-6 justify-center">
+      <SafeAreaView className="flex-1 bg-desk px-6 justify-center">
         <Pressable
           onPress={() => {
             if (Platform.OS !== "web") setShowManual(false);
@@ -195,7 +195,7 @@ export default function DeviceReceiveScreen() {
   // ── Camera toestemming vragen ────────────────────────────────────────────────
   if (!permission?.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-shell items-center justify-center px-6">
+      <SafeAreaView className="flex-1 bg-desk items-center justify-center px-6">
         <View className="w-14 h-14 bg-brand/20 items-center justify-center mb-4">
           <Ionicons name="camera-outline" color="#5B8DEF" size={26} />
         </View>
@@ -231,7 +231,7 @@ export default function DeviceReceiveScreen() {
 
   // ── QR-scanner ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView className="flex-1 bg-shell">
+    <SafeAreaView className="flex-1 bg-desk">
       {/* Header */}
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
@@ -270,14 +270,14 @@ export default function DeviceReceiveScreen() {
               width: 240,
               height: 240,
               borderWidth: 2,
-              borderColor: feed.text,
+              borderColor: creamOnDark.DEFAULT,
               borderRadius: 16,
               backgroundColor: "transparent",
             }}
           />
           <Text
             style={{
-              color: feed.text,
+              color: creamOnDark.DEFAULT,
               fontSize: 14,
               marginTop: 16,
               fontWeight: "500",

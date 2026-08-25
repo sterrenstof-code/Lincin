@@ -15,7 +15,7 @@ import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
 import { tabScreenLayout } from "@/components/PageTransition";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
@@ -201,8 +201,8 @@ export default function AppLayout() {
 
   if (bootstrapping) {
     return (
-      <View className="flex-1 items-center justify-center bg-shell">
-        <ActivityIndicator color={feed.text} />
+      <View className="flex-1 items-center justify-center bg-desk">
+        <ActivityIndicator color={desk.ink} />
       </View>
     );
   }
@@ -233,7 +233,7 @@ export default function AppLayout() {
         tabBarItemStyle: { paddingHorizontal: 4 },
         tabBarBadgeStyle: {
           backgroundColor: flame,
-          color: feed.text,
+          color: creamOnDark.DEFAULT,
           fontSize: 10,
           fontWeight: "700",
           minWidth: 18,

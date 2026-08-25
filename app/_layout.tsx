@@ -1,10 +1,11 @@
 import "../global.css";
 
-import { DarkTheme, ThemeProvider } from "@react-navigation/native";
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import "react-native-reanimated";
 
 import { Analytics } from "@vercel/analytics/react";
@@ -14,6 +15,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { stackScreenLayout } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
 import { installPageTransitions } from "@/lib/page-transition";
+import { loadStoredPreference, useScheme } from "@/lib/design/theme";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
@@ -31,8 +33,12 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const router = useRouter();
+  const scheme = useScheme();
 
   useEffect(() => {
+    // Haalt de bewaarde voorkeur op. Op web heeft het script in `+html.tsx`
+    // de stand al gezet vóór het eerste beeld; dit bevestigt hem alleen.
+    loadStoredPreference();
     initCryptoRandom();
     // Zet de app-brede paginaovergangen aan. Op web omwikkelt dit élke
     // navigatie met een View Transition; op native een no-op, want daar
@@ -71,10 +77,14 @@ export default function RootLayout() {
   }, []); // enkel op mount — niet bij elke navigatie
 
   return (
-    <ErrorBoundary>
+    // Op native staat de kleur van een prop als échte waarde in de boom (zie
+    // lib/design/type.ts), dus een wissel moet hertekenen. De `key` doet dat.
+    // Op web zit de kleur in een CSS-variabele en hoeft er niets te gebeuren —
+    // vandaar dat de key daar constant blijft.
+    <ErrorBoundary key={Platform.OS === "web" ? "app" : scheme}>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={DarkTheme}>
+        <ThemeProvider value={scheme === "light" ? DefaultTheme : DarkTheme}>
           {/* `animation: fade_from_bottom` is de native evenknie van de
               web-overgang: vervagen met een lichte stijging, dezelfde
               320ms. Hij geldt als default voor élk scherm hieronder; de
@@ -231,6 +241,8 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          {/* De balk bovenaan is in béide standen zwart, dus de
+              systeemklok erboven blijft licht. */}
           <StatusBar style="light" />
           <Analytics />
           <SpeedInsights />

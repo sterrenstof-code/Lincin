@@ -1,4 +1,4 @@
-# Lincin Design System — v3
+# Lincin Design System — v4
 
 Eén document waarmee we elke UI-wijziging aftoetsen. Dit beschrijft het
 systeem **zoals de code het nu doet**, niet zoals het ooit bedoeld was.
@@ -15,51 +15,106 @@ systeem **zoals de code het nu doet**, niet zoals het ooit bedoeld was.
 
 ## 1. Waar het systeem woont
 
-Er zijn precies twee bronbestanden. Verandert er iets aan kleur of
+Vier bestanden, en ze hangen aan elkaar. Verandert er iets aan kleur of
 typografie, dan gebeurt dat daar en nergens anders.
 
 | Bestand | Wat erin staat |
 |---|---|
-| `tailwind.config.js` | De kleurtokens voor **klassen** (`bg-page`, `text-ink`) |
-| `lib/design/type.ts` | Dezelfde kleuren als **props** + de hele typeschaal |
+| `lib/design/theme.ts` | **De twee paletten**, met de reden per kleur. De bron. |
+| `global.css` | Dezelfde waarden als CSS-variabelen: `:root` (licht) en `.dark:root` (donker) |
+| `tailwind.config.js` | De tokens voor **klassen** (`bg-page`, `text-ink`) — allemaal verwijzingen naar die variabelen |
+| `lib/design/type.ts` | Dezelfde tokens als **props** + de hele typeschaal |
 
-Waarom twee: NativeWind-klassen dekken achtergronden en tekst, maar een
-`Ionicons`-kleur, een `tintColor` of een `borderColor` in een style-object
-moet een echte waarde zijn. Die twee mogen **nooit** uit elkaar lopen — dat
-was eerder wél zo (twee zwarten, vier hexpunten uit elkaar) en het is
-onzichtbaar tot het niet meer klopt.
+Waarom klassen én props: NativeWind-klassen dekken achtergronden en tekst,
+maar een `Ionicons`-kleur, een `tintColor` of een `borderColor` in een
+style-object moet een echte waarde zijn. Die twee mogen **nooit** uit
+elkaar lopen — dat was eerder wél zo (twee zwarten, vier hexpunten uit
+elkaar) en het is onzichtbaar tot het niet meer klopt. Nu kán het niet
+meer: allebei lezen ze dezelfde variabele.
+
+Er staan daarom **geen hexwaarden meer** in `tailwind.config.js` of in
+`lib/design/type.ts`. Wil je een kleur bijstellen, dan doe je dat in
+`lib/design/theme.ts` én in `global.css` — die twee lijsten horen
+letterlijk gelijk te zijn.
 
 ---
 
-## 2. Het palet
+## 2. Twee standen
 
-Lavendel/plum met inkt, en één scherp drukwerkrood. Geen warme tinten meer
-behalve in de aankondigingsbalk.
+De app heeft **twee paletten** en verder één ontwerp. Vorm, ruimte, type,
+beweging: allemaal identiek. Alleen de kleurwaarden schuiven.
+
+| | |
+|---|---|
+| **Donker** | Lavendel blad, plum kaarten, crème tekst, één scherp drukwerkrood, oranje actie. Dit is de app zoals hij was — er is geen hex aan veranderd. |
+| **Licht** | Vier soorten wit en grijs, inkt erop, en dezelfde oranje. Geen lavendel, geen plum, en geen rood: op een wit blad met verder alleen grijzen is rood náást de oranje balk één warme kleur te veel. |
+
+De stand komt van het besturingssysteem (`Auto`) tenzij je hem zelf zet.
+De schakelaar staat in het persoonlijke menu achter je avatar
+(`components/ThemeSwitch.tsx`), dus vanaf élke pagina bereikbaar.
+
+**Hoe het schuift.** Élk token wijst naar een CSS-variabele; de klasse
+`dark` op `<html>` bepaalt welke set geldt. Op web hoeft er daardoor niets
+te hertekenen — ook een kleur die als *prop* in een style-object staat is
+daar letterlijk `rgb(var(--c-ink) / 1)`, dus de browser herberekent hem
+mee. Op native bestaan variabelen niet: daar worden de bindingen in
+`lib/design/type.ts` opnieuw opgebouwd en hertekent `ThemeGate` in
+`app/_layout.tsx` de boom.
+
+Een script in `app/+html.tsx` zet de klasse vóór het eerste beeld. Zonder
+dat flitst er eerst een blad in de verkeerde stand.
+
+### Drie paren die samen kantelen
+
+Dit is het enige waar je bij een nieuw scherm over hoeft na te denken.
+Sommige vlakken blijven in béide standen donker, en dan moet hun tekst dat
+óók blijven. Andere vlakken kantelen, en dan kantelt hun tekst mee.
+
+| Vlak | Tekst erop | Donker | Licht |
+|---|---|---|---|
+| `bg-shell`, `bg-ink`, `bg-flame`, `bg-announce` | `text-cream` | donker vlak, lichte tekst | **hetzelfde** |
+| `bg-feed-post` (kaart, tegel, coverband) | `text-feed-text` / `feed.text` | plum met crème | wit met inkt |
+| `bg-desk` (de niet-gemigreerde schermen, §8) | `text-desk-ink` / `desk.ink` | zwart met crème | blad met inkt |
+
+Zet je `text-cream` op een kaart, dan staat er in de lichte stand crème op
+wit. Zet je `feed.text` op een gevulde zwarte knop, dan staat er in de
+lichte stand inkt op zwart. Dat is de enige val in dit systeem, en beide
+kanten ervan zijn onzichtbaar in de stand waarin je toevallig werkt —
+**kijk dus altijd even in de andere stand.**
+
+### Het palet
 
 ### Vlakken
-| Token | Waarde | Waarvoor |
-|---|---|---|
-| `page` | `#CDBEE3` | Het paginavlak — lavendel |
-| `page-alt` / `paper-soft` | `#EFE9F5` | Lichter paneel, beeldkaders |
-| `paper-warm` | `#BFACDB` | Iets dieper lavendel, voor banden |
-| `paper-light` | `#F5F1FA` | Bijna wit met een lila zweem |
-| `shell` | `#0B0A0C` | De donkere omlijsting |
-| `shell-soft` / `feed-post` | `#2E2138` | Élk donker kaartoppervlak — plum |
+| Token | Donker | Licht | Waarvoor |
+|---|---|---|---|
+| `page` / `paper` | `#CDBEE3` | `#EFEFEC` | Het paginavlak |
+| `page-alt` / `paper-soft` / `sheet` | `#EFE9F5` | `#FFFFFF` | Paneel, kaart, beeldkader |
+| `paper-warm` | `#BFACDB` | `#E2E2DE` | Band, uitgeschakelde vulling |
+| `paper-light` | `#F5F1FA` | `#F7F7F5` | Zacht vlak |
+| `shell` | `#0B0A0C` | `#0B0A0C` | De balk — donker in béide standen |
+| `shell-soft` | `#2E2138` | `#26262B` | Donker vlak bínnen die balk |
+| `feed-post` | `#2E2138` | `#FFFFFF` | Élk kaartoppervlak — **kantelt** |
+| `feed-fill` | `#3A2A46` | `#E7E7E3` | Beeldvlak in afwachting van de foto |
+| `desk` | `#0B0A0C` | `#F7F7F5` | Het blad van een §8-scherm — **kantelt** |
+| `desk-panel` | `#2E2138` | `#E2E2DE` | Gedempte vulling daarop |
 
 ### Tekst
-| Token | Waarde | Waarop |
-|---|---|---|
-| `ink` / `carbon` | `#0B0A0C` | Op lavendel |
-| `ink-soft` | `#3A3540` | Secundair |
-| `ink-muted` | `#6B6474` | Tertiair |
-| `cream` / `feed-text` | `#F3EDE4` | Op inkt of plum |
-| `feed-textDim` | `rgba(243,237,228,0.62)` | Bijschrift op plum |
+| Token | Donker | Licht | Waarop |
+|---|---|---|---|
+| `ink` / `carbon` | `#0B0A0C` | `#0B0A0C` | Op het paginavlak |
+| `ink-soft` | `#3A3540` | `#44444A` | Secundair |
+| `ink-muted` | `#6B6474` | `#7A7A80` | Tertiair |
+| `cream` | `#F3EDE4` | `#F7F7F5` | Op inkt, op de balk, op een gevulde knop |
+| `cream-soft` / `cream-muted` | `#D9D2E4` / `#A79FB5` | `#DCDCD9` / `#A0A09C` | idem, zachter |
+| `feed-text` | `#F3EDE4` | `#0B0A0C` | Op een kaart — **kantelt** |
+| `feed-dim` | crème @62% | inkt @58% | Bijschrift op een kaart |
+| `desk-ink` / `-soft` / `-muted` | `#F3EDE4` / `#D9D2E4` / `#A79FB5` | `#0B0A0C` / `#44444A` / `#7A7A80` | Op een §8-blad — **kantelt** |
 
 ### Accent
 | Token | Waarde | Regel |
 |---|---|---|
-| `flame` | `#E63329` | Citaten, indexcijfers, vullingen, lijnwerk |
-| `flame-deep` | `#A81C13` | **Alles onder ~16px** — de DEFAULT haalt op lavendel geen 4.5:1 |
+| `flame` | `#E63329` donker · `#D4551F` licht | Citaten, indexcijfers, vullingen, lijnwerk |
+| `flame-deep` | `#A81C13` donker · `#A83E12` licht | **Alles onder ~16px** — de DEFAULT haalt op het blad geen 4.5:1 |
 | `announce` | `#E66B3F` | De aankondigingsbalk **en de primaire actie** (delen, toevoegen, opties). `announceDeep` `#C4552C` is dezelfde kleur ingedrukt. |
 | `brand` | `#5B8DEF` | Alleen het logo en de e2e-badge |
 | `teal` / `gold` | `#4FBDB0` / `#E3A84B` | Alleen de tegels in de feed |
@@ -207,10 +262,14 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
 
 - Geen `rounded-2xl`/`rounded-3xl`/pillen. Vierkant.
 - Geen schaduwen.
-- Geen hex-waarden inline. Altijd een token uit §1.
+- Geen hex-waarden inline. Altijd een token uit §2.
 - Geen `flame` op kleine tekst — dat is `flame-deep`.
 - Geen warm oranje buiten de aankondigingsbalk.
 - Geen `text-white`/`text-black`. Gebruik `text-cream` of `text-ink`.
+- Geen `text-cream` op een kaart of een §8-blad — dat is `text-feed-text`
+  respectievelijk `text-desk-ink`. Zie het kader in §2.
+- Niets nakijken in één stand. Wat in de donkere klopt kan in de lichte
+  onzichtbaar zijn, en andersom.
 - Geen tweede navigatiebalk: de navigatie zit in de kop (`AppChrome`).
 
 ---
@@ -223,5 +282,13 @@ dit document niet. Onder meer: `profile-edit`, `group/[id]`,
 `group-create`, `event-create`, `post-compose`, `list/[id]`,
 `qr-code`, `set-password`, `device-link`, `invite-email`.
 
+Ze zijn wél op de twee standen gezet: hun zwarte paginavlak leest nu
+`bg-desk` in plaats van `bg-shell`, en hun tekst `text-desk-ink` in plaats
+van `text-cream`. Dat paar kantelt samen (zie §2), dus in de donkere stand
+zijn ze exact wat ze waren en in de lichte stand worden ze een blad met
+inkt erop. Dat is geen migratie — het is alleen niet-zwart-zijn.
+
 Raak je zo'n scherm aan voor iets anders, migreer het dan meteen naar §5 —
-dat is goedkoper dan een aparte migratieronde.
+dat is goedkoper dan een aparte migratieronde. Bij zo'n migratie
+verdwijnen de `desk-*`-tokens vanzelf: een §5-scherm staat op `bg-page`
+met `text-ink`, en die kantelen niet.

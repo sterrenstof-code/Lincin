@@ -6,7 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 /**
@@ -37,13 +37,13 @@ export default function QRScanScreen() {
 
   // ── Permissie nog niet gevraagd ──────────────────────────────────────────
   if (!permission) {
-    return <View className="flex-1 bg-shell" />;
+    return <View className="flex-1 bg-desk" />;
   }
 
   // ── Permissie geweigerd ──────────────────────────────────────────────────
   if (!permission.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+      <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
         <ScreenContainer>
           <View className="flex-row items-center px-4 py-3">
             <Pressable
@@ -52,23 +52,23 @@ export default function QRScanScreen() {
             >
               <Ionicons name="close" color={feed.ink} size={20} />
             </Pressable>
-            <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+            <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
               QR-code scannen
             </Text>
           </View>
           <View className="flex-1 items-center justify-center px-8 gap-4">
-            <Ionicons name="camera-outline" color={feed.text} size={48} />
-            <Text className="text-cream text-xl font-bold text-center">
+            <Ionicons name="camera-outline" color={desk.ink} size={48} />
+            <Text className="text-desk-ink text-xl font-bold text-center">
               Camera-toegang vereist
             </Text>
-            <Text className="text-cream-soft text-sm text-center leading-5">
+            <Text className="text-desk-soft text-sm text-center leading-5">
               Lincin heeft toegang tot je camera nodig om QR-codes te scannen.
             </Text>
             <Pressable
               onPress={requestPermission}
-              className="mt-2 bg-cream px-6 py-3"
+              className="mt-2 bg-desk-ink px-6 py-3"
             >
-              <Text className="text-ink font-semibold">Geef toegang</Text>
+              <Text className="text-desk font-semibold">Geef toegang</Text>
             </Pressable>
           </View>
         </ScreenContainer>
@@ -85,7 +85,7 @@ export default function QRScanScreen() {
           onPress={() => safeBack(router, "/(app)/friends")}
           className="w-10 h-10 bg-black/50 items-center justify-center"
         >
-          <Ionicons name="close" color={feed.text} size={22} />
+          <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
         </Pressable>
       </View>
 
@@ -105,7 +105,7 @@ export default function QRScanScreen() {
             height: 240,
             borderRadius: 20,
             borderWidth: 2,
-            borderColor: feed.text,
+            borderColor: creamOnDark.DEFAULT,
             backgroundColor: "transparent",
           }}
         />

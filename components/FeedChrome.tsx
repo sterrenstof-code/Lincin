@@ -4,6 +4,7 @@ import { Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import {
+  creamOnDark,
   announce,
   announceDeep,
   feed,
@@ -110,7 +111,7 @@ export function ShareButton({
         backgroundColor: pressed ? announceDeep : announce,
       })}
     >
-      <Ionicons name="add" size={Math.round(size * 0.5)} color={feed.text} />
+      <Ionicons name="add" size={Math.round(size * 0.5)} color={creamOnDark.DEFAULT} />
     </Pressable>
   );
 }

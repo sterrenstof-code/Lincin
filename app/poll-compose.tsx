@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
-import { feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 export default function PollComposeScreen() {
@@ -86,7 +86,7 @@ export default function PollComposeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -96,9 +96,9 @@ export default function PollComposeScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between mb-6">
               <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color={feed.text} size={22} />
+                <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
-              <Text className="text-cream font-bold text-lg">
+              <Text className="text-desk-ink font-bold text-lg">
                 {chatId ? "Poll in chat" : "Nieuwe stemming"}
               </Text>
               <Pressable
@@ -107,7 +107,7 @@ export default function PollComposeScreen() {
                 className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
               >
                 {submitting
-                  ? <ActivityIndicator size="small" color={feed.text} />
+                  ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
                   : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
                       {chatId ? "Versturen" : "Plaatsen"}
                     </Text>
@@ -116,7 +116,7 @@ export default function PollComposeScreen() {
             </View>
 
             {/* Vraag */}
-            <Text className="text-cream-soft text-xs uppercase tracking-wider mb-2">Vraag</Text>
+            <Text className="text-desk-soft text-xs uppercase tracking-wider mb-2">Vraag</Text>
             <TextInput
               value={question}
               onChangeText={setQuestion}
@@ -128,7 +128,7 @@ export default function PollComposeScreen() {
             />
 
             {/* Opties */}
-            <Text className="text-cream-soft text-xs uppercase tracking-wider mb-2">Opties</Text>
+            <Text className="text-desk-soft text-xs uppercase tracking-wider mb-2">Opties</Text>
             <View className="gap-2 mb-3">
               {options.map((opt, i) => (
                 <View key={i} className="flex-row items-center gap-2">

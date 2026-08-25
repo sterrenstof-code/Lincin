@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { feed, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
+import { creamOnDark, feed, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
 import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
@@ -83,7 +83,7 @@ export default function EventsScreen() {
       return (
         <View className="bg-paper-soft p-6 items-center mt-2">
           <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
-            <Ionicons name="sparkles" color={feed.text} size={24} />
+            <Ionicons name="sparkles" color={creamOnDark.DEFAULT} size={24} />
           </View>
           <Text className="text-ink font-semibold text-base mb-1">
             Maak je eerste event
@@ -188,7 +188,7 @@ export default function EventsScreen() {
               <Text
                 style={[
                   feedType.label,
-                  { fontSize: 13, fontWeight: "700", color: feedColor.text },
+                  { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
                 ]}
               >
                 Nieuw event

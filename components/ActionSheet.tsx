@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { ModalShell } from "@/components/ModalShell";
@@ -25,11 +26,18 @@ export function ActionSheet({
   onClose,
   title,
   actions,
+  footer,
 }: {
   visible: boolean;
   onClose: () => void;
   title?: string;
   actions: ActionSheetAction[];
+  /**
+   * Iets dat onder de rij acties staat en het venster níet sluit — een
+   * schakelaar in plaats van een opdracht. Krijgt zijn eigen lijn erboven,
+   * want het is een ander soort ding dan de regels erboven.
+   */
+  footer?: ReactNode;
 }) {
   return (
     <ModalShell visible={visible} onClose={onClose} title={title}>
@@ -51,7 +59,7 @@ export function ActionSheet({
               gap: space.md,
               paddingHorizontal: space.lg,
               paddingVertical: space.lg,
-              ...(i === actions.length - 1
+              ...(i === actions.length - 1 && !footer
                 ? null
                 : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
             }}
@@ -78,6 +86,11 @@ export function ActionSheet({
           </Pressable>
         ))}
       </View>
+      {footer ? (
+        <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+          {footer}
+        </View>
+      ) : null}
     </ModalShell>
   );
 }

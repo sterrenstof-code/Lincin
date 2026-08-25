@@ -25,7 +25,7 @@ export function NewDeviceWarning({
   onLinkDevice?: () => void;
 }) {
   return (
-    <SafeAreaView className="flex-1 bg-shell items-center justify-center px-6">
+    <SafeAreaView className="flex-1 bg-desk items-center justify-center px-6">
       <View className="bg-paper-soft p-6 w-full max-w-sm">
         {/* Icoon */}
         <View className="w-14 h-14 bg-amber-500/15 items-center justify-center mb-4 self-center">

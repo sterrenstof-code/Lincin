@@ -34,7 +34,7 @@ import {
 import { sendMessage } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -149,7 +149,7 @@ export default function GroupInfoScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
@@ -158,7 +158,7 @@ export default function GroupInfoScreen() {
         >
           <Ionicons name="chevron-back" color={feed.ink} size={20} />
         </Pressable>
-        <Text className="flex-1 text-cream text-lg font-semibold ml-3">Groep info</Text>
+        <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">Groep info</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -188,8 +188,8 @@ export default function GroupInfoScreen() {
               {isOwner && (
                 <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-paper items-center justify-center">
                   {avatarUploading
-                    ? <ActivityIndicator size="small" color={feed.text} />
-                    : <Ionicons name="camera" color={feed.text} size={14} />
+                    ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
+                    : <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
                   }
                 </View>
               )}
@@ -260,16 +260,16 @@ export default function GroupInfoScreen() {
           {/* Members */}
           <View className="mt-6">
             <View className="flex-row items-end justify-between mb-3 px-1">
-              <Text className="text-xs uppercase tracking-wider text-cream-muted">
+              <Text className="text-xs uppercase tracking-wider text-desk-muted">
                 Leden
               </Text>
               {isOwner && isGroup && (
                 <Pressable
                   onPress={() => router.push(`/group-add/${chatId}`)}
-                  className="flex-row items-center bg-cream active:bg-cream-soft px-3 py-1"
+                  className="flex-row items-center bg-desk-ink active:bg-desk-soft px-3 py-1"
                 >
-                  <Ionicons name="person-add" color={feed.ink} size={14} />
-                  <Text className="text-ink font-semibold text-xs ml-1.5">
+                  <Ionicons name="person-add" color={desk.DEFAULT} size={14} />
+                  <Text className="text-desk font-semibold text-xs ml-1.5">
                     Voeg toe
                   </Text>
                 </Pressable>
@@ -309,7 +309,7 @@ export default function GroupInfoScreen() {
                 Verlaat groep
               </Text>
             </Pressable>
-            <Text className="text-cream-muted text-xs text-center mt-2 leading-5">
+            <Text className="text-desk-muted text-xs text-center mt-2 leading-5">
               Je oude berichten worden ontoegankelijk omdat je toestel ze niet meer kan ontsleutelen voor nieuwe sleutels.
             </Text>
           </View>

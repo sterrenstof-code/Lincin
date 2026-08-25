@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase/client";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, feed } from "@/lib/design/type";
 
 export function CallPlanCard({
   plan,
@@ -282,7 +282,7 @@ export function CallPlanCard({
                       </View>
                       {selected && (
                         <View className="absolute top-0 right-0 w-4 h-4 bg-carbon items-center justify-center">
-                          <Ionicons name="checkmark" color={feed.text} size={10} />
+                          <Ionicons name="checkmark" color={creamOnDark.DEFAULT} size={10} />
                         </View>
                       )}
                       <Text className={`text-[11px] text-center ${selected ? "text-carbon font-semibold" : "text-carbon-muted"}`} numberOfLines={1}>
@@ -300,7 +300,7 @@ export function CallPlanCard({
               className={`mt-4 py-3.5 items-center ${selectedIds.length > 0 ? "bg-carbon" : "bg-page-alt"}`}
             >
               {inviting
-                ? <ActivityIndicator size="small" color={feed.text} />
+                ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
                 : <Text className={`font-semibold ${selectedIds.length > 0 ? "text-page" : "text-carbon-muted"}`}>
                     {selectedIds.length === 0 ? "Kies wie je uitnodigt" : `${selectedIds.length} uitnodigen`}
                   </Text>

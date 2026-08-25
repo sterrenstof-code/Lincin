@@ -45,7 +45,7 @@ export default function InviteEmailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
@@ -54,7 +54,7 @@ export default function InviteEmailScreen() {
           >
             <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
-          <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
             Iemand uitnodigen
           </Text>
         </View>

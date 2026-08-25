@@ -16,7 +16,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
-import { feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 
 const QR_SIZE = 260;
 
@@ -57,10 +57,10 @@ export default function EventQrScreen() {
 
   if (event.isLoading || !event.data) {
     return (
-      <SafeAreaView className="flex-1 bg-shell">
+      <SafeAreaView className="flex-1 bg-desk">
         <ScreenContainer>
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color={feed.text} />
+            <ActivityIndicator color={desk.ink} />
           </View>
         </ScreenContainer>
       </SafeAreaView>
@@ -71,7 +71,7 @@ export default function EventQrScreen() {
   const url = buildEventJoinUrl(ev.join_code);
 
   return (
-    <SafeAreaView className="flex-1 bg-shell" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
@@ -80,7 +80,7 @@ export default function EventQrScreen() {
           >
             <Ionicons name="close" color={feed.ink} size={20} />
           </Pressable>
-          <Text className="flex-1 text-cream text-lg font-semibold ml-3">
+          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
             Uitnodigen
           </Text>
         </View>
@@ -142,15 +142,15 @@ export default function EventQrScreen() {
               onPress={onShare}
               className="flex-1 flex-row items-center justify-center bg-ink active:bg-ink-soft px-4 py-3"
             >
-              <Ionicons name="share-outline" color={feed.text} size={16} />
+              <Ionicons name="share-outline" color={creamOnDark.DEFAULT} size={16} />
               <Text className="text-cream font-semibold ml-2">Deel link</Text>
             </Pressable>
             <Pressable
               onPress={onCopy}
-              className="flex-1 flex-row items-center justify-center border border-cream-muted px-4 py-3"
+              className="flex-1 flex-row items-center justify-center border border-desk-muted px-4 py-3"
             >
-              <Ionicons name="link-outline" color={feed.text} size={16} />
-              <Text className="text-cream font-semibold ml-2">Kopieer</Text>
+              <Ionicons name="link-outline" color={desk.ink} size={16} />
+              <Text className="text-desk-ink font-semibold ml-2">Kopieer</Text>
             </Pressable>
           </View>
 

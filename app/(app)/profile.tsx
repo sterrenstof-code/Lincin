@@ -11,7 +11,7 @@ import { PostGrid } from "@/components/PostGrid";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
-import { feed, feedType, flameDeep, space } from "@/lib/design/type";
+import { creamOnDark, feed, feedType, flameDeep, space } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
 import { listUserPosts } from "@/lib/api/posts";
@@ -160,8 +160,8 @@ export default function ProfileScreen() {
             <Avatar name={heroName} avatarUrl={avatarUrl} size="hero" tint="warm" />
             <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
               {avatarUploading
-                ? <ActivityIndicator size="small" color={feed.text} />
-                : <Ionicons name="camera" color={feed.text} size={14} />
+                ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
+                : <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
               }
             </View>
           </Pressable>

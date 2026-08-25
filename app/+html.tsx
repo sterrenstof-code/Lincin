@@ -22,8 +22,39 @@ export default function Root({ children }: PropsWithChildren) {
         />
 
         {/* PWA — algemeen */}
-        {/* Kleurt de browserbalk mee met het paginavlak. */}
+        {/* Kleurt de browserbalk mee met het paginavlak. De waarde hieronder
+            is de donkere stand; `applyWeb` in lib/design/theme.ts zet hem om
+            zodra de lichte stand geldt, en het script hieronder doet dat al
+            vóór het eerste beeld. */}
         <meta name="theme-color" content="#CDBEE3" />
+
+        {/* ---------------------------------------------------------------
+            De stand, vóór het eerste beeld.
+
+            De klasse `dark` op <html> bepaalt welk palet geldt (zie
+            `global.css`). Zou React die pas ná hydratie zetten, dan flitst
+            er eerst een blad in de verkeerde stand — en dat is precies het
+            beeld dat een donkere-stand-gebruiker níet wil zien.
+
+            Dit script is met opzet dom en synchroon: lees de voorkeur, val
+            terug op het besturingssysteem, zet de klasse. Alles wat er
+            daarna mee gebeurt staat in lib/design/theme.ts.
+            --------------------------------------------------------------- */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+  var p = localStorage.getItem('lincin.theme');
+  if (p !== 'light' && p !== 'dark') {
+    p = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  var r = document.documentElement;
+  r.classList.toggle('dark', p === 'dark');
+  r.dataset.theme = p;
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', p === 'dark' ? '#CDBEE3' : '#EFEFEC');
+}catch(e){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
         <meta name="description" content="Privé chats, foto-events en feed voor je inner circle. End-to-end versleuteld." />
 
         {/* Manifest — expliciet, want hij draagt de share_target.
@@ -93,6 +124,14 @@ export default function Root({ children }: PropsWithChildren) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
+/* ---- 0. Het vlak achter de app ----
+   De app vult het venster, maar bij overscroll (en op een scherm hoger dan
+   de inhoud) kijk je erlangs naar <body>. Zonder deze regel is dat wit, en
+   dan zit er in de donkere stand een witte rand om een lavendel blad. */
+html, body {
+  background-color: rgb(var(--c-page));
+}
+
 /* ---- 1. Het gedeelde element: de morph ---- */
 ::view-transition-group(*) {
   animation-duration: 520ms;

@@ -20,6 +20,7 @@ import {
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import {
+  creamOnDark,
   CONTROL_H,
   feed,
   FEED_BORDER,
@@ -224,7 +225,7 @@ function ChatRailRow({
         <Text
           style={[
             feedType.label,
-            { fontSize: 14, fontWeight: "700", color: active ? feed.text : feed.ink },
+            { fontSize: 14, fontWeight: "700", color: active ? creamOnDark.DEFAULT : feed.ink },
           ]}
           numberOfLines={1}
         >
@@ -233,7 +234,7 @@ function ChatRailRow({
         <Text
           style={[
             feedType.label,
-            { color: active ? feed.textDim : feed.inkDim, marginTop: 2 },
+            { color: active ? creamOnDark.muted : feed.inkDim, marginTop: 2 },
           ]}
           numberOfLines={1}
         >

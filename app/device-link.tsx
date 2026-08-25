@@ -23,7 +23,7 @@ import {
   type TransferPackage,
 } from "@/lib/crypto/transfer";
 import { copyToClipboard } from "@/lib/share";
-import { feed } from "@/lib/design/type";
+import { desk, feed } from "@/lib/design/type";
 
 const EXPIRY_SECS = 600;
 
@@ -90,7 +90,7 @@ export default function DeviceLinkScreen() {
   const secs = secondsLeft % 60;
 
   return (
-    <SafeAreaView className="flex-1 bg-shell">
+    <SafeAreaView className="flex-1 bg-desk">
       {/* Header */}
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
@@ -106,7 +106,7 @@ export default function DeviceLinkScreen() {
 
       <View className="flex-1 items-center justify-center px-6">
         {loading ? (
-          <ActivityIndicator color={feed.text} size="large" />
+          <ActivityIndicator color={desk.ink} size="large" />
         ) : error ? (
           <View className="items-center gap-4">
             <Text className="text-red-400 text-sm text-center">{error}</Text>

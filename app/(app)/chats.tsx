@@ -16,7 +16,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { SkeletonListCard } from "@/components/Skeleton";
-import { feed, FEED_BORDER, flameDeep } from "@/lib/design/type";
+import { creamOnDark, feed, FEED_BORDER, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   chatTitle,
@@ -199,7 +199,7 @@ export default function ChatsScreen() {
               onPress={() => router.push("/group-create")}
               className="bg-ink active:bg-ink-soft w-11 h-11 items-center justify-center"
             >
-              <Ionicons name="people" color={feed.text} size={18} />
+              <Ionicons name="people" color={creamOnDark.DEFAULT} size={18} />
             </Pressable>
           </View>
 
