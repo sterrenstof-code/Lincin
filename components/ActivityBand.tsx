@@ -151,11 +151,25 @@ function SharersRow({ sharers }: { sharers: Profile[] }) {
         borderBottomColor: rule.soft,
       }}
     >
-      {/* De gezichten overlappen: het is één groep, geen lijst. */}
+      {/* De gezichten overlappen: het is één groep, geen lijst.
+          Elk krijgt een ring in de kleur van het blad, anders snijden een
+          foto en een letter in elkaar en wordt de rij een vlek in plaats
+          van een stapel. De ring is precies daarom géén lijn uit het
+          raster: hij hoort bij de cirkel, en de cirkel is in dit ontwerp
+          het enige dat érop ligt in plaats van erin (DESIGN.md §4). */}
       <View style={{ flexDirection: "row" }}>
         {shown.map((p, i) => (
-          <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-            <Avatar name={p.display_name ?? p.username ?? "?"} avatarUrl={p.avatar_url} size="sm" />
+          <View
+            key={p.id}
+            style={{
+              marginLeft: i === 0 ? 0 : -10,
+              borderRadius: 999,
+              borderWidth: 2,
+              borderColor: feed.lav,
+              backgroundColor: feed.lav,
+            }}
+          >
+            <Avatar name={p.display_name ?? p.username ?? "?"} avatarUrl={p.avatar_url} size="xs" />
           </View>
         ))}
       </View>
