@@ -27,6 +27,7 @@ import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { EventCard } from "@/components/EventCard";
+import { ActivityBand } from "@/components/ActivityBand";
 import { ShareButton } from "@/components/FeedChrome";
 import {
   FindHero,
@@ -605,6 +606,11 @@ export default function FeedScreen() {
                         onPick={(t) => setActiveTag(t === activeTag ? null : t)}
                       />
                     ) : null}
+
+                    {/* Wat er over jóu gebeurd is, vóór de uitgave zelf.
+                        Zie components/ActivityBand.tsx voor waarom dit hier
+                        staat en niet alleen op /notifications. */}
+                    <ActivityBand myUserId={myUserId} items={feed.data} />
 
                     {order === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
                       <SectionFrame index={0} label="Nu aan de gang">
