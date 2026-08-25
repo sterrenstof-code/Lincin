@@ -117,12 +117,26 @@ export function PostCarousel({
   function goTo(next: number) {
     const clamped = Math.max(0, Math.min(urls.length - 1, next));
     setIndex(clamped);
-    scroller.current?.scrollTo({ x: clamped * width, animated: true });
+    scroller.current?.scrollTo({
+      x: clamped * width,
+      // Op web niet vloeiend. `pagingEnabled` wordt daar
+      // `scroll-snap-type: x mandatory`, en een `behavior: "smooth"`-scroll
+      // botst met die verankering: hij komt 24 pixels van zijn plaats en
+      // blijft daar staan. De pijl deed dus niets — hij verschoof het beeld
+      // een haar en sprong terug. Een directe sprong laat de verankering
+      // zijn werk doen en komt altijd aan; de beweging die je ziet is die
+      // van de balk eronder, en die loopt gewoon door.
+      animated: Platform.OS !== "web",
+    });
   }
 
   if (urls.length === 0) return null;
 
-  const many = urls.length > 1;
+  // Pas besturing tonen als de plaat gemeten is. Daarvoor is `box` nul
+  // breed en zou een pijl met `right: 0` linksbuiten het beeld belanden —
+  // en dan zit er een onzichtbare knop over de foto die iets anders doet
+  // dan hij lijkt te doen.
+  const many = urls.length > 1 && width > 0;
 
   /**
    * Het vak waar de foto écht staat.
