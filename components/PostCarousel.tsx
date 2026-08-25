@@ -60,6 +60,16 @@ export function PostCarousel({
   onPressImage?: () => void;
 }) {
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
+  /**
+   * De verhouding van elke foto, zodra hij binnen is.
+   *
+   * Nodig omdat de besturing op de fóto moet liggen en niet op de plaat.
+   * Bij `contain` is de plaat bijna altijd breder dan de foto — een staande
+   * foto in een brede kolom — en dan zweeft een pijl aan de rechterrand
+   * ergens in het lege vlak ernaast in plaats van op het beeld.
+   */
+  const [ratios, setRatios] = useState<Record<number, number>>({});
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(Platform.OS !== "web");
   const scroller = useRef<ScrollView>(null);
@@ -94,6 +104,7 @@ export function PostCarousel({
 
   function onLayout(e: LayoutChangeEvent) {
     setWidth(e.nativeEvent.layout.width);
+    setHeight(e.nativeEvent.layout.height);
   }
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
@@ -111,6 +122,27 @@ export function PostCarousel({
   if (urls.length === 0) return null;
 
   const many = urls.length > 1;
+
+  /**
+   * Het vak waar de foto écht staat.
+   *
+   * Bij `cover` vult hij de plaat en is dat de plaat zelf. Bij `contain`
+   * past hij erin en houdt hij aan twee kanten ruimte over; de besturing
+   * hoort dan tegen de foto aan te liggen, niet tegen de plaat.
+   */
+  const ratio = ratios[index];
+  const plate = { left: 0, top: 0, width, height };
+  const box =
+    contentFit === "cover" || !ratio || width <= 0 || height <= 0
+      ? plate
+      : ratio >= width / height
+        ? { left: 0, top: (height - width / ratio) / 2, width, height: width / ratio }
+        : {
+            left: (width - height * ratio) / 2,
+            top: 0,
+            width: height * ratio,
+            height,
+          };
 
   return (
     <View
@@ -142,6 +174,10 @@ export function PostCarousel({
               transition={200}
               fallbackBg="bg-feed-fill"
               fallbackColor={feed.inkDim}
+              onLoad={(e) => {
+                const { width: w, height: h } = (e as any).source ?? {};
+                if (w && h) setRatios((prev) => (prev[i] ? prev : { ...prev, [i]: w / h }));
+              }}
             />
           </Pressable>
         ))}
@@ -159,8 +195,8 @@ export function PostCarousel({
               pointerEvents="none"
               style={{
                 position: "absolute",
-                top: space.md,
-                right: space.md,
+                top: box.top + space.md,
+                left: box.left + box.width - 58,
                 paddingHorizontal: space.sm,
                 paddingVertical: 3,
                 backgroundColor: "rgba(11,10,12,0.55)",
@@ -176,10 +212,10 @@ export function PostCarousel({
             pointerEvents="box-none"
             style={{
               position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
+              left: box.left,
+              top: box.top,
+              width: box.width,
+              height: box.height,
               opacity: controls,
             }}
           >
@@ -200,13 +236,12 @@ export function PostCarousel({
             pointerEvents="none"
             style={{
               position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
+              left: box.left,
+              width: box.width,
+              top: box.top + box.height - 5,
               flexDirection: "row",
               gap: 2,
               paddingHorizontal: 2,
-              paddingBottom: 2,
             }}
           >
             {urls.map((_, i) => (
