@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -15,8 +14,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import Svg, { Path } from "react-native-svg";
+
 import { SafeImage } from "@/components/SafeImage";
-import { creamOnDark, feed, feedType, space } from "@/lib/design/type";
+import { announceDeep, creamOnDark, feed, feedType, space } from "@/lib/design/type";
 
 /**
  * Door een album bladeren.
@@ -225,23 +226,29 @@ export function PostCarousel({
             ) : null}
           </Animated.View>
 
-          {/* De voortgang als één lijn onderaan het beeld, in segmenten.
-              Hiervoor stonden hier stippen op een doorschijnende pil: drie
-              ronde vormen in een ontwerp dat verder alleen rechthoeken kent,
-              en stippen zeggen bovendien niet hoe ver je bent maar alleen
-              de hoeveelste je hebt. Een balk die de volle breedte in gelijke
-              delen knipt zegt allebei, en hij is een lijn — hetzelfde
-              gereedschap waarmee de rest van de pagina zijn opbouw krijgt. */}
+          {/* De voortgang als één lijn langs de onderrand, in segmenten.
+              Hiervoor stonden hier stippen op een doorschijnende pil: ronde
+              vormen in een ontwerp dat verder alleen rechthoeken kent, en
+              stippen zeggen bovendien niet hoe ver je bent maar alleen de
+              hoeveelste je hebt. Een balk die de breedte in gelijke delen
+              knipt zegt allebei, en hij is een lijn — hetzelfde gereedschap
+              waarmee de rest van de pagina zijn opbouw krijgt.
+
+              De baan eronder is donker. Een crème streepje op een foto met
+              een witte lucht erachter is er niet, en dan is de enige plek
+              waar staat hoe ver je bent onzichtbaar precies bij het beeld
+              waar het het meest voorkomt. */}
           <View
             pointerEvents="none"
             style={{
               position: "absolute",
               left: box.left,
               width: box.width,
-              top: box.top + box.height - 5,
+              top: box.top + box.height - 4,
+              height: 4,
               flexDirection: "row",
               gap: 2,
-              paddingHorizontal: 2,
+              backgroundColor: "rgba(11,10,12,0.34)",
             }}
           >
             {urls.map((_, i) => (
@@ -249,11 +256,11 @@ export function PostCarousel({
                 key={i}
                 style={{
                   flex: 1,
-                  height: 3,
+                  height: 4,
                   backgroundColor: creamOnDark.DEFAULT,
                   opacity: active.interpolate({
                     inputRange: [i - 1, i, i + 1],
-                    outputRange: [0.32, 1, 0.32],
+                    outputRange: [0.22, 1, 0.22],
                     extrapolate: "clamp",
                   }),
                 }}
@@ -266,18 +273,52 @@ export function PostCarousel({
   );
 }
 
+/**
+ * De pijl, zelf getekend.
+ *
+ * Geen icoonlettertype. De chevron uit Ionicons is een haakje zonder
+ * schacht — hij zegt "die kant op" maar niet hoe ver, en hij staat qua
+ * gewicht los van de rest van dit ontwerp. Deze pijl is dezelfde vorm als
+ * de "→" die overal in de tekst staat ("Alles bekijken →"): een lange lijn
+ * met een kleine punt, gezet in hetzelfde lijngewicht als het raster.
+ *
+ * `strokeLinecap="square"` en `strokeLinejoin="miter"`: ronde uiteinden
+ * horen bij een ander systeem. Alles hier eindigt recht.
+ */
+function ArrowGlyph({ side, color }: { side: "left" | "right"; color: string }) {
+  return (
+    <Svg width={30} height={22} viewBox="0 0 30 22" fill="none">
+      {/* De schacht en de punt in één pad, gespiegeld voor de linkerkant. */}
+      <Path
+        d={
+          side === "right"
+            ? "M4 11 H25 M18 4.5 L25 11 L18 17.5"
+            : "M26 11 H5 M12 4.5 L5 11 L12 17.5"
+        }
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+      />
+    </Svg>
+  );
+}
+
 function Arrow({ side, onPress }: { side: "left" | "right"; onPress: () => void }) {
   return (
     /**
-     * De hele zijrand is het doel, niet alleen het knopje.
+     * De hele zijrand is het doel, niet alleen het vakje.
      *
      * Het was een rond vlak van 36 punten dat halverwege de foto zweefde:
      * de enige cirkel in een scherm vol rechthoeken (DESIGN.md §4 laat er
      * twee toe, en dit is geen van beide), en op een telefoon een doel dat
      * je met je duim moet zoeken. Nu is de strook langs de rand aanraakbaar
-     * over de volle hoogte — je hoeft alleen de kant te raken die je bedoelt
-     * — en staat er een vierkant tekentje in het midden dat zegt welke kant
-     * dat is.
+     * over de volle hoogte; het vakje in het midden zegt alleen wélke kant.
+     *
+     * Ingedrukt wordt dat vakje oranje. Dat is in dit ontwerp de kleur van
+     * een knop die iets dóet, en op een foto is een kleurwissel het enige
+     * dat je met zekerheid ziet — donkerder of lichter maken hangt af van
+     * wat er toevallig achter staat.
      */
     <Pressable
       onPress={onPress}
@@ -287,26 +328,23 @@ function Arrow({ side, onPress }: { side: "left" | "right"; onPress: () => void 
         top: 0,
         bottom: 0,
         [side]: 0,
-        width: 72,
+        width: 84,
         alignItems: side === "left" ? "flex-start" : "flex-end",
         justifyContent: "center",
+        paddingHorizontal: space.md,
       }}
     >
       {({ pressed }: { pressed: boolean }) => (
         <View
           style={{
-            width: 34,
-            height: 44,
+            width: 46,
+            height: 46,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressed ? "rgba(11,10,12,0.78)" : "rgba(11,10,12,0.42)",
+            backgroundColor: pressed ? announceDeep : "rgba(11,10,12,0.5)",
           }}
         >
-          <Ionicons
-            name={side === "left" ? "chevron-back" : "chevron-forward"}
-            size={20}
-            color={creamOnDark.DEFAULT}
-          />
+          <ArrowGlyph side={side} color={creamOnDark.DEFAULT} />
         </View>
       )}
     </Pressable>
