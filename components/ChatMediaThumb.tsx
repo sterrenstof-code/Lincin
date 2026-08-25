@@ -59,7 +59,7 @@ export function ChatMediaThumb({
   }, [attachment.path, attachment.key_b64, attachment.nonce_b64, attachment.mime_type]);
 
   if (failed) {
-    return <View style={{ width: size, height: size, backgroundColor: feed.post }} />;
+    return <View style={{ width: size, height: size, backgroundColor: feed.postFill }} />;
   }
 
   if (!uri) {
@@ -75,7 +75,7 @@ export function ChatMediaThumb({
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        style={{ width: size, height: size, backgroundColor: feed.post }}
+        style={{ width: size, height: size, backgroundColor: feed.postFill }}
       >
         <Image
           source={{ uri }}

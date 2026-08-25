@@ -1536,23 +1536,27 @@ function EmptyState({
 /** De voet: de uitgave houdt op. Geen oneindige stroom. */
 function Colophon() {
   return (
+    // Dit was een gevuld zwart blok met crème erop. Twee dingen mis: een
+    // pikzwarte doos onderaan een wit blad is het luidste van de pagina
+    // terwijl hij alleen zegt dat het op is, en de regel eronder stond op
+    // `textDim` — inkt op 58%, wat op zwart neerkomt op onleesbaar. Nu is
+    // het wat het hoort te zijn: een lijn en twee regels op het blad.
     <View
       style={{
-        borderWidth: FEED_BORDER,
-        borderColor: feedColor.ink,
-        backgroundColor: feedColor.ink,
+        borderTopWidth: FEED_BORDER,
+        borderTopColor: feedColor.ink,
         marginTop: 16,
         paddingHorizontal: 24,
         paddingVertical: 44,
         alignItems: "center",
       }}
     >
-      <Text style={[feedType.cover, { color: creamOnDark.DEFAULT }]}>Je bent bij.</Text>
+      <Text style={[feedType.cover, { color: feedColor.ink }]}>Je bent bij.</Text>
       <Text
         style={[
           feedType.body,
           {
-            color: feedColor.textDim,
+            color: feedColor.inkDim,
             marginTop: 10,
             maxWidth: 380,
             textAlign: "center",
@@ -1595,7 +1599,10 @@ function MosaicGrid({
     <View
       style={{
         flexDirection: wide ? "row" : "column",
-        backgroundColor: feedColor.post,
+        // De kier tussen twee cellen ís de lijn: de cellen liggen op dit
+        // vlak en laten er 1.5px van zien. Nu een kaart geen eigen vulling
+        // meer heeft, moet dat vlak de lijnkleur zijn en niet een vlakkleur.
+        backgroundColor: rule.soft,
       }}
     >
       {/* De grote cel links. */}

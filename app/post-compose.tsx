@@ -409,7 +409,7 @@ export default function PostComposeScreen() {
                           uri={imageUris[0]}
                           style={{ width: "100%", aspectRatio: 1 }}
                           contentFit="cover"
-                          fallbackBg="bg-feed-post"
+                          fallbackBg="bg-feed-fill"
                           fallbackColor={feed.inkDim}
                         />
 
@@ -431,7 +431,7 @@ export default function PostComposeScreen() {
                                   uri={uri}
                                   style={{ width: 72, height: 72 }}
                                   contentFit="cover"
-                                  fallbackBg="bg-feed-post"
+                                  fallbackBg="bg-feed-fill"
                                   fallbackColor={feed.inkDim}
                                 />
                               </Pressable>
@@ -656,12 +656,12 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
     <View className="mt-7">
       <Rule tone="feed" strong />
       {hasImage ? (
-        <View style={{ width: "100%", aspectRatio: 4 / 5, backgroundColor: feed.post }}>
+        <View style={{ width: "100%", aspectRatio: 4 / 5, backgroundColor: feed.postFill }}>
           <SafeImage
             uri={preview.image_url}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
-            fallbackBg="bg-feed-post"
+            fallbackBg="bg-feed-fill"
             fallbackColor={feed.textDim}
           />
           {/* Scrim zodat de tekst leesbaar blijft op elke foto. Drie

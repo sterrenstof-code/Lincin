@@ -44,6 +44,28 @@ import { Appearance, Platform } from "react-native";
  * venster te lezen.
  *
  * ---------------------------------------------------------------
+ * EEN KAART HEEFT GEEN VULLING
+ * ---------------------------------------------------------------
+ * `post` en `postText` waren een paar dat kantelde: plum met crème in de
+ * donkere stand, wit met inkt in de lichte. Dat werkte, maar het betekende
+ * dat élke kaart een eigen vlak was, en een pagina met twintig vlakken
+ * erop leest als twintig dozen — niet als een blad.
+ *
+ * Ze staan nu allebei op het paginavlak: `post` ís `page` en `postText`
+ * ís `ink`. Een kaart is dus niets meer dan het blad zelf, en zijn
+ * hiërarchie komt uit lijn en inspringing (DESIGN.md §4). Dat is dezelfde
+ * regel die dit systeem al hanteerde voor diepte — geen schaduwen, vlak en
+ * lijn dragen de opbouw — nu ook toegepast op het vlak zelf.
+ *
+ * De namen blijven bestaan omdat ~80 plekken ernaar wijzen én omdat ze nog
+ * steeds iets zeggen: `feed.text` is de tekst óp een kaart, en dat is een
+ * andere bedoeling dan `feed.ink`, ook al is het nu dezelfde kleur. Wijzigt
+ * de regel ooit terug, dan is dat één waarde.
+ *
+ * `postFill` is de uitzondering en blijft wél een vlak: dat is het vak waar
+ * een foto nog moet landen. Zonder vulling is dat een gat in de pagina.
+ *
+ * ---------------------------------------------------------------
  * WAAROM TRIPLETS EN GEEN HEX
  * ---------------------------------------------------------------
  * De waarden hieronder staan als `"R G B"`. Dat is de vorm die CSS nodig
@@ -149,9 +171,13 @@ const DARK: Palette = {
   cream: "243 237 228", // #F3EDE4
   creamSoft: "217 210 228", // #D9D2E4
   creamMuted: "167 159 181", // #A79FB5
-  post: "46 33 56", // #2E2138 — hetzelfde plum als shellSoft
-  postText: "243 237 228", // #F3EDE4 crème op plum
-  postFill: "58 42 70", // #3A2A46 — het vlak waar een foto nog moet landen
+  // Een kaart heeft géén eigen vulling — zie de uitleg bij LIGHT hieronder
+  // en DESIGN.md §4. `post` is daarom het paginavlak en `postText` de inkt
+  // erop; de namen blijven bestaan omdat ~80 plekken ernaar wijzen en omdat
+  // ze nog steeds iets zeggen: dit is de tekst óp een kaart.
+  post: "205 190 227", // = page
+  postText: "11 10 12", // = ink
+  postFill: "191 172 219", // #BFACDB — het vlak waar een foto nog moet landen
   flame: "230 51 41", // #E63329
   flameDeep: "168 28 19", // #A81C13
   announce: "230 107 63", // #E66B3F
@@ -210,8 +236,8 @@ const LIGHT: Palette = {
   cream: "247 247 245", // #F7F7F5 — tekst op zwart/oranje
   creamSoft: "220 220 217", // #DCDCD9
   creamMuted: "160 160 156", // #A0A09C
-  post: "255 255 255", // #FFFFFF — de kaart kantelt mee
-  postText: "11 10 12", // #0B0A0C — en dus ook zijn tekst
+  post: "239 239 236", // = page
+  postText: "11 10 12", // = ink
   postFill: "231 231 227", // #E7E7E3
   flame: "212 85 31", // #D4551F
   flameDeep: "168 62 18", // #A83E12

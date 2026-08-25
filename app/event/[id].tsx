@@ -431,7 +431,7 @@ export default function EventDetailScreen() {
                 aspectRatio: wide ? 16 / 7 : 4 / 3,
                 borderWidth: FEED_BORDER,
                 borderColor: feed.ink,
-                backgroundColor: feed.post,
+                backgroundColor: feed.postFill,
                 ...heroStyle,
               }}
             >
@@ -743,7 +743,7 @@ function PolicyCell({
         flex: 1,
         alignItems: "center",
         paddingVertical: 13,
-        backgroundColor: active ? feed.ink : pressed ? feed.post : "transparent",
+        backgroundColor: active ? feed.ink : pressed ? feed.panel : "transparent",
         ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
       })}
     >
@@ -808,7 +808,7 @@ function JoinRequestRow({
           marginRight: 8,
           borderWidth: FEED_BORDER,
           borderColor: feed.ink,
-          backgroundColor: pressed ? feed.post : "transparent",
+          backgroundColor: pressed ? feed.panel : "transparent",
         })}
       >
         <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>Weiger</Text>

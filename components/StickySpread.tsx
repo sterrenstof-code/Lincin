@@ -68,7 +68,7 @@ export function StickySpread({
             aspectRatio: 4 / 5,
             borderBottomWidth: FEED_BORDER,
             borderBottomColor: feed.ink,
-            backgroundColor: feed.post,
+            backgroundColor: feed.postFill,
           }}
         >
           {media}
@@ -96,7 +96,7 @@ export function StickySpread({
           style={{
             // 100vh min de ruimte die de kop bovenaan inneemt.
             height: Math.max(320, height - stickyTop),
-            backgroundColor: feed.post,
+            backgroundColor: feed.postFill,
           }}
         >
           {media}

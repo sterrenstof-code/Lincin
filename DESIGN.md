@@ -73,14 +73,16 @@ Sommige vlakken blijven in béide standen donker, en dan moet hun tekst dat
 | Vlak | Tekst erop | Donker | Licht |
 |---|---|---|---|
 | `bg-shell`, `bg-ink`, `bg-flame`, `bg-announce` | `text-cream` | donker vlak, lichte tekst | **hetzelfde** |
-| `bg-feed-post` (kaart, tegel, coverband) | `text-feed-text` / `feed.text` | plum met crème | wit met inkt |
+| een foto met `<Scrim>` eroverheen | `creamOnDark` | licht op de sluier | **hetzelfde** |
 | `bg-desk` (de niet-gemigreerde schermen, §8) | `text-desk-ink` / `desk.ink` | zwart met crème | blad met inkt |
 
-Zet je `text-cream` op een kaart, dan staat er in de lichte stand crème op
-wit. Zet je `feed.text` op een gevulde zwarte knop, dan staat er in de
-lichte stand inkt op zwart. Dat is de enige val in dit systeem, en beide
-kanten ervan zijn onzichtbaar in de stand waarin je toevallig werkt —
-**kijk dus altijd even in de andere stand.**
+De eerste twee rijen zijn vlakken die in béide standen donker blijven, dus
+hun tekst blijft licht. De derde kantelt: vlak en tekst wisselen samen.
+
+Zet je `feed.text` (de tekst op een kaart, dus inkt) op een gevulde zwarte
+knop of op een foto, dan staat er in de lichte stand inkt op zwart. Dat is
+de val in dit systeem, en hij is onzichtbaar in de stand waarin je
+toevallig werkt — **kijk dus altijd even in de andere stand.**
 
 ### Het palet
 
@@ -93,8 +95,8 @@ kanten ervan zijn onzichtbaar in de stand waarin je toevallig werkt —
 | `paper-light` | `#F5F1FA` | `#F7F7F5` | Zacht vlak |
 | `shell` | `#0B0A0C` | `#0B0A0C` | De balk — donker in béide standen |
 | `shell-soft` | `#2E2138` | `#26262B` | Donker vlak bínnen die balk |
-| `feed-post` | `#2E2138` | `#FFFFFF` | Élk kaartoppervlak — **kantelt** |
-| `feed-fill` | `#3A2A46` | `#E7E7E3` | Beeldvlak in afwachting van de foto |
+| `feed-post` | = `page` | = `page` | Élk kaartoppervlak — **geen eigen vulling**, zie §4 |
+| `feed-fill` | `#BFACDB` | `#E7E7E3` | Beeldvlak in afwachting van de foto |
 | `desk` | `#0B0A0C` | `#F7F7F5` | Het blad van een §8-scherm — **kantelt** |
 | `desk-panel` | `#2E2138` | `#E2E2DE` | Gedempte vulling daarop |
 
@@ -106,8 +108,8 @@ kanten ervan zijn onzichtbaar in de stand waarin je toevallig werkt —
 | `ink-muted` | `#6B6474` | `#7A7A80` | Tertiair |
 | `cream` | `#F3EDE4` | `#F7F7F5` | Op inkt, op de balk, op een gevulde knop |
 | `cream-soft` / `cream-muted` | `#D9D2E4` / `#A79FB5` | `#DCDCD9` / `#A0A09C` | idem, zachter |
-| `feed-text` | `#F3EDE4` | `#0B0A0C` | Op een kaart — **kantelt** |
-| `feed-dim` | crème @62% | inkt @58% | Bijschrift op een kaart |
+| `feed-text` | = `ink` | = `ink` | Op een kaart. Zelfde kleur als `ink`, andere bedoeling — zie §4 |
+| `feed-dim` | inkt @62% | inkt @58% | Bijschrift op een kaart |
 | `desk-ink` / `-soft` / `-muted` | `#F3EDE4` / `#D9D2E4` / `#A79FB5` | `#0B0A0C` / `#44444A` / `#7A7A80` | Op een §8-blad — **kantelt** |
 
 ### Accent
@@ -153,6 +155,37 @@ Roboto.
 ---
 
 ## 4. Vorm
+
+### Een kaart heeft geen vulling
+
+**Hiërarchie komt uit lijn en inspringing, niet uit een vlak.**
+
+Dit systeem had al geen schaduwen — diepte kwam uit vlak en lijn. Die regel
+gaat nu één stap verder: ook het vlak zelf is weg. Een vondst, een tegel,
+een coverband staat rechtstreeks op het blad. Wat de opbouw draagt is:
+
+1. **De lijn.** Een kaart is een stapel banden met een lijn ertussen:
+   beeld · kop · herkomst. Zo zie je de opbouw voordat je leest.
+2. **De inspringing.** Wat ondergeschikt is, staat een stap naar binnen.
+   Wie iets deelde staat ónder de kop én inwaarts, en dan zie je aan de
+   vorm al dat het tweede bij het eerste hoort in plaats van ernaast.
+3. **Het gewicht van de lijn.** Een lijn bínnen een kaart (`feed-rule`) is
+   zachter dan de lijn eromheen, en het kader om een rubriek (`rule.soft`)
+   is zachter dan allebei. Anders leest één kaart als drie losse kaarten,
+   of wint de doos van de inhoud.
+
+De reden: een pagina met twintig gevulde vlakken leest als twintig dozen,
+niet als een blad. `feed-post` en `feed-text` bestaan nog — ze wijzen nu
+naar `page` en `ink` — omdat ~80 plekken ernaar verwijzen en omdat ze nog
+steeds een bedoeling uitdrukken: dit is de tekst óp een kaart.
+
+Twee uitzonderingen, en allebei omdat er anders een gat valt:
+
+- `feed-fill` — het vak waar een foto nog moet landen.
+- Een knop die iets dóet. Er is er hoogstens één per scherm, en hij is
+  oranje.
+
+### De rest
 
 - **Alles is vierkant.** Geen `rounded-*` behalve `rounded-full` voor
   avatars en voor de deelknop (`ShareButton`). Die twee zijn met opzet de
@@ -268,6 +301,10 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
 - Geen `text-white`/`text-black`. Gebruik `text-cream` of `text-ink`.
 - Geen `text-cream` op een kaart of een §8-blad — dat is `text-feed-text`
   respectievelijk `text-desk-ink`. Zie het kader in §2.
+- Geen vulling onder een kaart. Hiërarchie komt uit lijn en inspringing —
+  §4. Een gevuld vlak is de primaire actie, en verder niets.
+- Geen `feed.text` op een foto of op een gevulde donkere knop. Dat is
+  `creamOnDark`.
 - Niets nakijken in één stand. Wat in de donkere klopt kan in de lichte
   onzichtbaar zijn, en andersom.
 - Geen tweede navigatiebalk: de navigatie zit in de kop (`AppChrome`).

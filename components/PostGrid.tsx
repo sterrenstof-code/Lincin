@@ -95,7 +95,7 @@ function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void
       style={{
         width: "100%",
         aspectRatio: 1,
-        backgroundColor: feed.post,
+        backgroundColor: feed.postFill,
         borderWidth: FEED_BORDER,
         borderColor: rule.soft,
         // Ankerpunt van de morph: deze tegel groeit uit tot de plaat op de
@@ -120,7 +120,7 @@ function Cell({ post }: { post: PostWithAuthor }) {
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
           transition={150}
-          fallbackBg="bg-feed-post"
+          fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
         {/* Ook in het strakke raster staat erbij van wie het is en waar het

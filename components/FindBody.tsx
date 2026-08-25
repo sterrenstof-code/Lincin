@@ -718,7 +718,7 @@ export function FindHero({
           contentFit="cover"
           transition={150}
           fallbackIcon="sparkles-outline"
-          fallbackBg="bg-feed-post"
+          fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
       )}
@@ -1014,7 +1014,7 @@ function CoverBand({
           style={{ width: "100%", height: "100%", minHeight: 200 }}
           contentFit="cover"
           transition={150}
-          fallbackBg="bg-feed-post"
+          fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
       </View>
@@ -1081,7 +1081,7 @@ function ImageCell({
   return (
     <Pressable
       onPress={onPress}
-      style={{ flex: 1, width: "100%", backgroundColor: feed.post, ...heroStyle }}
+      style={{ flex: 1, width: "100%", backgroundColor: feed.postFill, ...heroStyle }}
     >
       {/* Absoluut en niet `height: "100%"`. Een percentage heeft een ouder
           met een vástgelegde hoogte nodig; deze cel krijgt de zijne van
@@ -1094,7 +1094,7 @@ function ImageCell({
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         contentFit="cover"
         transition={150}
-        fallbackBg="bg-feed-post"
+        fallbackBg="bg-feed-fill"
         fallbackColor={feed.textDim}
       />
 
@@ -1409,6 +1409,12 @@ function GridTile({
   const [ratio, setRatio] = useState<number | undefined>(undefined);
   const shape = ratio === undefined ? TILE_LANDSCAPE : ratio < 1 ? TILE_PORTRAIT : TILE_LANDSCAPE;
 
+  /**
+   * Heeft deze kaart een kop? Zo niet — een foto zonder onderschrift — dan
+   * gaan de twee tekstbanden in elkaar op; zie hieronder.
+   */
+  const hasHead = !!p.title || (!p.image && !!p.body);
+
   return (
     // Geen eigen kader: in het raster staan de tegels tegen elkaar en is de
     // kier ertussen de lijn (het raster heeft inkt als ondergrond). Twee
@@ -1428,7 +1434,7 @@ function GridTile({
             style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
             contentFit="cover"
             transition={150}
-            fallbackBg="bg-feed-post"
+            fallbackBg="bg-feed-fill"
             fallbackColor={feed.textDim}
             onLoad={(e) => {
               const { width, height } = (e as any).source ?? {};
@@ -1446,6 +1452,10 @@ function GridTile({
           leest. Ze staan op `feed.postRule` en niet op de kaderlijn: een
           lijn bínnen een vlak hoort zachter te zijn dan de lijn eromheen,
           anders leest de kaart als drie losse kaarten. */}
+      {/* Heeft de kaart een kop, dan staan er twee banden onder het beeld:
+          de kop, en daaronder van wie hij is. Heeft hij er géén — een foto
+          zonder onderschrift — dan zou dat een band met alleen "Beeld"
+          opleveren en daarboven een lijn naar niets. Dan is het één band. */}
       <View
         style={{
           padding: space.lg,
@@ -1455,36 +1465,58 @@ function GridTile({
         }}
       >
         <FeedKicker text={p.kicker} kind={post.kind} />
-        {p.title ? (
+        {hasHead ? (
+          <>
+            {p.title ? (
+              <Text
+                style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: space.sm }]}
+                numberOfLines={3}
+              >
+                {p.title}
+              </Text>
+            ) : null}
+            {!p.image && p.body ? (
+              <Text
+                style={[
+                  feedType.body,
+                  { fontSize: 13, lineHeight: 19, color: feed.textDim, marginTop: space.sm },
+                ]}
+                numberOfLines={6}
+              >
+                {p.body}
+              </Text>
+            ) : null}
+          </>
+        ) : (
           <Text
-            style={[feedType.tile, { fontSize: 16, color: feed.text, marginTop: space.sm }]}
-            numberOfLines={3}
+            style={[feedType.label, { color: feed.textDim, marginTop: space.sm }]}
+            numberOfLines={1}
           >
-            {p.title}
+            {`${p.sharer} · ${p.time}`}
           </Text>
-        ) : null}
-        {!p.image && p.body ? (
-          <Text
-            style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.textDim, marginTop: space.sm }]}
-            numberOfLines={6}
-          >
-            {p.body}
-          </Text>
-        ) : null}
+        )}
       </View>
 
-      <View
-        style={{
-          paddingHorizontal: space.lg,
-          paddingVertical: space.md,
-          borderTopWidth: FEED_BORDER,
-          borderTopColor: feed.postRule,
-        }}
-      >
-        <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
-          {`${p.sharer} · ${p.time}`}
-        </Text>
-      </View>
+      {hasHead ? (
+        // Een stap naar binnen. De kaart heeft geen eigen vlak meer, dus de
+        // opbouw moet uit lijn en inspringing komen (DESIGN.md §4): de kop
+        // staat op de marge, wie hem deelde staat eronder én inwaarts, en
+        // dan zie je aan de vorm al dat het tweede bij het eerste hoort in
+        // plaats van ernaast.
+        <View
+          style={{
+            paddingLeft: space.xxxl,
+            paddingRight: space.lg,
+            paddingVertical: space.md,
+            borderTopWidth: FEED_BORDER,
+            borderTopColor: feed.postRule,
+          }}
+        >
+          <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
+            {`${p.sharer} · ${p.time}`}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -1512,7 +1544,7 @@ function MosaicTile({
       onPress={onPress}
       // Ankerpunt van de morph naar de detailpagina — ook de mozaïekcellen
       // groeien uit tot de volledige plaat.
-      style={{ flex: 1, backgroundColor: feed.post, ...useHeroTag(post.id) }}
+      style={{ flex: 1, backgroundColor: feed.postFill, ...useHeroTag(post.id) }}
     >
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
         <SafeImage
@@ -1521,7 +1553,7 @@ function MosaicTile({
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
           transition={150}
-          fallbackBg="bg-feed-post"
+          fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
       </View>

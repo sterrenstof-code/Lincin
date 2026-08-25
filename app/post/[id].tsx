@@ -695,7 +695,7 @@ export default function PostDetailScreen() {
                 height: 28,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: feed.post,
+                backgroundColor: feed.panel,
               }}
             >
               <Ionicons name="close" size={16} color={feed.text} />

@@ -29,7 +29,7 @@
   --c-paper-light: 247 247 245;
   --c-shell: 11 10 12;
   --c-shell-soft: 38 38 43;
-  --c-post: 255 255 255;
+  --c-post: 239 239 236;
   --c-post-fill: 231 231 227;
   --c-desk: 247 247 245;
   --c-desk-panel: 226 226 222;
@@ -70,8 +70,8 @@
   --c-paper-light: 245 241 250;
   --c-shell: 11 10 12;
   --c-shell-soft: 46 33 56;
-  --c-post: 46 33 56;
-  --c-post-fill: 58 42 70;
+  --c-post: 205 190 227;
+  --c-post-fill: 191 172 219;
   --c-desk: 11 10 12;
   --c-desk-panel: 46 33 56;
 
@@ -81,7 +81,7 @@
   --c-cream: 243 237 228;
   --c-cream-soft: 217 210 228;
   --c-cream-muted: 167 159 181;
-  --c-post-text: 243 237 228;
+  --c-post-text: 11 10 12;
   --c-desk-ink: 243 237 228;
   --c-desk-soft: 217 210 228;
   --c-desk-muted: 167 159 181;

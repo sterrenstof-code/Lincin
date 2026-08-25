@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -220,9 +219,17 @@ function NotificationLine({
         avatarUrl={item.actor?.avatar_url ?? null}
         size="sm"
       />
+      {/* De regel eindigt waar de zin eindigt.
+          De tijd stond rechts uitgelijnd en de pijl daarnaast, en op een
+          breed scherm gaapt daar duizend pixels niets tussen: dan leest de
+          band als een tabel in plaats van als een kolom kort nieuws. De
+          tijd hoort bij de zin, dus staat hij erachter. De pijl is weg —
+          de hele regel is aanklikbaar, en een pijl op élke regel zegt dat
+          twaalf keer. */}
       <View style={{ flex: 1 }}>
         <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]} numberOfLines={1}>
           {labelFor(item, actor)}
+          <Text style={{ color: feed.inkDim }}>{`  ${relativeTime(item.created_at)}`}</Text>
         </Text>
         {snippet ? (
           <Text
@@ -233,10 +240,6 @@ function NotificationLine({
           </Text>
         ) : null}
       </View>
-      <Text style={[feedType.label, { fontSize: 11, color: feed.inkDim }]}>
-        {relativeTime(item.created_at)}
-      </Text>
-      <Ionicons name="chevron-forward" size={13} color={feed.inkDim} />
     </Pressable>
   );
 }

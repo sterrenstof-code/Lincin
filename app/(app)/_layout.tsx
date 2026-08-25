@@ -220,7 +220,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: feed.post,
+          backgroundColor: feed.panel,
           borderTopColor: feed.ink,
           borderTopWidth: 1,
           height: 68,

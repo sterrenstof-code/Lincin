@@ -140,7 +140,7 @@ export function PostCarousel({
               style={{ width: "100%", height: "100%" }}
               contentFit={contentFit}
               transition={200}
-              fallbackBg="bg-feed-post"
+              fallbackBg="bg-feed-fill"
               fallbackColor={feed.inkDim}
             />
           </Pressable>
@@ -149,24 +149,28 @@ export function PostCarousel({
 
       {many ? (
         <>
-          {/* Teller rechtsboven: bij tien foto's zeggen stippen niet meer
-              hoeveel er nog komen, een getal wel. */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: space.md,
-              right: space.md,
-              paddingHorizontal: space.sm,
-              paddingVertical: 3,
-              borderRadius: 999,
-              backgroundColor: "rgba(11,10,12,0.55)",
-            }}
-          >
-            <Text style={[feedType.label, { color: creamOnDark.DEFAULT, fontSize: 11 }]}>
-              {`${index + 1} / ${urls.length}`}
-            </Text>
-          </View>
+          {/* De teller alleen als de balk onderaan het niet meer kan zeggen.
+              Tot een stuk of acht zie je aan de segmenten hoeveel er zijn
+              en waar je bent; daarboven worden het streepjes en heb je een
+              getal nodig. Vierkant, want dat is dit systeem — de pil van
+              hiervoor hoorde er niet. */}
+          {urls.length > 8 ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: space.md,
+                right: space.md,
+                paddingHorizontal: space.sm,
+                paddingVertical: 3,
+                backgroundColor: "rgba(11,10,12,0.55)",
+              }}
+            >
+              <Text style={[feedType.label, { color: creamOnDark.DEFAULT, fontSize: 11 }]}>
+                {`${index + 1} / ${urls.length}`}
+              </Text>
+            </View>
+          ) : null}
 
           <Animated.View
             pointerEvents="box-none"
@@ -185,52 +189,41 @@ export function PostCarousel({
             ) : null}
           </Animated.View>
 
-          {/* Stippen op één doorschijnend vlak: los op de foto verdwijnen
-              ze in een lichte lucht of een witte muur. */}
+          {/* De voortgang als één lijn onderaan het beeld, in segmenten.
+              Hiervoor stonden hier stippen op een doorschijnende pil: drie
+              ronde vormen in een ontwerp dat verder alleen rechthoeken kent,
+              en stippen zeggen bovendien niet hoe ver je bent maar alleen
+              de hoeveelste je hebt. Een balk die de volle breedte in gelijke
+              delen knipt zegt allebei, en hij is een lijn — hetzelfde
+              gereedschap waarmee de rest van de pagina zijn opbouw krijgt. */}
           <View
             pointerEvents="none"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              bottom: space.md,
-              alignItems: "center",
+              bottom: 0,
+              flexDirection: "row",
+              gap: 2,
+              paddingHorizontal: 2,
+              paddingBottom: 2,
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                paddingHorizontal: space.sm,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: "rgba(11,10,12,0.45)",
-              }}
-            >
-              {urls.map((_, i) => (
-                <Animated.View
-                  key={i}
-                  style={{
-                    height: 5,
-                    borderRadius: 999,
-                    backgroundColor: creamOnDark.DEFAULT,
-                    // Alleen de actieve is een streepje; de rest blijft een
-                    // stip. De overgang loopt mee met het vegen.
-                    width: active.interpolate({
-                      inputRange: [i - 1, i, i + 1],
-                      outputRange: [5, 18, 5],
-                      extrapolate: "clamp",
-                    }),
-                    opacity: active.interpolate({
-                      inputRange: [i - 1, i, i + 1],
-                      outputRange: [0.45, 1, 0.45],
-                      extrapolate: "clamp",
-                    }),
-                  }}
-                />
-              ))}
-            </View>
+            {urls.map((_, i) => (
+              <Animated.View
+                key={i}
+                style={{
+                  flex: 1,
+                  height: 3,
+                  backgroundColor: creamOnDark.DEFAULT,
+                  opacity: active.interpolate({
+                    inputRange: [i - 1, i, i + 1],
+                    outputRange: [0.32, 1, 0.32],
+                    extrapolate: "clamp",
+                  }),
+                }}
+              />
+            ))}
           </View>
         </>
       ) : null}
@@ -240,26 +233,47 @@ export function PostCarousel({
 
 function Arrow({ side, onPress }: { side: "left" | "right"; onPress: () => void }) {
   return (
+    /**
+     * De hele zijrand is het doel, niet alleen het knopje.
+     *
+     * Het was een rond vlak van 36 punten dat halverwege de foto zweefde:
+     * de enige cirkel in een scherm vol rechthoeken (DESIGN.md §4 laat er
+     * twee toe, en dit is geen van beide), en op een telefoon een doel dat
+     * je met je duim moet zoeken. Nu is de strook langs de rand aanraakbaar
+     * over de volle hoogte — je hoeft alleen de kant te raken die je bedoelt
+     * — en staat er een vierkant tekentje in het midden dat zegt welke kant
+     * dat is.
+     */
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
+      accessibilityLabel={side === "left" ? "Vorige" : "Volgende"}
+      style={{
         position: "absolute",
-        top: "50%",
-        marginTop: -18,
-        [side]: space.md,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: "center",
+        top: 0,
+        bottom: 0,
+        [side]: 0,
+        width: 72,
+        alignItems: side === "left" ? "flex-start" : "flex-end",
         justifyContent: "center",
-        backgroundColor: pressed ? "rgba(11,10,12,0.8)" : "rgba(11,10,12,0.5)",
-      })}
+      }}
     >
-      <Ionicons
-        name={side === "left" ? "chevron-back" : "chevron-forward"}
-        size={20}
-        color={creamOnDark.DEFAULT}
-      />
+      {({ pressed }: { pressed: boolean }) => (
+        <View
+          style={{
+            width: 34,
+            height: 44,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: pressed ? "rgba(11,10,12,0.78)" : "rgba(11,10,12,0.42)",
+          }}
+        >
+          <Ionicons
+            name={side === "left" ? "chevron-back" : "chevron-forward"}
+            size={20}
+            color={creamOnDark.DEFAULT}
+          />
+        </View>
+      )}
     </Pressable>
   );
 }
