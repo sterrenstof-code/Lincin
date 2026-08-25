@@ -5,7 +5,14 @@ import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { Skeleton } from "@/components/Skeleton";
-import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
+import {
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  rule,
+  space,
+} from "@/lib/design/type";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
 import type { PostWithAuthor } from "@/lib/api/posts";
 
@@ -90,7 +97,7 @@ function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void
         aspectRatio: 1,
         backgroundColor: feed.post,
         borderWidth: FEED_BORDER,
-        borderColor: feed.ink,
+        borderColor: rule.soft,
         // Ankerpunt van de morph: deze tegel groeit uit tot de plaat op de
         // detailpagina.
         ...tag,
@@ -131,23 +138,23 @@ function Cell({ post }: { post: PostWithAuthor }) {
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
             <Text
-              style={[feedType.label, { color: feed.text, opacity: 0.75, flex: 1 }]}
+              style={[feedType.label, { color: creamOnDark.DEFAULT, opacity: 0.75, flex: 1 }]}
               numberOfLines={1}
             >
               {post.author?.display_name ?? post.author?.username ?? "Onbekend"}
             </Text>
             {album.length > 1 ? (
               <>
-                <Ionicons name="copy-outline" size={12} color={feed.text} />
-                <Text style={[feedType.label, { color: feed.text }]}>{album.length}</Text>
+                <Ionicons name="copy-outline" size={12} color={creamOnDark.DEFAULT} />
+                <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>{album.length}</Text>
               </>
             ) : null}
             {/* Het aantal duwen, niet het gewogen totaal: een getal op een
                 tegel moet iets zijn dat je kunt narekenen. */}
             {post.boost_count > 0 ? (
               <>
-                <Ionicons name="arrow-up-circle" size={12} color={feed.text} />
-                <Text style={[feedType.label, { color: feed.text }]}>
+                <Ionicons name="arrow-up-circle" size={12} color={creamOnDark.DEFAULT} />
+                <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>
                   {post.boost_count}
                 </Text>
               </>
@@ -160,7 +167,7 @@ function Cell({ post }: { post: PostWithAuthor }) {
                 fontSize: 13,
                 lineHeight: 16,
                 fontWeight: "800",
-                color: feed.text,
+                color: creamOnDark.DEFAULT,
                 marginTop: 2,
               }}
               numberOfLines={2}

@@ -4,13 +4,14 @@ import { Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import {
-  creamOnDark,
   announce,
   announceDeep,
+  creamOnDark,
   feed,
   FEED_BORDER,
   feedType,
   flame,
+  rule,
 } from "@/lib/design/type";
 
 /**
@@ -46,7 +47,9 @@ export function Frame({
     <View
       style={{
         borderWidth: FEED_BORDER,
-        borderColor: feed.ink,
+        // Zie SectionFrame in feed.tsx: het kader is de zachte lijn, de
+        // structuur bínnen een kaart de sterke.
+        borderColor: rule.soft,
         ...(filled ? { backgroundColor: feed.panel } : null),
         ...style,
       }}

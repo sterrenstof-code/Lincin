@@ -441,23 +441,80 @@ function CompactBar({
         </View>
       )}
 
-      <PersonalMenu />
-
       {actionLabel && onAction ? (
-        <Pressable
-          onPress={onAction}
-          style={({ pressed }) => ({
-            justifyContent: "center",
-            paddingHorizontal: 18,
-            backgroundColor: pressed ? announceDeep : announce,
-          })}
-        >
-          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
-            {actionLabel}
-          </Text>
-        </Pressable>
-      ) : null}
+        <>
+          <Cut tone="dark" />
+          <Pressable
+            onPress={onAction}
+            style={({ pressed }) => ({
+              justifyContent: "center",
+              paddingHorizontal: 18,
+              backgroundColor: pressed ? announceDeep : announce,
+            })}
+          >
+            <Text
+              style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}
+            >
+              {actionLabel}
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <AddCell tone="dark" />
+      )}
+
+      <PersonalMenu />
     </View>
+  );
+}
+
+/**
+ * De primaire actie, als cel aan het eind van de navigatie.
+ *
+ * De rubrieken links zijn plekken; deze twee cellen rechts zijn jij en wat
+ * jij doet. Ze staan daarom allebei in de oranje: dat is in dit ontwerp de
+ * kleur van een knop die iets dóet (DESIGN.md §2), en met twee cellen naast
+ * elkaar leest het als één blok in plaats van als twee losse knoppen.
+ *
+ * De plus verdwijnt zodra een pagina zijn eigen actie meegeeft
+ * (`actionLabel` — "Nieuw event", "Nieuwe groep"). Er is er hoogstens één
+ * per scherm, anders concurreren twee oranje vlakken om dezelfde vraag.
+ */
+function AddCell({ tone }: { tone: "dark" | "paper" }) {
+  const router = useRouter();
+  return (
+    <>
+      <Cut tone={tone} />
+      <Pressable
+        onPress={() => router.push("/post-compose")}
+        accessibilityLabel="Iets delen"
+        style={({ pressed }) => ({
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: space.lg,
+          backgroundColor: pressed ? announceDeep : announce,
+        })}
+      >
+        <Ionicons name="add" size={22} color={creamOnDark.DEFAULT} />
+      </Pressable>
+    </>
+  );
+}
+
+/**
+ * De scheidingslijn tussen twee cellen in de balk.
+ *
+ * In de zwarte stand kan hij niet de inktlijn van het raster zijn — die
+ * zie je niet op zwart — dus is het daar een lichte lijn op een kwart.
+ */
+function Cut({ tone }: { tone: "dark" | "paper" }) {
+  return (
+    <View
+      style={{
+        width: FEED_BORDER,
+        backgroundColor: tone === "dark" ? creamOnDark.rule : feed.ink,
+      }}
+    />
   );
 }
 
@@ -505,15 +562,17 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
 
   return (
     <>
-      <View
-        style={{
-          width: FEED_BORDER,
-          backgroundColor: tone === "dark" ? "rgba(250,248,245,0.25)" : feed.ink,
-        }}
-      />
+      <Cut tone={tone} />
       <Pressable
         onPress={() => setOpen(true)}
-        style={{ justifyContent: "center", paddingHorizontal: space.md }}
+        style={({ pressed }) => ({
+          justifyContent: "center",
+          paddingHorizontal: space.md,
+          // Jij bent geen rubriek. De cel staat daarom in dezelfde oranje
+          // als de plus ernaast — samen het blok aan het eind van de balk
+          // dat over jou gaat in plaats van over de uitgave.
+          backgroundColor: pressed ? announceDeep : announce,
+        })}
         accessibilityLabel="Persoonlijk"
       >
         <View>
@@ -526,7 +585,8 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
                 right: -2,
                 width: 10,
                 height: 10,
-                backgroundColor: flame,
+                // Inkt en geen flame: rood op oranje zie je niet.
+                backgroundColor: feed.ink,
               }}
             />
           ) : null}
@@ -625,21 +685,24 @@ function FullHeader({
             );
           })}
           {actionLabel && onAction ? (
-            <Pressable
-              onPress={onAction}
-              style={({ pressed }) => ({
-                backgroundColor: pressed ? announceDeep : announce,
-                borderLeftWidth: FEED_BORDER,
-                borderLeftColor: feed.ink,
-                paddingHorizontal: space.lg,
-                justifyContent: "center",
-              })}
-            >
-              <Text style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT }]}>
-                {actionLabel}
-              </Text>
-            </Pressable>
-          ) : null}
+            <>
+              <Cut tone="paper" />
+              <Pressable
+                onPress={onAction}
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? announceDeep : announce,
+                  paddingHorizontal: space.lg,
+                  justifyContent: "center",
+                })}
+              >
+                <Text style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT }]}>
+                  {actionLabel}
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <AddCell tone="paper" />
+          )}
 
           {/* Jij, aan het eind van de navigatie — in beide standen van de
               kop op dezelfde plek. De zijbalk had hetzelfde blok nog een

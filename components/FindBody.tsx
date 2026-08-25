@@ -18,18 +18,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
-import {
-  carbon,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flame,
-  flameDeep,
-  page,
-  rule,
-  space,
-  type,
-} from "@/lib/design/type";
+import { carbon, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, page, rule, space, type } from "@/lib/design/type";
 import {
   formatDuration,
   formatReadingTime,
@@ -1124,7 +1113,7 @@ function ImageCell({
             <FeedKicker text={`${p.kicker} · ${p.sharer}`} kind={post.kind} />
           </View>
           {album.length > 1 ? (
-            <Text style={[feedType.label, { color: feed.text, marginLeft: space.sm }]}>
+            <Text style={[feedType.label, { color: creamOnDark.DEFAULT, marginLeft: space.sm }]}>
               {`${album.length} ▦`}
             </Text>
           ) : null}
@@ -1136,7 +1125,7 @@ function ImageCell({
               fontSize: 15,
               lineHeight: 18,
               fontWeight: "800",
-              color: feed.text,
+              color: creamOnDark.DEFAULT,
               marginTop: space.xs,
             }}
             numberOfLines={2}
@@ -1449,7 +1438,22 @@ function GridTile({
         </View>
       ) : null}
 
-      <View style={{ padding: space.lg }}>
+      {/* Drie banden in plaats van één blok tekst.
+          Het kader om de kaart is lichter geworden (zie `rule.soft` in de
+          rubriek eromheen), en dan valt de kaart uit elkaar als er
+          binnenin niets is dat hem bij elkaar houdt. De lijnen doen dat
+          werk nu: beeld, kop, herkomst — je ziet de opbouw voordat je
+          leest. Ze staan op `feed.postRule` en niet op de kaderlijn: een
+          lijn bínnen een vlak hoort zachter te zijn dan de lijn eromheen,
+          anders leest de kaart als drie losse kaarten. */}
+      <View
+        style={{
+          padding: space.lg,
+          ...(p.image
+            ? { borderTopWidth: FEED_BORDER, borderTopColor: feed.postRule }
+            : null),
+        }}
+      >
         <FeedKicker text={p.kicker} kind={post.kind} />
         {p.title ? (
           <Text
@@ -1467,10 +1471,17 @@ function GridTile({
             {p.body}
           </Text>
         ) : null}
-        <Text
-          style={[feedType.label, { color: feed.textDim, marginTop: space.sm }]}
-          numberOfLines={1}
-        >
+      </View>
+
+      <View
+        style={{
+          paddingHorizontal: space.lg,
+          paddingVertical: space.md,
+          borderTopWidth: FEED_BORDER,
+          borderTopColor: feed.postRule,
+        }}
+      >
+        <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
           {`${p.sharer} · ${p.time}`}
         </Text>
       </View>
@@ -1535,7 +1546,7 @@ function MosaicTile({
         <Text
           style={[
             feedType.kicker,
-            { color: feed.text, opacity: 0.72, letterSpacing: 0.5 },
+            { color: creamOnDark.DEFAULT, opacity: 0.72, letterSpacing: 0.5 },
           ]}
           numberOfLines={1}
         >
@@ -1548,7 +1559,7 @@ function MosaicTile({
               fontSize: 14,
               lineHeight: 17,
               fontWeight: "800",
-              color: feed.text,
+              color: creamOnDark.DEFAULT,
               marginTop: space.xs,
             }}
             numberOfLines={2}

@@ -42,13 +42,14 @@ import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import {
-  creamOnDark,
   CONTROL_H,
+  creamOnDark,
   feed as feedColor,
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
   gutter,
+  rule,
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
@@ -894,7 +895,12 @@ function SectionFrame({
       style={{
         marginBottom: space.section,
         borderWidth: FEED_BORDER,
-        borderColor: feedColor.ink,
+        // Zachter dan de lijnen ín de kaarten. Het kader zegt alleen "dit
+        // hoort bij elkaar"; wát er bij elkaar hoort is het onderwerp, en
+        // dat verliest het van een zwarte doos eromheen. De kaarten hebben
+        // hun eigen structuur gekregen (zie FindBody) en dragen het ritme
+        // nu zelf.
+        borderColor: rule.soft,
       }}
     >
       <SectionBand index={index} label={label} />
