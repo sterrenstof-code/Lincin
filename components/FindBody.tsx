@@ -1419,7 +1419,18 @@ function GridTile({
     // Geen eigen kader: in het raster staan de tegels tegen elkaar en is de
     // kier ertussen de lijn (het raster heeft inkt als ondergrond). Twee
     // kaders tegen elkaar aan geven een dubbele lijn.
-    <Pressable onPress={onPress} style={{ backgroundColor: feed.post }}>
+    <Pressable
+      onPress={onPress}
+      style={{
+        backgroundColor: feed.post,
+        // De kaart sluit zichzelf af. In het metselwerk staan deze tegels
+        // onder elkaar met alleen witruimte ertussen, en zonder vulling
+        // liep de laatste regel van de ene over in de kicker van de
+        // volgende. Zwaarder dan de lijnen hierbinnen — zie DESIGN.md §4.
+        borderBottomWidth: FEED_BORDER,
+        borderBottomColor: rule.card,
+      }}
+    >
       {p.image ? (
         <View
           style={{

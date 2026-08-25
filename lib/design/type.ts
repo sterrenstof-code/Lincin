@@ -391,6 +391,16 @@ export let page = {
 export let rule = {
   strong: color("ink"),
   soft: color("ink", "linePaper"),
+  /**
+   * Waarmee een kaart zichzelf afsluit.
+   *
+   * Nu een kaart geen eigen vulling meer heeft (DESIGN.md §4) is er niets
+   * dat zegt waar hij ophoudt: in een metselwerk lopen de laatste regel van
+   * de ene en de kicker van de volgende in elkaar over. Deze lijn is
+   * daarvoor, en hij is zwaarder dan de lijnen ín de kaart — anders leest
+   * één kaart als drie losse.
+   */
+  card: color("ink", "cardEdge"),
   onDark: color("cream", "onDark"),
 };
 
@@ -606,6 +616,7 @@ if (Platform.OS !== "web") {
     rule = {
       strong: color("ink"),
       soft: color("ink", "linePaper"),
+      card: color("ink", "cardEdge"),
       onDark: color("cream", "onDark"),
     };
     flame = color("flame");

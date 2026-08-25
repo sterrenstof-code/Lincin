@@ -121,7 +121,9 @@ export type AlphaToken =
   | "onDark"
   /** De vulling van een reactiepil. */
   | "pill"
-  | "pillSoft";
+  | "pillSoft"
+  /** De lijn waarmee een kaart zichzelf afsluit. */
+  | "cardEdge";
 
 type Palette = Record<Token, string>;
 type Alphas = Record<AlphaToken, number>;
@@ -143,7 +145,7 @@ export const TOKENS: Token[] = [
 ];
 
 export const ALPHA_TOKENS: AlphaToken[] = [
-  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft",
+  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge",
 ];
 
 /**
@@ -195,6 +197,7 @@ const DARK_ALPHA: Alphas = {
   onDark: 0.22,
   pill: 0.35,
   pillSoft: 0.28,
+  cardEdge: 0.3,
 };
 
 /**
@@ -256,6 +259,7 @@ const LIGHT_ALPHA: Alphas = {
   onDark: 0.22,
   pill: 0.35,
   pillSoft: 0.28,
+  cardEdge: 0.32,
 };
 
 export const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };

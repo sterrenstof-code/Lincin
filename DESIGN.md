@@ -169,10 +169,21 @@ een coverband staat rechtstreeks op het blad. Wat de opbouw draagt is:
 2. **De inspringing.** Wat ondergeschikt is, staat een stap naar binnen.
    Wie iets deelde staat ónder de kop én inwaarts, en dan zie je aan de
    vorm al dat het tweede bij het eerste hoort in plaats van ernaast.
-3. **Het gewicht van de lijn.** Een lijn bínnen een kaart (`feed-rule`) is
-   zachter dan de lijn eromheen, en het kader om een rubriek (`rule.soft`)
-   is zachter dan allebei. Anders leest één kaart als drie losse kaarten,
-   of wint de doos van de inhoud.
+3. **Het gewicht van de lijn.** Drie treden, en de volgorde is de hele
+   truc:
+
+   | Lijn | Gewicht | Waarvoor |
+   |---|---|---|
+   | `feed-rule` | inkt @12–16% | Tussen de banden ván een kaart |
+   | `rule.card` | inkt @30–32% | Waarmee een kaart zichzelf afsluit |
+   | `rule.soft` | inkt @20–25% | Het kader om een rubriek |
+
+   De binnenlijn moet de zwakste zijn, anders leest één kaart als drie
+   losse. De afsluitlijn moet sterker zijn dan de binnenlijn, anders loopt
+   de laatste regel van de ene kaart over in de kicker van de volgende —
+   precies wat er gebeurde toen de vulling wegviel. Het kader mag daar
+   tussenin zitten: het zegt alleen "dit hoort bij elkaar", en dat is
+   minder werk dan een kaart begrenzen.
 
 De reden: een pagina met twintig gevulde vlakken leest als twintig dozen,
 niet als een blad. `feed-post` en `feed-text` bestaan nog — ze wijzen nu

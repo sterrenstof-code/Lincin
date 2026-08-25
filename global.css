@@ -57,7 +57,8 @@
 
   /* ---- Doorzichtigheden die per stand verschillen ---- */
   --a-post-dim: 0.58;
-  --a-post-rule: 0.18;
+  --a-post-rule: 0.12;
+  --a-card-edge: 0.32;
   --a-line-paper: 0.2;
   --a-ink-dim: 0.58;
   --a-on-dark: 0.22;
@@ -95,7 +96,8 @@
   --c-brand: 91 141 239;
 
   --a-post-dim: 0.62;
-  --a-post-rule: 0.22;
+  --a-post-rule: 0.16;
+  --a-card-edge: 0.3;
   --a-line-paper: 0.25;
   --a-ink-dim: 0.58;
   --a-on-dark: 0.22;
