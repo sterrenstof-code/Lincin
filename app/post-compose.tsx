@@ -19,10 +19,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Arrow, BoxButton, Meta, Rule, Sheet, useWide } from "@/components/Editorial";
 import { SafeImage } from "@/components/SafeImage";
 import { SmartTextInput } from "@/components/SmartTextInput";
+import { FormatBar } from "@/components/FormatBar";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import { safeBack } from "@/lib/nav";
+import type { EditResult, Selection } from "@/lib/richtext";
 import {
   findUrl,
   formatDuration,
@@ -79,6 +81,31 @@ export default function PostComposeScreen() {
   const [kind, setKind] = useState<ComposeKind | null>(null);
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
+
+  /**
+   * Waar de cursor staat, en waar hij na een opmaakknop hóórt te staan.
+   *
+   * Twee stukjes staat in plaats van één, want ze bewegen de andere kant
+   * op: `selection` volgt de gebruiker, `forcedSelection` stuurt hem. Die
+   * tweede staat maar één render aan — laat je hem staan, dan springt de
+   * cursor terug bij elke toetsaanslag.
+   */
+  const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
+  const [forcedSelection, setForcedSelection] = useState<Selection | null>(null);
+  const bodyRef = useRef<TextInput>(null);
+
+  function onFormat(next: EditResult) {
+    setBody(next.text);
+    setSelection(next.selection);
+    setForcedSelection(next.selection);
+    bodyRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!forcedSelection) return;
+    const id = setTimeout(() => setForcedSelection(null), 0);
+    return () => clearTimeout(id);
+  }, [forcedSelection]);
   const [note, setNote] = useState("");
   const [sourceAuthor, setSourceAuthor] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
@@ -379,9 +406,19 @@ export default function PostComposeScreen() {
                       : "Het idee"
                     }
                   >
+                    <FormatBar
+                      value={body}
+                      selection={selection}
+                      onChange={onFormat}
+                    />
                     <TextInput
+                      ref={bodyRef}
                       value={body}
                       onChangeText={setBody}
+                      onSelectionChange={(e) =>
+                        setSelection(e.nativeEvent.selection)
+                      }
+                      selection={forcedSelection ?? undefined}
                       placeholder={
                         kind === "fragment" ? "Tik over of plak wat je las…"
                         : kind === "fact" ? "Wat wist je nog niet?"
@@ -397,6 +434,14 @@ export default function PostComposeScreen() {
                         Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                       ]}
                     />
+                    {/* Eén regel uitleg is genoeg: de knoppen zeggen wat ze
+                        doen, maar niet dat je het ook zelf kunt typen — en
+                        wie plakt uit een andere app heeft de sterretjes vaak
+                        al staan. */}
+                    <Meta tone="feed" dim>
+                      Selecteer tekst en tik B of I. Of typ **vet**, *cursief*,
+                      &gt; voor een citaat.
+                    </Meta>
                   </Field>
                 )}
 

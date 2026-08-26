@@ -14,6 +14,7 @@ import {
   space,
 } from "@/lib/design/type";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
+import { stripMarkdown } from "@/lib/richtext";
 import type { PostWithAuthor } from "@/lib/api/posts";
 
 /**
@@ -181,7 +182,8 @@ function Cell({ post }: { post: PostWithAuthor }) {
   }
 
   // Geen foto: dan is de tekst het beeld.
-  const text = post.caption?.trim() || post.body_text?.trim() || post.link_url || "";
+  // Vier regels in een tegel: geen plek voor opmaak, dus de markering eraf.
+  const text = post.caption?.trim() || stripMarkdown(post.body_text) || post.link_url || "";
   return (
     <View style={{ flex: 1, padding: space.md, justifyContent: "space-between" }}>
       <Ionicons

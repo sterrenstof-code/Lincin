@@ -27,6 +27,8 @@ import {
 } from "@/lib/api/unfurl";
 import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
 import { useHeroTag } from "@/lib/hero-transition";
+import { RichText } from "@/components/RichText";
+import { stripMarkdown } from "@/lib/richtext";
 
 /**
  * De inhoud van één vondst, per soort anders gezet.
@@ -132,14 +134,13 @@ function FragmentBody({ post }: { post: PostWithAuthor }) {
   return (
     <View>
       <View className="bg-carbon px-7 pt-9 pb-8 mt-4">
-        <Text
-          style={[
-            long || !wide ? type.quote : type.quoteLarge,
-            { color: page.DEFAULT },
-          ]}
-        >
-          {body}
-        </Text>
+        <RichText
+          text={body}
+          style={long || !wide ? type.quote : type.quoteLarge}
+          color={page.DEFAULT}
+          dimColor="#D6D4CE"
+          ruleColor="#B8B6B0"
+        />
 
         {attribution ? (
           <View className="mt-6">
@@ -192,7 +193,7 @@ function StatementBody({ post }: { post: PostWithAuthor }) {
           }}
         />
         <View className="flex-1">
-          <Text style={[type.quote, { color: carbon.DEFAULT }]}>{body}</Text>
+          <RichText text={body} style={type.quote} color={carbon.DEFAULT} dimColor={carbon.soft} ruleColor={rule.strong} />
           {attribution ? (
             <Text style={[type.caption, { color: carbon.muted, marginTop: 12 }]}>
               {attribution}
@@ -477,11 +478,13 @@ function NoteBody({ post }: { post: PostWithAuthor }) {
   return (
     <View>
       <View className={`${PAD} pt-4`}>
-        <Text
-          style={[short ? type.quote : type.body, { color: short ? carbon.DEFAULT : carbon.soft }]}
-        >
-          {text}
-        </Text>
+        <RichText
+          text={text}
+          style={short ? type.quote : type.body}
+          color={short ? carbon.DEFAULT : carbon.soft}
+          dimColor={carbon.muted}
+          ruleColor={rule.strong}
+        />
       </View>
       {post.image_path ? (
         <View className="mt-4">
@@ -545,7 +548,8 @@ function partsOf(post: PostWithAuthor): FindParts {
     meta.title ||
     post.source_title ||
     post.caption?.trim() ||
-    post.body_text?.trim() ||
+    // Een kop is één regel; sterretjes zouden daar letterlijk in belanden.
+    stripMarkdown(post.body_text) ||
     (url ? hostnameOf(url) : null);
 
   /**
