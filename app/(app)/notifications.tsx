@@ -32,7 +32,7 @@ export default function NotificationsScreen() {
   const chrome = useChromeScroll();
   const qc = useQueryClient();
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["notifications", myUserId],
     queryFn: () => listNotifications(myUserId),
     refetchOnWindowFocus: true,
@@ -101,7 +101,45 @@ export default function NotificationsScreen() {
           jij iets mee gedaan hebt.
         </Text>
 
-        {(data ?? []).length === 0 ? (
+        {/**
+          * Een mislukte query zag er precies hetzelfde uit als een lege lijst.
+          * Toen `bug_report_id` nog niet bestond stond hier "nog geen
+          * meldingen" terwijl er tientallen waren — en dan zoek je de fout
+          * overal behalve waar hij zit. Stilte en leegte horen niet
+          * hetzelfde te lezen.
+          */}
+        {isError ? (
+          <View
+            style={{
+              borderWidth: FEED_BORDER,
+              borderColor: flame,
+              backgroundColor: feed.post,
+              padding: 32,
+            }}
+          >
+            <Text style={[feedType.tile, { fontSize: 20, color: feed.text, marginBottom: 8 }]}>
+              Meldingen konden niet geladen worden
+            </Text>
+            <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
+              {(error as Error)?.message ?? "Onbekende fout."}
+            </Text>
+            <Pressable
+              onPress={() => refetch()}
+              style={{
+                marginTop: 20,
+                alignSelf: "flex-start",
+                paddingHorizontal: 20,
+                height: 40,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+              }}
+            >
+              <Text style={[feedType.label, { color: feed.ink }]}>Opnieuw proberen</Text>
+            </Pressable>
+          </View>
+        ) : (data ?? []).length === 0 ? (
           isLoading ? null : (
             <View
               style={{

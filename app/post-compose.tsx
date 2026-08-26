@@ -50,21 +50,37 @@ import {
 
 type ComposeKind = "link" | "video" | "music" | "fragment" | "fact" | "idea" | "image" | "note";
 
+/**
+ * Zes soorten, en dat is een bewuste inperking.
+ *
+ * Er stonden er acht, en drie daarvan vroegen hetzelfde van je: fragment,
+ * weetje en notitie waren alledrie "typ een stuk tekst". Wie iets wil delen
+ * stond dus eerst voor een indelingsvraag die de app zelf niet eens nodig
+ * had — en een keuze die je niet kunt fout maken hoort er niet te zijn.
+ *
+ * `fragment` en `fact` bestaan nog wél in de database en worden nog gewoon
+ * getoond; ze zijn alleen niet meer te kiezen. Wat ze konden, kan de notitie
+ * nu ook: opmaak, en een bron eronder. Een lange notitie met een bron ís
+ * een fragment.
+ */
 const KINDS: { id: ComposeKind; label: string; hint: string }[] = [
-  { id: "link",     label: "Link",     hint: "Artikel, site, repo" },
-  { id: "video",    label: "Video",    hint: "YouTube, Vimeo" },
-  { id: "music",    label: "Muziek",   hint: "Spotify, Bandcamp, SoundCloud" },
-  { id: "fragment", label: "Fragment", hint: "Een passage uit een boek of artikel" },
-  { id: "fact",     label: "Weetje",   hint: "Iets dat je nog niet wist" },
-  { id: "idea",     label: "Idee",     hint: "Iets om te maken of te bouwen" },
-  { id: "image",    label: "Foto",     hint: "Uit je bibliotheek of camera" },
-  { id: "note",     label: "Notitie",  hint: "Een losse gedachte" },
+  { id: "link",  label: "Link",    hint: "Artikel, site, repo" },
+  { id: "video", label: "Video",   hint: "YouTube, Vimeo" },
+  { id: "music", label: "Muziek",  hint: "Spotify, Bandcamp, SoundCloud" },
+  { id: "note",  label: "Notitie", hint: "Een gedachte, een passage, iets dat je las" },
+  { id: "image", label: "Foto",    hint: "Uit je bibliotheek of camera" },
+  { id: "idea",  label: "Idee",    hint: "Iets om te maken of te bouwen" },
 ];
 
 /** Soorten die om een URL vragen. */
 const URL_KINDS: ComposeKind[] = ["link", "video", "music"];
-/** Soorten die om een tekstblok vragen. */
-const BODY_KINDS: ComposeKind[] = ["fragment", "fact", "idea"];
+/**
+ * Soorten die om een tekstblok vragen — het veld mét opmaak.
+ *
+ * `fragment` en `fact` staan er nog in zodat een bestaande vondst van die
+ * soort bewerkbaar blijft, ook al kun je ze niet meer nieuw aanmaken.
+ */
+const BODY_KINDS: ComposeKind[] = ["note", "idea", "fragment", "fact"];
 
 export default function PostComposeScreen() {
   const router = useRouter();
@@ -104,6 +120,13 @@ export default function PostComposeScreen() {
    * bijgekomen, dan kijken we naar de regel ervóór.
    */
   function onBodyChange(next: string) {
+    // Plakken moet genoeg zijn: een kale URL in een notitie was bedoeld als
+    // link. Stond eerder op het losse notitie-veld, dat er niet meer is.
+    if (kind === "note" && !body && isBareUrl(next) && !url) {
+      setKind("link");
+      setUrl(next.trim());
+      return;
+    }
     if (next.length === body.length + 1) {
       let i = 0;
       while (i < body.length && body[i] === next[i]) i += 1;
@@ -232,15 +255,16 @@ export default function PostComposeScreen() {
     return () => clearTimeout(timer);
   }, [url]);
 
-  /** Lange geplakte tekst in een notitie → waarschijnlijk een fragment. */
+  /**
+   * De toelichting bij een vondst.
+   *
+   * Hier zat een sprong naar `fragment` zodra je meer dan 280 tekens typte.
+   * Die is weg: de notitie is nu zelf het lange-tekstveld, dus er is niets
+   * meer om naartoe te springen. Wat blijft is de link-herkenning — plak je
+   * een kale URL, dan bedoelde je een link.
+   */
   const onNoteChange = useCallback(
     (value: string) => {
-      if (kind === "note" && value.length > 280 && !body) {
-        setKind("fragment");
-        setBody(value);
-        setNote("");
-        return;
-      }
       if (isBareUrl(value) && !url) {
         setKind("link");
         setUrl(value.trim());
@@ -248,7 +272,7 @@ export default function PostComposeScreen() {
       }
       setNote(value);
     },
-    [kind, body, url]
+    [url]
   );
 
   async function pickImage(fromCamera: boolean) {
@@ -427,9 +451,10 @@ export default function PostComposeScreen() {
                 {BODY_KINDS.includes(kind) && (
                   <Field
                     label={
-                      kind === "fragment" ? "Het fragment"
-                      : kind === "fact" ? "Het weetje"
-                      : "Het idee"
+                      kind === "note" ? "De notitie"
+                      : kind === "idea" ? "Het idee"
+                      : kind === "fragment" ? "Het fragment"
+                      : "Het weetje"
                     }
                   >
                     <FormatBar
@@ -446,9 +471,10 @@ export default function PostComposeScreen() {
                       }
                       selection={forcedSelection ?? undefined}
                       placeholder={
-                        kind === "fragment" ? "Tik over of plak wat je las…"
-                        : kind === "fact" ? "Wat wist je nog niet?"
-                        : "Wat zou je willen maken?"
+                        kind === "note" ? "Schrijf iets, of tik over wat je las…"
+                        : kind === "idea" ? "Wat zou je willen maken?"
+                        : kind === "fragment" ? "Tik over of plak wat je las…"
+                        : "Wat wist je nog niet?"
                       }
                       placeholderTextColor={feed.inkDim}
                       multiline
@@ -541,32 +567,11 @@ export default function PostComposeScreen() {
                 )}
 
                 {/* --- Notitie --- */}
-                {kind === "note" && (
-                  <Field label="Gedachte">
-                    <SmartTextInput
-                      value={note}
-                      onChangeText={onNoteChange}
-                      placeholder="Schrijf iets…"
-                      placeholderTextColor={feed.inkDim}
-                      multiline
-                      autoFocus
-                      maxLength={1000}
-                      style={{
-                        minHeight: 150,
-                        textAlignVertical: "top",
-                        ...feedType.pullSmall,
-                        color: feed.ink,
-                        paddingVertical: 12,
-                      }}
-                    />
-                  </Field>
-                )}
-
                 {/* --- Bron: alleen waar het zin heeft --- */}
-                {(kind === "fragment" || kind === "link") && (
+                {(kind === "note" || kind === "fragment" || kind === "link") && (
                   <View className="px-6 pt-7">
                     <Meta tone="feed" dim>
-                      {kind === "fragment" ? "Bron — wie schreef het, en waarin" : "Bron"}
+                      {kind === "link" ? "Bron" : "Bron — wie schreef het, en waarin"}
                     </Meta>
                     <View className="flex-row mt-1">
                       <View className="flex-1 pr-4">
