@@ -258,6 +258,60 @@ staat terwijl de vondsten eronder het onderwerp zijn.
 
 ---
 
+## 4c. De rasterlaag
+
+`components/IndexGrid.tsx`. Drie bladen liggen eraan ten grondslag, en ze
+vullen elkaar aan in plaats van elkaar te overschrijven.
+
+**Fondation Phi** (Yoko Ono, *Liberté Conquérante*) zat er al in en staat
+genoemd in `lib/design/type.ts`: de etiketkolom links, banden over de volle
+breedte met een haarlijn ertussen, één display-serif die de pagina draagt.
+De 1250 van `sheetWidth()` is niet willekeurig — het is die etiketkolom plus
+de inhoud ernaast.
+
+**Искусство кино** voegt toe wat hier ontbrak: een rooster waarin de cellen
+géén kaders hebben. Kolommen gescheiden door verticale haarlijnen die over
+de volle rijhoogte doorlopen, rijen door horizontale. Je ziet geen kaartjes
+maar een opgemaakte pagina.
+
+Dat verschil is niet cosmetisch. Een kaart met een kader is een object dát op
+een pagina ligt; een cel tussen twee lijnen ís de pagina. Die keuze was hier
+al gemaakt voor de vondstkaart (§4), maar het rooster eromheen hield zich er
+nog niet aan.
+
+**Teenage Engineering** levert het kleinste onderdeel: de micro-markering
+(`// 002`, `[ about ]`) en de bijschriftstrook. Niet het spookachtige
+displaytype met overlappende annotaties — dat is art direction voor één
+pagina, geen systeem.
+
+### Wat erin zit
+
+| | |
+|---|---|
+| `Disc` | Gevulde cirkel met één teken. Het enige ronde element in een systeem op rechte hoeken, en daarom leest het als een stempel in plaats van als nóg een vlak. Geen `Pressable`: een schijf die je kunt aantikken heeft 44 punten aanraakvlak nodig en verliest daarmee zijn karakter. |
+| `SectionMark` | Schijf, groot woord in kapitalen, zware lijn. **Náást** `SectionBand`, niet in plaats daarvan — die is de inhoudsopgave (genummerd, klein, veel na elkaar), deze de aankondiging van een hoofdstuk. Twee of drie per pagina, niet acht. |
+| `DateStamp` | De datum als groot getal, met cijfers van gelijke breedte zodat de kolom zijn rechterlijn houdt. Alleen waar *wanneer* de eerste vraag is. |
+| `IndexGrid` | Cellen zonder kaders. Een korte laatste rij houdt zijn lege cellen, zodat de verticale lijnen doorlopen — de referentie vult die plek met een grijs "AD"-vlak; wij houden hem leeg. |
+| `LabelBand` | Etiket links, inhoud rechts, lijn erboven. De opbouw waar `Sheet` zijn maat aan ontleent. Op smal valt hij onder elkaar: 180 punten etiket naast een telefoonscherm laat niets over. |
+| `IndexMark` | `// 002`, `[ about ]`. De haken staan in het onderdeel en niet in de aanroep, anders staat er de ene keer `[about]` en de andere keer `[ about ]`. |
+| `CaptionStrip` | Korte bijschriften in gelijke kolommen. De tegenhanger van `LabelBand`: veel kleine stukjes zonder hiërarchie. |
+
+### Wat er níet in zit
+
+Geen kleuren, geen schaduwen, geen afronding. Dit bestand levert alleen
+structuur; het palet en de twee standen blijven bij `type.ts`. Zo kan een
+rooster nooit uit de toon vallen tegen de standen in, hoe het ook gevuld
+wordt — dezelfde afspraak als bij `RichText`.
+
+### Waar het staat
+
+`SectionMark` draagt de rubrieken van de agenda (`app/(app)/events.tsx`) —
+het scherm dat het dichtst bij de referentie ligt: een lopende en een
+afgesloten afdeling onder elkaar. De rest van de laag ligt klaar maar wordt
+nog niet overal gebruikt; zie §8.
+
+---
+
 ## 5. Paginaopbouw
 
 Elk v3-scherm heeft dezelfde ruggengraat:
@@ -323,6 +377,13 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
 ---
 
 ## 8. Wat nog niet gemigreerd is
+
+- **De rasterlaag (§4c)** is gebouwd en gedocumenteerd, maar alleen
+  `SectionMark` staat in gebruik. `IndexGrid` hoort het profielraster te
+  dragen (`components/PostGrid.tsx` zet daar nog een omlijning per tegel) en
+  `LabelBand` de instellingenschermen. Zolang dat niet gebeurd is, bestaan
+  beide patronen naast elkaar — en dat is precies het soort verschil dat
+  vanzelf blijft bestaan als niemand het opschrijft.
 
 Ongeveer twintig schermen draaien nog op het oude patroon
 (`ScreenContainer`, 600px-kolom, pre-v3-vormen). Ze werken, maar ze volgen

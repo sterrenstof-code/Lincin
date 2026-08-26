@@ -10,8 +10,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
+import { SectionMark } from "@/components/IndexGrid";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { creamOnDark, feed, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
+import { creamOnDark, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
 import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
@@ -207,17 +208,22 @@ export default function EventsScreen() {
   );
 }
 
+/**
+ * Een rubriek in de agenda.
+ *
+ * Gebruikt `SectionMark` uit de rasterlaag: schijf, woord, zware lijn. Dit
+ * scherm is de directe tegenhanger van waar dat patroon vandaan komt — een
+ * agenda met een lopende en een afgesloten afdeling — en het was hier een
+ * los kickertje van 10 punten dat je makkelijk oversloeg. Drie rubrieken op
+ * een pagina is precies waar deze kop voor bedoeld is; meer zou schreeuwen.
+ *
+ * Het teken in de schijf is de eerste letter van de rubriek. Geen icoon:
+ * een letter zegt wélke rubriek, een pictogram alleen dát het er een is.
+ */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={{ marginTop: 28 }}>
-      <Text
-        style={[
-          feedType.kicker,
-          { color: "#3A3540", letterSpacing: 0.55, marginBottom: 16 },
-        ]}
-      >
-        {title.toUpperCase()}
-      </Text>
+      <SectionMark glyph={title.charAt(0).toUpperCase()} label={title} />
       <View style={{ gap: 16 }}>{children}</View>
     </View>
   );
