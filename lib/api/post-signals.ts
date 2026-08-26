@@ -1,5 +1,4 @@
 import { supabase } from "../supabase/client";
-import { createNotification } from "./notifications";
 
 /**
  * Wat je met een vondst kunt doen zonder te typen.
@@ -49,10 +48,18 @@ export async function countBoostsForPosts(postIds: string[]): Promise<Map<string
   return counts;
 }
 
+/**
+ * Duwen of de duw terugnemen.
+ *
+ * De meldingen komen van de database (trigger `post_boosts_notify_audience`,
+ * 0048): de eigenaar hoort het, en iedereen die al iets met de vondst deed
+ * ook. `ownerId` wordt niet meer gebruikt maar blijft in de signatuur staan
+ * zodat de aanroepers ongemoeid blijven.
+ */
 export async function togglePostBoost(args: {
   postId: string;
   userId: string;
-  /** Eigenaar van de vondst — die krijgt een melding bij de eerste duw. */
+  /** @deprecated De database bepaalt zelf wie een melding krijgt (0048). */
   ownerId?: string | null;
   boosted: boolean;
 }): Promise<void> {
@@ -69,14 +76,6 @@ export async function togglePostBoost(args: {
     .from("post_boosts")
     .insert({ post_id: args.postId, user_id: args.userId });
   if (error) throw error;
-  if (args.ownerId) {
-    createNotification({
-      userId: args.ownerId,
-      actorId: args.userId,
-      type: "post_boost",
-      postId: args.postId,
-    });
-  }
 }
 
 export async function togglePostFollow(args: {

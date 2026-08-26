@@ -27,7 +27,15 @@ self.addEventListener("push", (event) => {
     badge: "/assets/images/icon.png",
     data: payload.data ?? {},
     // Groepeert notificaties per chat zodat ze niet opstapelen
-    tag: payload.data?.chat_id ? `chat-${payload.data.chat_id}` : "lincin",
+    // Groepeert per gesprek of per vondst zodat drie reacties op dezelfde
+    // vondst één regel op het vergrendelscherm worden, geen drie.
+    tag: payload.data?.chat_id
+      ? `chat-${payload.data.chat_id}`
+      : payload.data?.post_id
+      ? `post-${payload.data.post_id}`
+      : payload.data?.event_id
+      ? `event-${payload.data.event_id}`
+      : "lincin",
     renotify: true,
     // Trilt kort op Android
     vibrate: [100, 50, 100],
@@ -43,6 +51,7 @@ self.addEventListener("notificationclick", (event) => {
   let targetPath = "/";
   if (data.chat_id) targetPath = `/chat/${data.chat_id}`;
   else if (data.post_id) targetPath = `/post/${data.post_id}`;
+  else if (data.event_id) targetPath = `/event/${data.event_id}`;
 
   event.waitUntil(
     clients

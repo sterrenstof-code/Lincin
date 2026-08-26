@@ -7,8 +7,17 @@
  *   - Web Push subscriptions (browser PWA): via VAPID naar de browser endpoint
  *
  * Triggeren via een Database Webhook (Supabase Studio → Database → Webhooks):
- *   - Table: messages, Events: INSERT
- *   - Table: friendships, Events: INSERT
+ *   - Table: messages,      Events: INSERT
+ *   - Table: friendships,   Events: INSERT
+ *   - Table: notifications, Events: INSERT   ← alles uit de meldingenlijst
+ *
+ * Die derde is de belangrijkste. De `notifications`-tabel is de enige bron
+ * van waarheid voor wat er in de kring gebeurt: elke trigger uit
+ * 0048_circle_notifications schrijft daarheen, en van daaruit gaat het in
+ * één keer naar alle toestellen. Nieuwe meldingssoorten hoeven dus nooit
+ * een eigen webhook — ze hebben alleen een regel in `NOTIFICATION_COPY`
+ * hieronder nodig, en zonder die regel komen ze er nog steeds door met de
+ * terugvalzin.
  *
  * Deploy:
  *   supabase functions deploy send-push --no-verify-jwt
@@ -81,6 +90,98 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+/** Kort de tekst in op een woordgrens — een half woord leest slordig. */
+function trim(text: string, max = 80): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut) + "…";
+}
+
+/**
+ * Hoe je een vondst noemt op een vergrendelscherm.
+ *
+ * De titel van de bron gaat voor: bij een link of een boekfragment is
+ * "Het schip der dwazen" herkenbaarder dan de toelichting die de deler er
+ * zelf bij typte. Pas als er geen bron is, valt hij terug op wat er wél is.
+ */
+function describePost(post: Record<string, any> | null): string {
+  if (!post) return "een vondst";
+  const source = post.source_title
+    ? post.source_author
+      ? `${post.source_title} — ${post.source_author}`
+      : post.source_title
+    : null;
+  const text = source ?? post.caption ?? post.body_text ?? null;
+  if (text) return `„${trim(text, 60)}”`;
+  return post.kind === "image" ? "een foto" : "een vondst";
+}
+
+/**
+ * De zin onder de naam. De naam staat al in de titel, dus dit begint met
+ * een werkwoord: "Sara" / "reageerde op je vondst".
+ *
+ * Een onbekende soort krijgt een terugvalzin in plaats van niets. Zo kan
+ * er nooit een melding in de lijst staan die op het toestel stil blijft —
+ * dat is precies het soort gat waar mensen het systeem om wantrouwen.
+ */
+function buildNotificationBody(args: {
+  type: string;
+  emoji: string | null;
+  postLabel: string;
+  commentBody: string | null;
+  eventName: string;
+}): string {
+  const { type, emoji, postLabel, commentBody, eventName } = args;
+  const said = commentBody ? `: „${trim(commentBody, 70)}”` : "";
+
+  switch (type) {
+    // ---- de kring rond een vondst (0048) ----
+    case "friend_post":
+      return `deelde een nieuwe vondst — ${postLabel}`;
+    case "comment_on_post":
+      return `reageerde op je vondst${said}`;
+    case "comment_on_thread":
+      return `reageerde ook op ${postLabel}${said}`;
+    case "followed_post_comment":
+      return `reageerde op een vondst die je volgt${said}`;
+    case "post_boost":
+      return "duwde je vondst omhoog";
+    case "thread_boost":
+      return `duwde ${postLabel} omhoog`;
+    case "post_reaction":
+      return emoji ? `${emoji} op je vondst` : "reageerde op je vondst";
+    case "thread_reaction":
+      return emoji ? `${emoji} op ${postLabel}` : `reageerde op ${postLabel}`;
+    case "mention":
+      return `noemde je${said}`;
+
+    // ---- stemmingen, lijsten, calls ----
+    case "vote_on_poll":
+      return "stemde op je stemming";
+    case "vote_on_call":
+      return "koos een tijdslot voor je call";
+    case "invited_to_list":
+      return "nodigde je uit voor een lijst";
+    case "invited_to_call":
+      return "nodigde je uit voor een videocall";
+
+    // ---- events ----
+    case "event_join":
+      return `nam deel aan ${eventName}`;
+    case "event_join_request":
+      return `vraagt toegang tot ${eventName}`;
+    case "event_join_approved":
+      return `liet je toe tot ${eventName}`;
+    case "event_contribution":
+      return `plaatste iets in ${eventName}`;
+
+    default:
+      return "deed iets in je kring";
+  }
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -170,6 +271,79 @@ Deno.serve(async (req: Request) => {
         title: "Nieuw vriendschapsverzoek",
         body: `${name} wil je toevoegen op Lincin.`,
         data: { type: "friend_request" },
+      }));
+    } else if (table === "notifications") {
+      const recipientId = record.user_id;
+      const actorId = record.actor_id;
+      const type: string = record.type;
+      if (!recipientId || !actorId) {
+        return new Response("incomplete notification", { status: 200 });
+      }
+
+      const { data: devices } = await admin
+        .from("user_devices")
+        .select("push_token")
+        .eq("user_id", recipientId);
+      if (!devices || devices.length === 0) {
+        return new Response("no devices", { status: 200 });
+      }
+
+      // Alle context in één ronde: wie het deed, waarover het gaat.
+      const [actorRes, postRes, commentRes, eventRes] = await Promise.all([
+        admin
+          .from("profiles")
+          .select("display_name, username")
+          .eq("id", actorId)
+          .maybeSingle(),
+        record.post_id
+          ? admin
+              .from("posts")
+              .select("kind, caption, source_title, source_author, body_text")
+              .eq("id", record.post_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        record.entity_comment_id
+          ? admin
+              .from("entity_comments")
+              .select("body")
+              .eq("id", record.entity_comment_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        record.event_id
+          ? admin
+              .from("events")
+              .select("name")
+              .eq("id", record.event_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      const actorName =
+        (actorRes as any)?.data?.display_name ??
+        (actorRes as any)?.data?.username ??
+        "Iemand";
+      const post = (postRes as any)?.data ?? null;
+      const commentBody = (commentRes as any)?.data?.body ?? null;
+      const eventName = (eventRes as any)?.data?.name ?? "een event";
+
+      const body = buildNotificationBody({
+        type,
+        emoji: record.detail ?? null,
+        postLabel: describePost(post),
+        commentBody,
+        eventName,
+      });
+
+      notifications = devices.map((d: any) => ({
+        to: d.push_token,
+        title: actorName,
+        body,
+        data: {
+          type,
+          notification_id: record.id,
+          ...(record.post_id ? { post_id: record.post_id } : {}),
+          ...(record.event_id ? { event_id: record.event_id } : {}),
+        },
       }));
     } else {
       return new Response("unsupported table", { status: 200 });

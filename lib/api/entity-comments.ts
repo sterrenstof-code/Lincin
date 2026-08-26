@@ -139,36 +139,18 @@ export async function addEntityComment(args: {
     throw error;
   }
 
-  // Notificeer de eigenaar (fire-and-forget)
-  if (args.ownerId && args.ownerId !== args.userId) {
-    createNotification({
-      userId: args.ownerId,
-      actorId: args.userId,
-      type: "comment_on_post",
-      postId: args.entityId,
-    });
-  }
-
-  // Notificeer ook eerdere reageerders (fire-and-forget)
-  supabase
-    .from("entity_comments")
-    .select("user_id")
-    .eq("entity_type", args.entityType)
-    .eq("entity_id", args.entityId)
-    .neq("id", data.id)
-    .then(({ data: prev }) => {
-      const others = Array.from(
-        new Set((prev ?? []).map((r: any) => r.user_id as string))
-      ).filter((id) => id !== args.userId && id !== args.ownerId);
-      for (const uid of others) {
-        createNotification({
-          userId: uid,
-          actorId: args.userId,
-          type: "comment_on_thread",
-          postId: args.entityId,
-        });
-      }
-    });
+  /**
+   * De eigenaar en de rest van de kring krijgen hun melding niet meer van
+   * hier maar van de database — trigger `entity_comments_notify_audience`
+   * uit 0048, dezelfde verhuizing als die de volgers in 0047 maakten.
+   *
+   * Wat hier stond leunde op twee dingen die geen van beide gegarandeerd
+   * zijn: dat de reactie via dít pad binnenkomt, en dat de gebruiker blijft
+   * staan tot het losse verzoek klaar is. Bovendien haalde het alleen
+   * eerdere *reageerders* op, terwijl wie een emoji gaf of de vondst
+   * omhoog duwde er net zo goed bij hoort. De trigger leest de hele kring
+   * uit `post_audience()`, in dezelfde transactie als de reactie zelf.
+   */
 
   // Genoemd worden is persoonlijker dan meelezen: wie in de tekst staat,
   // hoort het te weten. Fire-and-forget, net als de rest hierboven.

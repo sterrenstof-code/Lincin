@@ -586,8 +586,12 @@ export type Database = {
           type: string;
           post_id: string | null;
           comment_id: string | null;
+          /** 0048 — verwijzing naar `entity_comments`; `comment_id` is de oude tabel. */
+          entity_comment_id: string | null;
           /** 0041_event_improvements */
           event_id: string | null;
+          /** 0048 — soort-specifiek detail, nu de emoji bij een reactie. */
+          detail: string | null;
           read: boolean;
           created_at: string;
         };
@@ -598,7 +602,9 @@ export type Database = {
           type: string;
           post_id?: string | null;
           comment_id?: string | null;
+          entity_comment_id?: string | null;
           event_id?: string | null;
+          detail?: string | null;
           read?: boolean;
           created_at?: string;
         };

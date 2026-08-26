@@ -95,7 +95,8 @@ export default function NotificationsScreen() {
         <Text
           style={[feedType.body, { color: feed.inkDim, maxWidth: 520, marginTop: 10, marginBottom: 34 }]}
         >
-          Reacties op jouw vondsten en de threads waar je in zit.
+          Nieuwe vondsten uit je kring, en elke beweging op een vondst waar
+          jij iets mee gedaan hebt.
         </Text>
 
         {(data ?? []).length === 0 ? (
@@ -112,8 +113,8 @@ export default function NotificationsScreen() {
                 Nog geen meldingen
               </Text>
               <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
-                Zodra iemand reageert op jouw vondst, of op een thread waar je in
-                zit, verschijnt het hier.
+                Zodra iemand uit je kring iets deelt, of reageert op een vondst
+                waar jij iets mee gedaan hebt, verschijnt het hier.
               </Text>
             </View>
           )
@@ -150,9 +151,21 @@ function NotificationRow({
     item.actor?.display_name ?? item.actor?.username ?? "Iemand";
 
   const eventName = item.event_name ? `"${item.event_name}"` : "je event";
+
+  // Waar de melding over gaat, in één woordgroep. De brontitel gaat voor
+  // op de toelichting van de deler: bij een link of een boekfragment is
+  // die herkenbaarder dan wat iemand er zelf bij typte.
+  const subject = item.post_source_title
+    ? `„${truncate(item.post_source_title, 32)}”`
+    : "een vondst";
+
   const label =
-    item.type === "comment_on_post"   ? `${actorName} reageerde op jouw post` :
-    item.type === "comment_on_thread" ? `${actorName} reageerde ook op een post` :
+    item.type === "friend_post"       ? `${actorName} deelde ${subject}` :
+    item.type === "comment_on_post"   ? `${actorName} reageerde op jouw vondst` :
+    item.type === "comment_on_thread" ? `${actorName} reageerde ook op ${subject}` :
+    item.type === "post_reaction"     ? `${actorName} gaf ${item.detail ?? "een reactie"} aan jouw vondst` :
+    item.type === "thread_reaction"   ? `${actorName} gaf ${item.detail ?? "een reactie"} aan ${subject}` :
+    item.type === "thread_boost"      ? `${actorName} duwde ${subject} omhoog` :
     item.type === "vote_on_poll"      ? `${actorName} stemde op jouw stemming` :
     item.type === "vote_on_call"      ? `${actorName} koos een tijdslot voor jouw call` :
     item.type === "invited_to_list"   ? `${actorName} nodigde je uit voor een lijst` :
@@ -256,6 +269,15 @@ function PostThumb({ imagePath }: { imagePath: string }) {
       contentFit="cover"
     />
   );
+}
+
+/** Kort in op een woordgrens — een half woord leest slordig. */
+function truncate(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut) + "…";
 }
 
 function formatRelativeTime(iso: string): string {
