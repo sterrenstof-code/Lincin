@@ -342,10 +342,19 @@ export function BoxButton({
 }) {
   const isFeed = tone === "feed" || tone === "post";
   const edge = edgeColor(tone);
-  /** Kleur van de tekst óp een gevulde knop. */
+  /**
+   * Kleur van de tekst óp een gevulde knop.
+   *
+   * `feed` stond op `feed.text`, en dat is dezelfde inkt als de vulling
+   * eronder (`edgeColor` geeft voor deze toon `feed.ink`, en beide tokens
+   * zijn #0B0A0C). De knop "Plaatsen" was dus een zwart vlak met een zwart
+   * label erin: het stond er, je kon het alleen niet lezen. Een gevulde
+   * knop is donker, dus het label hoort licht te zijn — hetzelfde als de
+   * regel eronder al deed voor `post`.
+   */
   const onFilled =
     tone === "dark" ? carbon.DEFAULT
-    : tone === "feed" ? feed.text
+    : tone === "feed" ? feed.post
     : tone === "post" ? feed.post
     : page.DEFAULT;
 
