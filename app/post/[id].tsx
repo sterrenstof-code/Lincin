@@ -553,10 +553,17 @@ export default function PostDetailScreen() {
                   <View style={{ marginTop: space.md }}>
                     <RichText
                       text={post.data.body_text}
+                      /**
+                       * Kleiner op een telefoon. 19 punten serif is een
+                       * leesmaat voor een brede kolom; op 360 punten worden
+                       * dat vier woorden per regel, en dan leest een
+                       * opsomming van twintig punten als een muur. De
+                       * regelhoogte krimpt naar verhouding mee.
+                       */
                       style={{
                         fontFamily: SERIF_FAMILY,
-                        fontSize: 19,
-                        lineHeight: 30,
+                        fontSize: wide ? 19 : 16,
+                        lineHeight: wide ? 30 : 25,
                         letterSpacing: -0.2,
                       }}
                       color={feed.ink}

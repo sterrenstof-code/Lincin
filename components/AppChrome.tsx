@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useIsFocused } from "@react-navigation/native";
 import { usePathname, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -387,6 +388,8 @@ function CompactBar({
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const iconOnly = width < ICON_ONLY_MAX_WIDTH;
+  /** Smal scherm én een terugweg: dan wint de terugweg van het merk. */
+  const compactDetail = iconOnly && !!onBack;
   const badges = useTabBadges();
 
   return (
@@ -401,36 +404,68 @@ function CompactBar({
         overflow: "hidden",
       }}
     >
-      {/* Het merk, klein. */}
-      <Pressable
-        onPress={() => router.push("/feed")}
-        style={{ justifyContent: "center", paddingHorizontal: iconOnly ? 12 : 16 }}
-      >
-        <Text
-          allowFontScaling={false}
-          style={{
-            fontFamily: feedType.hero.fontFamily,
-            fontWeight: "900",
-            fontSize: 19,
-            letterSpacing: -0.4,
-            color: "#FAF8F5",
-            transform: [{ scaleX: 0.84 }],
-          }}
-        >
-          LINCIN
-        </Text>
-      </Pressable>
+      {/**
+        * Het merk als teken, niet als woord.
+        *
+        * Hier stond "LINCIN" uitgeschreven, en dat kostte zo'n 88 punten in
+        * een balk die op een telefoon 328 punten breed is. Met vijf
+        * tabbladen, de plus en de avatar ernaast bleef er 27 punten per
+        * tabblad over — te weinig voor een icoon met een badge ernaast, dus
+        * ging de badge eroverheen.
+        *
+        * Het woordmerk staat bovendien al groot in het zwarte blok bovenaan
+        * de feed. Twee keer hetzelfde woord op één pagina is één keer te
+        * veel; het teken alleen is genoeg om te weten waar je bent.
+        */}
+      {/* Op een smalle detailpagina wijkt ook het teken: daar hoort de
+          terugweg linksboven te staan, waar elke andere app hem ook zet. */}
+      {compactDetail ? null : (
+        <>
+          <Pressable
+            onPress={() => router.push("/feed")}
+            accessibilityLabel="Naar de feed"
+            style={{
+              justifyContent: "center",
+              paddingHorizontal: iconOnly ? 12 : 16,
+            }}
+          >
+            <Image
+              source={require("../assets/images/logo-master.png")}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+              transition={0}
+            />
+          </Pressable>
 
-      <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
+          <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
+        </>
+      )}
 
       {/* Op een detailpagina vervangt de terug-knop de navigatie. */}
       {onBack ? (
         <Pressable
           onPress={onBack}
-          style={{ flex: 1, justifyContent: "center", paddingHorizontal: 16 }}
+          accessibilityLabel={backLabel ?? "Terug"}
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            justifyContent: "flex-start",
+            paddingHorizontal: iconOnly ? 12 : 16,
+          }}
         >
-          <Text style={[feedType.label, { fontSize: 12, color: "#FAF8F5" }]} numberOfLines={1}>
-            {`← ${backLabel ?? "Terug"}`}
+          {/* De pijl als icoon en niet als teken in de tekst: zo blijft hij
+              staan wanneer het label wegvalt, en houdt hij zijn maat los van
+              de letterhoogte. */}
+          <Ionicons name="arrow-back" size={19} color="#FAF8F5" />
+          <Text
+            style={[feedType.label, { fontSize: 12, color: "#FAF8F5", flexShrink: 1 }]}
+            numberOfLines={1}
+          >
+            {/* Op een smal scherm het korte woord: "Terug naar de feed" duwt
+                de actieknop ernaast weg zodra het scherm onder de 400 komt. */}
+            {iconOnly ? "Terug" : (backLabel ?? "Terug")}
           </Text>
         </Pressable>
       ) : (

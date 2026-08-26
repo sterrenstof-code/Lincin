@@ -108,8 +108,26 @@ export default function RootLayout() {
             <Stack.Screen name="(app)" />
             <Stack.Screen
               name="chat/[id]"
-              // Erft `fade_from_bottom` uit de screenOptions hierboven.
-              options={{ headerShown: false }}
+              options={{
+                headerShown: false,
+                /**
+                 * Terugvegen.
+                 *
+                 * Dit vraagt om een schuivende overgang: een veeg pakt de
+                 * pagina vast en sleept hem opzij, en bij `fade_from_bottom`
+                 * — wat deze schermen erfden — is er niets om vast te pakken.
+                 * De ingebouwde gebarenherkenner staat daar dan ook uit.
+                 *
+                 * Randgebaar en niet over het hele scherm: in een gesprek
+                 * ligt op elke bubbel al een horizontale veeg om te
+                 * antwoorden, en twee herkenners die dezelfde beweging
+                 * claimen laten er één verliezen. Vanaf de rand is bovendien
+                 * wat iOS en Android allebei doen, dus het hoeft niet
+                 * geleerd te worden.
+                 */
+                animation: "slide_from_right",
+                gestureEnabled: true,
+              }}
             />
             <Stack.Screen
               name="add/[username]"
@@ -122,8 +140,26 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="post/[id]"
-              // Erft `fade_from_bottom` uit de screenOptions hierboven.
-              options={{ headerShown: false }}
+              options={{
+                headerShown: false,
+                /**
+                 * Terugvegen.
+                 *
+                 * Dit vraagt om een schuivende overgang: een veeg pakt de
+                 * pagina vast en sleept hem opzij, en bij `fade_from_bottom`
+                 * — wat deze schermen erfden — is er niets om vast te pakken.
+                 * De ingebouwde gebarenherkenner staat daar dan ook uit.
+                 *
+                 * Randgebaar en niet over het hele scherm: in een gesprek
+                 * ligt op elke bubbel al een horizontale veeg om te
+                 * antwoorden, en twee herkenners die dezelfde beweging
+                 * claimen laten er één verliezen. Vanaf de rand is bovendien
+                 * wat iOS en Android allebei doen, dus het hoeft niet
+                 * geleerd te worden.
+                 */
+                animation: "slide_from_right",
+                gestureEnabled: true,
+              }}
             />
             <Stack.Screen
               name="bugs"
