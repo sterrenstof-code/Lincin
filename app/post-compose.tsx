@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import { safeBack } from "@/lib/nav";
+import { SHARE_KINDS } from "@/lib/share-kinds";
 import { continueList, type EditResult, type Selection } from "@/lib/richtext";
 import {
   findUrl,
@@ -51,35 +52,19 @@ import {
 type ComposeKind = "link" | "video" | "music" | "fragment" | "fact" | "idea" | "image" | "note";
 
 /**
- * Zes soorten, en dat is een bewuste inperking.
- *
- * Er stonden er acht, en drie daarvan vroegen hetzelfde van je: fragment,
- * weetje en notitie waren alledrie "typ een stuk tekst". Wie iets wil delen
- * stond dus eerst voor een indelingsvraag die de app zelf niet eens nodig
- * had — en een keuze die je niet kunt fout maken hoort er niet te zijn.
+ * De soorten komen uit `lib/share-kinds.ts` — dezelfde lijst die het
+ * snelmenu onder de zwevende plusknop vult. Twee lijsten die hetzelfde
+ * moeten zeggen lopen altijd een keer uiteen; daar staat het waarom.
  *
  * `fragment` en `fact` bestaan nog wél in de database en worden nog gewoon
- * getoond; ze zijn alleen niet meer te kiezen. Wat ze konden, kan de notitie
- * nu ook: opmaak, en een bron eronder. Een lange notitie met een bron ís
- * een fragment.
+ * getoond; ze zijn alleen niet meer te kiezen. Wat ze konden, kan de
+ * notitie nu ook: opmaak, en een bron eronder. Een lange notitie met een
+ * bron ís een fragment.
  */
-const KINDS: { id: ComposeKind; label: string; hint: string }[] = [
-  { id: "link",  label: "Link",    hint: "Artikel, site, repo" },
-  { id: "video", label: "Video",   hint: "YouTube, Vimeo" },
-  { id: "music", label: "Muziek",  hint: "Spotify, Bandcamp, SoundCloud" },
-  { id: "note",  label: "Notitie", hint: "Een gedachte, een passage, iets dat je las" },
-  { id: "image", label: "Foto",    hint: "Uit je bibliotheek of camera" },
-  { id: "idea",  label: "Idee",    hint: "Iets om te maken of te bouwen" },
-];
+const KINDS = SHARE_KINDS;
 
 /** Soorten die om een URL vragen. */
 const URL_KINDS: ComposeKind[] = ["link", "video", "music"];
-/**
- * Soorten die om een tekstblok vragen — het veld mét opmaak.
- *
- * `fragment` en `fact` staan er nog in zodat een bestaande vondst van die
- * soort bewerkbaar blijft, ook al kun je ze niet meer nieuw aanmaken.
- */
 const BODY_KINDS: ComposeKind[] = ["note", "idea", "fragment", "fact"];
 
 export default function PostComposeScreen() {

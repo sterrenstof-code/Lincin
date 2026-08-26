@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { SHARE_KINDS } from "@/lib/share-kinds";
 import { ModalShell } from "@/components/ModalShell";
 import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
@@ -274,6 +275,7 @@ export default function FeedScreen() {
   const wide = width >= FEED_BREAKPOINT;
   // Kolommen van het chronologische overzicht — zie columnsFor.
   const gridColumns = columnsFor(width);
+  const [shareOpen, setShareOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
    * De twee leesvoorkeuren:
@@ -738,18 +740,26 @@ export default function FeedScreen() {
           paneel van de zijbalk, en dat paneel scrolt weg. Nu zweeft hij
           los over de pagina — op elk schermformaat, want het argument is
           op een breed scherm niet anders. */}
+      <FloatingShare onPress={() => setShareOpen(true)} lifted={scrolled} />
+
       {/**
-        * Rechtstreeks naar het deelscherm, net als de plus in de balk
-        * bovenaan.
-        *
-        * Hier zat een tussenmenu met vier snelkoppelingen. Dat dubbelde de
-        * eerste stap van het deelscherm — daar staan diezelfde soorten al,
-        * mét een regel uitleg per stuk. En het liep uit de pas: één van de
-        * vier wees naar `kind=fragment`, een soort die niet meer te kiezen
-        * is. Twee lijsten die hetzelfde moeten zeggen gaan altijd een keer
-        * uiteenlopen; dan kun je er beter één hebben.
+        * Hetzelfde lijstje als stap één van het deelscherm, want het ís
+        * dezelfde lijst: `SHARE_KINDS`. Hier stonden vier handgeschreven
+        * ingangen waarvan er één naar `kind=fragment` wees — een soort die
+        * uit de kiezer verdwenen was. Je kreeg dus een ander antwoord op
+        * dezelfde vraag, afhankelijk van welke plus je toevallig aantikte.
+        * Nu kan dat niet meer uiteenlopen.
         */}
-      <FloatingShare onPress={() => router.push("/post-compose")} lifted={scrolled} />
+      <ActionSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title="Wat wil je delen?"
+        actions={SHARE_KINDS.map((k) => ({
+          label: k.menuLabel,
+          icon: k.icon,
+          onPress: () => router.push(`/post-compose?kind=${k.id}`),
+        }))}
+      />
     </SafeAreaView>
   );
 }
