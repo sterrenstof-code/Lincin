@@ -120,6 +120,10 @@ function Block({
   }
 
   if (block.kind === "list") {
+    // De kolom met de tekens krijgt een vaste breedte zodat de tekst
+    // uitlijnt, ook als de lijst voorbij de negen loopt en "10." breder is
+    // dan "9.". Een lijst die verspringt leest als een fout.
+    const markerWidth = block.ordered ? 26 : 14;
     return (
       <View style={{ marginTop: top }}>
         {block.items.map((item, i) => (
@@ -130,7 +134,14 @@ function Block({
               marginTop: i === 0 ? 0 : space.xs,
             }}
           >
-            <Text style={[style, { color: dim, marginRight: space.sm }]}>·</Text>
+            <Text
+              style={[
+                style,
+                { color: dim, width: markerWidth, marginRight: space.sm },
+              ]}
+            >
+              {block.ordered ? `${i + 1}.` : "·"}
+            </Text>
             <Text style={[style, { color, flex: 1 }]}>
               <Spans spans={item} />
             </Text>

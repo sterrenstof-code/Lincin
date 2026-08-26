@@ -24,7 +24,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import { safeBack } from "@/lib/nav";
-import type { EditResult, Selection } from "@/lib/richtext";
+import { continueList, type EditResult, type Selection } from "@/lib/richtext";
 import {
   findUrl,
   formatDuration,
@@ -93,6 +93,32 @@ export default function PostComposeScreen() {
   const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
   const [forcedSelection, setForcedSelection] = useState<Selection | null>(null);
   const bodyRef = useRef<TextInput>(null);
+
+  /**
+   * Enter in een opsomming zet de opsomming voort.
+   *
+   * Dit hangt aan `onChangeText` en niet aan `onKeyPress`, want die tweede
+   * is op native voor een multiline veld niet betrouwbaar — en waar hij wél
+   * afgaat kun je de invoer niet meer tegenhouden. Achteraf kijken wat er
+   * veranderd is werkt overal hetzelfde: is er precies één regeleinde
+   * bijgekomen, dan kijken we naar de regel ervóór.
+   */
+  function onBodyChange(next: string) {
+    if (next.length === body.length + 1) {
+      let i = 0;
+      while (i < body.length && body[i] === next[i]) i += 1;
+      if (next[i] === "\n" && next.slice(i + 1) === body.slice(i)) {
+        const continued = continueList(body, { start: i, end: i });
+        if (continued) {
+          setBody(continued.text);
+          setSelection(continued.selection);
+          setForcedSelection(continued.selection);
+          return;
+        }
+      }
+    }
+    setBody(next);
+  }
 
   function onFormat(next: EditResult) {
     setBody(next.text);
@@ -414,7 +440,7 @@ export default function PostComposeScreen() {
                     <TextInput
                       ref={bodyRef}
                       value={body}
-                      onChangeText={setBody}
+                      onChangeText={onBodyChange}
                       onSelectionChange={(e) =>
                         setSelection(e.nativeEvent.selection)
                       }
@@ -440,7 +466,8 @@ export default function PostComposeScreen() {
                         al staan. */}
                     <Meta tone="feed" dim>
                       Selecteer tekst en tik B of I. Of typ **vet**, *cursief*,
-                      &gt; voor een citaat.
+                      &gt; voor een citaat, - of 1. voor een opsomming — Enter
+                      zet die vanzelf voort.
                     </Meta>
                   </Field>
                 )}

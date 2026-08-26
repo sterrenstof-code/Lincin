@@ -22,7 +22,7 @@
  * Ondersteund, bewust weinig:
  *
  *     **vet**        *cursief*        > citaat
- *     - opsomming    ---  (scheidingslijn)
+ *     - opsomming    1. genummerd     ---  (scheidingslijn)
  *
  * Onderstrepen bestaat niet: dat is een overblijfsel van de typemachine en
  * botst met de haarlijnen in het ontwerp. Kopjes bestaan evenmin — een
@@ -38,12 +38,14 @@ export type InlineSpan = {
 export type RichBlock =
   | { kind: "paragraph"; spans: InlineSpan[] }
   | { kind: "quote"; spans: InlineSpan[] }
-  | { kind: "list"; items: InlineSpan[][] }
+  | { kind: "list"; ordered: boolean; items: InlineSpan[][] }
   | { kind: "rule" };
 
 const RULE_RE = /^\s*-{3,}\s*$/;
 const QUOTE_RE = /^\s*>\s?/;
 const LIST_RE = /^\s*[-•]\s+/;
+/** `1. ` en `1) ` allebei — mensen typen ze door elkaar. */
+const ORDERED_RE = /^\s*\d+[.)]\s+/;
 
 // ===============================================================
 // Inline: vet en cursief
@@ -100,6 +102,7 @@ export function parseRich(input: string): RichBlock[] {
   let paragraph: string[] = [];
   let quote: string[] = [];
   let list: string[] = [];
+  let listOrdered = false;
 
   function flush() {
     if (paragraph.length) {
@@ -111,7 +114,11 @@ export function parseRich(input: string): RichBlock[] {
       quote = [];
     }
     if (list.length) {
-      blocks.push({ kind: "list", items: list.map((item) => parseInline(item)) });
+      blocks.push({
+        kind: "list",
+        ordered: listOrdered,
+        items: list.map((item) => parseInline(item)),
+      });
       list = [];
     }
   }
@@ -131,8 +138,17 @@ export function parseRich(input: string): RichBlock[] {
       quote.push(line.replace(QUOTE_RE, ""));
       continue;
     }
+    // Wisselen van soort begint een nieuwe lijst — een genummerde en een
+    // ongenummerde reeks door elkaar is twee lijsten, geen één.
+    if (ORDERED_RE.test(line)) {
+      if (paragraph.length || quote.length || (list.length && !listOrdered)) flush();
+      listOrdered = true;
+      list.push(line.replace(ORDERED_RE, ""));
+      continue;
+    }
     if (LIST_RE.test(line)) {
-      if (paragraph.length || quote.length) flush();
+      if (paragraph.length || quote.length || (list.length && listOrdered)) flush();
+      listOrdered = false;
       list.push(line.replace(LIST_RE, ""));
       continue;
     }
@@ -162,6 +178,7 @@ export function stripMarkdown(input: string | null | undefined): string {
     .replace(RULE_RE_GLOBAL, "")
     .replace(/^\s*>\s?/gm, "")
     .replace(/^\s*[-•]\s+/gm, "• ")
+    .replace(/^\s*(\d+)[.)]\s+/gm, "$1. ")
     .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
     .replace(/\*([^*\n][\s\S]*?)\*/g, "$1")
     .replace(/\n{2,}/g, "\n")
@@ -238,7 +255,7 @@ export function applyInlineMarker(
 export function applyLinePrefix(
   text: string,
   selection: Selection,
-  prefix: "> " | "- "
+  prefix: "> " | "- " | "1. "
 ): EditResult {
   const { start, end } = normalise(selection, text);
   const from = text.lastIndexOf("\n", start - 1) + 1;
@@ -246,18 +263,81 @@ export function applyLinePrefix(
   const to = toIndex === -1 ? text.length : toIndex;
 
   const lines = text.slice(from, to).split("\n");
-  const re = prefix === "> " ? QUOTE_RE : LIST_RE;
+  const re =
+    prefix === "> " ? QUOTE_RE : prefix === "- " ? LIST_RE : ORDERED_RE;
   const allMarked = lines.every((line) => line.trim() === "" || re.test(line));
 
+  // Een genummerde lijst hoort door te tellen. Zonder dit staat er
+  // "1." boven "1." boven "1." — de markering klopt, het lijstje niet.
+  let n = 0;
   const next = lines
     .map((line) => {
       if (line.trim() === "") return line;
-      return allMarked ? line.replace(re, "") : prefix + line;
+      if (allMarked) return line.replace(re, "");
+      // Wisselen van soort: eerst de andere markering eraf, anders krijg
+      // je "1. - iets".
+      const bare = line.replace(QUOTE_RE, "").replace(LIST_RE, "").replace(ORDERED_RE, "");
+      if (prefix === "1. ") {
+        n += 1;
+        return `${n}. ${bare}`;
+      }
+      return prefix + bare;
     })
     .join("\n");
 
   const result = text.slice(0, from) + next + text.slice(to);
   return { text: result, selection: { start: from, end: from + next.length } };
+}
+
+/**
+ * Enter in een lijst.
+ *
+ * Dit is wat een opsomming van een truc een gereedschap maakt. Zonder dit
+ * typ je elk streepje met de hand, en dan gebruik je het na twee regels
+ * niet meer.
+ *
+ * Twee gevallen. Staat er iets op de regel, dan komt de volgende markering
+ * eronder (en telt een genummerde lijst door). Is de regel leeg — je tikte
+ * Enter op een lege bullet — dan is dat het teken dat je klaar bent: de
+ * markering verdwijnt en je staat weer in een gewone alinea. Precies zoals
+ * elke teksteditor het doet, dus niemand hoeft het te leren.
+ *
+ * Geeft `null` terug als de cursor niet in een lijst staat; dan moet Enter
+ * gewoon Enter blijven.
+ */
+export function continueList(text: string, selection: Selection): EditResult | null {
+  const { start, end } = normalise(selection, text);
+  if (start !== end) return null;
+
+  const from = text.lastIndexOf("\n", start - 1) + 1;
+  const line = text.slice(from, start);
+
+  const ordered = ORDERED_RE.exec(line);
+  const bullet = ordered ? null : LIST_RE.exec(line);
+  if (!ordered && !bullet) return null;
+
+  const marker = (ordered ?? bullet)![0];
+  const content = line.slice(marker.length);
+
+  // Lege bullet: de lijst eindigt hier.
+  if (content.trim() === "") {
+    const result = text.slice(0, from) + text.slice(start);
+    return { text: result, selection: { start: from, end: from } };
+  }
+
+  let nextMarker: string;
+  if (ordered) {
+    const n = parseInt(marker, 10);
+    const sep = marker.includes(")") ? ")" : ".";
+    nextMarker = `${(Number.isFinite(n) ? n : 1) + 1}${sep} `;
+  } else {
+    nextMarker = marker.replace(/^\s*/, "");
+  }
+
+  const insert = "\n" + nextMarker;
+  const result = text.slice(0, start) + insert + text.slice(start);
+  const caret = start + insert.length;
+  return { text: result, selection: { start: caret, end: caret } };
 }
 
 /** Een scheidingslijn op een eigen regel, met lucht erboven en eronder. */

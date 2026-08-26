@@ -66,9 +66,16 @@ export function FormatBar({
     },
     {
       key: "list",
-      label: "·—",
+      label: "•",
       hint: "Opsomming",
+      style: { fontSize: 19 },
       run: () => applyLinePrefix(value, selection, "- "),
+    },
+    {
+      key: "ordered",
+      label: "1.",
+      hint: "Genummerde opsomming",
+      run: () => applyLinePrefix(value, selection, "1. "),
     },
     {
       key: "rule",
