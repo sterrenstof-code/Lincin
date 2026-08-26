@@ -701,7 +701,13 @@ export function FindHero({
   const album = post.album_urls ?? [];
   const heroTagForPost = useHeroTag(post.id);
 
-  const media = (
+  /**
+   * Alleen een beeldkolom als er een beeld is. Zie StickySpread: `null`
+   * laat de kolom vervallen in plaats van hem leeg te tekenen.
+   */
+  const hasMedia = !!p.image || album.length > 0;
+
+  const media = !hasMedia ? null : (
     <Pressable
       onPress={onPress}
       // De uitgelichte plaat droeg geen naam, en dus morphte juist de
@@ -817,7 +823,17 @@ export function FindHero({
             niet als één egale lap leest. */}
         {p.body ? (
           <SpreadBlock filled last={!footer}>
-            <Text style={[feedType.pullSmall, { color: feed.text }]}>{p.body}</Text>
+            {/* Door `RichText` en niet als kale tekst: anders staan de
+                streepjes en sterretjes van een opsomming letterlijk op het
+                scherm. Elders in de app werd de opmaak al gelezen; deze plek
+                was over het hoofd gezien. */}
+            <RichText
+              text={p.body}
+              style={feedType.pullSmall}
+              color={feed.text}
+              dimColor={feed.textDim}
+              ruleColor={rule.soft}
+            />
           </SpreadBlock>
         ) : null}
 
@@ -1181,7 +1197,7 @@ function NoteTile({
         ]}
         numberOfLines={5}
       >
-        {p.title ?? p.body ?? ""}
+        {p.title ?? stripMarkdown(p.body) ?? ""}
       </Text>
 
       {p.host || p.source ? (

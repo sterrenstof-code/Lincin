@@ -50,6 +50,7 @@ import {
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
+  flameDeep,
   gutter,
   rule,
   space,
@@ -764,6 +765,36 @@ export default function FeedScreen() {
   );
 }
 
+
+/**
+ * Hoe vaak deze vondst omhoog geduwd is.
+ *
+ * Stond alleen op de detailpagina en op een fototegel, dus in de feed — waar
+ * je vondsten naast elkaar ziet en juist wil weten waar over gepraat wordt —
+ * zag je er niets van. Onder de één blijft hij weg: "nul keer omhoog geduwd"
+ * onder elke verse vondst is geen informatie maar ruis, en in de feed staan
+ * er tien onder elkaar.
+ */
+function BoostCount({ count }: { count: number }) {
+  if (!count || count < 1) return null;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+      }}
+    >
+      <Ionicons name="arrow-up-circle" size={13} color={flameDeep} />
+      <Text style={[feedType.label, { color: flameDeep }]}>
+        {count}× omhoog geduwd
+      </Text>
+    </View>
+  );
+}
+
 // ---------------------------------------------------------------
 // De uitgelichte vondst
 // ---------------------------------------------------------------
@@ -796,6 +827,7 @@ const HeroBlock = memo(function HeroBlock({
         // strook onder het hele tweeluik — zie FindHero.
         footer={
           <>
+            <BoostCount count={post.boost_count} />
             <PostReactions postId={post.id} tone="feed" />
             <CommentsSection
               entityType="post"

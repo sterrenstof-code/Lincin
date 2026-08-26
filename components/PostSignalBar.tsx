@@ -70,7 +70,15 @@ export function PostSignalBar({
     <View style={{ flexDirection: "row", gap: 8 }}>
       <SignalButton
         icon={boosted ? "arrow-up-circle" : "arrow-up-circle-outline"}
-        label={count > 0 ? `Omhoog · ${count}` : "Omhoog duwen"}
+        /**
+         * Het aantal staat er altijd, ook op nul.
+         *
+         * Het verdween onder de één, en dan zie je niet dát er geteld wordt
+         * — een knop die soms een getal draagt en soms niet leest als twee
+         * verschillende knoppen. Nul is bovendien informatie: je bent de
+         * eerste.
+         */
+        label={`Omhoog · ${count}`}
         active={boosted}
         onPress={onBoost}
       />

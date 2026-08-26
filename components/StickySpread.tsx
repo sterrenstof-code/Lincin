@@ -47,7 +47,12 @@ export function StickySpread({
   stickyTop = 0,
   style,
 }: {
-  /** Het beeld links. Krijgt de volle hoogte van het venster. */
+  /**
+   * Het beeld links. Krijgt de volle hoogte van het venster.
+   *
+   * `null` is een geldige waarde en betekent: er ís geen beeld. Dan vervalt
+   * de kolom, niet alleen de inhoud ervan.
+   */
   media: ReactNode;
   /** De blokken rechts. */
   children: ReactNode;
@@ -58,6 +63,21 @@ export function StickySpread({
   const { width, height } = useWindowDimensions();
   const twoColumn = width >= SPREAD_BREAKPOINT;
   const canStick = Platform.OS === "web";
+
+  /**
+   * Geen beeld, geen beeldkolom.
+   *
+   * De kolom werd altijd getekend, ook als er niets in zat: een vlak van een
+   * volle vensterhoogte met een plaatshouder-icoontje erin. Bij een notitie
+   * of een idee — vondsten die per definitie geen foto hebben — was dat de
+   * helft van het scherm, leeg, naast de tekst waar het wél om ging.
+   *
+   * Een tweeluik zonder beeld is geen tweeluik. Dan is het één kolom, en die
+   * mag de volle breedte hebben.
+   */
+  if (!media) {
+    return <View style={style}>{children}</View>;
+  }
 
   if (!twoColumn) {
     return (
