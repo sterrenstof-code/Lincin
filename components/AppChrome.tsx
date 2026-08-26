@@ -303,9 +303,12 @@ const DEFAULT_ANNOUNCEMENT = "Nieuw: deel een vondst rechtstreeks vanuit een and
 export function AnnouncementBar({
   message = DEFAULT_ANNOUNCEMENT,
   onPress,
+  wide = true,
 }: {
   message?: string | null;
   onPress?: () => void;
+  /** Voor de bladspiegel; zie hieronder. */
+  wide?: boolean;
 }) {
   const [dismissed, setDismissed] = useState(false);
   if (!message || dismissed) return null;
@@ -313,6 +316,17 @@ export function AnnouncementBar({
   return (
     <View
       style={{
+        /**
+         * Ook deze strook staat op de bladspiegel.
+         *
+         * Hij liep van vensterrand tot vensterrand terwijl de kop eronder
+         * bij 1250 ophield — en juist omdat hij fel oranje is, was hij het
+         * eerste wat je zag afwijken. Een blad heeft één kolom; een strook
+         * die daarbuiten valt hoort bij een andere pagina.
+         */
+        width: "100%",
+        maxWidth: sheetWidth(wide),
+        alignSelf: "center",
         backgroundColor: announce,
         flexDirection: "row",
         alignItems: "center",
@@ -912,7 +926,7 @@ export function AppChrome({
   if (Platform.OS === "web") {
     return (
       <View style={chromeMorph}>
-        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
+        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} wide={wide} />
 
         <View
           style={{
@@ -994,7 +1008,7 @@ export function AppChrome({
       <Animated.View
         style={{ height: bannerHeight, opacity: bannerOpacity, overflow: "hidden" }}
       >
-        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
+        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} wide={wide} />
       </Animated.View>
 
       <Animated.View
@@ -1215,7 +1229,20 @@ export function PageScroll({
         <View
           style={{
             width: "100%",
-            alignSelf: "stretch",
+            /**
+             * Dezelfde bladspiegel als de kopbalk erboven.
+             *
+             * Stond op `alignSelf: "stretch"` zonder maximum: de kop hield
+             * zich netjes aan 1250, de inhoud eronder liep door tot de
+             * vensterrand. Twee maten op één pagina, en dan zweeft die kop
+             * er alleen maar boven in plaats van erbij te horen.
+             *
+             * Het hoort hier en niet in elk scherm apart — negen pagina's
+             * gebruiken deze scroller, en negen keer hetzelfde getal
+             * overtypen is negen kansen om er één te vergeten.
+             */
+            maxWidth: sheetWidth(wide),
+            alignSelf: "center",
             // Onder de kop door: precies zijn hoogte terug, zodat de plaat
             // aan de bovenrand van het venster begint.
             ...(underChrome && sticky ? { marginTop: -webHeaderHeight } : null),

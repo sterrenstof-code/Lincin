@@ -551,8 +551,17 @@ export const READING_WIDTH = 760;
  * van af wie hem aanroept.
  */
 export function sheetWidth(wide: boolean): number {
-  // 1180 = 210 etiketkolom + ~970 inhoud; zie Sheet in components/Editorial.
-  return wide ? 1180 : 720;
+  /**
+   * 1250 is de bladbreedte. Alles hangt eraan: de kopbalk, het woordmerk,
+   * de schakelbalk, de rubrieken eronder.
+   *
+   * Stond op 1180, maar alleen de kop hield zich eraan — de inhoud eronder
+   * liep via `PageScroll` gewoon door tot de vensterrand. Twee maten op één
+   * pagina, en dan is er geen bladspiegel meer maar een kop die toevallig
+   * ergens boven zweeft. De marge links en rechts komt van `gutter()`, dus
+   * de tekst raakt de rand nooit.
+   */
+  return wide ? 1250 : 720;
 }
 
 // ---------------------------------------------------------------
