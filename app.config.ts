@@ -147,6 +147,24 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     eas: {
       projectId: "16c89c1a-3ad4-4b4a-b199-00bda2a5f3df",
     },
+    /**
+     * De publieke helft van het VAPID-paar, voor web push.
+     *
+     * Die hoort hier en niet in een geheim: hij gaat naar élke browser die
+     * zich abonneert — dat is precies zijn functie. De private helft staat
+     * als secret bij de Edge Function en komt nergens in deze repo voor.
+     *
+     * Hij stond nergens, en daarom deed `registerWebPush()` niets: zonder
+     * sleutel geen abonnement, zonder abonnement geen rij in `user_devices`,
+     * en dan meldt send-push terecht "no devices". Web push heeft dus nooit
+     * gewerkt — het was geen storing maar een ontbrekende sleutel.
+     *
+     * `process.env` blijft voorgaan zodat een deploy hem kan overschrijven
+     * zonder dit bestand aan te raken.
+     */
+    vapidPublicKey:
+      process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ??
+      "BJ59YR8gKJwpwrBwnNRhMyR9k2LnCLuvIZgYWdnq3xnRk2zkgKwHQADif2WmaIphUju9xC_LijPn7CdomL_zskQ",
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   },

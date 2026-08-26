@@ -90,6 +90,21 @@ function vapidKeyToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
+ * De publieke VAPID-sleutel.
+ *
+ * Twee bronnen, in volgorde: een omgevingsvariabele van de deploy, en
+ * anders de waarde uit `app.config.ts`. Die tweede is er zodat een build
+ * zonder extra configuratie tóch werkt — dat het er eerder alleen de eerste
+ * was, is precies waarom web push nooit is aangegaan.
+ */
+function vapidPublicKey(): string | null {
+  const fromEnv = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
+  if (fromEnv) return fromEnv;
+  const fromConfig = (Constants.expoConfig?.extra as any)?.vapidPublicKey;
+  return typeof fromConfig === "string" && fromConfig.length > 0 ? fromConfig : null;
+}
+
+/**
  * Web Push registratie via de native browser Push API.
  * Bypassed expo-notifications — die is bedoeld voor native iOS/Android.
  *
@@ -107,7 +122,7 @@ async function registerWebPush(userId: string): Promise<string | null> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
   if (!("PushManager" in window)) return null;
 
-  const vapidKey = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
+  const vapidKey = vapidPublicKey();
   if (!vapidKey) return null; // Web push uitgeschakeld op deze deploy
 
   try {
@@ -280,7 +295,7 @@ export async function getPushStatus(): Promise<PushStatus> {
     if (typeof window === "undefined" || !("Notification" in window)) {
       return { kind: "unsupported", reason: "Deze browser ondersteunt geen notificaties." };
     }
-    if (!process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY) {
+    if (!vapidPublicKey()) {
       return {
         kind: "unsupported",
         reason: "Web push is op deze deploy nog niet geconfigureerd (VAPID-key ontbreekt).",
