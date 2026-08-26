@@ -88,7 +88,11 @@ create unique index if not exists notifications_signal_once
 -- de triggers moeten de hele kring zien, ook de leden die de handelende
 -- gebruiker zelf niet mag opvragen.
 create or replace function public.post_audience(p_post_id uuid, p_actor uuid)
-returns table (user_id uuid)
+-- De uitvoerkolom heet `uid` en niet `user_id`: bij `returns table` komt die
+-- naam als parameter in scope te staan, en dan kan een onbedoeld
+-- ongekwalificeerde verwijzing in de body ineens de uitvoerkolom raken in
+-- plaats van de tabelkolom. Een andere naam sluit dat uit.
+returns table (uid uuid)
 language sql
 stable
 security definer
@@ -177,9 +181,9 @@ begin
 
   insert into public.notifications
     (user_id, actor_id, type, post_id, entity_comment_id)
-  select a.user_id, new.user_id, 'comment_on_thread', new.entity_id, new.id
+  select a.uid, new.user_id, 'comment_on_thread', new.entity_id, new.id
     from public.post_audience(new.entity_id, new.user_id) a
-   where a.user_id <> v_owner;
+   where a.uid <> v_owner;
 
   return new;
 end;
@@ -218,9 +222,9 @@ begin
   end if;
 
   insert into public.notifications (user_id, actor_id, type, post_id)
-  select a.user_id, new.user_id, 'thread_boost', new.post_id
+  select a.uid, new.user_id, 'thread_boost', new.post_id
     from public.post_audience(new.post_id, new.user_id) a
-   where a.user_id <> v_owner
+   where a.uid <> v_owner
   on conflict do nothing;
 
   return new;
@@ -261,9 +265,9 @@ begin
   end if;
 
   insert into public.notifications (user_id, actor_id, type, post_id, detail)
-  select a.user_id, new.user_id, 'thread_reaction', new.post_id, new.emoji
+  select a.uid, new.user_id, 'thread_reaction', new.post_id, new.emoji
     from public.post_audience(new.post_id, new.user_id) a
-   where a.user_id <> v_owner
+   where a.uid <> v_owner
   on conflict do nothing;
 
   return new;
