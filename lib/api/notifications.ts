@@ -28,7 +28,9 @@ export type NotificationRow = {
     | "friend_post"
     | "thread_boost"
     | "post_reaction"
-    | "thread_reaction";
+    | "thread_reaction"
+    // 0049 — je bugmelding is afgehandeld
+    | "bug_resolved";
   post_id: string | null;
   comment_id: string | null;
   /** 0048 — de reactie zelf, zodat het fragment in de melding kan staan. */
@@ -36,6 +38,8 @@ export type NotificationRow = {
   event_id: string | null;
   /** 0048 — soort-specifiek detail. Nu: de emoji bij een reactie. */
   detail: string | null;
+  /** 0049 — de bugmelding waar dit over gaat. */
+  bug_report_id: string | null;
   read: boolean;
   created_at: string;
 };
@@ -57,7 +61,7 @@ export async function listNotifications(
   const { data, error } = await supabase
     .from("notifications")
     .select(
-      "id, user_id, actor_id, type, post_id, comment_id, entity_comment_id, event_id, detail, read, created_at"
+      "id, user_id, actor_id, type, post_id, comment_id, entity_comment_id, event_id, detail, bug_report_id, read, created_at"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })

@@ -54,7 +54,9 @@ export default function NotificationsScreen() {
     if (!item.read) {
       markNotificationRead(item.id);
     }
-    if (item.event_id) {
+    if (item.bug_report_id) {
+      router.push("/bugs");
+    } else if (item.event_id) {
       router.push(`/event/${item.event_id}`);
     } else if (item.post_id) {
       router.push(`/post/${item.post_id}`);
@@ -160,6 +162,9 @@ function NotificationRow({
     : "een vondst";
 
   const label =
+    // Een afgehandelde bug heeft geen handelende persoon die je wil zien —
+    // `actor_id` is de melder, en bij je eigen melding ben jij dat zelf.
+    item.type === "bug_resolved"      ? "Je bugmelding is afgehandeld" :
     item.type === "friend_post"       ? `${actorName} deelde ${subject}` :
     item.type === "comment_on_post"   ? `${actorName} reageerde op jouw vondst` :
     item.type === "comment_on_thread" ? `${actorName} reageerde ook op ${subject}` :

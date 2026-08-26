@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bugs": "node scripts/pull-bugs.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

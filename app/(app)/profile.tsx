@@ -291,6 +291,21 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {/* Bugbord — één gedeelde lijst in plaats van los geklaag */}
+          <Pressable
+            onPress={() => router.push("/bugs")}
+            className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-3 mt-3"
+          >
+            <Ionicons name="bug-outline" color={feed.ink} size={18} />
+            <View className="flex-1 ml-3">
+              <Text className="text-ink font-semibold text-sm">Iets werkt niet</Text>
+              <Text className="text-ink-muted text-xs mt-0.5">
+                Meld het, of kijk of iemand je voor was
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" color={feed.inkDim} size={16} />
+          </Pressable>
+
           {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
           <Pressable
             onPress={() => router.push("/device-link")}

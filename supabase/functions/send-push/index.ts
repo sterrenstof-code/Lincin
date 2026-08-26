@@ -158,6 +158,10 @@ function buildNotificationBody(args: {
     case "mention":
       return `noemde je${said}`;
 
+    // ---- het bugbord (0049) ----
+    case "bug_resolved":
+      return "je bugmelding is afgehandeld";
+
     // ---- stemmingen, lijsten, calls ----
     case "vote_on_poll":
       return "stemde op je stemming";
@@ -343,6 +347,7 @@ Deno.serve(async (req: Request) => {
           notification_id: record.id,
           ...(record.post_id ? { post_id: record.post_id } : {}),
           ...(record.event_id ? { event_id: record.event_id } : {}),
+          ...(record.bug_report_id ? { bug_report_id: record.bug_report_id } : {}),
         },
       }));
     } else {

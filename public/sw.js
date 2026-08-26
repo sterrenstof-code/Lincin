@@ -52,6 +52,7 @@ self.addEventListener("notificationclick", (event) => {
   if (data.chat_id) targetPath = `/chat/${data.chat_id}`;
   else if (data.post_id) targetPath = `/post/${data.post_id}`;
   else if (data.event_id) targetPath = `/event/${data.event_id}`;
+  else if (data.bug_report_id) targetPath = "/bugs";
 
   event.waitUntil(
     clients

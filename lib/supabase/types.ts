@@ -592,6 +592,8 @@ export type Database = {
           event_id: string | null;
           /** 0048 — soort-specifiek detail, nu de emoji bij een reactie. */
           detail: string | null;
+          /** 0049 — de bugmelding waar deze melding over gaat. */
+          bug_report_id: string | null;
           read: boolean;
           created_at: string;
         };
@@ -605,6 +607,7 @@ export type Database = {
           entity_comment_id?: string | null;
           event_id?: string | null;
           detail?: string | null;
+          bug_report_id?: string | null;
           read?: boolean;
           created_at?: string;
         };
@@ -788,6 +791,51 @@ export type Database = {
        * Cache voor link-unfurls. Wordt gevuld door de `unfurl`-edge function,
        * niet door de app zelf — vandaar dat de app hem alleen leest.
        */
+      /** 0049_bug_reports — het bord met wat er stuk is. */
+      bug_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          body: string | null;
+          route: string | null;
+          platform: string | null;
+          app_version: string | null;
+          status: string;
+          resolution: string | null;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          body?: string | null;
+          route?: string | null;
+          platform?: string | null;
+          app_version?: string | null;
+          status?: string;
+          resolution?: string | null;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["bug_reports"]["Insert"]>;
+        Relationships: [];
+      };
+      bug_confirms: {
+        Row: {
+          report_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          report_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["bug_confirms"]["Insert"]>;
+        Relationships: [];
+      };
       link_previews: {
         Row: {
           url_hash: string;
@@ -835,6 +883,18 @@ export type Database = {
         Row: {
           user_id: string;
           friend_id: string;
+        };
+        Relationships: [];
+      };
+      /**
+       * 0049 — bug_reports plus hoeveel mensen de bug hebben en of jij een
+       * van hen bent. `security_invoker`, dus de RLS op de tabel geldt hier
+       * onverkort.
+       */
+      bug_board: {
+        Row: Database["public"]["Tables"]["bug_reports"]["Row"] & {
+          affected: number;
+          confirmed_by_me: boolean;
         };
         Relationships: [];
       };
