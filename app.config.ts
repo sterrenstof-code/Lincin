@@ -5,6 +5,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "Lincin",
   slug: "lincin",
   version: "0.1.0",
+  /**
+   * Geldt hier alleen nog voor Android: telefoons blijven staand.
+   *
+   * Voor iOS wordt hij genegeerd omdat `ios.infoPlist` de twee
+   * oriëntatiesleutels expliciet zet — Expo meldt dat ook tijdens prebuild.
+   * Zo blijft de iPhone staand én kan de iPad draaien, zonder plugin.
+   */
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "lincin",
@@ -23,6 +30,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         "Lincin gebruikt je microfoon voor videogesprekken.",
       NSPhotoLibraryUsageDescription:
         "Lincin gebruikt je fotobibliotheek om afbeeldingen te delen in chats en posts.",
+      /**
+       * Draaien: de iPhone niet, de iPad wel.
+       *
+       * Eén `orientation` in de Expo-config geldt voor allebei, en dat is
+       * te grof. Op een telefoon is liggend geen winst: de app is een
+       * leesomgeving, en bij 852pt breed zou hij in de brede tweekolomsmodus
+       * schieten op een scherm dat maar 393pt hoog is. Op een tablet is
+       * liggend juist de stand waarin de opzet tot zijn recht komt — en een
+       * tablet-app die niet meedraait als je hem omdraait voelt kapot.
+       *
+       * De `~ipad`-achtervoegsels zijn de manier waarop iOS dat onderscheid
+       * zelf maakt, dus dit vraagt geen code en geen extra bibliotheek.
+       */
+      UISupportedInterfaceOrientations: ["UIInterfaceOrientationPortrait"],
+      "UISupportedInterfaceOrientations~ipad": [
+        "UIInterfaceOrientationPortrait",
+        "UIInterfaceOrientationPortraitUpsideDown",
+        "UIInterfaceOrientationLandscapeLeft",
+        "UIInterfaceOrientationLandscapeRight",
+      ],
       ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: false,
     },

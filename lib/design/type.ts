@@ -434,8 +434,25 @@ export let announce = color("announce");
  */
 export let announceDeep = color("announceDeep");
 
-/** Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat. */
-export const WIDE_BREAKPOINT = 900;
+/**
+ * Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat.
+ *
+ * Stond op 900 en dat gaf een dode zone precies waar de meeste tablets
+ * liggen. De feed schakelt naar twee kolommen vanaf `FEED_BREAKPOINT`
+ * (800), maar typografie, kolombreedtes en paginakoppen bleven tot 900 in
+ * hun telefoonmaat. Een iPad 10.9" (820pt) en een iPad Pro 11" (834pt)
+ * staan daar middenin: een tweekolomsfeed met telefoontypografie ernaast.
+ *
+ * Nu gelijk aan `FEED_BREAKPOINT`. De twee namen blijven bestaan omdat ze
+ * over verschillende dingen gáán — de een over de zijbalk, de ander over de
+ * leesmaat — maar er is geen reden waarom die op een ander moment zouden
+ * moeten omslaan, en zolang ze verschilden was er een band waarin het
+ * scherm half het een en half het ander was.
+ *
+ * Een iPad mini (744pt staand) blijft bewust telefoonbreed: daar is een
+ * zijbalk náást de inhoud geen winst maar een versmalling.
+ */
+export const WIDE_BREAKPOINT = 800;
 
 // ---------------------------------------------------------------
 // FEED V3 — kleurwaarden die als *prop* moeten. Voor achtergronden
