@@ -18,6 +18,7 @@ import {
   flameDeep,
   page,
   rule,
+  sheetWidth,
   type,
   WIDE_BREAKPOINT,
 } from "@/lib/design/type";
@@ -86,9 +87,9 @@ export function Sheet({
     <View
       style={{
         width: "100%",
-        // 1180 = 210 etiketkolom + ~970 inhoud. Precies vol, zodat er rechts
-        // geen dode zone tussen de inhoud en het einde van de haarlijn valt.
-        maxWidth: wide ? 1180 : 720,
+        // Eén bron voor deze maat: de kopbalk houdt hem ook aan, en die
+        // twee horen niet uit elkaar te lopen. Zie `sheetWidth`.
+        maxWidth: sheetWidth(wide),
         alignSelf: "center",
         ...(flex ? { flex: 1 } : null),
       }}

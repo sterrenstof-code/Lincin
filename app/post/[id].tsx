@@ -44,9 +44,9 @@ import {
   feedType,
   flameDeep,
   gutter,
-  READING_WIDTH,
   rule,
   SERIF_FAMILY,
+  sheetWidth,
   space,
 } from "@/lib/design/type";
 import {
@@ -494,6 +494,80 @@ export default function PostDetailScreen() {
   );
 
   /** De bron-strook onder een link-vondst. */
+  /**
+   * Het stuk zelf: rubriek, lijn, en de tekst.
+   *
+   * Stond in de gesprekskolom, en die is smal — een artikel van twintig
+   * regels kreeg daardoor minder ruimte dan een foto van dezelfde vondst.
+   * Nu staat het waar de plaat staat: links, op volle kolombreedte, met de
+   * reacties ernaast. Eén opzet voor élke soort vondst, of het nu beeld of
+   * tekst is; dat is precies waarom een foto en een artikel niet twee
+   * verschillende pagina's horen te zijn.
+   */
+  const articleBlock = post.data ? (
+    <View style={{ paddingVertical: space.lg }}>
+                {/**
+                  * De kop van het blad: waar dit stuk over gaat, en dan
+                  * een zware lijn. Een krant zet niet de schrijver
+                  * bovenaan maar de rubriek — die vertelt je in één woord
+                  * of dit iets is om nu te lezen of straks.
+                  */}
+                <Text
+                  style={[
+                    feedType.kicker,
+                    { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
+                  ]}
+                >
+                  {(KIND_LABELS[post.data.kind ?? "note"] ?? "Notitie").toUpperCase()}
+                </Text>
+                <View
+                  style={{
+                    height: FEED_BORDER * 2,
+                    backgroundColor: feed.ink,
+                    marginBottom: space.md,
+                  }}
+                />
+                {/**
+                  * De tekst van een notitie, een idee of een fragment.
+                  *
+                  * Die stond hier niet: de pagina toonde alleen `caption`,
+                  * en dat werkte zolang een notitie daarheen schreef. Sinds
+                  * notities opmaak hebben gaan ze naar `body_text`, en toen
+                  * was de pagina leeg — het onderschrift eronder is de
+                  * toelichting van de deler, niet de vondst zelf.
+                  */}
+                {post.data.body_text?.trim() ? (
+                  /**
+                   * De vondst zelf, op volle kolombreedte en in de serif.
+                   *
+                   * Stond ingesprongen tot naast de avatar (36 + marge),
+                   * omdat het onderschríft dat doet — dat hoort bij de
+                   * persoon erboven. Maar dit is niet wat de deler erbij
+                   * zei, dit ís het stuk. Een krant laat de kolom bij de
+                   * kolomrand beginnen; alleen bijzaken springen in.
+                   *
+                   * En in de serif, niet de grotesk. Dezelfde stem als een
+                   * fragment op zijn eigen pagina en als de teksttegel in
+                   * het raster, zodat het stuk overal hetzelfde klinkt.
+                   */
+                  <View style={{ marginTop: space.md }}>
+                    <RichText
+                      text={post.data.body_text}
+                      style={{
+                        fontFamily: SERIF_FAMILY,
+                        fontSize: 19,
+                        lineHeight: 30,
+                        letterSpacing: -0.2,
+                      }}
+                      color={feed.ink}
+                      dimColor={feed.inkDim}
+                      ruleColor={rule.soft}
+                    />
+                  </View>
+                ) : null}
+    </View>
+  ) : null;
+
   const linkBlock = post.data?.link_url ? (
     <Pressable
       onPress={() =>
@@ -870,10 +944,6 @@ export default function PostDetailScreen() {
           wide
           progress={chrome.progress}
           compact
-          // Eén maat, altijd dezelfde. De balk is het vaste gegeven van de
-          // pagina — een kop die per vondst een andere breedte aanneemt
-          // leest als een ander blad. Wat eronder staat past zich aan.
-          contentMaxWidth={READING_WIDTH}
           backLabel="Terug naar de feed"
           onBack={() => safeBack(router, "/(app)/feed")}
           actionLabel={canModerate ? "Opties" : undefined}
@@ -889,32 +959,48 @@ export default function PostDetailScreen() {
           style={{
             flex: 1,
             flexDirection: "row",
-            ...(hasPlate ? null : { justifyContent: "center" as const }),
-            gap: hasPlate ? space.xxl : 0,
-            paddingRight: gutter(true),
+            gap: space.xxl,
+            // Dezelfde bladspiegel als de kopbalk erboven, zodat de kolom
+            // precies onder de balk begint in plaats van eronderuit te
+            // steken. Zie CHROME_COLUMN in components/AppChrome.
+            width: "100%",
+            maxWidth: sheetWidth(true),
+            alignSelf: "center",
+            paddingHorizontal: gutter(true),
             paddingBottom: gutter(true),
-            ...(hasPlate ? null : { paddingLeft: gutter(true) }),
           }}
         >
-          {hasPlate ? (
-            <View style={{ flex: 1, minWidth: 0 }}>
-              {loading ? (
+          {/**
+            * Links staat de vondst, wat het ook is.
+            *
+            * Een foto kreeg de volle kolom en een artikel moest het doen met
+            * de smalle gesprekskolom ernaast — dezelfde vondst, twee
+            * verschillende pagina's, afhankelijk van of er beeld bij zat.
+            * Nu vult de tekst dezelfde plek als de plaat, en staan de
+            * reacties er in beide gevallen naast.
+            */}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            {hasPlate ? (
+              loading ? (
                 <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
               ) : (
                 heroBlock(true)
-              )}
-            </View>
-          ) : null}
+              )
+            ) : (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: space.xl }}
+                showsVerticalScrollIndicator={false}
+              >
+                {articleBlock}
+                {linkBlock}
+              </ScrollView>
+            )}
+          </View>
 
           <View
             style={{
-              // `alignSelf: "center"` stond hier, maar de ouder is een rij —
-              // en daar stuurt alignSelf de verticale as. De kolom plakte
-              // dus links met een gat ernaast. Centreren doet de ouder, via
-              // justifyContent hieronder.
-              ...(hasPlate
-                ? { width: conversationWidth }
-                : { flex: 1, maxWidth: READING_WIDTH }),
+              width: conversationWidth,
               backgroundColor: feed.lav,
               // Schuift van rechts naar binnen terwijl de foto uitgroeit —
               // zie de keyframes in app/+html.tsx.
@@ -937,66 +1023,7 @@ export default function PostDetailScreen() {
               */}
               {post.data ? (
                 <View style={{ paddingVertical: space.lg }}>
-                  {/**
-                    * De kop van het blad: waar dit stuk over gaat, en dan
-                    * een zware lijn. Een krant zet niet de schrijver
-                    * bovenaan maar de rubriek — die vertelt je in één woord
-                    * of dit iets is om nu te lezen of straks.
-                    */}
-                  <Text
-                    style={[
-                      feedType.kicker,
-                      { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
-                    ]}
-                  >
-                    {(KIND_LABELS[post.data.kind ?? "note"] ?? "Notitie").toUpperCase()}
-                  </Text>
-                  <View
-                    style={{
-                      height: FEED_BORDER * 2,
-                      backgroundColor: feed.ink,
-                      marginBottom: space.md,
-                    }}
-                  />
                   {authorRow(true)}
-                  {/**
-                    * De tekst van een notitie, een idee of een fragment.
-                    *
-                    * Die stond hier niet: de pagina toonde alleen `caption`,
-                    * en dat werkte zolang een notitie daarheen schreef. Sinds
-                    * notities opmaak hebben gaan ze naar `body_text`, en toen
-                    * was de pagina leeg — het onderschrift eronder is de
-                    * toelichting van de deler, niet de vondst zelf.
-                    */}
-                  {post.data.body_text?.trim() ? (
-                    /**
-                     * De vondst zelf, op volle kolombreedte en in de serif.
-                     *
-                     * Stond ingesprongen tot naast de avatar (36 + marge),
-                     * omdat het onderschríft dat doet — dat hoort bij de
-                     * persoon erboven. Maar dit is niet wat de deler erbij
-                     * zei, dit ís het stuk. Een krant laat de kolom bij de
-                     * kolomrand beginnen; alleen bijzaken springen in.
-                     *
-                     * En in de serif, niet de grotesk. Dezelfde stem als een
-                     * fragment op zijn eigen pagina en als de teksttegel in
-                     * het raster, zodat het stuk overal hetzelfde klinkt.
-                     */
-                    <View style={{ marginTop: space.md }}>
-                      <RichText
-                        text={post.data.body_text}
-                        style={{
-                          fontFamily: SERIF_FAMILY,
-                          fontSize: 19,
-                          lineHeight: 30,
-                          letterSpacing: -0.2,
-                        }}
-                        color={feed.ink}
-                        dimColor={feed.inkDim}
-                        ruleColor={rule.soft}
-                      />
-                    </View>
-                  ) : null}
                   {post.data.caption ? (
                     <MentionsText
                       text={post.data.caption}
@@ -1014,7 +1041,9 @@ export default function PostDetailScreen() {
                   ) : null}
                 </View>
               ) : null}
-              {linkBlock}
+              {/* Bij een plaat staat de bron hier, want links is de foto.
+                  Bij een artikel staat hij links, bij het stuk zelf. */}
+              {hasPlate ? linkBlock : null}
               <View
                 style={{
                   gap: space.sm,

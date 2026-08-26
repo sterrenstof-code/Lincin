@@ -37,6 +37,7 @@ import {
   feedType,
   flameDeep,
   gutter as gutterFor,
+  sheetWidth,
   space,
 } from "@/lib/design/type";
 
@@ -771,6 +772,26 @@ function FullHeader({
 // Alles samen
 // ---------------------------------------------------------------
 
+/**
+ * De kolom waar de kopbalk in staat — op élke pagina dezelfde.
+ *
+ * Hij hing eerder aan wat de aanroeper toevallig meegaf, en nam daardoor
+ * per scherm een andere breedte én positie aan: smal op een vondst, van
+ * rand tot rand op de feed. Dat maakt van elke navigatie een sprong, en
+ * dan voelt het als losse schermen in plaats van één blad waar de inhoud
+ * onder de kop door schuift.
+ *
+ * Dezelfde maat als `Sheet`, dus de balk staat precies boven de kolom die
+ * eronder begint. En geen prop meer: dit is niets waar een pagina iets
+ * over te zeggen hoort te hebben.
+ */
+const CHROME_COLUMN = (wide: boolean) =>
+  ({
+    width: "100%",
+    maxWidth: sheetWidth(wide),
+    alignSelf: "center",
+  }) as const;
+
 export function AppChrome({
   wide,
   progress,
@@ -781,7 +802,6 @@ export function AppChrome({
   actionLabel,
   onAction,
   compact = false,
-  contentMaxWidth,
 }: {
   wide: boolean;
   progress: Animated.Value;
@@ -798,15 +818,25 @@ export function AppChrome({
    * daar hoort het onderwerp bovenaan te staan, niet het merk.
    */
   compact?: boolean;
-  /**
-   * Waar de pagina eronder ophoudt. De balk houdt daar dan ook op.
-   *
-   * Alleen meegeven als de inhoud werkelijk een maat heeft: een pagina die
-   * van rand tot rand loopt (een foto op volle breedte) hoort een balk te
-   * krijgen die dat ook doet.
-   */
-  contentMaxWidth?: number;
 }) {
+  /**
+   * De kop is één ding dat een navigatie overleeft.
+   *
+   * Zonder naam zit hij in `root` en wordt hij samen met de hele pagina
+   * over-gefade: elke wissel voelt dan als een ander scherm in plaats van
+   * als dezelfde pagina waar de inhoud onder de kop door schuift. Met een
+   * naam morpht de browser de ene stand naar de andere.
+   *
+   * `useIsFocused` is geen netheid maar noodzaak: een navigator houdt
+   * schermen gemount, en twee elementen met dezelfde naam tegelijk in beeld
+   * laat de browser de héle overgang overslaan. Alleen het scherm dat je
+   * aankijkt draagt hem. Zie `chromeTag` in lib/hero-transition.web.ts —
+   * die stond er al, maar werd nergens aangeroepen, waardoor de keyframes
+   * voor `lincin-chrome` in +html.tsx dode letter waren.
+   */
+  const focused = useIsFocused();
+  const chromeMorph = chromeTag(focused);
+
   /**
    * De volle breedte, gemeten in plaats van geraden: een Animated-
    * interpolatie kan geen "100%" naar een getal animeren — begin- en
@@ -842,22 +872,10 @@ export function AppChrome({
           paddingHorizontal: gutterFor(wide),
           paddingTop: space.sm,
           paddingBottom: space.sm,
+          ...chromeMorph,
         }}
       >
-        {/* Zo breed als de pagina eronder — nu ook echt.
-            Hier stond eerst `maxWidth: 900` (uit de ingeklapte thuispagina,
-            waar de kop naar een blok in de hoek krimpt), daarna niets. Dat
-            tweede was net zo verkeerd als het eerste: de balk liep door tot
-            de vensterrand terwijl de tekst eronder al bij 760 ophield. De
-            pagina geeft nu door waar zij stopt, en de balk stopt daar ook. */}
-        <View
-          style={{
-            width: "100%",
-            ...(contentMaxWidth
-              ? { maxWidth: contentMaxWidth, alignSelf: "center" as const }
-              : null),
-          }}
-        >
+        <View style={CHROME_COLUMN(wide)}>
           <CompactBar
             backLabel={backLabel}
             onBack={onBack}
@@ -893,7 +911,7 @@ export function AppChrome({
   // duwen.
   if (Platform.OS === "web") {
     return (
-      <View>
+      <View style={chromeMorph}>
         <AnnouncementBar message={announcement} onPress={onAnnouncementPress} />
 
         <View
@@ -905,7 +923,7 @@ export function AppChrome({
             alignItems: "flex-start",
           }}
         >
-          <View style={{ width: "100%" }}>
+          <View style={CHROME_COLUMN(wide)}>
             <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
           </View>
         </View>
@@ -925,7 +943,7 @@ export function AppChrome({
             opacity: barOpacity,
           }}
         >
-          <View style={{ width: "100%" }}>
+          <View style={CHROME_COLUMN(wide)}>
             <CompactBar
               backLabel={backLabel}
               onBack={onBack}
@@ -972,7 +990,7 @@ export function AppChrome({
   const barH = progress.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H] });
 
   return (
-    <View>
+    <View style={chromeMorph}>
       <Animated.View
         style={{ height: bannerHeight, opacity: bannerOpacity, overflow: "hidden" }}
       >
@@ -989,7 +1007,7 @@ export function AppChrome({
         }}
         onLayout={(e) => setFullWidth(e.nativeEvent.layout.width - (wide ? 48 : 32))}
       >
-        <Animated.View style={{ width: shellWidth ?? "100%" }}>
+        <Animated.View style={[CHROME_COLUMN(wide), { width: shellWidth ?? "100%" }]}>
           {/* Grote stand */}
           <Animated.View
             style={{ height: stackH, opacity: stackOpacity, overflow: "hidden" }}

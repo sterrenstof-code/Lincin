@@ -540,6 +540,21 @@ export const FEED_BREAKPOINT = 800;
  */
 export const READING_WIDTH = 760;
 
+/**
+ * De bladspiegel: waar een pagina begint en ophoudt.
+ *
+ * Dezelfde maat die `Sheet` aanhoudt. Staat hier omdat de kopbalk hem ook
+ * nodig heeft: die hing eerder aan wat de pagina toevallig meegaf, en nam
+ * daardoor per scherm een andere breedte en positie aan — smal op een
+ * vondst, van rand tot rand op de feed. Een kop die per pagina verspringt
+ * leest als een ander blad. Nu is er één maat en hangt de balk er niet meer
+ * van af wie hem aanroept.
+ */
+export function sheetWidth(wide: boolean): number {
+  // 1180 = 210 etiketkolom + ~970 inhoud; zie Sheet in components/Editorial.
+  return wide ? 1180 : 720;
+}
+
 // ---------------------------------------------------------------
 // RUIMTE — de maatlat waar het raster op staat
 // ---------------------------------------------------------------

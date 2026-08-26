@@ -200,12 +200,22 @@ function Cell({ post }: { post: PostWithAuthor }) {
    * Vijf regels in een tegel: geen plek voor opmaak, dus de markering eraf.
    */
   const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Notitie";
-  const text =
-    post.source_title?.trim() ||
-    post.caption?.trim() ||
+  const title = post.source_title?.trim() || null;
+  /**
+   * De aanhef van het stuk.
+   *
+   * Met alleen de titel bleef een tegel voor driekwart leeg — "Observaties
+   * Zweden" en dan niets, terwijl er twintig regels onder zaten. Een kop
+   * zonder aanzet vertelt je niet of je hem open wilt doen. Dus de eerste
+   * regels erbij, en die worden hier afgekapt en niet in de tekst zelf:
+   * `numberOfLines` weet hoe breed de tegel echt is, een tekenlimiet niet.
+   */
+  const lead =
     stripMarkdown(post.body_text) ||
+    post.caption?.trim() ||
     post.link_url ||
     "";
+  const body = title && lead === title ? "" : lead;
 
   return (
     <View style={{ flex: 1, padding: space.md }}>
@@ -223,19 +233,36 @@ function Cell({ post }: { post: PostWithAuthor }) {
           marginBottom: 9,
         }}
       />
-      <Text
-        style={{
-          fontFamily: SERIF_FAMILY,
-          fontSize: 15,
-          lineHeight: 21,
-          letterSpacing: -0.1,
-          color: feed.text,
-          flex: 1,
-        }}
-        numberOfLines={5}
-      >
-        {text}
-      </Text>
+      {title ? (
+        <Text
+          style={{
+            fontFamily: SERIF_FAMILY,
+            fontSize: 15,
+            lineHeight: 20,
+            letterSpacing: -0.1,
+            color: feed.text,
+            marginBottom: body ? 6 : 0,
+          }}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
+      ) : null}
+      {body ? (
+        <Text
+          style={{
+            fontFamily: SERIF_FAMILY,
+            fontSize: title ? 13 : 15,
+            lineHeight: title ? 18 : 21,
+            letterSpacing: -0.1,
+            color: title ? feed.textDim : feed.text,
+            flex: 1,
+          }}
+          numberOfLines={title ? 3 : 5}
+        >
+          {body}
+        </Text>
+      ) : null}
     </View>
   );
 }
