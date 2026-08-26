@@ -25,6 +25,8 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -106,6 +108,58 @@ import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, 
  * het invoerveld tot de rand — drie lijnen op één scherm.
  */
 const THREAD_WIDTH = 760;
+
+/**
+ * De maatlat van de berichtenbalk.
+ *
+ * Elke knop is even hoog en even breed, het invoerveld deelt die hoogte,
+ * en alles hangt aan dezelfde inspringing. Dat klinkt vanzelfsprekend maar
+ * was het niet: de antwoordbalk sprong 16px in, de knoppenrij 12px, de
+ * knoppen hadden drie verschillende achtergronden en de verzendknop was
+ * bijna zwart op een donkere balk. Zes losse beslissingen op één rij —
+ * vandaar de onrust.
+ *
+ * Kleur staat bewust niet hierin maar in de classNames, zodat NativeWind
+ * de licht/donker-stand kan blijven volgen.
+ */
+const AUX_BUTTON = {
+  width: CONTROL_H,
+  height: CONTROL_H,
+  alignItems: "center",
+  justifyContent: "center",
+} as const;
+
+/** Indrukken dimt; dat werkt in beide standen zonder een tweede kleur. */
+const AUX_PRESSED = { opacity: 0.6 } as const;
+
+/**
+ * Eén kolom voor álles in de berichtenbalk — antwoord, bewerken, knoppen.
+ * Ze hingen elk aan hun eigen padding, waardoor de rode kantlijn van een
+ * antwoord niet boven de plus-knop uitkwam.
+ */
+function ComposerInset({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View
+      style={[
+        {
+          width: "100%",
+          maxWidth: THREAD_WIDTH,
+          alignSelf: "center",
+          paddingHorizontal: space.md,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
 
 export default function ChatDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -1310,32 +1364,45 @@ export default function ChatDetail() {
             )}
             {/* Reply preview bar */}
             {replyTo && (
-              <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3">
+              <ComposerInset style={{ paddingTop: space.md }}>
                 {/* Zelfde citaatvorm als in de bubbel: rode kantlijn, geen
                     blauw. Deze balk staat op het donkere composer-vlak. */}
-                <View style={{ width: FEED_BORDER * 2, alignSelf: "stretch", backgroundColor: flame }} />
-                <View className="flex-1">
-                  <Text
-                    style={[feedType.kicker, { color: flame, letterSpacing: 0.55 }]}
-                    numberOfLines={1}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                  <View
+                    style={{ width: FEED_BORDER * 2, alignSelf: "stretch", backgroundColor: flame }}
+                  />
+                  <View style={{ flex: 1, paddingVertical: 2 }}>
+                    <Text
+                      style={[feedType.kicker, { color: flame, letterSpacing: 0.55 }]}
+                      numberOfLines={1}
+                    >
+                      {replyTo.senderName.toUpperCase()}
+                    </Text>
+                    <Text
+                      style={[feedType.label, { color: creamOnDark.muted, marginTop: 3 }]}
+                      numberOfLines={1}
+                    >
+                      {replyTo.previewText}
+                    </Text>
+                  </View>
+                  {/* Wegklikken is een bijzaak: een icoon, geen blok. Het
+                      lichte vierkantje dat hier stond trok meer aandacht
+                      dan het bericht waar het over ging. */}
+                  <Pressable
+                    onPress={() => setReplyTo(null)}
+                    hitSlop={10}
+                    style={({ pressed }) => ({
+                      width: 30,
+                      height: 30,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.5 : 1,
+                    })}
                   >
-                    {replyTo.senderName.toUpperCase()}
-                  </Text>
-                  <Text
-                    style={[feedType.label, { color: creamOnDark.muted, marginTop: 3 }]}
-                    numberOfLines={1}
-                  >
-                    {replyTo.previewText}
-                  </Text>
+                    <Ionicons name="close" color={creamOnDark.muted} size={17} />
+                  </Pressable>
                 </View>
-                <Pressable
-                  onPress={() => setReplyTo(null)}
-                  hitSlop={8}
-                  className="w-6 h-6 bg-paper-warm items-center justify-center"
-                >
-                  <Ionicons name="close" color={feed.inkDim} size={14} />
-                </Pressable>
-              </View>
+              </ComposerInset>
             )}
 
             {/* Emoji picker panel */}
@@ -1364,25 +1431,22 @@ export default function ChatDetail() {
               </View>
             )}
 
-            <View
+            <ComposerInset style={{ paddingVertical: space.md }}>
+             <View
               style={{
                 flexDirection: "row",
                 alignItems: "flex-end",
                 gap: space.sm,
-                padding: space.md,
-                width: "100%",
-                maxWidth: THREAD_WIDTH,
-                alignSelf: "center",
               }}
-            >
+             >
               {!recording && (
                 <Pressable
                   onPress={() => setAttachMenuOpen(true)}
                   disabled={sending}
-                  className="bg-paper-warm active:bg-paper items-center justify-center"
-                  style={{ width: CONTROL_H, height: CONTROL_H }}
+                  className="bg-shell"
+                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="add" color={feed.ink} size={22} />
+                  <Ionicons name="add" color={creamOnDark.soft} size={22} />
                 </Pressable>
               )}
               {!recording && (
@@ -1392,18 +1456,18 @@ export default function ChatDetail() {
                     if (!showEmojiPicker) inputRef.current?.blur();
                     else inputRef.current?.focus();
                   }}
-                  className="bg-paper-warm items-center justify-center"
-                  style={{ width: CONTROL_H, height: CONTROL_H }}
+                  className="bg-shell"
+                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
-                  <Text style={{ fontSize: 20 }}>😊</Text>
+                  <Text style={{ fontSize: 19 }}>😊</Text>
                 </Pressable>
               )}
 
               {/* Input area OR recording indicator */}
               {recording ? (
                 <View
-                  className="flex-1 flex-row items-center bg-red-950/30 border border-red-800/40"
-                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, gap: space.md }}
+                  className="flex-1 flex-row items-center bg-red-950/30"
+                  style={{ height: CONTROL_H, paddingHorizontal: space.md, gap: space.md }}
                 >
                   {/* Pulsing red dot */}
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" }} />
@@ -1421,7 +1485,7 @@ export default function ChatDetail() {
                 </View>
               ) : (
                 <View
-                  className="flex-1 bg-paper-light border border-line-paper max-h-32 justify-center"
+                  className="flex-1 bg-paper-light max-h-32 justify-center"
                   style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
                 >
                   <TextInput
@@ -1435,7 +1499,20 @@ export default function ChatDetail() {
                     multiline
                     editable={!sending}
                     className="text-ink text-base"
-                    style={{ minHeight: 24, ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}) }}
+                    style={{
+                      minHeight: 24,
+                      paddingVertical: 10,
+                      /**
+                       * `outlineWidth: 0` alleen was niet genoeg: Chrome
+                       * tekent zijn eigen focusring via `:focus-visible`, en
+                       * die stond als felblauw kader om het veld — het
+                       * onrustigste ding in de hele balk. `outlineStyle`
+                       * zet hem echt uit.
+                       */
+                      ...(Platform.OS === "web"
+                        ? ({ outlineWidth: 0, outlineStyle: "none" } as any)
+                        : {}),
+                    }}
                   />
                 </View>
               )}
@@ -1445,25 +1522,30 @@ export default function ChatDetail() {
                 // Recording is active → stop and send
                 <Pressable
                   onPress={() => stopRecording(true)}
-                  className="bg-red-500 active:bg-red-600 items-center justify-center"
-                  style={{ width: CONTROL_H, height: CONTROL_H }}
+                  className="bg-red-500 active:bg-red-600"
+                  style={AUX_BUTTON}
                 >
                   <Ionicons name="send" color="#fff" size={20} />
                 </Pressable>
               ) : draft.trim() || sending ? (
-                // Text is typed → send text button
+                /**
+                 * Verzenden is het enige felle in de balk, en alleen zolang
+                 * er iets te verzenden valt. Dit was `bg-ink` — bijna zwart
+                 * op een donkere balk, dus de belangrijkste knop was de
+                 * onzichtbaarste. Nu draagt hij het accent van de app.
+                 */
                 <Pressable
                   onPress={onSend}
                   disabled={sending || !draft.trim()}
-                  className={` items-center justify-center ${
-                    sending || !draft.trim() ? "bg-shell" : "bg-ink active:bg-ink-soft"
-                  }`}
-                  style={{ width: CONTROL_H, height: CONTROL_H }}
+                  className={
+                    sending || !draft.trim() ? "bg-shell" : "bg-flame active:bg-flame-deep"
+                  }
+                  style={AUX_BUTTON}
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? feed.inkDim : creamOnDark.DEFAULT}
-                    size={22}
+                    color={sending || !draft.trim() ? creamOnDark.muted : creamOnDark.DEFAULT}
+                    size={21}
                   />
                 </Pressable>
               ) : (
@@ -1476,13 +1558,14 @@ export default function ChatDetail() {
                     else startRecording();
                   } : undefined}
                   disabled={sending}
-                  className="bg-ink active:bg-ink-soft items-center justify-center"
-                  style={{ width: CONTROL_H, height: CONTROL_H }}
+                  className="bg-shell"
+                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="mic" color={creamOnDark.DEFAULT} size={22} />
+                  <Ionicons name="mic" color={creamOnDark.soft} size={21} />
                 </Pressable>
               )}
-            </View>
+             </View>
+            </ComposerInset>
           </View>
         </KeyboardAvoidingView>
 
@@ -1834,24 +1917,79 @@ function EditBar({
 }) {
   const [value, setValue] = useState(text);
   return (
-    <View className="flex-row items-center px-4 pt-2.5 pb-1 gap-3 border-b border-line-paper/60">
-      <View className="w-0.5 self-stretch bg-amber-500" />
-      <TextInput
-        value={value}
-        onChangeText={setValue}
-        autoFocus
-        multiline
-        className="flex-1 text-base"
-        style={{ minHeight: 24, maxHeight: 80, color: creamOnDark.DEFAULT }}
-      />
-      <Pressable onPress={() => onConfirm(value)} hitSlop={8} className="p-1">
-        <Ionicons name="checkmark" color="#22c55e" size={22} />
-      </Pressable>
-      <Pressable onPress={onCancel} hitSlop={8} className="p-1">
-        <Ionicons name="close" color={feed.inkDim} size={20} />
-      </Pressable>
-    </View>
+    <ComposerInset style={{ paddingTop: space.md }}>
+      {/* Dezelfde vorm als de antwoordbalk — kantlijn, tekst, twee stille
+          iconen. Stond eerder op amber en groen: twee kleuren die nergens
+          anders in de app voorkomen, op de plek waar het net rustig moest
+          zijn. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+        <View
+          style={{ width: FEED_BORDER * 2, alignSelf: "stretch", backgroundColor: flame }}
+        />
+        <TextInput
+          value={value}
+          onChangeText={setValue}
+          autoFocus
+          multiline
+          className="flex-1 text-base"
+          style={{
+            minHeight: 24,
+            maxHeight: 80,
+            paddingVertical: 6,
+            color: creamOnDark.DEFAULT,
+            ...(Platform.OS === "web"
+              ? ({ outlineWidth: 0, outlineStyle: "none" } as any)
+              : {}),
+          }}
+        />
+        <Pressable
+          onPress={() => onConfirm(value)}
+          hitSlop={10}
+          style={({ pressed }) => ({
+            width: 30,
+            height: 30,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.5 : 1,
+          })}
+        >
+          <Ionicons name="checkmark" color={flame} size={20} />
+        </Pressable>
+        <Pressable
+          onPress={onCancel}
+          hitSlop={10}
+          style={({ pressed }) => ({
+            width: 30,
+            height: 30,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.5 : 1,
+          })}
+        >
+          <Ionicons name="close" color={creamOnDark.muted} size={17} />
+        </Pressable>
+      </View>
+    </ComposerInset>
   );
+}
+
+
+/**
+ * Wikkelt de bubbel in een gesture-herkenner, of laat hem met rust.
+ *
+ * `null` betekent hier echt niets mounten in plaats van een herkenner die
+ * op niets reageert — dat scheelt een scroll-blokkade, zie de toelichting
+ * bij de aanroep.
+ */
+function SwipeWrap({
+  gesture,
+  children,
+}: {
+  gesture: ReturnType<typeof Gesture.Pan> | null;
+  children: React.ReactNode;
+}) {
+  if (!gesture) return <>{children}</>;
+  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
 function MessageBubble({
@@ -1985,7 +2123,21 @@ function MessageBubble({
         </View>
       )}
 
-      <GestureDetector gesture={Platform.OS !== "web" ? panGesture : Gesture.Pan()}>
+      {/**
+        * Web krijgt géén GestureDetector.
+        *
+        * Hier stond `Gesture.Pan()` als "uit"-stand, maar een kale Pan
+        * claimt élke sleep — ook een verticale. Daardoor kon je op web
+        * alleen scrollen náást de bubbels: boven een bubbel at de
+        * gesture-herkenner de beweging op, ernaast lag niets en deed de
+        * lijst gewoon zijn werk. Wat een uitgeschakelde swipe moest zijn
+        * was in de praktijk een scroll-blokkade.
+        *
+        * De juiste "uit" is niet mounten. `SwipeWrap` doet dat: op native
+        * de ingestelde gesture (die faalt bij >8px verticaal en dus wél
+        * samenleeft met de lijst), op web niets.
+        */}
+      <SwipeWrap gesture={Platform.OS !== "web" ? panGesture : null}>
       <Animated.View
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         style={{
@@ -2154,7 +2306,7 @@ function MessageBubble({
           </View>
         )}
       </Animated.View>
-      </GestureDetector>
+      </SwipeWrap>
 
       {reactions.length > 0 && (
         <View
