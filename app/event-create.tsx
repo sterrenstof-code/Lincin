@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,13 +17,24 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { useWide } from "@/components/Editorial";
 import { useAuth } from "@/lib/auth/provider";
 import {
   createEvent,
   type EventJoinPolicy,
   type EventRevealMode,
 } from "@/lib/api/events";
-import { creamOnDark, feed } from "@/lib/design/type";
+import {
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  gutter,
+  rule,
+  sheetWidth,
+  space,
+} from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 function plusHours(date: Date, hours: number): Date {
@@ -35,8 +47,41 @@ function toLocalISO(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+
+/**
+ * Het formulier op het systeem.
+ *
+ * Elke groep stond op een gevuld `bg-paper`-vlak met 24 punten rondom —
+ * zes zwevende kaartjes onder elkaar op een lavendel pagina. DESIGN.md §4
+ * zegt precies het tegenovergestelde: een kaart heeft geen vulling, de
+ * opbouw draagt hem. Vandaar hier geen vlakken maar een lijn boven elke
+ * groep; dat scheelt ook de vraag hoeveel ruimte er tússen zes vlakken moet.
+ *
+ * De velden hadden elk een eigen kadertje met een lichte vulling. Eén
+ * haarlijn eronder is genoeg om te zeggen "hier typ je": dat is wat de
+ * composer al doet, en twee schermen die hetzelfde vragen horen er hetzelfde
+ * uit te zien.
+ */
+const GROUP = {
+  borderTopWidth: FEED_BORDER,
+  borderTopColor: feed.ink,
+  paddingTop: space.lg,
+  marginTop: space.xl,
+} as const;
+
+/** De eerste groep heeft de kopbalk boven zich en dus geen eigen lijn nodig. */
+const GROUP_FIRST = { paddingTop: space.sm } as const;
+
+const FIELD = {
+  paddingVertical: 10,
+  borderBottomWidth: StyleSheet.hairlineWidth,
+  borderBottomColor: rule.soft,
+  ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
+};
+
 export default function EventCreateScreen() {
   const router = useRouter();
+  const wide = useWide();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -119,8 +164,27 @@ export default function EventCreateScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-row items-center px-4 py-3">
+      {/**
+        * De kopbalk staat búiten de formulierkolom.
+        *
+        * Hij zat in `ScreenContainer`, en die kapt op 600 — de kolom waarvan
+        * `Sheet` in zijn eigen commentaar zegt dat dit ontwerp ervan af is.
+        * Daardoor was de kop op dit scherm 600 breed en overal elders 1250,
+        * precies het verspringen dat de kop nergens hoort te doen. Het
+        * fórmulier blijft wél smal: invoervelden van 1250 punten lees je niet
+        * meer terug.
+        */}
+      <View
+        style={{
+          width: "100%",
+          maxWidth: sheetWidth(wide),
+          alignSelf: "center",
+          paddingHorizontal: gutter(wide),
+          borderBottomWidth: FEED_BORDER,
+          borderBottomColor: feed.ink,
+        }}
+      >
+        <View className="flex-row items-center py-3">
           <Pressable
             onPress={() => safeBack(router, "/(app)/events")}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
@@ -142,14 +206,16 @@ export default function EventCreateScreen() {
             </Text>
           </Pressable>
         </View>
+      </View>
 
+      <ScreenContainer>
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper p-6">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+            <View style={GROUP_FIRST}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Naam
               </Text>
               <TextInput
@@ -158,12 +224,13 @@ export default function EventCreateScreen() {
                 placeholder="bv. Paris 2025, Tom's verjaardag…"
                 placeholderTextColor={feed.inkDim}
                 maxLength={80}
-                className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
+                className="text-ink text-base"
+                style={FIELD}
               />
 
               <View className="h-5" />
 
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Beschrijving (optioneel)
               </Text>
               <TextInput
@@ -173,21 +240,21 @@ export default function EventCreateScreen() {
                 placeholderTextColor={feed.inkDim}
                 multiline
                 maxLength={500}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                style={{ minHeight: 72, textAlignVertical: "top" }}
+                className="text-ink text-base"
+                style={[FIELD, { minHeight: 84, textAlignVertical: "top" }]}
               />
             </View>
 
             {/* Cover (optioneel) */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+            <View style={GROUP}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Cover (optioneel)
               </Text>
               {coverUri ? (
                 <View>
                   <Image
                     source={{ uri: coverUri }}
-                    style={{ width: "100%", height: 150, borderRadius: 18 }}
+                    style={{ width: "100%", height: 190 }}
                     contentFit="cover"
                   />
                   <View className="flex-row gap-2 mt-3">
@@ -208,7 +275,8 @@ export default function EventCreateScreen() {
               ) : (
                 <Pressable
                   onPress={pickCover}
-                  className="bg-paper-soft active:bg-paper-warm py-8 items-center justify-center border border-line-paper"
+                  className="active:bg-feed-panel py-10 items-center justify-center"
+                  style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}
                 >
                   <Ionicons name="image-outline" color={feed.inkDim} size={26} />
                   <Text className="text-ink-soft text-sm mt-2">Kies een cover-foto</Text>
@@ -217,23 +285,23 @@ export default function EventCreateScreen() {
             </View>
 
             {/* Datum en tijd */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+            <View style={GROUP}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Start
               </Text>
               <DateInput value={startsAt} onChange={setStartsAt} />
 
               <View className="h-5" />
 
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Einde
               </Text>
               <DateInput value={endsAt} onChange={setEndsAt} />
             </View>
 
             {/* Toegang — open of gesloten groep */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
+            <View style={GROUP}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 }]}>
                 Wie mag meedoen
               </Text>
               <Text className="text-ink-soft text-sm mb-3">
@@ -257,8 +325,8 @@ export default function EventCreateScreen() {
             </View>
 
             {/* Onthulling */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
+            <View style={GROUP}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 }]}>
                 Foto's zichtbaar
               </Text>
               <Text className="text-ink-soft text-sm mb-3">
@@ -287,29 +355,31 @@ export default function EventCreateScreen() {
 
               {reveal === "delayed" && (
                 <View className="mt-4">
-                  <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                     Vertraging (uren)
                   </Text>
                   <TextInput
                     value={delayHours}
                     onChangeText={setDelayHours}
                     keyboardType="number-pad"
-                    className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
+                    className="text-ink text-base"
+                style={FIELD}
                   />
                 </View>
               )}
             </View>
 
             {/* Aantal gasten */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+            <View style={GROUP}>
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
                 Aantal gasten (max)
               </Text>
               <TextInput
                 value={maxGuests}
                 onChangeText={setMaxGuests}
                 keyboardType="number-pad"
-                className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
+                className="text-ink text-base"
+                style={FIELD}
               />
               <Text className="text-ink-muted text-xs mt-2">
                 {joinPolicy === "closed"
@@ -344,18 +414,29 @@ function DateInput({
     return (
       <View
         // @ts-ignore — web-only style
-        style={{ display: "flex" }}
+        style={{
+          display: "flex",
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: rule.soft,
+        }}
       >
         {require("react").createElement("input", {
           type: "datetime-local",
           value,
           onChange: (e: any) => onChange(e.target.value),
+          /**
+           * Stond op `borderRadius: 999` met een rand in #D8C29B — een pil
+           * in een kleur die nergens in het palet voorkomt. Nu dezelfde vorm
+           * als elk ander veld in de app: geen vulling, geen rand, één
+           * haarlijn eronder. De browser tekent zijn eigen focusring, dus
+           * `outline` blijft uit.
+           */
           style: {
-            backgroundColor: feed.panel,
+            backgroundColor: "transparent",
             color: feed.ink,
-            border: "1px solid #D8C29B",
-            borderRadius: 999,
-            padding: "12px 20px",
+            border: "none",
+            borderRadius: 0,
+            padding: "10px 0",
             fontSize: 16,
             fontFamily: "inherit",
             outline: "none",
@@ -374,7 +455,8 @@ function DateInput({
       placeholderTextColor={feed.inkDim}
       autoCapitalize="none"
       autoCorrect={false}
-      className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
+      className="text-ink text-base"
+                style={FIELD}
     />
   );
 }
