@@ -35,7 +35,6 @@ import {
   feed,
   FEED_BORDER,
   feedType,
-  flame,
   flameDeep,
   gutter as gutterFor,
   space,

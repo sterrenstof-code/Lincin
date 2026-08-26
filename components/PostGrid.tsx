@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
@@ -10,12 +10,14 @@ import {
   feed,
   FEED_BORDER,
   feedType,
+  flameDeep,
   rule,
+  SERIF_FAMILY,
   space,
 } from "@/lib/design/type";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
 import { stripMarkdown } from "@/lib/richtext";
-import type { PostWithAuthor } from "@/lib/api/posts";
+import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
 
 /**
  * Alle vondsten van één persoon als raster.
@@ -96,7 +98,11 @@ function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void
       style={{
         width: "100%",
         aspectRatio: 1,
-        backgroundColor: feed.postFill,
+        // Geen vulling meer. Een tegel zonder foto was een grijs vlak met
+        // tekst erop; nu draagt de omlijning hem en staat de tekst op het
+        // blad zelf. Bij een foto maakt het niets uit — die dekt de tegel —
+        // en tijdens het laden vult SafeImage zijn eigen achtergrond.
+        backgroundColor: feed.post,
         borderWidth: FEED_BORDER,
         borderColor: rule.soft,
         // Ankerpunt van de morph: deze tegel groeit uit tot de plaat op de
@@ -181,22 +187,52 @@ function Cell({ post }: { post: PostWithAuthor }) {
     );
   }
 
-  // Geen foto: dan is de tekst het beeld.
-  // Vier regels in een tegel: geen plek voor opmaak, dus de markering eraf.
-  const text = post.caption?.trim() || stripMarkdown(post.body_text) || post.link_url || "";
+  /**
+   * Geen foto: dan is de tekst het beeld.
+   *
+   * Stond als sans-tekst onderaan tegen de rand, met een icoontje in de
+   * bovenhoek en een grijze vulling eronder. Drie dingen die er los bij
+   * hingen. Nu de opbouw van een colofon: waar het over gaat, een lijn, en
+   * dan het stuk zelf in de serif — dezelfde stem als een fragment op zijn
+   * eigen pagina. Het icoontje kan weg omdat het woord "Artikel" of
+   * "Notitie" preciezer is dan een pictogram van een paperclip.
+   *
+   * Vijf regels in een tegel: geen plek voor opmaak, dus de markering eraf.
+   */
+  const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Notitie";
+  const text =
+    post.source_title?.trim() ||
+    post.caption?.trim() ||
+    stripMarkdown(post.body_text) ||
+    post.link_url ||
+    "";
+
   return (
-    <View style={{ flex: 1, padding: space.md, justifyContent: "space-between" }}>
-      <Ionicons
-        name={post.link_url ? "link-outline" : "text-outline"}
-        size={14}
-        color={feed.textDim}
+    <View style={{ flex: 1, padding: space.md }}>
+      <Text
+        style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}
+        numberOfLines={1}
+      >
+        {kicker.toUpperCase()}
+      </Text>
+      <View
+        style={{
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: rule.soft,
+          marginTop: 5,
+          marginBottom: 9,
+        }}
       />
       <Text
-        style={[
-          feedType.tile,
-          { fontSize: 13, lineHeight: 17, color: feed.text },
-        ]}
-        numberOfLines={4}
+        style={{
+          fontFamily: SERIF_FAMILY,
+          fontSize: 15,
+          lineHeight: 21,
+          letterSpacing: -0.1,
+          color: feed.text,
+          flex: 1,
+        }}
+        numberOfLines={5}
       >
         {text}
       </Text>
