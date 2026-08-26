@@ -30,12 +30,13 @@ import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
 import {
   announce,
-  creamOnDark,
   announceDeep,
+  creamOnDark,
   feed,
   FEED_BORDER,
   feedType,
   flame,
+  flameDeep,
   gutter as gutterFor,
   space,
 } from "@/lib/design/type";
@@ -180,27 +181,55 @@ function useTabBadges(): Partial<Record<string, number>> {
 }
 
 /**
- * Het getal zelf: een vlamvlak met het aantal erin. Vierkant, zoals al het
- * andere in dit systeem — geen pil.
+ * Het getal zelf: een vlamvlak met het aantal erin.
+ *
+ * Drie dingen die niet klopten, en maar één ervan was vorm.
+ *
+ * KLEUR. Wit op `flame` haalt 4.10:1 in de lichte stand en 4.31:1 in de
+ * donkere — allebei onder de 4.5 die tekst van deze maat hoort te halen.
+ * Op `flameDeep` is het 6.24:1 en 7.39:1. Een badge die je moet kunnen
+ * lézen is het hele punt van een badge.
+ *
+ * LETTERAFSTAND. Hij erfde `kicker`, en die staat op 1.5 — bedoeld voor
+ * kapitalen die moeten ademen. Achter een los cijfer komt die spatie er
+ * rechts alsnog bij, waardoor het getal links uit het midden hing. Nu een
+ * eigen maat met de afstand op nul.
+ *
+ * VORM. Een vierkant met een kleine straal in plaats van een scherpe hoek.
+ * Geen pil: het blijft een blokje, het is alleen niet meer messcherp op een
+ * vlak van 18 bij 18. Bij deze maat is een rechte hoek geen strengheid meer
+ * maar ruis.
  */
 function TabBadge({ count, floating = false }: { count: number; floating?: boolean }) {
   if (count <= 0) return null;
+  const wide = count > 9;
   return (
     <View
       style={{
-        backgroundColor: flame,
-        paddingHorizontal: 4,
-        minWidth: 16,
+        backgroundColor: flameDeep,
+        height: 18,
+        minWidth: 18,
+        borderRadius: 5,
+        paddingHorizontal: wide ? 5 : 0,
         alignItems: "center",
         justifyContent: "center",
         ...(floating
           ? // Bij iconen is er geen ruimte naast het label, dus hangt hij
             // in de rechterbovenhoek van het icoon.
-            { position: "absolute", top: -6, right: -10, paddingVertical: 1 }
-          : { marginLeft: 6, paddingVertical: 1 }),
+            { position: "absolute", top: -7, right: -11 }
+          : { marginLeft: 7 }),
       }}
     >
-      <Text style={[feedType.kicker, { color: "#FFFFFF", letterSpacing: 0.2 }]}>
+      <Text
+        style={{
+          fontFamily: feedType.kicker.fontFamily,
+          fontSize: 11,
+          lineHeight: 13,
+          fontWeight: "800",
+          letterSpacing: 0,
+          color: "#FFFFFF",
+        }}
+      >
         {count > 99 ? "99+" : String(count)}
       </Text>
     </View>

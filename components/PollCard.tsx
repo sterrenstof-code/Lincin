@@ -6,7 +6,7 @@ import { ActionSheet } from "./ActionSheet";
 import { CommentsSection } from "./CommentsSection";
 import { votePoll, deletePoll, type PollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
-import { feed } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
 
 export function PollCard({
   poll,
@@ -127,7 +127,6 @@ export function PollCard({
                 key={option.id}
                 onPress={() => canChange ? handleVote(option.id) : undefined}
                 disabled={!canChange || isMyVote}
-                className="overflow-hidden"
               >
                 <View
                   className="flex-row items-center px-4 py-3 gap-2"
@@ -147,7 +146,7 @@ export function PollCard({
                   </Text>
                   {/* Overlapping avatars */}
                   {shownVoters.length > 0 && (
-                    <View className="flex-row items-center" style={{ marginRight: 2 }}>
+                    <VoterPeek voters={option.voters}>
                       {shownVoters.map((voter, i) => (
                         <View key={voter.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: shownVoters.length - i }}>
                           <Avatar
@@ -162,7 +161,7 @@ export function PollCard({
                           <Text className="text-carbon-muted text-[9px] font-bold">+{extraVoters}</Text>
                         </View>
                       )}
-                    </View>
+                    </VoterPeek>
                   )}
                   {/* Count + % */}
                   <Text className={`text-xs font-bold tabular-nums ${isMyVote ? "text-carbon" : "text-carbon-muted"}`}>
@@ -231,4 +230,100 @@ function formatRelativeTime(iso: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
   return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+}
+
+/**
+ * Wie er op deze optie gestemd hebben.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM NIET ALLEEN HOVER
+ * ---------------------------------------------------------------
+ * Hover bestaat niet op een telefoon. Een functie die je daar niet kunt
+ * bereiken is geen functie maar een bureaublad-extraatje, en de helft van
+ * deze app draait op een toestel zonder muis. Dus: aanwijzen opent hem op
+ * web, aantikken opent hem overal.
+ *
+ * Dat aantikken moet wél de stem met rust laten. De rij eronder is zelf
+ * een knop ("tik om te wijzigen"); een Pressable binnen een Pressable vangt
+ * de aanraking en laat hem niet doorlopen naar de ouder, dus dat gaat
+ * vanzelf goed — maar het is precies waarom dit een Pressable moet zijn en
+ * geen View met een onTouchStart.
+ *
+ * De rij had `overflow-hidden`. Dat knipte dit paneel weg, en het diende
+ * nergens voor: de voortgangsbalk erin is een percentage van de breedte en
+ * kan per definitie niet buiten de rij vallen.
+ */
+function VoterPeek({
+  voters,
+  children,
+}: {
+  voters: { id: string; display_name: string | null; username: string }[];
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Een lijst van veertig namen is geen tooltip meer. Boven de tien tonen
+  // we er tien en zeggen we hoeveel er nog zijn.
+  const shown = voters.slice(0, 10);
+  const rest = voters.length - shown.length;
+
+  return (
+    <View style={{ marginRight: 2 }}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        onHoverIn={() => setOpen(true)}
+        onHoverOut={() => setOpen(false)}
+        accessibilityLabel={`Wie stemden: ${shown
+          .map((v) => v.display_name ?? v.username)
+          .join(", ")}`}
+        style={{ flexDirection: "row", alignItems: "center" }}
+      >
+        {children}
+      </Pressable>
+
+      {open ? (
+        <View
+          style={{
+            position: "absolute",
+            bottom: "100%",
+            right: 0,
+            marginBottom: 6,
+            minWidth: 140,
+            maxWidth: 240,
+            backgroundColor: feed.panel,
+            borderWidth: FEED_BORDER,
+            borderColor: feed.ink,
+            paddingVertical: space.sm,
+            paddingHorizontal: space.md,
+            // Boven de rij ernaast blijven, op alle drie de platforms.
+            zIndex: 100,
+            elevation: 8,
+          }}
+        >
+          <Text
+            style={[
+              feedType.kicker,
+              { color: feed.inkDim, letterSpacing: 0.55, marginBottom: 4 },
+            ]}
+          >
+            {voters.length === 1 ? "STEMDE" : "STEMDEN"}
+          </Text>
+          {shown.map((voter) => (
+            <Text
+              key={voter.id}
+              style={[feedType.label, { color: feed.ink, marginTop: 2 }]}
+              numberOfLines={1}
+            >
+              {voter.display_name ?? voter.username}
+            </Text>
+          ))}
+          {rest > 0 ? (
+            <Text style={[feedType.label, { color: feed.inkDim, marginTop: 4 }]}>
+              en {rest} {rest === 1 ? "ander" : "anderen"}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
 }
