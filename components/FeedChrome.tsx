@@ -105,10 +105,13 @@ export function ShareButton({
   return (
     <Pressable
       onPress={onPress}
+      // Vierkant, net als de plus in de balk bovenaan en als al het andere
+      // hier. Dit was de enige ronde vorm in een ontwerp dat verder
+      // volledig op rechte hoeken en haarlijnen staat; als cirkel leek het
+      // een knop uit een andere app die per ongeluk was blijven liggen.
       style={({ pressed }) => ({
         width: size,
         height: size,
-        borderRadius: size / 2,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: pressed ? announceDeep : announce,

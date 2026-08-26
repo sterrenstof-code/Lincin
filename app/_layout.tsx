@@ -8,9 +8,8 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import "react-native-reanimated";
 
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider } from "@/lib/auth/provider";
+import { WebAnalytics } from "@/components/WebAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { stackScreenLayout } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
@@ -252,8 +251,7 @@ export default function RootLayout() {
           {/* De balk bovenaan is in béide standen zwart, dus de
               systeemklok erboven blijft licht. */}
           <StatusBar style="light" />
-          <Analytics />
-          <SpeedInsights />
+          <WebAnalytics />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>

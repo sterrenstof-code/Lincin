@@ -294,7 +294,6 @@ export default function FeedScreen() {
   const { layout, order, dimSeen } = prefs;
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
-  const [shareOpen, setShareOpen] = useState(false);
   /** Voorbij de kop gescrold? Dan krimpt de deelknop in de zijbalk. */
   const [scrolled, setScrolled] = useState(false);
 
@@ -739,35 +738,18 @@ export default function FeedScreen() {
           paneel van de zijbalk, en dat paneel scrolt weg. Nu zweeft hij
           los over de pagina — op elk schermformaat, want het argument is
           op een breed scherm niet anders. */}
-      <FloatingShare onPress={() => setShareOpen(true)} lifted={scrolled} />
-
-      <ActionSheet
-        visible={shareOpen}
-        onClose={() => setShareOpen(false)}
-        title="Wat wil je delen?"
-        actions={[
-          {
-            label: "Foto's",
-            icon: "images-outline",
-            onPress: () => router.push("/post-compose?kind=image"),
-          },
-          {
-            label: "Een link",
-            icon: "link-outline",
-            onPress: () => router.push("/post-compose?kind=link"),
-          },
-          {
-            label: "Een fragment",
-            icon: "text-outline",
-            onPress: () => router.push("/post-compose?kind=fragment"),
-          },
-          {
-            label: "Een notitie",
-            icon: "create-outline",
-            onPress: () => router.push("/post-compose?kind=note"),
-          },
-        ]}
-      />
+      {/**
+        * Rechtstreeks naar het deelscherm, net als de plus in de balk
+        * bovenaan.
+        *
+        * Hier zat een tussenmenu met vier snelkoppelingen. Dat dubbelde de
+        * eerste stap van het deelscherm — daar staan diezelfde soorten al,
+        * mét een regel uitleg per stuk. En het liep uit de pas: één van de
+        * vier wees naar `kind=fragment`, een soort die niet meer te kiezen
+        * is. Twee lijsten die hetzelfde moeten zeggen gaan altijd een keer
+        * uiteenlopen; dan kun je er beter één hebben.
+        */}
+      <FloatingShare onPress={() => router.push("/post-compose")} lifted={scrolled} />
     </SafeAreaView>
   );
 }
