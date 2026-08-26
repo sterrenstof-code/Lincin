@@ -36,7 +36,19 @@ import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import { announce, CONTROL_H, feed, FEED_BORDER, feedType, flameDeep, gutter, READING_WIDTH, rule, space } from "@/lib/design/type";
+import {
+  announce,
+  CONTROL_H,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  gutter,
+  READING_WIDTH,
+  rule,
+  SERIF_FAMILY,
+  space,
+} from "@/lib/design/type";
 import {
   addEntityComment,
   deleteEntityComment,
@@ -47,6 +59,7 @@ import {
 import {
   deletePost,
   getAlbumUrls,
+  KIND_LABELS,
   normalizeRow,
   POST_COLUMNS,
   type PostWithAuthor,
@@ -857,10 +870,10 @@ export default function PostDetailScreen() {
           wide
           progress={chrome.progress}
           compact
-          // Een vondst zónder plaat is één kolom tekst; dan hoort de balk
-          // daar ook op te houden. Mét plaat loopt de pagina van rand tot
-          // rand en de balk dus ook.
-          contentMaxWidth={hasPlate ? undefined : READING_WIDTH}
+          // Eén maat, altijd dezelfde. De balk is het vaste gegeven van de
+          // pagina — een kop die per vondst een andere breedte aanneemt
+          // leest als een ander blad. Wat eronder staat past zich aan.
+          contentMaxWidth={READING_WIDTH}
           backLabel="Terug naar de feed"
           onBack={() => safeBack(router, "/(app)/feed")}
           actionLabel={canModerate ? "Opties" : undefined}
@@ -924,6 +937,27 @@ export default function PostDetailScreen() {
               */}
               {post.data ? (
                 <View style={{ paddingVertical: space.lg }}>
+                  {/**
+                    * De kop van het blad: waar dit stuk over gaat, en dan
+                    * een zware lijn. Een krant zet niet de schrijver
+                    * bovenaan maar de rubriek — die vertelt je in één woord
+                    * of dit iets is om nu te lezen of straks.
+                    */}
+                  <Text
+                    style={[
+                      feedType.kicker,
+                      { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
+                    ]}
+                  >
+                    {(KIND_LABELS[post.data.kind ?? "note"] ?? "Notitie").toUpperCase()}
+                  </Text>
+                  <View
+                    style={{
+                      height: FEED_BORDER * 2,
+                      backgroundColor: feed.ink,
+                      marginBottom: space.md,
+                    }}
+                  />
                   {authorRow(true)}
                   {/**
                     * De tekst van een notitie, een idee of een fragment.
@@ -935,15 +969,28 @@ export default function PostDetailScreen() {
                     * toelichting van de deler, niet de vondst zelf.
                     */}
                   {post.data.body_text?.trim() ? (
-                    <View
-                      style={{
-                        marginTop: space.md,
-                        marginLeft: 36 + space.md,
-                      }}
-                    >
+                    /**
+                     * De vondst zelf, op volle kolombreedte en in de serif.
+                     *
+                     * Stond ingesprongen tot naast de avatar (36 + marge),
+                     * omdat het onderschríft dat doet — dat hoort bij de
+                     * persoon erboven. Maar dit is niet wat de deler erbij
+                     * zei, dit ís het stuk. Een krant laat de kolom bij de
+                     * kolomrand beginnen; alleen bijzaken springen in.
+                     *
+                     * En in de serif, niet de grotesk. Dezelfde stem als een
+                     * fragment op zijn eigen pagina en als de teksttegel in
+                     * het raster, zodat het stuk overal hetzelfde klinkt.
+                     */
+                    <View style={{ marginTop: space.md }}>
                       <RichText
                         text={post.data.body_text}
-                        style={feedType.pullSmall}
+                        style={{
+                          fontFamily: SERIF_FAMILY,
+                          fontSize: 19,
+                          lineHeight: 30,
+                          letterSpacing: -0.2,
+                        }}
                         color={feed.ink}
                         dimColor={feed.inkDim}
                         ruleColor={rule.soft}
