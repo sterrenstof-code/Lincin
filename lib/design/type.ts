@@ -530,6 +530,16 @@ export let creamOnDark = {
  */
 export const FEED_BREAKPOINT = 800;
 
+/**
+ * De leesmaat van een kolom tekst.
+ *
+ * Stond als los getal 760 op drie plekken: de gesprekskolom in de chat, de
+ * inhoudskolom van een vondst, en nergens in de kopbalk erboven — waardoor
+ * die balk doorliep tot de vensterrand terwijl de tekst eronder al ophield.
+ * Een kop die breder is dan zijn eigen pagina leest als een fout.
+ */
+export const READING_WIDTH = 760;
+
 // ---------------------------------------------------------------
 // RUIMTE — de maatlat waar het raster op staat
 // ---------------------------------------------------------------

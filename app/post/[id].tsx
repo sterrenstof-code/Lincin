@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
+import { RichText } from "@/components/RichText";
 import { MentionsText } from "@/components/MentionsText";
 import { useWide } from "@/components/Editorial";
 import {
@@ -35,16 +36,7 @@ import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import {
-  announce,
-  CONTROL_H,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flameDeep,
-  gutter,
-  space,
-} from "@/lib/design/type";
+import { announce, CONTROL_H, feed, FEED_BORDER, feedType, flameDeep, gutter, READING_WIDTH, rule, space } from "@/lib/design/type";
 import {
   addEntityComment,
   deleteEntityComment,
@@ -52,7 +44,13 @@ import {
   subscribeToEntityComments,
   type EntityComment,
 } from "@/lib/api/entity-comments";
-import { deletePost, getAlbumUrls, type PostWithAuthor } from "@/lib/api/posts";
+import {
+  deletePost,
+  getAlbumUrls,
+  normalizeRow,
+  POST_COLUMNS,
+  type PostWithAuthor,
+} from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
@@ -154,7 +152,8 @@ export default function PostDetailScreen() {
       if (!id) return null;
       const { data, error } = await supabase
         .from("posts")
-        .select("id, user_id, image_path, caption, link_url, created_at")
+        // De gedeelde kolomlijst, niet een eigen — zie POST_COLUMNS.
+        .select(POST_COLUMNS)
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -167,7 +166,10 @@ export default function PostDetailScreen() {
       // `album_urls` blijft optioneel, net als op PostWithAuthor: de feed
       // in de cache dient als beginwaarde en moet dezelfde vorm hebben.
       return {
-        ...data,
+        // `normalizeRow` vult `kind`, `body_text`, `tags` en `meta` aan voor
+        // rijen van vóór 0042; zonder dat komt een oude vondst hier binnen
+        // zonder soort en valt de weergave terug op niets.
+        ...normalizeRow(data),
         author,
         image_url: imageUrl,
         ...(albumUrls.length > 0 ? { album_urls: albumUrls } : null),
@@ -855,6 +857,10 @@ export default function PostDetailScreen() {
           wide
           progress={chrome.progress}
           compact
+          // Een vondst zónder plaat is één kolom tekst; dan hoort de balk
+          // daar ook op te houden. Mét plaat loopt de pagina van rand tot
+          // rand en de balk dus ook.
+          contentMaxWidth={hasPlate ? undefined : READING_WIDTH}
           backLabel="Terug naar de feed"
           onBack={() => safeBack(router, "/(app)/feed")}
           actionLabel={canModerate ? "Opties" : undefined}
@@ -870,6 +876,7 @@ export default function PostDetailScreen() {
           style={{
             flex: 1,
             flexDirection: "row",
+            ...(hasPlate ? null : { justifyContent: "center" as const }),
             gap: hasPlate ? space.xxl : 0,
             paddingRight: gutter(true),
             paddingBottom: gutter(true),
@@ -888,9 +895,13 @@ export default function PostDetailScreen() {
 
           <View
             style={{
+              // `alignSelf: "center"` stond hier, maar de ouder is een rij —
+              // en daar stuurt alignSelf de verticale as. De kolom plakte
+              // dus links met een gat ernaast. Centreren doet de ouder, via
+              // justifyContent hieronder.
               ...(hasPlate
                 ? { width: conversationWidth }
-                : { flex: 1, maxWidth: 760, alignSelf: "center" }),
+                : { flex: 1, maxWidth: READING_WIDTH }),
               backgroundColor: feed.lav,
               // Schuift van rechts naar binnen terwijl de foto uitgroeit —
               // zie de keyframes in app/+html.tsx.
@@ -914,6 +925,31 @@ export default function PostDetailScreen() {
               {post.data ? (
                 <View style={{ paddingVertical: space.lg }}>
                   {authorRow(true)}
+                  {/**
+                    * De tekst van een notitie, een idee of een fragment.
+                    *
+                    * Die stond hier niet: de pagina toonde alleen `caption`,
+                    * en dat werkte zolang een notitie daarheen schreef. Sinds
+                    * notities opmaak hebben gaan ze naar `body_text`, en toen
+                    * was de pagina leeg — het onderschrift eronder is de
+                    * toelichting van de deler, niet de vondst zelf.
+                    */}
+                  {post.data.body_text?.trim() ? (
+                    <View
+                      style={{
+                        marginTop: space.md,
+                        marginLeft: 36 + space.md,
+                      }}
+                    >
+                      <RichText
+                        text={post.data.body_text}
+                        style={feedType.pullSmall}
+                        color={feed.ink}
+                        dimColor={feed.inkDim}
+                        ruleColor={rule.soft}
+                      />
+                    </View>
+                  ) : null}
                   {post.data.caption ? (
                     <MentionsText
                       text={post.data.caption}

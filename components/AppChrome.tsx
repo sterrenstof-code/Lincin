@@ -753,6 +753,7 @@ export function AppChrome({
   actionLabel,
   onAction,
   compact = false,
+  contentMaxWidth,
 }: {
   wide: boolean;
   progress: Animated.Value;
@@ -769,6 +770,14 @@ export function AppChrome({
    * daar hoort het onderwerp bovenaan te staan, niet het merk.
    */
   compact?: boolean;
+  /**
+   * Waar de pagina eronder ophoudt. De balk houdt daar dan ook op.
+   *
+   * Alleen meegeven als de inhoud werkelijk een maat heeft: een pagina die
+   * van rand tot rand loopt (een foto op volle breedte) hoort een balk te
+   * krijgen die dat ook doet.
+   */
+  contentMaxWidth?: number;
 }) {
   /**
    * De volle breedte, gemeten in plaats van geraden: een Animated-
@@ -807,14 +816,20 @@ export function AppChrome({
           paddingBottom: space.sm,
         }}
       >
-        {/* Zo breed als de pagina eronder.
-            Hier stond `maxWidth: 900`. Dat komt uit de ingeklapte stand van
-            de thuispagina, waar de kop naar een blok in de linkerbovenhoek
-            krimpt — maar op een detailpagina is er niets om naartoe te
-            krimpen, en dan houdt de balk op waar de inhoud nog doorloopt.
-            Een foto die breder is dan zijn eigen kop leest als een fout,
-            en dat was het ook. */}
-        <View style={{ width: "100%" }}>
+        {/* Zo breed als de pagina eronder — nu ook echt.
+            Hier stond eerst `maxWidth: 900` (uit de ingeklapte thuispagina,
+            waar de kop naar een blok in de hoek krimpt), daarna niets. Dat
+            tweede was net zo verkeerd als het eerste: de balk liep door tot
+            de vensterrand terwijl de tekst eronder al bij 760 ophield. De
+            pagina geeft nu door waar zij stopt, en de balk stopt daar ook. */}
+        <View
+          style={{
+            width: "100%",
+            ...(contentMaxWidth
+              ? { maxWidth: contentMaxWidth, alignSelf: "center" as const }
+              : null),
+          }}
+        >
           <CompactBar
             backLabel={backLabel}
             onBack={onBack}

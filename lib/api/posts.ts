@@ -84,12 +84,19 @@ export type PostWithAuthor = PostRow & {
 
 const POSTS_BUCKET = "posts";
 
-/** Eén bron van waarheid voor de kolomlijst — anders vergeet je er altijd één. */
-const POST_COLUMNS =
+/**
+ * Eén bron van waarheid voor de kolomlijst — anders vergeet je er altijd één.
+ *
+ * Geëxporteerd sinds de detailpagina haar eigen lijstje bijhield en daarin
+ * `body_text` ontbrak. Zolang een notitie naar `caption` schreef viel dat
+ * niet op; sinds notities opmaak kregen en naar `body_text` schrijven, was
+ * de pagina leeg. Precies waar de zin hierboven voor waarschuwde.
+ */
+export const POST_COLUMNS =
   "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta";
 
 /** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
-function normalizeRow(row: any): PostRow {
+export function normalizeRow(row: any): PostRow {
   return {
     ...row,
     kind: (row.kind ?? (row.link_url ? "link" : row.image_path ? "image" : "note")) as FindKind,
