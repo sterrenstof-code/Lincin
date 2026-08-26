@@ -376,7 +376,7 @@ export default function EventDetailScreen() {
                     { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
                   ]}
                 >
-                  {`${ev.members_count} gasten · ${ev.contributions_count} foto's`}
+                  {`${ev.members_count} gasten · ${ev.contributions_count} bijdragen`}
                 </Text>
 
                 {/* En wie dat dan zijn. Een aantal zegt hoevéél mensen er
@@ -656,14 +656,15 @@ export default function EventDetailScreen() {
             visible={addMenuOpen}
             onClose={() => setAddMenuOpen(false)}
             title="Bijdrage toevoegen"
+            subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
             actions={[
               {
-                label: "Maak een foto",
+                label: "Maak een foto met de camera",
                 icon: "camera-outline",
                 onPress: onOpenCamera,
               },
               {
-                label: "Uit je bibliotheek — foto's en video's",
+                label: "Kies uit je foto's en video's",
                 icon: "images-outline",
                 onPress: () => pickFromGallery(),
               },
@@ -690,7 +691,8 @@ export default function EventDetailScreen() {
                   : ev.reveal === "delayed"
                     ? `Foto's worden onthuld ${ev.reveal_delay_hours}u na afloop.`
                     : "Foto's worden zichtbaar tijdens het event."}
-                {"\n"}Tot dan kan je wel zelf bijdragen toevoegen via Camera.
+                {"\n"}Toevoegen kan nu al: maak een foto met de camera, of kies
+                foto's en video's uit je bibliotheek.
               </Text>
             </View>
           ) : contribs.length === 0 ? (
@@ -699,10 +701,11 @@ export default function EventDetailScreen() {
                 <Ionicons name="images-outline" color={feed.ink} size={24} />
               </View>
               <Text className="text-ink font-semibold text-base mb-1">
-                Nog geen foto's
+                Nog niets toegevoegd
               </Text>
-              <Text className="text-ink-soft text-sm text-center">
-                Wees de eerste. Tap Camera bovenaan.
+              <Text className="text-ink-soft text-sm text-center leading-5">
+                Wees de eerste. Tap "Voeg toe" bovenaan: maak een foto met de
+                camera, of kies foto's en video's uit je bibliotheek.
               </Text>
             </View>
           ) : (

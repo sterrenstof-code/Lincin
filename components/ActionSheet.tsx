@@ -25,12 +25,19 @@ export function ActionSheet({
   visible,
   onClose,
   title,
+  subtitle,
   actions,
   footer,
 }: {
   visible: boolean;
   onClose: () => void;
   title?: string;
+  /**
+   * Eén zin onder de kop, voor wanneer de regels zelf niet het hele
+   * verhaal vertellen — bijvoorbeeld dat een keuze ook video's aankan.
+   * Staat boven de eerste regel en is geen knop.
+   */
+  subtitle?: string;
   actions: ActionSheetAction[];
   /**
    * Iets dat onder de rij acties staat en het venster níet sluit — een
@@ -42,6 +49,20 @@ export function ActionSheet({
   return (
     <ModalShell visible={visible} onClose={onClose} title={title}>
       <View>
+        {subtitle ? (
+          <View
+            style={{
+              paddingHorizontal: space.lg,
+              paddingBottom: space.lg,
+              borderBottomWidth: FEED_BORDER,
+              borderBottomColor: feed.ink,
+            }}
+          >
+            <Text style={[feedType.body, { fontSize: 14, color: feed.inkDim }]}>
+              {subtitle}
+            </Text>
+          </View>
+        ) : null}
         {actions.map((action, i) => (
           <Pressable
             key={action.label}
