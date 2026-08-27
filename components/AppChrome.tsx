@@ -1151,6 +1151,7 @@ export function PageScroll({
   onAction,
   compact = false,
   underChrome = false,
+  scrollRef,
 }: {
   children: React.ReactNode;
   wide: boolean;
@@ -1158,6 +1159,12 @@ export function PageScroll({
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle: number;
   refreshControl?: React.ComponentProps<typeof ScrollView>["refreshControl"];
+  /**
+   * Toegang tot de scroller zelf, voor een pagina die hem wil aansturen —
+   * bijvoorbeeld een knop die terugspringt naar boven. Optioneel: wie hem
+   * niet meegeeft merkt er niets van.
+   */
+  scrollRef?: React.RefObject<ScrollView | null>;
   announcement?: string | null;
   contentStyle?: ViewStyle;
   /** Zet uit als de inhoud zelf tot de rand moet lopen (volvlak-beeld). */
@@ -1231,6 +1238,7 @@ export function PageScroll({
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollRef}
         onScroll={handleScroll}
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={refreshControl}

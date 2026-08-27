@@ -45,6 +45,8 @@ import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
 import {
+  announce,
+  announceDeep,
   CONTROL_H,
   creamOnDark,
   feed as feedColor,
@@ -278,6 +280,8 @@ export default function FeedScreen() {
   // Kolommen van het chronologische overzicht — zie columnsFor.
   const gridColumns = columnsFor(width);
   const [shareOpen, setShareOpen] = useState(false);
+  /** Voor de "naar boven"-knop; PageScroll geeft zijn scroller hierin door. */
+  const scrollRef = useRef<ScrollView>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
    * De twee leesvoorkeuren:
@@ -420,6 +424,7 @@ export default function FeedScreen() {
       {/* De kop staat buiten deze scroller en is absoluut verankerd —
           zie PageScroll voor waarom stickyHeaderIndices hier niet volstaat. */}
       <PageScroll
+        scrollRef={scrollRef}
         wide={wide}
         progress={chrome.progress}
         onScroll={onFeedScroll}
@@ -742,7 +747,11 @@ export default function FeedScreen() {
           paneel van de zijbalk, en dat paneel scrolt weg. Nu zweeft hij
           los over de pagina — op elk schermformaat, want het argument is
           op een breed scherm niet anders. */}
-      <FloatingShare onPress={() => setShareOpen(true)} lifted={scrolled} />
+      <FloatingShare
+        onPress={() => setShareOpen(true)}
+        onToTop={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+        lifted={scrolled}
+      />
 
       {/**
         * Hetzelfde lijstje als stap één van het deelscherm, want het ís
@@ -880,7 +889,16 @@ const HeroBlock = memo(function HeroBlock({
  * een tikje kleiner, zodat hij minder van de leeslijst afpakt zonder ooit
  * weg te zijn.
  */
-function FloatingShare({ onPress, lifted }: { onPress: () => void; lifted: boolean }) {
+function FloatingShare({
+  onPress,
+  onToTop,
+  lifted,
+}: {
+  onPress: () => void;
+  /** Terug naar boven. Verschijnt pas als er iets is om naar terug te gaan. */
+  onToTop?: () => void;
+  lifted: boolean;
+}) {
   const enter = useRef(new Animated.Value(0)).current;
   const shrink = useRef(new Animated.Value(0)).current;
 
@@ -915,7 +933,38 @@ function FloatingShare({ onPress, lifted }: { onPress: () => void; lifted: boole
         ],
       }}
     >
-      <ShareButton onPress={onPress} />
+      {/**
+        * Naar boven, náást de plus en niet erboven.
+        *
+        * Twee ronde knoppen op elkaar gestapeld leest als één kolom
+        * bedieningsknoppen die met de pagina meegroeit; naast elkaar blijft
+        * het één groep van twee. Hij is kleiner dan de plus, want delen is
+        * de hoofdzaak en terugspringen een hulpje — gelijke maten zouden ze
+        * even belangrijk maken.
+        *
+        * Hij verschijnt pas als je gescrold hebt: een knop die je naar boven
+        * brengt terwijl je al boven bent is een knop die niets doet, en dan
+        * leer je hem negeren.
+        */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+        {lifted && onToTop ? (
+          <Pressable
+            onPress={onToTop}
+            accessibilityLabel="Terug naar boven"
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? announceDeep : announce,
+            })}
+          >
+            <Ionicons name="arrow-up" size={22} color={creamOnDark.DEFAULT} />
+          </Pressable>
+        ) : null}
+        <ShareButton onPress={onPress} />
+      </View>
     </Animated.View>
   );
 }

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pressable, Text, View } from "react-native";
 
 import { useAuth } from "@/lib/auth/provider";
-import { feed, feedType } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType } from "@/lib/design/type";
 import { getPostSignals, togglePostBoost, togglePostFollow } from "@/lib/api/post-signals";
 
 /**
@@ -67,7 +67,22 @@ export function PostSignalBar({
   }
 
   return (
-    <View style={{ flexDirection: "row", gap: 8 }}>
+    /**
+     * Eén kader om beide knoppen, gescheiden door één lijn.
+     *
+     * Ze hadden allebei een eigen rand met acht punten ertussen, en in het
+     * midden zag je dus twee evenwijdige lijnen — een dubbele border die
+     * niets scheidde wat niet al gescheiden was. Dit is hetzelfde patroon
+     * als de knoppenrij op een event: cellen tussen lijnen, geen losse
+     * kaartjes naast elkaar (DESIGN.md §4).
+     */
+    <View
+      style={{
+        flexDirection: "row",
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+      }}
+    >
       <SignalButton
         icon={boosted ? "arrow-up-circle" : "arrow-up-circle-outline"}
         /**
@@ -82,6 +97,7 @@ export function PostSignalBar({
         active={boosted}
         onPress={onBoost}
       />
+      <View style={{ width: FEED_BORDER, backgroundColor: feed.ink }} />
       <SignalButton
         icon={following ? "notifications" : "notifications-outline"}
         label={following ? "Je volgt dit" : "Volgen"}
@@ -112,11 +128,13 @@ function SignalButton({
         alignItems: "center",
         justifyContent: "center",
         gap: 6,
-        paddingVertical: 9,
+        paddingVertical: 11,
         paddingHorizontal: 10,
+        // Geen eigen rand: het kader eromheen doet dat, en de lijn ertussen
+        // ook. `minWidth: 0` zodat een lang label de andere cel niet
+        // wegduwt maar zelf afkapt.
+        minWidth: 0,
         backgroundColor: active ? feed.ink : "transparent",
-        borderWidth: 1,
-        borderColor: feed.ink,
       }}
     >
       <Ionicons name={icon} size={16} color={active ? feed.lav : feed.ink} />

@@ -167,9 +167,16 @@ export function PostReactions({
         {/* Add reaction button */}
         <Pressable
           onPress={() => setPickerOpen((prev) => !prev)}
+          /**
+           * Zachter dan een reactiepil, maar niet zó zacht dat hij kapot
+           * lijkt. Hij stond op `fill` — inkt op zeven procent — en naast
+           * een pil met een volle inktrand las dat als een randje dat
+           * vergeten was in te kleuren. `dim` houdt het onderscheid en
+           * blijft een lijn.
+           */
           style={{
             borderWidth: FEED_BORDER,
-            borderColor: c.fill,
+            borderColor: c.dim,
             backgroundColor: "transparent",
           }}
           className="flex-row items-center gap-1 px-2.5 py-1"
