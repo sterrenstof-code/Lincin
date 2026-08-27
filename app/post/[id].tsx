@@ -655,8 +655,13 @@ export default function PostDetailScreen() {
         post.data?.link_url && require("expo-linking").openURL(post.data.link_url).catch(() => {})
       }
       style={{
+        /**
+         * Alleen een lijn bóven zich. Elke band in deze stapel opent met
+         * een lijn en laat zich sluiten door de lijn van de band eronder —
+         * anders staan er op elke grens twee. Wat hier volgt is de band met
+         * de knoppen, en die tekent zijn eigen bovenlijn.
+         */
         borderTopWidth: FEED_BORDER,
-        borderBottomWidth: FEED_BORDER,
         borderColor: feed.ink,
         backgroundColor: feed.panel,
         paddingHorizontal: 20,
@@ -1108,14 +1113,15 @@ export default function PostDetailScreen() {
               {/* Bij een plaat staat de bron hier, want links is de foto.
                   Bij een artikel staat hij links, bij het stuk zelf. */}
               {hasPlate ? linkBlock : null}
-              <View
-                style={{
-                  gap: space.sm,
-                  paddingVertical: space.lg,
-                  borderTopWidth: FEED_BORDER,
-                  borderTopColor: feed.ink,
-                }}
-              >
+              {/*
+                  Wat er met deze vondst gedaan is, als één band van cellen
+                  tussen lijnen. De lijn hierboven is van dit blok; de rij
+                  knoppen tekent alleen de lijn onder zich, en de lijn onder
+                  de pillen is de lijn waar "REACTIES" mee begint. Zo staat
+                  er overal één lijn — eerder had de knoppenrij een eigen
+                  kader binnen dit blok, en dan zag je er twee.
+              */}
+              <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
                 <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
                 {/* Pillen en gezichten op één regel: het is één ding —
                     wat er met deze vondst gedaan is. */}
@@ -1125,6 +1131,7 @@ export default function PostDetailScreen() {
                     flexWrap: "wrap",
                     alignItems: "center",
                     gap: space.sm,
+                    paddingVertical: space.md,
                   }}
                 >
                   <PostReactions postId={String(id)} tone="feed" padded={false} />
@@ -1212,7 +1219,15 @@ export default function PostDetailScreen() {
             )
           )}
 
-          <View style={{ marginTop: space.lg, gap: space.sm }}>
+          {/* Dezelfde band als op een breed scherm: cellen tussen lijnen,
+              met één lijn erboven en de lijn van "REACTIES" eronder. */}
+          <View
+            style={{
+              marginTop: space.lg,
+              borderTopWidth: FEED_BORDER,
+              borderTopColor: feed.ink,
+            }}
+          >
             <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
             <View
               style={{
@@ -1220,6 +1235,7 @@ export default function PostDetailScreen() {
                 flexWrap: "wrap",
                 alignItems: "center",
                 gap: space.sm,
+                paddingVertical: space.md,
               }}
             >
               <PostReactions postId={String(id)} tone="feed" padded={false} />

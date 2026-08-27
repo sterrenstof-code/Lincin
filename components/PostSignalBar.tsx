@@ -68,19 +68,23 @@ export function PostSignalBar({
 
   return (
     /**
-     * Eén kader om beide knoppen, gescheiden door één lijn.
+     * Twee cellen tussen lijnen — géén kader eromheen.
      *
-     * Ze hadden allebei een eigen rand met acht punten ertussen, en in het
-     * midden zag je dus twee evenwijdige lijnen — een dubbele border die
-     * niets scheidde wat niet al gescheiden was. Dit is hetzelfde patroon
-     * als de knoppenrij op een event: cellen tussen lijnen, geen losse
-     * kaartjes naast elkaar (DESIGN.md §4).
+     * Ze hadden eerst allebei een eigen rand met acht punten ertussen, en
+     * in het midden zag je dus twee evenwijdige lijnen. Dat werd één kader
+     * om beide, en toen stond het kader zelf weer dubbel: de rij hangt
+     * onder een lijn (de kop erboven sluit ermee af) en boven de lijn van
+     * de reacties, dus je zag drie lijnen waar er één hoorde te staan.
+     *
+     * Nu tekent deze rij alleen de lijn ónder zich — de scheiding met de
+     * reactiepillen. De lijn erbóven komt van het blok waar hij in staat.
+     * Cellen tussen lijnen, geen kaartje op een pagina (DESIGN.md §4).
      */
     <View
       style={{
         flexDirection: "row",
-        borderWidth: FEED_BORDER,
-        borderColor: feed.ink,
+        borderBottomWidth: FEED_BORDER,
+        borderBottomColor: feed.ink,
       }}
     >
       <SignalButton
@@ -130,9 +134,9 @@ function SignalButton({
         gap: 6,
         paddingVertical: 11,
         paddingHorizontal: 10,
-        // Geen eigen rand: het kader eromheen doet dat, en de lijn ertussen
-        // ook. `minWidth: 0` zodat een lang label de andere cel niet
-        // wegduwt maar zelf afkapt.
+        // Geen eigen rand: de lijnen boven, onder en ertussen doen dat werk.
+        // `minWidth: 0` zodat een lang label de andere cel niet wegduwt
+        // maar zelf afkapt.
         minWidth: 0,
         backgroundColor: active ? feed.ink : "transparent",
       }}
