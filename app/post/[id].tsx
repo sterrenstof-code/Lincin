@@ -1118,12 +1118,32 @@ export default function PostDetailScreen() {
               <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
             </View>
           ) : (
-            // De plaat loopt tot de rand: precies de marge van de pagina
-            // terug, zodat hij op de kop erboven uitlijnt.
-            <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
-              {heroBlock(false)}
-              {linkBlock}
-            </View>
+            /**
+              * Een plaat als er beeld is, anders het stuk zelf.
+              *
+              * Hier stond alleen `heroBlock`. Bij een notitie — een vondst
+              * die per definitie geen foto heeft — betekende dat een leeg
+              * vlak van een halve schermhoogte en daaronder meteen de
+              * knoppen: de tekst kwam op een telefoon nergens in beeld.
+              *
+              * De brede tak kreeg die tekst wél, want daar is hij bij het
+              * splitsen van de kolommen ingehangen. Deze tak is toen
+              * overgeslagen, en dat viel niet op omdat een vondst mét foto
+              * er hetzelfde uitziet als eerst.
+              */
+            hasPlate ? (
+              // De plaat loopt tot de rand: precies de marge van de pagina
+              // terug, zodat hij op de kop erboven uitlijnt.
+              <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
+                {heroBlock(false)}
+                {linkBlock}
+              </View>
+            ) : (
+              <View>
+                {articleBlock}
+                {linkBlock}
+              </View>
+            )
           )}
 
           <View style={{ marginTop: space.lg, gap: space.sm }}>

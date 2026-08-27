@@ -9,6 +9,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
@@ -829,7 +830,20 @@ const HeroBlock = memo(function HeroBlock({
               * marge en één tussenruimte; de reactieregel eronder heeft zijn
               * eigen lijn en hoort daar los van.
               */}
-            <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                gap: 10,
+                // Een lichte grens boven dit blok. Zonder hem raakten de
+                // duwteller en de emoji's de tekst van de vondst zelf, en las
+                // het als een staartje van het bericht in plaats van als wat
+                // ánderen ermee deden. Haarlijn en geen volle lijn: het is
+                // een scheiding binnen één kaart, niet tussen twee kaarten.
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: rule.soft,
+              }}
+            >
               <BoostCount count={post.boost_count} />
               <PostReactions postId={post.id} tone="feed" />
             </View>

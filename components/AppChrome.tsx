@@ -373,6 +373,105 @@ export function AnnouncementBar({
 // De compacte balk
 // ---------------------------------------------------------------
 
+
+/**
+ * De rij tabbladen — één component voor allebei de standen van de kop.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT ER ÉÉN IS
+ * ---------------------------------------------------------------
+ * Het waren er twee: `CompactBar` had een rij met een icoon-terugval voor
+ * smalle schermen, `FullHeader` had een eigen rij die altijd tekst toonde.
+ * Op een telefoon perste die tweede vijf labels in zo'n 380 punten — vijftig
+ * per tabblad — en de woorden stonden tegen hun scheidingslijnen.
+ *
+ * Het venijnige eraan: drie keer achter elkaar is de compacte balk verbeterd
+ * terwijl de klacht over de andere ging. Twee rijen die hetzelfde moeten
+ * zeggen lopen uiteen, en dan repareer je de verkeerde.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM HIJ ZICHZELF MEET
+ * ---------------------------------------------------------------
+ * Niet het venster: de kop staat in een kolom die op 1250 wordt afgekapt en
+ * heeft marges, dus bij een venster van 1600 is de rij 1218 breed. Een
+ * drempel op de venstermaat beslist op een getal dat de rij nooit krijgt, en
+ * schuift stilletjes mee met elke wijziging aan de bladspiegel.
+ *
+ * Zolang de meting nog niet binnen is: iconen. Die passen altijd, dus het
+ * ergste geval is één frame met iconen — nooit tekst die buiten de rij valt.
+ */
+function TabStrip({ tone }: { tone: "dark" | "paper" }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const badges = useTabBadges();
+  const [stripWidth, setStripWidth] = useState(0);
+  const iconOnly = stripWidth === 0 || stripWidth < LABELS_NEED_WIDTH;
+
+  const onDark = tone === "dark";
+  const idle = onDark ? "rgba(250,248,245,0.78)" : feed.ink;
+  const onActive = onDark ? feed.ink : feed.lav;
+  const activeBg = onDark ? "#FAF8F5" : feed.ink;
+
+  return (
+    <View
+      style={{ flex: 1, flexDirection: "row" }}
+      onLayout={(e) => setStripWidth(e.nativeEvent.layout.width)}
+    >
+      {TABS.map((tab, i) => {
+        const active = pathname === tab.href;
+        const badge = badges[tab.href] ?? 0;
+        return (
+          <Pressable
+            key={tab.href}
+            onPress={() => {
+              if (!active) router.push(tab.href);
+            }}
+            accessibilityLabel={tab.label}
+            style={{
+              // Altijd de breedte delen. Zonder dit sizen de cellen naar hun
+              // inhoud en duwen ze elkaar buiten de rij zodra één woord
+              // langer is dan verwacht.
+              flex: 1,
+              minWidth: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: onDark ? 0 : 12,
+              paddingHorizontal: iconOnly ? 0 : 8,
+              backgroundColor: active ? activeBg : "transparent",
+              ...(onDark
+                ? null
+                : {
+                    borderRightWidth: FEED_BORDER,
+                    borderRightColor: i < TABS.length - 1 ? feed.ink : "transparent",
+                  }),
+            }}
+          >
+            {iconOnly ? (
+              <View>
+                <Ionicons name={tab.icon} size={19} color={active ? onActive : idle} />
+                <TabBadge count={badge} floating />
+              </View>
+            ) : (
+              <View style={{ flexDirection: "row", alignItems: "center", minWidth: 0 }}>
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 12, color: active ? onActive : idle, flexShrink: 1 },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+                <TabBadge count={badge} />
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 /**
  * Alles in één zwarte balk: klein LINCIN links, de paginanavigatie erín,
  * rechts de primaire actie.
@@ -392,8 +491,6 @@ function CompactBar({
   actionLabel?: string;
   onAction?: () => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
 
   /**
    * De balk meet zichzelf, niet het venster.
@@ -411,7 +508,6 @@ function CompactBar({
    */
   const [barWidth, setBarWidth] = useState(0);
   const iconOnly = barWidth === 0 || barWidth < LABELS_NEED_WIDTH;
-  const badges = useTabBadges();
 
   return (
     <View
@@ -467,63 +563,7 @@ function CompactBar({
           </Text>
         </Pressable>
       ) : (
-        <View style={{ flex: 1, flexDirection: "row" }}>
-          {TABS.map((tab) => {
-            const active = pathname === tab.href;
-            const badge = badges[tab.href] ?? 0;
-            return (
-              <Pressable
-                key={tab.href}
-                onPress={() => {
-                  if (!active) router.push(tab.href);
-                }}
-                style={{
-                  justifyContent: "center",
-                  alignItems: "center",
-                  // Op een telefoon deelt de rij de breedte; met vaste
-                  // padding viel het laatste tabblad buiten de balk.
-                  // Ook mét label deelt de rij de breedte. Zonder dit sizen
-                  // de cellen naar hun inhoud en duwen ze elkaar buiten de
-                  // balk zodra één woord langer is dan verwacht.
-                  flex: 1,
-                  minWidth: 0,
-                  paddingHorizontal: iconOnly ? 0 : 10,
-                  // De actieve pagina keert om binnen de zwarte balk.
-                  backgroundColor: active ? "#FAF8F5" : "transparent",
-                }}
-              >
-                {iconOnly ? (
-                  <View>
-                    <Ionicons
-                      name={tab.icon}
-                      size={19}
-                      color={active ? feed.ink : "rgba(250,248,245,0.78)"}
-                    />
-                    <TabBadge count={badge} floating />
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: "row", alignItems: "center", minWidth: 0 }}>
-                    <Text
-                      style={[
-                        feedType.label,
-                        {
-                          fontSize: 12,
-                          color: active ? feed.ink : "rgba(250,248,245,0.78)",
-                          flexShrink: 1,
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {tab.label}
-                    </Text>
-                    <TabBadge count={badge} />
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-
-        </View>
+        <TabStrip tone="dark" />
       )}
 
       {actionLabel && onAction ? (
@@ -727,9 +767,6 @@ function FullHeader({
   actionLabel?: string;
   onAction?: () => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const badges = useTabBadges();
 
   return (
     <View>
@@ -740,35 +777,7 @@ function FullHeader({
             kostte veertig pixels van een kop die toch al aan de hoge kant
             was. */}
         <View style={{ flexDirection: "row" }}>
-          {TABS.map((tab, i) => {
-            const active = pathname === tab.href;
-            const badge = badges[tab.href] ?? 0;
-            return (
-              <Pressable
-                key={tab.href}
-                onPress={() => {
-                  if (!active) router.push(tab.href);
-                }}
-                style={{
-                  flex: 1,
-                  backgroundColor: active ? feed.ink : "transparent",
-                  borderRightWidth: FEED_BORDER,
-                  borderRightColor: i < TABS.length - 1 ? feed.ink : "transparent",
-                }}
-                className="py-3 px-2 items-center"
-              >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text
-                    style={[feedType.label, { fontSize: 12, color: active ? feed.lav : feed.ink }]}
-                    numberOfLines={1}
-                  >
-                    {tab.label}
-                  </Text>
-                  <TabBadge count={badge} />
-                </View>
-              </Pressable>
-            );
-          })}
+          <TabStrip tone="paper" />
           {actionLabel && onAction ? (
             <>
               <Cut tone="paper" />
