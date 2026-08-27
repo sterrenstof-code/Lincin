@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -264,10 +265,22 @@ export function CommentsSection({
                 maxLength={500}
                 returnKeyType="send"
                 onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
-                className="px-3 py-2 text-sm"
+                className="px-1 py-2 text-sm"
                 style={[
-                  { backgroundColor: c.fill, color: c.text },
-                  Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                  {
+                    color: c.text,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: c.rule,
+                  },
+                  /**
+                   * `outlineWidth: 0` alleen was niet genoeg: Chrome tekent
+                   * zijn eigen ring via `:focus-visible`, en die stond als
+                   * felblauw kader om het veld — het luidste ding in een
+                   * gedeelte dat verder uit haarlijnen bestaat.
+                   */
+                  Platform.OS === "web"
+                    ? ({ outlineWidth: 0, outlineStyle: "none" } as any)
+                    : {},
                 ]}
               />
             </View>
@@ -316,7 +329,16 @@ function CommentRow({
         avatarUrl={comment.author?.avatar_url ?? null}
         size="xs"
       />
-      <View style={{ backgroundColor: palette.fill }} className="flex-1 px-3 py-2">
+      {/* Een kantlijn in plaats van een vlak — DESIGN.md §4: een kaart heeft
+          geen vulling, de opbouw draagt hem. Vier grijze blokjes onder elkaar
+          lazen als losse kaartjes op de pagina in plaats van als één gesprek. */}
+      <View
+        style={{
+          borderLeftWidth: StyleSheet.hairlineWidth,
+          borderLeftColor: palette.rule,
+        }}
+        className="flex-1 pl-3 py-1"
+      >
         <View className="flex-row items-center justify-between mb-0.5">
           <Text style={{ fontSize: 12, fontWeight: "600", color: palette.text }}>
             {name}

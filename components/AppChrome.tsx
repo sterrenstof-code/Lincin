@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useIsFocused } from "@react-navigation/native";
 import { usePathname, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -133,17 +131,16 @@ const TABS = [
  * ruimte zat voor de woorden, en woorden lezen beter dan iconen.
  */
 /**
- * Waaronder de tabbladen hun label inruilen voor een icoon.
+ * Vanaf welke *balkbreedte* de tabbladen hun woord mogen dragen.
  *
- * Stond op 560, en dat is precies de breedte waarop het nét past: vijf
- * labels met hun padding vragen 375 punten, het merk plus de twee cellen
- * rechts 153, en de marges 32 — samen 560. Nul speling. Vanaf 561 werd het
- * dus getoond mét tekst die tegen de scheidingslijnen aan stond.
- *
- * Een omslagpunt hoort niet op het minimum te liggen maar op de eerste
- * breedte waar het er ook goed uitziet. Vandaar honderd punten lucht.
+ * Opgebouwd en niet geraden: vijf labels vragen bij elkaar zo'n 330 punten
+ * inclusief hun padding, en het merk, de plus en de avatar samen 153. Dat is
+ * 483 om te passen. De drempel ligt honderd hoger, want een omslagpunt hoort
+ * niet op het minimum te liggen maar op de eerste breedte waar het er ook
+ * goed uitziet — op precies passend staan de woorden tegen hun
+ * scheidingslijnen, en dat was de klacht.
  */
-const ICON_ONLY_MAX_WIDTH = 660;
+const LABELS_NEED_WIDTH = 540;
 
 // ---------------------------------------------------------------
 // Tellers per tabblad
@@ -397,14 +394,28 @@ function CompactBar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { width } = useWindowDimensions();
-  const iconOnly = width < ICON_ONLY_MAX_WIDTH;
-  /** Smal scherm én een terugweg: dan wint de terugweg van het merk. */
-  const compactDetail = iconOnly && !!onBack;
+
+  /**
+   * De balk meet zichzelf, niet het venster.
+   *
+   * Hier stond `useWindowDimensions()`, en dat is een ander getal dan wat er
+   * te verdelen valt: de balk staat in een kolom die op 1250 afgekapt wordt
+   * en heeft marges. Bij een venster van 1600 punten is de balk 1218 breed —
+   * bijna 400 punten verschil. De drempel besliste dus op een maat die de
+   * balk nooit krijgt, en elke verandering aan de bladspiegel verschoof hem
+   * stilletjes mee.
+   *
+   * `onLayout` geeft de werkelijke breedte. Tot de eerste meting binnen is
+   * tonen we iconen: die passen altijd, dus een verkeerde eerste render is
+   * hoogstens een frame met iconen — nooit tekst die buiten de balk valt.
+   */
+  const [barWidth, setBarWidth] = useState(0);
+  const iconOnly = barWidth === 0 || barWidth < LABELS_NEED_WIDTH;
   const badges = useTabBadges();
 
   return (
     <View
+      onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
       style={{
         height: BAR_H,
         flexDirection: "row",
@@ -416,41 +427,17 @@ function CompactBar({
       }}
     >
       {/**
-        * Het merk als teken, niet als woord.
+        * Geen merkcel meer.
         *
-        * Hier stond "LINCIN" uitgeschreven, en dat kostte zo'n 88 punten in
-        * een balk die op een telefoon 328 punten breed is. Met vijf
-        * tabbladen, de plus en de avatar ernaast bleef er 27 punten per
-        * tabblad over — te weinig voor een icoon met een badge ernaast, dus
-        * ging de badge eroverheen.
+        * Het teken linksboven ging naar de feed, en het eerste tabblad ook.
+        * Twee cellen naast elkaar die hetzelfde doen is geen keuze maar een
+        * aarzeling — je kijkt welke van de twee je moet hebben en er is geen
+        * antwoord. De tabbladen zijn de navigatie; het merk had daar niets
+        * toe te voegen behalve een cel in een balk die het krap had.
         *
-        * Het woordmerk staat bovendien al groot in het zwarte blok bovenaan
-        * de feed. Twee keer hetzelfde woord op één pagina is één keer te
-        * veel; het teken alleen is genoeg om te weten waar je bent.
+        * Waar het merk wél hoort staat het al: groot, in het zwarte blok
+        * bovenaan de feed.
         */}
-      {/* Op een smalle detailpagina wijkt ook het teken: daar hoort de
-          terugweg linksboven te staan, waar elke andere app hem ook zet. */}
-      {compactDetail ? null : (
-        <>
-          <Pressable
-            onPress={() => router.push("/feed")}
-            accessibilityLabel="Naar de feed"
-            style={{
-              justifyContent: "center",
-              paddingHorizontal: iconOnly ? 12 : 16,
-            }}
-          >
-            <Image
-              source={require("../assets/images/logo-master.png")}
-              style={{ width: 24, height: 24 }}
-              contentFit="contain"
-              transition={0}
-            />
-          </Pressable>
-
-          <View style={{ width: FEED_BORDER, backgroundColor: "rgba(250,248,245,0.25)" }} />
-        </>
-      )}
 
       {/* Op een detailpagina vervangt de terug-knop de navigatie. */}
       {onBack ? (
