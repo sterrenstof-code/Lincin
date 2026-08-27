@@ -27,7 +27,9 @@ import {
   feedType,
   flame,
   flameDeep,
+  gutter,
   ROW_H,
+  sheetWidth,
   space,
 } from "@/lib/design/type";
 
@@ -90,17 +92,39 @@ export function ChatWorkspace({
   if (!showRail) return <>{children}</>;
 
   return (
-    <View style={{ flex: 1, flexDirection: "row" }}>
-      <ChatRail activeChatId={chatId} myUserId={myUserId} />
+    /**
+     * Dezelfde bladspiegel als de kopbalk erboven.
+     *
+     * De drie kolommen liepen van vensterrand tot vensterrand terwijl de
+     * balk erboven op de bladbreedte staat: de gesprekkenlijst begon dus
+     * links náást de kop en de optiekolom stak er rechts onderuit. DESIGN.md
+     * §4b zegt het met zoveel woorden — kop én inhoud lezen dezelfde
+     * `gutter()`, want anders begint de pagina naast zijn eigen kop.
+     *
+     * `true` en geen prop: deze kolommen bestaan alleen boven 900px, en
+     * daarboven is `wide` per definitie waar (het breekpunt ligt op 800).
+     */
+    <View style={{ flex: 1, paddingHorizontal: gutter(true) }}>
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          width: "100%",
+          maxWidth: sheetWidth(true),
+          alignSelf: "center",
+        }}
+      >
+        <ChatRail activeChatId={chatId} myUserId={myUserId} />
 
-      {/* De gespreksinhoud. `minWidth: 0` is nodig omdat een flex-kind
-          anders niet kleiner wordt dan zijn inhoud en de kolommen ernaast
-          wegduwt. */}
-      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
+        {/* De gespreksinhoud. `minWidth: 0` is nodig omdat een flex-kind
+            anders niet kleiner wordt dan zijn inhoud en de kolommen ernaast
+            wegduwt. */}
+        <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
 
-      {showOptions ? (
-        <ChatOptionsRail chatId={chatId} myUserId={myUserId} media={media} />
-      ) : null}
+        {showOptions ? (
+          <ChatOptionsRail chatId={chatId} myUserId={myUserId} media={media} />
+        ) : null}
+      </View>
     </View>
   );
 }
