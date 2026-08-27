@@ -339,8 +339,8 @@ export default function PostDetailScreen() {
   async function onDeletePost() {
     if (!post.data) return;
     const confirmed = await confirm(
-      "Foto verwijderen",
-      "Deze foto wordt definitief verwijderd, samen met alle reacties.",
+      `${kindLabel} verwijderen`,
+      `Deze ${kindLabel.toLowerCase()} wordt definitief verwijderd, samen met alle reacties.`,
       { affirmativeLabel: "Verwijder", destructive: true }
     );
     if (!confirmed) return;
@@ -358,9 +358,20 @@ export default function PostDetailScreen() {
       await qc.invalidateQueries({ queryKey: ["posts-by-user"] });
       safeBack(router, "/(app)/feed");
     } catch (e: any) {
-      setDeleteError(e?.message ?? "Kon foto niet verwijderen.");
+      setDeleteError(e?.message ?? `Kon ${kindLabel.toLowerCase()} niet verwijderen.`);
     }
   }
+
+  /**
+   * Hoe deze vondst heet, in het menu en in de bevestiging.
+   *
+   * Er stond overal "foto": "Foto opties", "Foto verwijderen", "Deze foto
+   * wordt definitief verwijderd". Dat klopte toen de feed een fotostroom was
+   * (0042 maakte er vondsten van), maar bij een notitie of een fragment
+   * vraagt de app nu of je een foto wilt weggooien die er niet is — en dan
+   * aarzel je terecht voor je op verwijderen tikt.
+   */
+  const kindLabel = KIND_LABELS[post.data?.kind ?? "note"] ?? "Vondst";
 
   /** Naam, avatar en doorklik naar het profiel — op de foto of ernaast. */
   const authorRow = (onPaper: boolean) => (
@@ -920,9 +931,14 @@ export default function PostDetailScreen() {
       <ActionSheet
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        title="Foto opties"
+        title={`${kindLabel} · opties`}
         actions={[
-          { label: "Foto verwijderen", icon: "trash-outline", destructive: true, onPress: onDeletePost },
+          {
+            label: `${kindLabel} verwijderen`,
+            icon: "trash-outline",
+            destructive: true,
+            onPress: onDeletePost,
+          },
         ]}
       />
 
