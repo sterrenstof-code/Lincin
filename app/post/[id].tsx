@@ -30,8 +30,8 @@ import {
 } from "@/components/AppChrome";
 import { InteractionPeople } from "@/components/InteractionPeople";
 import { PostCarousel } from "@/components/PostCarousel";
+import { formatFeedTime } from "@/components/FindBody";
 import { SafeImage } from "@/components/SafeImage";
-import { Scrim } from "@/components/Scrim";
 import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
 import { Skeleton } from "@/components/Skeleton";
@@ -373,41 +373,6 @@ export default function PostDetailScreen() {
    */
   const kindLabel = KIND_LABELS[post.data?.kind ?? "note"] ?? "Vondst";
 
-  /** Naam, avatar en doorklik naar het profiel — op de foto of ernaast. */
-  const authorRow = (onPaper: boolean) => (
-    <Pressable
-      onPress={() => post.data?.author?.username && router.push(`/user/${post.data.author.username}`)}
-      className="flex-row items-center"
-    >
-      <Avatar
-        name={post.data?.author?.display_name ?? post.data?.author?.username}
-        avatarUrl={post.data?.author?.avatar_url}
-        size="md"
-        tint="warm"
-      />
-      <View className="flex-1 ml-3">
-        <Text
-          style={[
-            feedType.label,
-            { fontSize: 15, fontWeight: "700", color: onPaper ? feed.ink : "#FFFFFF" },
-          ]}
-        >
-          {post.data?.author?.display_name ?? post.data?.author?.username ?? "Onbekend"}
-        </Text>
-        <Text
-          style={[feedType.label, { color: onPaper ? feed.inkDim : "rgba(255,255,255,0.7)" }]}
-        >
-          @{post.data?.author?.username ?? "?"}
-        </Text>
-      </View>
-      <Ionicons
-        name="chevron-forward"
-        color={onPaper ? feed.inkDim : "rgba(255,255,255,0.7)"}
-        size={18}
-      />
-    </Pressable>
-  );
-
   // ---------------------------------------------------------------
   // De stukken van deze pagina
   // ---------------------------------------------------------------
@@ -430,6 +395,124 @@ export default function PostDetailScreen() {
   const hasPlate =
     !!post.data?.image_url || (post.data?.album_urls?.length ?? 0) > 0 || loading;
 
+  /**
+   * De kop van de vondst: rubriek, waar het over gaat, en van wie.
+   *
+   * Dit lag eerder als een sluier óver de foto — avatar, naam, @naam, een
+   * chevron en het onderschrift in wit op een verloop. Twee dingen klopten
+   * daar niet aan. Een overlay dekt altijd net het stuk beeld af waar het
+   * om begonnen was, en het is de enige plek waar de hiërarchie uit een
+   * verloop komt in plaats van uit een lijn — precies wat DESIGN.md §4
+   * niet wil.
+   *
+   * Nu staat hij eronder, als de banden van §4: rubriek met de zware lijn,
+   * daaronder de kop op de kolomrand, en de herkomst ónder die kop én een
+   * stap naar binnen. Zo zie je aan de vorm al dat wie het deelde bij de
+   * kop hoort in plaats van ernaast te staan.
+   *
+   * `withKicker` staat uit waar `articleBlock` de rubriek al zet; anders
+   * staat dezelfde rubriek twee keer op de pagina.
+   */
+  const masthead = (withKicker: boolean) => {
+    if (!post.data) return null;
+
+    const author = post.data.author;
+    const name = author?.display_name ?? author?.username ?? "Onbekend";
+    const caption = post.data.caption?.trim();
+
+    /**
+     * Bij een foto ís het onderschrift de titel — "Zweden '26" — en dan
+     * mag het de kop van de pagina zijn. Bij een notitie is het wat de
+     * deler erbíj zei, en dat hoort onder zijn naam op leesmaat. De lengte
+     * is de scheiding: wat niet in twee regels past, is geen kop.
+     */
+    const asTitle = !!caption && hasPlate && caption.length <= 64 && !caption.includes("\n");
+
+    /** Eén stap naar binnen. Breder scherm, grotere stap. */
+    const indent = wide ? space.xxl : space.lg;
+
+    return (
+      <View style={{ paddingTop: space.lg }}>
+        {withKicker ? (
+          <>
+            <Text
+              style={[
+                feedType.kicker,
+                { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
+              ]}
+            >
+              {`VONDST · ${kindLabel.toUpperCase()}`}
+            </Text>
+            <View style={{ height: FEED_BORDER * 2, backgroundColor: feed.ink }} />
+          </>
+        ) : null}
+
+        {asTitle ? (
+          <MentionsText
+            text={caption!}
+            style={[
+              wide ? feedType.heroSmall : feedType.tagline,
+              { color: feed.ink, marginTop: withKicker ? space.md : 0 },
+            ]}
+          />
+        ) : null}
+
+        {/*
+            De herkomst. Een stap naar binnen, met de dunste lijn erboven —
+            dit is een band bínnen de kop, geen nieuw blok, en dan hoort de
+            lijn het zwakste gewicht van §4 te hebben.
+        */}
+        <Pressable
+          onPress={() => author?.username && router.push(`/user/${author.username}`)}
+          style={{
+            marginLeft: indent,
+            marginTop: asTitle || withKicker ? space.lg : 0,
+            paddingTop: space.md,
+            borderTopWidth: FEED_BORDER,
+            borderTopColor: rule.soft,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <Avatar name={name} avatarUrl={author?.avatar_url} size="sm" tint="warm" />
+          <View style={{ flex: 1, marginLeft: space.md, minWidth: 0 }}>
+            <Text
+              style={[feedType.label, { fontSize: 14, fontWeight: "700", color: feed.ink }]}
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
+            <Text
+              style={[feedType.label, { color: feed.inkDim, marginTop: 1 }]}
+              numberOfLines={1}
+            >
+              {[
+                author?.username ? `@${author.username}` : null,
+                post.data.created_at ? formatFeedTime(post.data.created_at) : null,
+              ]
+                .filter(Boolean)
+                .join("   ·   ")}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" color={feed.inkDim} size={16} />
+        </Pressable>
+
+        {/* Wat de deler erbij zei, als het niet de kop is: onder zijn naam
+            en op dezelfde inspringing, want het is van hem en niet van de
+            vondst. */}
+        {caption && !asTitle ? (
+          <MentionsText
+            text={caption}
+            style={[
+              feedType.pullSmall,
+              { color: feed.ink, marginLeft: indent, marginTop: space.md },
+            ]}
+          />
+        ) : null}
+      </View>
+    );
+  };
+
   /** De plaat zelf. Op breed vult hij de kolom, op smal de bladbreedte. */
   const heroBlock = (fill: boolean) => (
     <View
@@ -451,7 +534,6 @@ export default function PostDetailScreen() {
         // kader dat niemand gevraagd had. Onder een gesprek (smal) vult de
         // foto zijn vlak wél, en dan is het vlak zijn achtergrond.
         backgroundColor: fill ? "transparent" : feed.post,
-        justifyContent: "flex-end",
         // Zelfde naam als de tegel in de feed: de browser morpht het ene
         // vlak naar het andere.
         ...heroStyle,
@@ -482,25 +564,6 @@ export default function PostDetailScreen() {
         />
       ) : null}
 
-      {/* Op smal ligt de naam op de foto; op breed staat hij rechts. */}
-      {!fill && post.data ? (
-        <>
-          {post.data.image_url ? <Scrim height={260} /> : null}
-          <View style={{ padding: space.xl }}>
-            {authorRow(false)}
-            {post.data.caption ? (
-              <Text
-                style={[
-                  post.data.image_path ? feedType.pullSmall : feedType.pull,
-                  { color: "#FFFFFF", marginTop: 16 },
-                ]}
-              >
-                {post.data.caption}
-              </Text>
-            ) : null}
-          </View>
-        </>
-      ) : null}
     </View>
   );
 
@@ -1036,34 +1099,12 @@ export default function PostDetailScreen() {
               showsVerticalScrollIndicator={false}
             >
               {/*
-                  Geen paneel om de kop van het gesprek.
-
-                  Wat het vlak deed, doet de opbouw nu zelf: de naam
-                  bovenaan, het onderschrift eronder ingesprongen tot naast
-                  de avatar — dezelfde inspringing als een reactie verderop,
-                  zodat de kolom één maatlijn heeft — en een lijn onder elk
-                  deel in plaats van een kleur eromheen.
+                  De kop van het gesprek: dezelfde banden als op een
+                  telefoon, alleen staat de plaat hier links in plaats van
+                  erboven. De rubriek komt mee zolang de plaat links staat;
+                  bij een artikel zet `articleBlock` hem daar al.
               */}
-              {post.data ? (
-                <View style={{ paddingVertical: space.lg }}>
-                  {authorRow(true)}
-                  {post.data.caption ? (
-                    <MentionsText
-                      text={post.data.caption}
-                      style={[
-                        feedType.pullSmall,
-                        {
-                          color: feed.ink,
-                          marginTop: space.md,
-                          // Tot naast de avatar: 36 breed plus de marge
-                          // ernaast, gelijk aan een reactie.
-                          marginLeft: 36 + space.md,
-                        },
-                      ]}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
+              <View style={{ paddingBottom: space.lg }}>{masthead(hasPlate)}</View>
               {/* Bij een plaat staat de bron hier, want links is de foto.
                   Bij een artikel staat hij links, bij het stuk zelf. */}
               {hasPlate ? linkBlock : null}
@@ -1148,15 +1189,24 @@ export default function PostDetailScreen() {
               * er hetzelfde uitziet als eerst.
               */
             hasPlate ? (
-              // De plaat loopt tot de rand: precies de marge van de pagina
-              // terug, zodat hij op de kop erboven uitlijnt.
-              <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
-                {heroBlock(false)}
-                {linkBlock}
+              <View>
+                {/* De plaat loopt tot de rand: precies de marge van de
+                    pagina terug, zodat hij op de kop erboven uitlijnt. Er
+                    ligt niets meer overheen — de kop staat eronder. */}
+                <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
+                  {heroBlock(false)}
+                </View>
+                {masthead(true)}
+                {linkBlock ? (
+                  <View style={{ marginHorizontal: -gutter(wide), marginTop: space.lg }}>
+                    {linkBlock}
+                  </View>
+                ) : null}
               </View>
             ) : (
               <View>
                 {articleBlock}
+                {masthead(false)}
                 {linkBlock}
               </View>
             )
