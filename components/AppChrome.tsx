@@ -1285,31 +1285,50 @@ export function PageScroll({
           </Animated.View>
         ) : null}
 
+        {/**
+          * De marge staat búiten de bladspiegel, niet erin.
+          *
+          * Dit was één vak: `maxWidth: sheetWidth` mét `paddingHorizontal`
+          * erin. De kop doet het andersom — marge buiten, kolom van 1250
+          * daarbinnen (zie CHROME_COLUMN hierboven) — en op een breed scherm
+          * scheelde dat precies één gutter: de kop begon 24 punten links van
+          * zijn eigen pagina. Dat is de val die DESIGN.md §4b beschrijft, en
+          * hij zat in de scroller zelf, dus op élke pagina die hem gebruikt.
+          *
+          * Nu is de opbouw op beide plekken dezelfde: `gutter()` is de
+          * afstand tot de vensterrand, `sheetWidth()` is het blad daarbinnen.
+          */}
         <View
           style={{
             width: "100%",
-            /**
-             * Dezelfde bladspiegel als de kopbalk erboven.
-             *
-             * Stond op `alignSelf: "stretch"` zonder maximum: de kop hield
-             * zich netjes aan 1250, de inhoud eronder liep door tot de
-             * vensterrand. Twee maten op één pagina, en dan zweeft die kop
-             * er alleen maar boven in plaats van erbij te horen.
-             *
-             * Het hoort hier en niet in elk scherm apart — negen pagina's
-             * gebruiken deze scroller, en negen keer hetzelfde getal
-             * overtypen is negen kansen om er één te vergeten.
-             */
-            maxWidth: sheetWidth(wide),
-            alignSelf: "center",
-            // Onder de kop door: precies zijn hoogte terug, zodat de plaat
-            // aan de bovenrand van het venster begint.
-            ...(underChrome && sticky ? { marginTop: -webHeaderHeight } : null),
             ...(gutter ? { paddingHorizontal: gutterFor(wide) } : null),
-            ...contentStyle,
           }}
         >
-          {children}
+          <View
+            style={{
+              width: "100%",
+              /**
+               * Dezelfde bladspiegel als de kopbalk erboven.
+               *
+               * Stond op `alignSelf: "stretch"` zonder maximum: de kop hield
+               * zich netjes aan 1250, de inhoud eronder liep door tot de
+               * vensterrand. Twee maten op één pagina, en dan zweeft die kop
+               * er alleen maar boven in plaats van erbij te horen.
+               *
+               * Het hoort hier en niet in elk scherm apart — negen pagina's
+               * gebruiken deze scroller, en negen keer hetzelfde getal
+               * overtypen is negen kansen om er één te vergeten.
+               */
+              maxWidth: sheetWidth(wide),
+              alignSelf: "center",
+              // Onder de kop door: precies zijn hoogte terug, zodat de plaat
+              // aan de bovenrand van het venster begint.
+              ...(underChrome && sticky ? { marginTop: -webHeaderHeight } : null),
+              ...contentStyle,
+            }}
+          >
+            {children}
+          </View>
         </View>
       </ScrollView>
 

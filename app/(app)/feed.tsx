@@ -54,7 +54,6 @@ import {
   FEED_BREAKPOINT,
   feedType,
   flameDeep,
-  gutter,
   rule,
   space,
 } from "@/lib/design/type";
@@ -429,7 +428,6 @@ export default function FeedScreen() {
         progress={chrome.progress}
         onScroll={onFeedScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
-        gutter={false}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}
@@ -438,15 +436,17 @@ export default function FeedScreen() {
           />
         }
       >
-        <View
-          style={{
-            width: "100%",
-            alignSelf: "stretch",
-            // Eén marge voor de hele pagina, dezelfde die de kop aanhoudt.
-            paddingHorizontal: gutter(wide),
-            paddingTop: 0,
-          }}
-        >
+        {/*
+            Geen eigen marge meer.
+
+            Hier stond `paddingHorizontal: gutter(wide)` bínnen de kolom van
+            1250 die `PageScroll` tekent, terwijl de kop zijn marge er juist
+            búiten heeft. Op een breed scherm begon de woordmerkplaat daardoor
+            precies één gutter links van de foto eronder. De scroller doet het
+            nu voor elke pagina op dezelfde manier; dit scherm hoeft er niets
+            meer over te weten.
+        */}
+        <View style={{ width: "100%", alignSelf: "stretch", paddingTop: 0 }}>
           {/*
               Eén kader om de hele uitgave.
 
@@ -889,6 +889,13 @@ const HeroBlock = memo(function HeroBlock({
  * een tikje kleiner, zodat hij minder van de leeslijst afpakt zonder ooit
  * weg te zijn.
  */
+/**
+ * De maat van de zwevende knoppen. Eén getal, zodat ze niet uit elkaar
+ * kunnen groeien — `ShareButton` heeft zijn eigen standaardmaat en die was
+ * een andere dan de knop ernaast.
+ */
+const FLOATING_SIZE = 56;
+
 function FloatingShare({
   onPress,
   onToTop,
@@ -938,9 +945,13 @@ function FloatingShare({
         *
         * Twee ronde knoppen op elkaar gestapeld leest als één kolom
         * bedieningsknoppen die met de pagina meegroeit; naast elkaar blijft
-        * het één groep van twee. Hij is kleiner dan de plus, want delen is
-        * de hoofdzaak en terugspringen een hulpje — gelijke maten zouden ze
-        * even belangrijk maken.
+        * het één groep van twee.
+        *
+        * Even groot als de plus. Ik had hem kleiner gemaakt om te zeggen dat
+        * delen de hoofdzaak is en terugspringen een hulpje — maar twee
+        * cirkels van net niet dezelfde maat naast elkaar lezen niet als
+        * hiërarchie, ze lezen als een fout. Rangorde zit hier al in de
+        * volgorde en in het feit dat de plus er altijd staat en deze niet.
         *
         * Hij verschijnt pas als je gescrold hebt: een knop die je naar boven
         * brengt terwijl je al boven bent is een knop die niets doet, en dan
@@ -952,18 +963,18 @@ function FloatingShare({
             onPress={onToTop}
             accessibilityLabel="Terug naar boven"
             style={({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: 22,
+              width: FLOATING_SIZE,
+              height: FLOATING_SIZE,
+              borderRadius: FLOATING_SIZE / 2,
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: pressed ? announceDeep : announce,
             })}
           >
-            <Ionicons name="arrow-up" size={22} color={creamOnDark.DEFAULT} />
+            <Ionicons name="arrow-up" size={Math.round(FLOATING_SIZE * 0.5)} color={creamOnDark.DEFAULT} />
           </Pressable>
         ) : null}
-        <ShareButton onPress={onPress} />
+        <ShareButton onPress={onPress} size={FLOATING_SIZE} />
       </View>
     </Animated.View>
   );
