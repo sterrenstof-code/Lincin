@@ -1069,7 +1069,7 @@ export default function ChatDetail() {
                   {/* Banner: berichten worden nog opnieuw versleuteld (re-keying bezig) */}
                   {messages.some((m) => m.pendingRekey) && (
                     <View className="bg-paper-warm px-4 py-3 mb-3 flex-row items-start gap-3">
-                      <ActivityIndicator size="small" color="#8C7B6B" style={{ marginTop: 1 }} />
+                      <ActivityIndicator size="small" color={feed.inkDim} style={{ marginTop: 1 }} />
                       <Text className="text-ink-soft text-xs leading-5 flex-1">
                         Oudere berichten worden op de achtergrond ontsleuteld voor je. Scroll omhoog om ze te laden.
                       </Text>
@@ -1078,7 +1078,7 @@ export default function ChatDetail() {
                   {/* Banner: berichten permanent onleesbaar (auth-tag mismatch, ander device) */}
                   {messages.some((m) => m.content === null && !m.pendingRekey) && (
                     <View className="bg-paper-warm px-4 py-3 mb-3 flex-row items-start gap-3">
-                      <Ionicons name="lock-closed" color="#8C7B6B" size={15} style={{ marginTop: 2 }} />
+                      <Ionicons name="lock-closed" color={feed.inkDim} size={15} style={{ marginTop: 2 }} />
                       <Text className="text-ink-soft text-xs leading-5 flex-1">
                         Sommige berichten zijn versleuteld met de sleutel van een
                         ander apparaat en kunnen hier niet gelezen worden. Stuur
@@ -1121,8 +1121,6 @@ export default function ChatDetail() {
                   senderProfile?.username ??
                   "Onbekend";
                 const senderAvatarUrl = senderProfile?.avatar_url ?? null;
-                const senderColor = colorForSenderId(item.sender_id);
-                const bubbleColor = isGroup && !isMine ? bubbleColorForSenderId(item.sender_id) : undefined;
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
                 /**
@@ -1226,8 +1224,6 @@ export default function ChatDetail() {
                       showAvatar={showAvatar}
                       senderAvatarUrl={senderAvatarUrl}
                       senderName={senderName}
-                      senderColor={senderColor}
-                      bubbleColor={bubbleColor}
                       pending={isPending && !isFailed}
                       failed={isFailed}
                       showReadReceipt={item.id === readReceiptMessageId}
@@ -1937,8 +1933,8 @@ function ReactionPickerModal({
           )}
           {onDelete && (
             <Pressable onPress={onDelete} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="trash-outline" color="#B23A1C" size={18} />
-              <Text className="font-medium ml-3" style={{ color: "#B23A1C" }}>Verwijderen</Text>
+              <Ionicons name="trash-outline" color={flameDeep} size={18} />
+              <Text className="font-medium ml-3" style={{ color: flameDeep }}>Verwijderen</Text>
             </Pressable>
           )}
         </View>
@@ -2065,8 +2061,6 @@ function MessageBubble({
   showAvatar,
   senderName,
   senderAvatarUrl,
-  senderColor,
-  bubbleColor,
   pending,
   failed,
   onRetry,
@@ -2090,8 +2084,6 @@ function MessageBubble({
   showAvatar?: boolean;
   senderName?: string;
   senderAvatarUrl?: string | null;
-  senderColor?: string;
-  bubbleColor?: string;
   pending?: boolean;
   failed?: boolean;
   onRetry?: () => void;
@@ -2179,8 +2171,7 @@ function MessageBubble({
         <View className="flex-row items-center mb-0.5 ml-1 gap-2">
           <Avatar name={senderName} avatarUrl={senderAvatarUrl} size="sm" />
           <Text
-            className="text-[12px] font-semibold"
-            style={{ color: senderColor }}
+            style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.ink }]}
             numberOfLines={1}
           >
             {senderName ?? "Onbekend"}
@@ -2218,19 +2209,30 @@ function MessageBubble({
         delayLongPress={300}
         // @ts-ignore — onContextMenu is een web-only prop voor rechtermuisknop
         onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onSelect?.(); } : undefined}
+        /**
+          * Vol of leeg — meer verschil is er niet, en meer is er ook niet
+          * nodig.
+          *
+          * Beide kanten waren een gevuld vlak: het mijne zwart, dat van de
+          * ander een bijna-wit blad. Twee dozen op een pagina die volgens
+          * §4 juist géén dozen kent — en in de lichte stand was dat witte
+          * blad bovendien nauwelijks van het paginavlak te onderscheiden.
+          *
+          * Nu draagt het bericht van de ander geen vulling maar een
+          * kantlijn: dezelfde vorm als het aangehaalde blok hierboven, en
+          * dezelfde regel als de reactiepil en de knoppenrij — gevuld is
+          * "van mij", een lijn is "van iemand anders". Dat lees je uit een
+          * ooghoek, ook naast elkaar op één scherm.
+          */
         style={{
           opacity: pending ? 0.65 : 1,
-          ...(bubbleColor && !failed ? { backgroundColor: bubbleColor } : {}),
+          ...(isMine || failed
+            ? {}
+            : { borderLeftWidth: FEED_BORDER * 2, borderLeftColor: feed.ink }),
         }}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
-        } ${
-          failed
-            ? "bg-red-700"
-            : isMine
-              ? "bg-ink"
-              : "bg-paper-soft"
-        }`}
+        } ${failed ? "bg-flame" : isMine ? "bg-ink" : ""}`}
       >
         {content === null ? (
           msg.pendingRekey ? (
@@ -2238,7 +2240,7 @@ function MessageBubble({
             <View className={`flex-row items-center gap-2 px-1 py-0.5`}>
               <ActivityIndicator
                 size="small"
-                color={isMine ? creamOnDark.DEFAULT : "#8C7B6B"}
+                color={isMine ? creamOnDark.DEFAULT : feed.inkDim}
               />
               <Text className={`italic text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
                 wordt ontsleuteld…
@@ -2312,9 +2314,10 @@ function MessageBubble({
               }`}
             >
               <Text
-                className={`text-[10px] ${
-                  isMine ? "text-cream-muted" : "text-ink-muted"
-                }`}
+                style={[
+                  feedType.label,
+                  { color: isMine ? creamOnDark.muted : feed.inkDim },
+                ]}
               >
                 {time}{msg.edited_at ? " · bewerkt" : ""}
               </Text>
@@ -2322,7 +2325,7 @@ function MessageBubble({
                 <Ionicons
                   name="time-outline"
                   size={10}
-                  color="#A39A86"
+                  color={isMine ? creamOnDark.muted : feed.inkDim}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -2330,7 +2333,7 @@ function MessageBubble({
                 <Ionicons
                   name="checkmark-done"
                   size={11}
-                  color="#A39A86"
+                  color={isMine ? creamOnDark.muted : feed.inkDim}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -2346,7 +2349,10 @@ function MessageBubble({
         </View>
         {/* Inline actie-iconen — verschijnen bij tik/selectie */}
         {selected && (
-          <View className={`flex-row items-center gap-0.5 bg-paper px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}>
+          <View
+            className={`flex-row items-center gap-0.5 px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}
+            style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}
+          >
             {onReply && (
               <Pressable onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
                 <Ionicons name="return-down-back-outline" color={flameDeep} size={16} />
@@ -2365,7 +2371,7 @@ function MessageBubble({
             )}
             {onDelete && (
               <Pressable onPress={onDelete} hitSlop={6} className="w-8 h-8 items-center justify-center">
-                <Ionicons name="trash-outline" color="#B23A1C" size={15} />
+                <Ionicons name="trash-outline" color={flameDeep} size={15} />
               </Pressable>
             )}
           </View>
@@ -2384,17 +2390,21 @@ function MessageBubble({
               onPress={() => onToggleReaction(r.emoji)}
               onLongPress={() => onReactionLongPress?.(r.emoji, r.userIds)}
               delayLongPress={300}
-              className={`flex-row items-center px-2 py-0.5 border ${
-                r.mine
-                  ? "bg-flame/15 border-flame"
-                  : "bg-paper-soft border-line-paper"
-              }`}
+              // Geen vulling: onder een bubbel die zélf al vol of leeg is
+              // zou een derde vlak niets meer zeggen. De lijn verzwaart als
+              // de reactie van jou is — zelfde tweedeling, ander middel.
+              className="flex-row items-center px-2 py-0.5"
+              style={{
+                borderWidth: FEED_BORDER,
+                borderColor: r.mine ? flameDeep : rule.soft,
+              }}
             >
               <Text style={{ fontSize: 13 }}>{r.emoji}</Text>
               <Text
-                className={`ml-1 text-xs font-semibold ${
-                  r.mine ? "text-flame-deep" : "text-ink-soft"
-                }`}
+                style={[
+                  feedType.label,
+                  { marginLeft: 4, fontWeight: "700", color: r.mine ? flameDeep : feed.inkDim },
+                ]}
               >
                 {r.count}
               </Text>
@@ -2404,9 +2414,11 @@ function MessageBubble({
       )}
 
       {isMine && showReadReceipt && (
+        // Een leesbevestiging is metadata, geen redactioneel accent. Rood
+        // trok hier de aandacht naar het minst belangrijke op het scherm.
         <View className="flex-row items-center self-end pr-1 mt-0.5 gap-0.5">
-          <Ionicons name="checkmark-done" size={12} color={flameDeep} />
-          <Text className="text-[10px] text-flame-deep">Gelezen</Text>
+          <Ionicons name="checkmark-done" size={12} color={feed.inkDim} />
+          <Text style={[feedType.label, { color: feed.inkDim }]}>Gelezen</Text>
         </View>
       )}
     </View>
@@ -2437,48 +2449,19 @@ const CHAT_EMOJIS = [
 ];
 
 /**
- * Deterministische naam- en bubblekleur per user.
- * SENDER_COLORS: tekst/naam (voldoende contrast op lichte achtergrond).
- * BUBBLE_COLORS: zeer lichte tint voor de bubble-achtergrond.
+ * Wie iets zei, zonder een tweede palet.
+ *
+ * Hier stonden zestien vaste hexwaarden: acht namkleuren (terracotta,
+ * stofblauw, sauge groen…) en acht pastelvullingen voor de bubbel
+ * erachter. Een compleet schaduwpalet naast dat van de app, en het
+ * schoof niet mee met de twee standen — de pastels waren gekozen voor
+ * "een lichte achtergrond", dus in de donkere stand lagen er acht
+ * verschillende lichte vlakken op het lavendel.
+ *
+ * Wie iets zegt lees je aan de avatar en de naam erboven, en aan welke
+ * kant het bericht staat. Dat is wat een gespreksverslag ook doet, en het
+ * kost geen kleur die het systeem niet heeft (DESIGN.md §2 en §7).
  */
-const SENDER_COLORS = [
-  "#A0522D", // terracotta
-  "#4A7FA5", // stofblauw
-  "#8B7355", // warm bruin
-  "#4E7C5F", // sauge groen
-  "#7B5EA7", // lavendel
-  "#A0526B", // oud roze
-  "#3D7E7A", // teal
-  "#7A6E3B", // olijf
-];
-
-// Zachte pastel-tinten die overeenkomen met bovenstaande kleuren.
-const BUBBLE_COLORS = [
-  "#F5EBE4", // zacht terracotta
-  "#E4EDF5", // zacht blauw
-  "#EDE8E2", // zacht bruin
-  "#E4EDE8", // zacht groen
-  "#EDE8F5", // zacht lavendel
-  "#F5E4EB", // zacht roze
-  "#E4EDEC", // zacht teal
-  "#EDEBE0", // zacht olijf
-];
-
-function colorForSenderId(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash * 31) + id.charCodeAt(i)) | 0;
-  }
-  return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
-}
-
-function bubbleColorForSenderId(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash * 31) + id.charCodeAt(i)) | 0;
-  }
-  return BUBBLE_COLORS[Math.abs(hash) % BUBBLE_COLORS.length];
-}
 
 function CallNotificationCard({
   msg,
@@ -2496,25 +2479,56 @@ function CallNotificationCard({
     minute: "2-digit",
   });
   return (
-    <View className="items-center my-1">
+    /**
+     * "Er is een gesprek begonnen" — een melding met één uitgang.
+     *
+     * Dit was een gevuld paneel met een lichtblauw vierkantje ervoor en een
+     * felblauwe knop erin. Blauw is hier het merk en verder niets (§2), en
+     * een vierkantje om een icoon is een kader zonder werk (§4).
+     *
+     * Nu: een kader met een rubriek, en de deelname-knop als het énige
+     * gevulde vlak — in de oranje die dit systeem voor de primaire actie
+     * heeft. Er is er hoogstens één per scherm, en dít is hem.
+     */
+    <View className="items-center" style={{ marginVertical: space.sm }}>
       <View
-        className="bg-paper-soft px-4 py-3 flex-row items-center gap-3"
-        style={{ maxWidth: 320, width: "100%" }}
+        className="flex-row items-center"
+        style={{
+          maxWidth: 360,
+          width: "100%",
+          gap: space.md,
+          paddingLeft: space.md,
+          paddingVertical: space.sm,
+          borderWidth: FEED_BORDER,
+          borderColor: feed.ink,
+        }}
       >
-        <View className="w-10 h-10 bg-blue-500/15 items-center justify-center">
-          <Ionicons name="videocam" color={flameDeep} size={18} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-ink font-semibold text-sm">
-            {isMine ? "Je startte een videogesprek" : `${senderName} startte een videogesprek`}
+        <Ionicons name="videocam" color={flameDeep} size={18} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+            VIDEOGESPREK
           </Text>
-          <Text className="text-ink-muted text-xs mt-0.5">{time}</Text>
+          <Text
+            style={[feedType.label, { fontSize: 13, color: feed.ink, marginTop: 2 }]}
+            numberOfLines={2}
+          >
+            {isMine ? "Je startte een videogesprek" : `${senderName} startte een gesprek`}
+            <Text style={{ color: feed.inkDim }}>{`  ·  ${time}`}</Text>
+          </Text>
         </View>
         <Pressable
           onPress={onJoin}
-          className="bg-blue-500 active:bg-blue-600 px-3 py-1.5"
+          className="bg-announce active:bg-announce-deep"
+          style={{
+            height: CONTROL_H,
+            paddingHorizontal: space.md,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Deelnemen</Text>
+          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
+            Deelnemen
+          </Text>
         </Pressable>
       </View>
     </View>
