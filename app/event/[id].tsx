@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -951,26 +952,54 @@ function ActionCell({
   disabled?: boolean;
   last?: boolean;
 }) {
+  const { width } = useWindowDimensions();
+  /**
+   * Onder de 520 punten staat het label ónder het icoon.
+   *
+   * Vier cellen naast elkaar met icoon en tekst op één regel vroeg meer
+   * breedte dan er was. En omdat de cel geen `minWidth: 0` had, mocht de
+   * tekst niet krimpen: hij liep gewoon door over de scheidingslijn heen,
+   * de buurcel in. Dat is wat je zag — geen tekst die te lang was, maar een
+   * cel die weigerde smaller te worden dan zijn inhoud.
+   *
+   * Gestapeld krijgt elk woord de volle celbreedte in plaats van de helft.
+   */
+  const stacked = width < 520;
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityLabel={label}
       style={({ pressed }) => ({
         flex: filled ? 1.3 : 1,
-        flexDirection: "row",
+        // Zonder dit weigert een flex-kind smaller te worden dan zijn
+        // inhoud, en dan helpt afkappen niets.
+        minWidth: 0,
+        flexDirection: stacked ? "column" : "row",
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 16,
+        gap: stacked ? 5 : 0,
+        paddingVertical: stacked ? 12 : 16,
+        paddingHorizontal: 6,
         backgroundColor: filled ? (pressed ? flameDeep : feed.ink) : "transparent",
         ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
         opacity: disabled ? 0.5 : 1,
       })}
     >
-      <Ionicons name={icon} color={filled ? creamOnDark.DEFAULT : feed.ink} size={15} />
+      <Ionicons name={icon} color={filled ? creamOnDark.DEFAULT : feed.ink} size={stacked ? 17 : 15} />
       <Text
+        numberOfLines={1}
         style={[
           feedType.label,
-          { fontSize: 13, fontWeight: "700", color: filled ? creamOnDark.DEFAULT : feed.ink, marginLeft: 8 },
+          {
+            fontSize: stacked ? 11 : 13,
+            fontWeight: "700",
+            color: filled ? creamOnDark.DEFAULT : feed.ink,
+            marginLeft: stacked ? 0 : 8,
+            flexShrink: 1,
+            textAlign: "center",
+          },
         ]}
       >
         {label}

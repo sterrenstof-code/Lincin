@@ -778,15 +778,7 @@ export default function FeedScreen() {
 function BoostCount({ count }: { count: number }) {
   if (!count || count < 1) return null;
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 16,
-        paddingTop: 10,
-      }}
-    >
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
       <Ionicons name="arrow-up-circle" size={13} color={flameDeep} />
       <Text style={[feedType.label, { color: flameDeep }]}>
         {count}× omhoog geduwd
@@ -827,8 +819,20 @@ const HeroBlock = memo(function HeroBlock({
         // strook onder het hele tweeluik — zie FindHero.
         footer={
           <>
-            <BoostCount count={post.boost_count} />
-            <PostReactions postId={post.id} tone="feed" />
+            {/**
+              * Eén inspringing voor wat er met de vondst gedaan is.
+              *
+              * De duwteller bracht zijn eigen padding mee, de emoji-pillen
+              * hun eigen, en de reactieregel weer een andere — drie regels
+              * die hetzelfde soort ding zeggen en op drie verschillende
+              * plekken begonnen. Nu staan de eerste twee in één blok met één
+              * marge en één tussenruimte; de reactieregel eronder heeft zijn
+              * eigen lijn en hoort daar los van.
+              */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+              <BoostCount count={post.boost_count} />
+              <PostReactions postId={post.id} tone="feed" />
+            </View>
             <CommentsSection
               entityType="post"
               entityId={post.id}

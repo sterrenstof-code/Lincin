@@ -132,7 +132,18 @@ const TABS = [
  * De grens ligt lager dan het `wide`-breekpunt (900): op een tablet is er
  * ruimte zat voor de woorden, en woorden lezen beter dan iconen.
  */
-const ICON_ONLY_MAX_WIDTH = 560;
+/**
+ * Waaronder de tabbladen hun label inruilen voor een icoon.
+ *
+ * Stond op 560, en dat is precies de breedte waarop het nét past: vijf
+ * labels met hun padding vragen 375 punten, het merk plus de twee cellen
+ * rechts 153, en de marges 32 — samen 560. Nul speling. Vanaf 561 werd het
+ * dus getoond mét tekst die tegen de scheidingslijnen aan stond.
+ *
+ * Een omslagpunt hoort niet op het minimum te liggen maar op de eerste
+ * breedte waar het er ook goed uitziet. Vandaar honderd punten lucht.
+ */
+const ICON_ONLY_MAX_WIDTH = 660;
 
 // ---------------------------------------------------------------
 // Tellers per tabblad
@@ -484,7 +495,12 @@ function CompactBar({
                   alignItems: "center",
                   // Op een telefoon deelt de rij de breedte; met vaste
                   // padding viel het laatste tabblad buiten de balk.
-                  ...(iconOnly ? { flex: 1 } : { paddingHorizontal: 16 }),
+                  // Ook mét label deelt de rij de breedte. Zonder dit sizen
+                  // de cellen naar hun inhoud en duwen ze elkaar buiten de
+                  // balk zodra één woord langer is dan verwacht.
+                  flex: 1,
+                  minWidth: 0,
+                  paddingHorizontal: iconOnly ? 0 : 10,
                   // De actieve pagina keert om binnen de zwarte balk.
                   backgroundColor: active ? "#FAF8F5" : "transparent",
                 }}
@@ -499,11 +515,15 @@ function CompactBar({
                     <TabBadge count={badge} floating />
                   </View>
                 ) : (
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", minWidth: 0 }}>
                     <Text
                       style={[
                         feedType.label,
-                        { fontSize: 12, color: active ? feed.ink : "rgba(250,248,245,0.78)" },
+                        {
+                          fontSize: 12,
+                          color: active ? feed.ink : "rgba(250,248,245,0.78)",
+                          flexShrink: 1,
+                        },
                       ]}
                       numberOfLines={1}
                     >
