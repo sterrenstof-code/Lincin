@@ -93,7 +93,8 @@ import {
 import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, space } from "@/lib/design/type";
+import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";
+import { color } from "@/lib/design/theme";
 
 /**
  * De leesmaat van een gesprek.
@@ -861,33 +862,52 @@ export default function ChatDetail() {
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
           de middenkolom terug en verandert er niets aan dit scherm. */}
       <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""} media={sharedMedia}>
-        <View className="bg-paper-soft border-b border-line-paper">
+        {/*
+            De kop van het gesprek staat op het paginavlak zelf en sluit af
+            met één inktlijn.
+
+            Hij had een eigen lichte band met daarin drie grijze vierkantjes
+            — een tweede vlak bovenop het vlak, en knoppen die als vulling
+            lazen terwijl het iconen zijn. Een kader betekent "hier hoort
+            iets in"; bij een icoon is dat niet zo (DESIGN.md §4). Wat de
+            vulling deed doet de lijn nu, en de knoppen dragen zichzelf op
+            de maat die élke knop in de app heeft (CONTROL_H).
+        */}
+        <View style={{ borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }}>
           {/* Zelfde leesmaat als de berichten en de tekstregel: anders
               begint de kop links, staan de berichten in het midden en loopt
               het invoerveld weer tot de rand — drie verschillende lijnen op
               één scherm. Zie THREAD_WIDTH. */}
           <View
-            className="flex-row items-center gap-2"
+            className="flex-row items-center"
             style={{
               width: "100%",
               maxWidth: THREAD_WIDTH,
               alignSelf: "center",
-              paddingHorizontal: space.md,
-              paddingVertical: space.md,
+              paddingHorizontal: space.sm,
+              paddingVertical: space.sm,
             }}
           >
             <Pressable
               onPress={() => safeBack(router, "/(app)/chats")}
-              className="w-9 h-9 bg-paper-warm items-center justify-center"
               // Boven het breekpunt staat de gesprekkenlijst al links in
               // beeld; een terug-knop wijst dan nergens heen.
-              style={{ display: railVisible ? "none" : "flex" }}
+              style={({ pressed }) => [
+                AUX_BUTTON,
+                { display: railVisible ? "none" : "flex" },
+                pressed && AUX_PRESSED,
+              ]}
             >
-              <Ionicons name="chevron-back" color={feed.ink} size={20} />
+              <Ionicons name="chevron-back" color={feed.ink} size={22} />
               {otherUnread > 0 && (
                 <View
-                  className="bg-flame absolute -right-1 -top-1 px-1"
+                  className="bg-flame absolute px-1"
                   style={{
+                    // Tegen het icoon aan, niet tegen de hoek van het
+                    // aanraakvlak: dat is 44 punten breed en het cijfer zou
+                    // anders los van de pijl komen te hangen.
+                    right: 4,
+                    top: 4,
                     minWidth: 16,
                     height: 16,
                     alignItems: "center",
@@ -903,6 +923,7 @@ export default function ChatDetail() {
             <Pressable
               onPress={onPressHeaderTitle}
               className="flex-row items-center flex-1"
+              style={{ marginLeft: space.xs, minWidth: 0 }}
               hitSlop={4}
             >
               <Avatar
@@ -914,15 +935,21 @@ export default function ChatDetail() {
                 }
                 size="md"
               />
-              <View className="flex-1 ml-3">
-                <Text className="text-ink font-bold" numberOfLines={1}>
+              <View className="flex-1 ml-3" style={{ minWidth: 0 }}>
+                <Text
+                  style={[feedType.label, { fontSize: 15, fontWeight: "700", color: feed.ink }]}
+                  numberOfLines={1}
+                >
                   {title}
                 </Text>
-                <View className="flex-row items-center mt-0.5">
-                  <Ionicons name="lock-closed" color="#5B8DEF" size={11} />
-                  <Text className="text-ink-muted text-xs ml-1">
+                {/* Het slot is de énige plek buiten het logo waar het
+                    merkblauw mag staan (DESIGN.md §2) — vandaar het token en
+                    niet langer de hex die hier los in de code stond. */}
+                <View className="flex-row items-center" style={{ marginTop: 1 }}>
+                  <Ionicons name="lock-closed" color={color("brand")} size={10} />
+                  <Text style={[feedType.label, { color: feed.inkDim, marginLeft: 4 }]}>
                     {chat?.type === "group"
-                      ? `${chat.members.length} leden • E2E`
+                      ? `${chat.members.length} leden · E2E`
                       : "End-to-end versleuteld"}
                   </Text>
                 </View>
@@ -948,14 +975,14 @@ export default function ChatDetail() {
                   }
                 }
               }}
-              className="w-9 h-9 bg-paper-warm items-center justify-center"
+              style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
             >
-              <Ionicons name="videocam-outline" color={feed.ink} size={18} />
+              <Ionicons name="videocam-outline" color={feed.ink} size={20} />
             </Pressable>
             {chat?.type === "group" && (
               <Pressable
                 onPress={() => router.push(`/group/${id}`)}
-                className="w-9 h-9 bg-paper-warm items-center justify-center"
+                style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
               >
                 <Ionicons name="information-circle-outline" color={feed.ink} size={20} />
               </Pressable>
@@ -1098,13 +1125,24 @@ export default function ChatDetail() {
                 const bubbleColor = isGroup && !isMine ? bubbleColorForSenderId(item.sender_id) : undefined;
                 const isPending = item.id.startsWith("optimistic-");
                 const isFailed = failedMessages.has(item.id);
+                /**
+                 * De dagscheiding: een lijn met een woord erin.
+                 *
+                 * Dit was een zwevend vlakje midden op de pagina — het enige
+                 * element in het gesprek dat nergens aan vastzat. Een
+                 * scheiding is een lijn (DESIGN.md §4), en het woord staat
+                 * erin zoals een rubriek in zijn band.
+                 */
                 const dateSep = showDateSep ? (
-                  <View className="items-center my-3">
-                    <View className="bg-paper-soft px-3 py-1">
-                      <Text className="text-ink-muted text-[11px] font-medium">
-                        {formatChatDate(item.created_at)}
-                      </Text>
-                    </View>
+                  <View
+                    className="flex-row items-center"
+                    style={{ marginVertical: space.lg, gap: space.md }}
+                  >
+                    <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
+                    <Text style={[feedType.kicker, { color: feed.inkDim }]}>
+                      {formatChatDate(item.created_at).toUpperCase()}
+                    </Text>
+                    <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
                   </View>
                 ) : null;
 
@@ -1113,13 +1151,17 @@ export default function ChatDetail() {
                   return (
                     <View>
                       {dateSep}
-                      <View className="items-center my-2">
-                        <View className="bg-paper-soft px-4 py-1.5 flex-row items-center gap-2">
-                          <Ionicons name="camera-outline" color={feed.inkDim} size={13} />
-                          <Text className="text-ink-muted text-xs">
-                            {item.content.system.actorName} heeft de groepsfoto gewijzigd
-                          </Text>
-                        </View>
+                      {/* Een systeemmelding is een terzijde, geen bericht:
+                          geen vlak eromheen, alleen kleine tekst midden op
+                          de pagina. */}
+                      <View
+                        className="flex-row items-center justify-center"
+                        style={{ marginVertical: space.md, gap: 6 }}
+                      >
+                        <Ionicons name="camera-outline" color={feed.inkDim} size={12} />
+                        <Text style={[feedType.label, { color: feed.inkDim }]}>
+                          {item.content.system.actorName} heeft de groepsfoto gewijzigd
+                        </Text>
                       </View>
                     </View>
                   );
@@ -1350,7 +1392,16 @@ export default function ChatDetail() {
           )}
 
           {/* Composer */}
-          <View className="border-t border-line bg-shell-soft">
+          {/*
+              De berichtenbalk is dezelfde balk als bovenaan het scherm.
+
+              Hij stond op `shell-soft` — het dónkere vlak dat volgens §2
+              bínnen de balk hoort, niet de balk zelf — dus onderaan het
+              scherm lag een tweede, paarsere zwart naast het zwart van de
+              kop. De rollen zijn nu omgedraaid: `shell` is de balk, en wat
+              erin zit (het tekstveld) draagt `shell-soft`.
+          */}
+          <View className="border-t border-line bg-shell">
             {/* De inhoud van de balk volgt dezelfde maat; het vlak eronder
                 loopt wél door tot de rand, want dat is de bodem van het
                 scherm en geen kolom. */}
@@ -1443,7 +1494,8 @@ export default function ChatDetail() {
                 <Pressable
                   onPress={() => setAttachMenuOpen(true)}
                   disabled={sending}
-                  className="bg-shell"
+                  // Geen eigen vlak: een bijna-zwart vierkant op een zwarte
+                  // balk is een kader zonder werk. Het icoon draagt zichzelf.
                   style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
                   <Ionicons name="add" color={creamOnDark.soft} size={22} />
@@ -1456,7 +1508,6 @@ export default function ChatDetail() {
                     if (!showEmojiPicker) inputRef.current?.blur();
                     else inputRef.current?.focus();
                   }}
-                  className="bg-shell"
                   style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
                   <Text style={{ fontSize: 19 }}>😊</Text>
@@ -1485,7 +1536,10 @@ export default function ChatDetail() {
                 </View>
               ) : (
                 <View
-                  className="flex-1 bg-paper-light max-h-32 justify-center"
+                  // Een wit blad op een zwarte balk was het lichtste vlak van
+                  // het hele scherm, en dus het luidste. `shell-soft` is
+                  // waar §2 een vlak bínnen de balk heen stuurt.
+                  className="flex-1 bg-shell-soft max-h-32 justify-center"
                   style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
                 >
                   <TextInput
@@ -1495,10 +1549,12 @@ export default function ChatDetail() {
                     onKeyPress={onComposerKeyPress}
                     onFocus={() => setShowEmojiPicker(false)}
                     placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
-                    placeholderTextColor={feed.inkDim}
+                    placeholderTextColor={creamOnDark.muted}
                     multiline
                     editable={!sending}
-                    className="text-ink text-base"
+                    // Tekst op een vlak dat in béide standen donker blijft is
+                    // crème, nooit inkt — zie het kader in DESIGN.md §2.
+                    className="text-cream text-base"
                     style={{
                       minHeight: 24,
                       paddingVertical: 10,
@@ -1532,13 +1588,20 @@ export default function ChatDetail() {
                  * Verzenden is het enige felle in de balk, en alleen zolang
                  * er iets te verzenden valt. Dit was `bg-ink` — bijna zwart
                  * op een donkere balk, dus de belangrijkste knop was de
-                 * onzichtbaarste. Nu draagt hij het accent van de app.
+                 * onzichtbaarste.
+                 *
+                 * En in de oranje, niet in het rood: rood is hier het accent
+                 * van de redactie — citaten, rubrieken, lijnwerk — en een
+                 * knop die iets dóet hoort niet dezelfde kleur te hebben als
+                 * een aanhalingsteken (DESIGN.md §2).
                  */
                 <Pressable
                   onPress={onSend}
                   disabled={sending || !draft.trim()}
                   className={
-                    sending || !draft.trim() ? "bg-shell" : "bg-flame active:bg-flame-deep"
+                    sending || !draft.trim()
+                      ? "bg-shell-soft"
+                      : "bg-announce active:bg-announce-deep"
                   }
                   style={AUX_BUTTON}
                 >
@@ -1558,7 +1621,9 @@ export default function ChatDetail() {
                     else startRecording();
                   } : undefined}
                   disabled={sending}
-                  className="bg-shell"
+                  // Net als de twee knoppen links: het icoon draagt zichzelf
+                  // op de balk. Zodra er iets te versturen valt neemt de
+                  // oranje knop deze plek over — dán is er een vlak.
                   style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
                   <Ionicons name="mic" color={creamOnDark.soft} size={21} />
@@ -2896,7 +2961,17 @@ function ChatCallPlanCard({
 
   if (!plan) {
     return (
-      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ width: "85%", maxWidth: BUBBLE_MAX_W }}>
+      <View
+        className={`mx-3 mb-1 ${isMine ? "self-end" : "self-start"}`}
+        style={{
+          width: "85%",
+          maxWidth: BUBBLE_MAX_W,
+          paddingHorizontal: space.md,
+          paddingVertical: space.md,
+          borderWidth: FEED_BORDER,
+          borderColor: rule.soft,
+        }}
+      >
         <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
@@ -2915,49 +2990,140 @@ function ChatCallPlanCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ width: "90%", maxWidth: BUBBLE_MAX_W }}>
-      {/* Header */}
-      <View className="flex-row items-center gap-2 px-4 pt-3 pb-2">
-        <Ionicons name="videocam-outline" color={flameDeep} size={16} />
-        <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={1}>{plan.title}</Text>
+    /**
+     * Een belafspraak als opgemaakt blok, niet als widget.
+     *
+     * Hier stond een gevuld paneel met daarin gevulde vakjes: het gekozen
+     * tijdslot in lichtblauw met blauwe tekst, de tellers in teal, en een
+     * "Agenda"-knop in nóg een groen. Vier kleuren en drie vullingen in een
+     * kaart van tien regels, en geen van die kleuren staat in het palet —
+     * blauw is hier het merk en verder niets (DESIGN.md §2).
+     *
+     * Nu draagt de vorm het: één kader, een rubriek met een lijn eronder,
+     * en de tijdsloten als rijen tussen haarlijnen. Wat jíj hebt aangevinkt
+     * is gevuld in plaats van gekleurd — vol of leeg is het enige verschil
+     * dat je uit een ooghoek nog leest, dezelfde regel als bij de
+     * reactiepillen.
+     */
+    <View
+      className={`mx-3 mb-1 ${isMine ? "self-end" : "self-start"}`}
+      style={{
+        width: "90%",
+        maxWidth: BUBBLE_MAX_W,
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+      }}
+    >
+      <View style={{ paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm }}>
+        <View className="flex-row items-center" style={{ gap: 6, marginBottom: 6 }}>
+          <Ionicons name="videocam-outline" color={flameDeep} size={13} />
+          <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+            BELAFSPRAAK
+          </Text>
+        </View>
+        <Text
+          style={[feedType.tile, { color: feed.ink }]}
+          numberOfLines={2}
+        >
+          {plan.title}
+        </Text>
+        {plan.description ? (
+          <Text
+            style={[feedType.body, { color: feed.inkDim, marginTop: 2 }]}
+            numberOfLines={2}
+          >
+            {plan.description}
+          </Text>
+        ) : null}
       </View>
-      {plan.description ? (
-        <Text className="text-ink-muted text-xs px-4 pb-2" numberOfLines={2}>{plan.description}</Text>
-      ) : null}
-      {/* Slots */}
-      <View className="px-3 pb-3 gap-1.5">
-        {plan.slots.slice(0, 4).map((slot) => {
+
+      {/* De sloten: rijen tussen lijnen. De bovenste lijn is zwaarder —
+          die scheidt de kop van de keuze, de lijnen daarbinnen scheiden
+          alleen de rijen onderling (DESIGN.md §4). */}
+      <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+        {plan.slots.slice(0, 4).map((slot, i) => {
           const myVote = slot.yes_voters.includes(myUserId);
           const isBest = slot.id === bestSlot?.id && bestSlot.yes_voters.length > 0;
           const isSaving = saving === slot.id;
+          const onDark = myVote ? creamOnDark.DEFAULT : feed.ink;
+          const onDarkDim = myVote ? creamOnDark.muted : feed.inkDim;
           return (
             <Pressable
               key={slot.id}
               onPress={() => toggleSlot(slot.id, myVote)}
               disabled={!!isSaving}
-              className={`flex-row items-center px-3 py-2 ${myVote ? "bg-blue-100" : "bg-paper"}`}
+              className="flex-row items-center"
+              style={{
+                paddingHorizontal: space.md,
+                paddingVertical: space.sm,
+                backgroundColor: myVote ? feed.ink : "transparent",
+                opacity: isSaving ? 0.5 : 1,
+                ...(i === 0
+                  ? {}
+                  : { borderTopWidth: FEED_BORDER, borderTopColor: rule.soft }),
+              }}
             >
-              <View className="flex-1">
-                <Text className={`text-xs font-semibold ${myVote ? "text-blue-700" : "text-ink"}`}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: onDark }]}>
                   {new Date(slot.starts_at).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })}
                 </Text>
-                <Text className={`text-[10px] ${myVote ? "text-blue-600" : "text-ink-muted"}`}>
+                <Text style={[feedType.label, { color: onDarkDim, marginTop: 1 }]}>
                   {new Date(slot.starts_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} – {new Date(slot.ends_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </View>
-              <View className="items-end gap-0.5">
-                <Text className="text-xs font-bold text-teal-600">{slot.yes_voters.length} ✓</Text>
-                {isBest && <Text className="text-[9px] text-teal-600 font-semibold">Beste</Text>}
+              {/* Wie kan, en of dit de winnaar is. Het cijfer is de
+                  hoofdzaak, "beste" het bijschrift eronder. */}
+              <View className="items-end" style={{ marginLeft: space.sm }}>
+                <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: onDark }]}>
+                  {`${slot.yes_voters.length} ✓`}
+                </Text>
+                {isBest ? (
+                  <Text
+                    style={[
+                      feedType.kicker,
+                      { color: myVote ? creamOnDark.soft : flameDeep, marginTop: 1 },
+                    ]}
+                  >
+                    BESTE
+                  </Text>
+                ) : null}
               </View>
             </Pressable>
           );
         })}
         {plan.slots.length > 4 && (
-          <Text className="text-ink-muted text-xs text-center mt-1">+{plan.slots.length - 4} meer opties</Text>
+          <Text
+            style={[
+              feedType.label,
+              {
+                color: feed.inkDim,
+                textAlign: "center",
+                paddingVertical: space.sm,
+                borderTopWidth: FEED_BORDER,
+                borderTopColor: rule.soft,
+              },
+            ]}
+          >
+            {`+${plan.slots.length - 4} meer opties`}
+          </Text>
         )}
       </View>
-      <View className="flex-row items-center justify-between px-4 pb-3">
-        <Text className="text-ink-muted text-[10px]">Tik om beschikbaarheid aan te geven</Text>
+
+      {/* De voet: wat je hier kunt doen, en de ene uitgang. Een regel en
+          geen kader — dezelfde vorm als "Openen ↗" onder een bron. */}
+      <View
+        className="flex-row items-center justify-between"
+        style={{
+          paddingHorizontal: space.md,
+          paddingVertical: space.sm,
+          gap: space.sm,
+          borderTopWidth: FEED_BORDER,
+          borderTopColor: feed.ink,
+        }}
+      >
+        <Text style={[feedType.label, { color: feed.inkDim, flex: 1 }]} numberOfLines={1}>
+          Tik om beschikbaarheid aan te geven
+        </Text>
         {bestSlot && bestSlot.yes_voters.length > 0 && (
           <Pressable
             onPress={() => {
@@ -2969,10 +3135,11 @@ function ChatCallPlanCard({
                 endsAt: new Date(bestSlot.ends_at),
               });
             }}
-            className="flex-row items-center gap-1 bg-teal-50 border border-teal-200 px-2.5 py-1"
+            hitSlop={8}
           >
-            <Ionicons name="calendar-outline" color="#0F6E56" size={12} />
-            <Text className="text-teal-700 text-[10px] font-semibold">Agenda</Text>
+            <Text style={[feedType.label, { color: flameDeep, fontWeight: "700" }]}>
+              In agenda ↗
+            </Text>
           </Pressable>
         )}
       </View>
@@ -3000,7 +3167,17 @@ function ChatPollCard({
 
   if (!poll) {
     return (
-      <View className={`mx-3 mb-1 bg-paper-soft px-4 py-3 ${isMine ? "self-end" : "self-start"}`} style={{ width: "85%", maxWidth: BUBBLE_MAX_W }}>
+      <View
+        className={`mx-3 mb-1 ${isMine ? "self-end" : "self-start"}`}
+        style={{
+          width: "85%",
+          maxWidth: BUBBLE_MAX_W,
+          paddingHorizontal: space.md,
+          paddingVertical: space.md,
+          borderWidth: FEED_BORDER,
+          borderColor: rule.soft,
+        }}
+      >
         <ActivityIndicator size="small" color={feed.inkDim} />
       </View>
     );
@@ -3020,34 +3197,135 @@ function ChatPollCard({
   }
 
   return (
-    <View className={`mx-3 mb-1 bg-paper-soft overflow-hidden ${isMine ? "self-end" : "self-start"}`} style={{ width: "90%", maxWidth: BUBBLE_MAX_W }}>
-      <View className="flex-row items-center gap-2 px-4 pt-3 pb-1">
-        <Ionicons name="bar-chart-outline" color="#D46220" size={16} />
-        <Text className="text-ink font-semibold text-sm flex-1" numberOfLines={2}>{poll.question}</Text>
+    /**
+     * Dezelfde opbouw als de belafspraak hiernaast: één kader, een rubriek
+     * met een lijn eronder, en de opties als rijen tussen haarlijnen.
+     *
+     * De uitslagbalk was een gestapeld vlakje op vier losse hexwaarden
+     * (`#D4622012`, `#1A160E08`) die in de lichte stand niet meeschoven.
+     * Het is nu de flame-kleur op lage dekking uit hetzelfde palet, en de
+     * optie waar jij op stemde is gevuld in plaats van gekleurd.
+     */
+    <View
+      className={`mx-3 mb-1 ${isMine ? "self-end" : "self-start"}`}
+      style={{
+        width: "90%",
+        maxWidth: BUBBLE_MAX_W,
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+      }}
+    >
+      <View style={{ paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm }}>
+        <View className="flex-row items-center" style={{ gap: 6, marginBottom: 6 }}>
+          <Ionicons name="bar-chart-outline" color={flameDeep} size={13} />
+          <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+            PEILING
+          </Text>
+        </View>
+        <Text style={[feedType.tile, { color: feed.ink }]} numberOfLines={3}>
+          {poll.question}
+        </Text>
       </View>
-      <View className="px-3 pb-2 gap-1.5">
-        {poll.options.map((option) => {
+
+      <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+        {poll.options.map((option, i) => {
           const pct = poll.total_votes > 0 ? Math.round((option.vote_count / poll.total_votes) * 100) : 0;
           const isMyVote = poll.my_vote_option_id === option.id;
+          const divider = i === 0 ? {} : { borderTopWidth: FEED_BORDER, borderTopColor: rule.soft };
+
           if (showResults) {
             return (
-              <View key={option.id} className=" overflow-hidden">
-                <View className="flex-row items-center px-3 py-2" style={{ backgroundColor: isMyVote ? "#D4622012" : "#1A160E06" }}>
-                  <View className="absolute left-0 top-0 bottom-0" style={{ width: `${pct}%`, backgroundColor: isMyVote ? "#D4622020" : "#1A160E08" }} />
-                  <Text className={`flex-1 text-xs font-medium ${isMyVote ? "text-flame" : "text-ink"}`}>{option.label}</Text>
-                  <Text className={`text-xs font-bold ${isMyVote ? "text-flame" : "text-ink-muted"}`}>{pct}%</Text>
-                </View>
+              <View
+                key={option.id}
+                className="flex-row items-center"
+                style={{
+                  paddingHorizontal: space.md,
+                  paddingVertical: space.sm,
+                  overflow: "hidden",
+                  ...divider,
+                }}
+              >
+                {/* De balk is de uitslag zelf, geen versiering: hij loopt
+                    tot waar het percentage staat en verder niet. */}
+                <View
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${pct}%`,
+                    /**
+                     * Het lichtste gewicht dat het palet kent (`postRule`,
+                     * inkt op ~20%). Zwaarder en de tekst erop verliest
+                     * zijn contrast; dat gebeurde met de losse hexwaarden
+                     * die hier stonden, in de lichte stand.
+                     */
+                    backgroundColor: isMyVote
+                      ? color("flame", "postRule")
+                      : color("ink", "postRule"),
+                  }}
+                />
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 13, flex: 1, color: feed.ink, fontWeight: isMyVote ? "700" : "600" },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {option.label}
+                </Text>
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 13, fontWeight: "700", color: isMyVote ? flameDeep : feed.inkDim, marginLeft: space.sm },
+                  ]}
+                >
+                  {`${pct}%`}
+                </Text>
               </View>
             );
           }
+
           return (
-            <Pressable key={option.id} onPress={() => handleVote(option.id)} className="border border-paper px-3 py-2 active:bg-paper">
-              <Text className="text-ink text-xs font-medium">{option.label}</Text>
+            <Pressable
+              key={option.id}
+              onPress={() => handleVote(option.id)}
+              style={({ pressed }) => ({
+                paddingHorizontal: space.md,
+                paddingVertical: space.sm,
+                backgroundColor: pressed ? feed.ink : "transparent",
+                ...divider,
+              })}
+            >
+              {({ pressed }) => (
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 13, color: pressed ? creamOnDark.DEFAULT : feed.ink },
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              )}
             </Pressable>
           );
         })}
       </View>
-      <Text className="text-ink-muted text-[10px] px-4 pb-3">{poll.total_votes} stemmen</Text>
+
+      <Text
+        style={[
+          feedType.label,
+          {
+            color: feed.inkDim,
+            paddingHorizontal: space.md,
+            paddingVertical: space.sm,
+            borderTopWidth: FEED_BORDER,
+            borderTopColor: feed.ink,
+          },
+        ]}
+      >
+        {`${poll.total_votes} ${poll.total_votes === 1 ? "stem" : "stemmen"}`}
+      </Text>
     </View>
   );
 }
