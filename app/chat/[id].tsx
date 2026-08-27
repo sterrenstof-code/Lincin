@@ -2490,43 +2490,67 @@ function CallNotificationCard({
      * gevulde vlak — in de oranje die dit systeem voor de primaire actie
      * heeft. Er is er hoogstens één per scherm, en dít is hem.
      */
-    <View className="items-center" style={{ marginVertical: space.sm }}>
+    <View className="items-center" style={{ marginVertical: space.md }}>
       <View
-        className="flex-row items-center"
+        className="flex-row"
         style={{
-          maxWidth: 360,
+          maxWidth: 380,
           width: "100%",
-          gap: space.md,
-          paddingLeft: space.md,
-          paddingVertical: space.sm,
           borderWidth: FEED_BORDER,
           borderColor: feed.ink,
         }}
       >
-        <Ionicons name="videocam" color={flameDeep} size={18} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-            VIDEOGESPREK
-          </Text>
+        {/*
+            De melding en de knop zijn twee cellen van hetzelfde kader,
+            gescheiden door één lijn.
+
+            De knop lag er eerder als een gekleurde sticker in: een vast
+            hoge oranje rechthoek met lucht eromheen, die nergens op stond
+            en het kader van binnenuit aanraakte. Als cel loopt hij van lijn
+            tot lijn en heeft hij geen eigen rand nodig — dezelfde opbouw als
+            de knoppenrij onder een vondst.
+        */}
+        <View
+          style={{
+            flex: 1,
+            minWidth: 0,
+            justifyContent: "center",
+            paddingHorizontal: space.md,
+            paddingVertical: space.md,
+          }}
+        >
+          {/* Het icoon staat op de regel van de rubriek, niet ernaast: het
+              hóórt bij dat woord en niet bij het blok eronder. */}
+          <View className="flex-row items-center" style={{ gap: 5, marginBottom: 3 }}>
+            <Ionicons name="videocam" color={flameDeep} size={12} />
+            <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+              VIDEOGESPREK
+            </Text>
+          </View>
           <Text
-            style={[feedType.label, { fontSize: 13, color: feed.ink, marginTop: 2 }]}
+            style={[feedType.label, { fontSize: 13, color: feed.ink }]}
             numberOfLines={2}
           >
             {isMine ? "Je startte een videogesprek" : `${senderName} startte een gesprek`}
-            <Text style={{ color: feed.inkDim }}>{`  ·  ${time}`}</Text>
+            <Text style={{ color: feed.inkDim }}>{`   ·   ${time}`}</Text>
           </Text>
         </View>
         <Pressable
           onPress={onJoin}
           className="bg-announce active:bg-announce-deep"
           style={{
-            height: CONTROL_H,
-            paddingHorizontal: space.md,
-            alignItems: "center",
             justifyContent: "center",
+            paddingHorizontal: space.lg,
+            borderLeftWidth: FEED_BORDER,
+            borderLeftColor: feed.ink,
           }}
         >
-          <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
+          <Text
+            style={[
+              feedType.label,
+              { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT },
+            ]}
+          >
             Deelnemen
           </Text>
         </Pressable>

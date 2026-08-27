@@ -104,7 +104,16 @@ export function ChatWorkspace({
      * `true` en geen prop: deze kolommen bestaan alleen boven 900px, en
      * daarboven is `wide` per definitie waar (het breekpunt ligt op 800).
      */
-    <View style={{ flex: 1, paddingHorizontal: gutter(true) }}>
+    <View
+      style={{
+        flex: 1,
+        paddingHorizontal: gutter(true),
+        // Onderaan óók lucht, anders loopt de onderlijn van het blad tegen
+        // de vensterrand aan en is het geen blad meer maar een afgesneden
+        // kolom.
+        paddingBottom: gutter(true),
+      }}
+    >
       <View
         style={{
           flex: 1,
@@ -112,14 +121,30 @@ export function ChatWorkspace({
           width: "100%",
           maxWidth: sheetWidth(true),
           alignSelf: "center",
+          /**
+           * Het blad zelf: één kader om de drie kolommen, en een licht vlak
+           * eronder.
+           *
+           * De kolommen zweefden los op het paginavlak — drie stroken die
+           * toevallig naast elkaar stonden. Het kader zegt dat ze één ding
+           * zijn, en het lichte vlak zet ze een laag boven de pagina. Wat
+           * daarbinnen de rangorde doet is het verschil tussen de kolommen:
+           * de twee zijkolommen zijn dit lichte blad, het gesprek in het
+           * midden houdt het paginavlak. Zo lees je in één oogopslag wat het
+           * apparaat is en wat het onderwerp.
+           */
+          borderWidth: FEED_BORDER,
+          borderColor: feed.ink,
+          backgroundColor: feed.panel,
+          overflow: "hidden",
         }}
       >
         <ChatRail activeChatId={chatId} myUserId={myUserId} />
 
         {/* De gespreksinhoud. `minWidth: 0` is nodig omdat een flex-kind
             anders niet kleiner wordt dan zijn inhoud en de kolommen ernaast
-            wegduwt. */}
-        <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
+            wegduwt. Het paginavlak, waar de zijkolommen het blad houden. */}
+        <View style={{ flex: 1, minWidth: 0, backgroundColor: feed.lav }}>{children}</View>
 
         {showOptions ? (
           <ChatOptionsRail chatId={chatId} myUserId={myUserId} media={media} />
@@ -161,7 +186,6 @@ function ChatRail({
         width: 300,
         borderRightWidth: FEED_BORDER,
         borderRightColor: feed.ink,
-        backgroundColor: feed.lav,
       }}
     >
       <View
@@ -185,7 +209,6 @@ function ChatRail({
           style={{
             borderWidth: FEED_BORDER,
             borderColor: feed.ink,
-            backgroundColor: feed.panel,
             paddingHorizontal: space.md,
             height: CONTROL_H,
             color: feed.ink,
@@ -311,7 +334,6 @@ function ChatOptionsRail({
         width: 320,
         borderLeftWidth: FEED_BORDER,
         borderLeftColor: feed.ink,
-        backgroundColor: feed.panel,
       }}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
