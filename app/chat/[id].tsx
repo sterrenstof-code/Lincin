@@ -2213,22 +2213,27 @@ function MessageBubble({
           * Vol of leeg — meer verschil is er niet, en meer is er ook niet
           * nodig.
           *
-          * Beide kanten waren een gevuld vlak: het mijne zwart, dat van de
-          * ander een bijna-wit blad. Twee dozen op een pagina die volgens
-          * §4 juist géén dozen kent — en in de lichte stand was dat witte
-          * blad bovendien nauwelijks van het paginavlak te onderscheiden.
+          * Beide kanten waren eerst een gevuld vlak: het mijne zwart, dat
+          * van de ander een bijna-wit blad. Twee dozen op een pagina die
+          * volgens §4 juist géén dozen kent, en in de lichte stand was dat
+          * witte blad bovendien nauwelijks van het paginavlak te
+          * onderscheiden.
           *
-          * Nu draagt het bericht van de ander geen vulling maar een
-          * kantlijn: dezelfde vorm als het aangehaalde blok hierboven, en
-          * dezelfde regel als de reactiepil en de knoppenrij — gevuld is
-          * "van mij", een lijn is "van iemand anders". Dat lees je uit een
-          * ooghoek, ook naast elkaar op één scherm.
+          * Toen kreeg het bericht van de ander één kantlijn links. Dat was
+          * de verkeerde vorm: een kantlijn is in deze app precies het
+          * teken van een aanhaling — het antwoord-blok hieronder gebruikt
+          * hem — dus een gewoon bericht las als een citaat van iets anders.
+          *
+          * Nu is het een kader zonder vulling. Een gevulde cel is "van
+          * mij", een lege cel met een kader is "van iemand anders" —
+          * dezelfde tweedeling als bij de reactiepil en de knoppenrij, en
+          * dezelfde vorm: allebei een cel, alleen de vulling verschilt.
           */
         style={{
           opacity: pending ? 0.65 : 1,
           ...(isMine || failed
             ? {}
-            : { borderLeftWidth: FEED_BORDER * 2, borderLeftColor: feed.ink }),
+            : { borderWidth: FEED_BORDER, borderColor: feed.ink }),
         }}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
@@ -2256,24 +2261,46 @@ function MessageBubble({
           )
         ) : (
           <>
-            {/* Reply-quote — aantikken scrollt naar het originele bericht.
-                Het citaat is een aangehaald blok, geen widget: vierkant,
-                één rode kantlijn, en de naam in dezelfde kicker die de
-                rest van de app voor rubrieken gebruikt. De ronde hoeken en
-                het merkblauw hoorden bij het pre-v3-systeem — zie DESIGN.md
-                §4 en §7. Op de donkere eigen bubbel staat het rood in
+            {/*
+                Het aangehaalde bericht — aantikken scrolt naar het origineel.
+
+                Dit was een lichter vlak bínnen de bubbel: crème op acht
+                procent op de donkere, inkt op vijf op de lichte. Een vlak in
+                een vlak, en zo licht dat het eerder als een vlek las dan als
+                een citaat (DESIGN.md §4 — hiërarchie komt uit lijn en
+                inspringing, niet uit een vlak).
+
+                Nu doen de lijn en de inspringing het werk. De kantlijn
+                begint waar de tekst van het bericht begint, het citaat staat
+                daar nóg een stap binnen, en een haarlijn eronder scheidt het
+                van wat er als antwoord op volgde. Dat is de opbouw van elke
+                kaart in deze app: band, lijn, band.
+
+                De kantlijn is hier ook echt op zijn plek. Hij was even de
+                vorm van élk inkomend bericht, en dan zegt hij niets meer;
+                een gewoon bericht draagt nu een kader (zie hierboven) en de
+                kantlijn is weer wat hij hoort te zijn — het teken van een
+                aanhaling. Op de donkere eigen bubbel staat het rood in
                 `flame`, op het lichte vlak in `flameDeep`: klein rood op
-                lavendel haalt anders geen contrast. */}
+                lavendel haalt anders geen contrast.
+            */}
             {content.reply && (
               <Pressable
                 onPress={() => onReplyQuotePress?.(content.reply!.messageId)}
                 style={{
-                  backgroundColor: isMine ? "rgba(243,237,228,0.08)" : "rgba(11,10,12,0.05)",
+                  // De kantlijn begint op de tekstmarge van de bubbel, niet
+                  // tegen zijn rand: zo staat het citaat ónder het bericht
+                  // uitgelijnd in plaats van ernaast.
+                  marginLeft: space.lg,
+                  marginTop: space.md,
+                  marginBottom: space.sm,
+                  paddingLeft: space.md,
+                  paddingRight: space.md,
+                  paddingBottom: space.sm,
                   borderLeftWidth: FEED_BORDER * 2,
                   borderLeftColor: isMine ? flame : flameDeep,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  marginBottom: 2,
+                  borderBottomWidth: FEED_BORDER,
+                  borderBottomColor: isMine ? creamOnDark.rule : rule.soft,
                 }}
               >
                 <Text
