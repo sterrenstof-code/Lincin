@@ -18,6 +18,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { ModalShell } from "@/components/ModalShell";
+import { FormatBar } from "@/components/FormatBar";
 import { Avatar } from "@/components/Avatar";
 import { RichText } from "@/components/RichText";
 import { MentionsText } from "@/components/MentionsText";
@@ -38,7 +40,9 @@ import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import {
   announce,
+  announceDeep,
   CONTROL_H,
+  creamOnDark,
   feed,
   FEED_BORDER,
   feedType,
@@ -62,6 +66,7 @@ import {
   KIND_LABELS,
   normalizeRow,
   POST_COLUMNS,
+  updatePost,
   type PostWithAuthor,
 } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
@@ -335,6 +340,67 @@ export default function PostDetailScreen() {
   }
 
   const canModerate = post.data?.user_id === myUserId;
+
+  /**
+   * Bewerken van wat je zelf gedeeld hebt.
+   *
+   * Het optiemenu kende maar één ding: weggooien. Wie een typfout in zijn
+   * notitie zag had daarmee geen keuze — opnieuw schrijven, en de reacties
+   * eronder gingen mee. De feed had wél een snelle "toelichting bewerken",
+   * maar die raakt alleen `caption`, en sinds notities, ideeën en weetjes
+   * naar `body_text` schrijven is dat daar niet het stuk maar wat de deler
+   * erbij zei.
+   *
+   * Dus twee velden, en ze staan er allebei altijd: de kop en de tekst.
+   * Welke van de twee de vondst zélf draagt hangt van de soort af, en dat
+   * is niets waar je bij het verbeteren van een zin over hoort na te denken.
+   */
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCaption, setEditCaption] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editSelection, setEditSelection] = useState({ start: 0, end: 0 });
+  const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  /**
+   * De cursor terugzetten na een opmaakknop, en hem dan weer loslaten.
+   *
+   * `selection` op een TextInput is een gestuurde waarde: laat je hem
+   * staan, dan springt de cursor bij elke toetsaanslag terug. Eén tik en
+   * daarna weer los — dezelfde greep die post-compose gebruikt.
+   */
+  useEffect(() => {
+    if (!forcedSelection) return;
+    const t = setTimeout(() => setForcedSelection(null), 0);
+    return () => clearTimeout(t);
+  }, [forcedSelection]);
+
+  function onOpenEdit() {
+    if (!post.data) return;
+    setEditCaption(post.data.caption ?? "");
+    setEditBody(post.data.body_text ?? "");
+    setEditError(null);
+    setEditOpen(true);
+  }
+
+  async function onSaveEdit() {
+    if (!post.data) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      await updatePost(post.data.id, { caption: editCaption, body_text: editBody });
+      // De pagina zelf, en overal waar deze vondst nog staat.
+      await post.refetch();
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["posts-by-user"] });
+      setEditOpen(false);
+    } catch (e: any) {
+      setEditError(e?.message ?? "Kon de wijziging niet bewaren.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function onDeletePost() {
     if (!post.data) return;
@@ -988,6 +1054,125 @@ export default function PostDetailScreen() {
     </>
   );
 
+  /**
+   * Het bewerkscherm.
+   *
+   * Twee velden onder elkaar, elk met een rubriek en een lijn erboven —
+   * dezelfde opbouw als de rest van de app, zodat een formulier niet ineens
+   * een ander systeem is (DESIGN.md §4). De tekst krijgt de opmaakbalk die
+   * ook bij het plaatsen gebruikt wordt; anders kun je vet maken bij het
+   * schrijven maar niet meer bij het verbeteren.
+   */
+  const editSheet = (
+    <ModalShell
+      visible={editOpen}
+      onClose={() => setEditOpen(false)}
+      title={`${kindLabel} bewerken`}
+      maxWidth={560}
+    >
+      <ScrollView
+        style={{ maxHeight: 460 }}
+        contentContainerStyle={{ padding: space.lg }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+          {post.data?.image_path || (post.data?.album_urls?.length ?? 0) > 0
+            ? "TITEL"
+            : "ONDERSCHRIFT"}
+        </Text>
+        <View style={{ height: FEED_BORDER, backgroundColor: feed.ink, marginTop: 6 }} />
+        <TextInput
+          value={editCaption}
+          onChangeText={setEditCaption}
+          placeholder="Waar gaat dit over?"
+          placeholderTextColor={feed.inkDim}
+          multiline
+          maxLength={1000}
+          style={[
+            feedType.pullSmall,
+            {
+              color: feed.ink,
+              paddingVertical: space.md,
+              minHeight: 56,
+              textAlignVertical: "top",
+              ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
+            },
+          ]}
+        />
+
+        <Text
+          style={[
+            feedType.kicker,
+            { color: flameDeep, letterSpacing: 0.55, marginTop: space.lg },
+          ]}
+        >
+          DE TEKST
+        </Text>
+        <View style={{ height: FEED_BORDER, backgroundColor: feed.ink, marginTop: 6 }} />
+        <FormatBar
+          value={editBody}
+          selection={editSelection}
+          onChange={(next) => {
+            setEditBody(next.text);
+            setEditSelection(next.selection);
+            setForcedSelection(next.selection);
+          }}
+        />
+        <TextInput
+          value={editBody}
+          onChangeText={setEditBody}
+          onSelectionChange={(e) => setEditSelection(e.nativeEvent.selection)}
+          selection={forcedSelection ?? undefined}
+          placeholder="Leeg laten mag — dan draagt de kop de vondst."
+          placeholderTextColor={feed.inkDim}
+          multiline
+          maxLength={2000}
+          style={[
+            feedType.body,
+            {
+              color: feed.ink,
+              fontSize: 15,
+              lineHeight: 23,
+              paddingVertical: space.md,
+              minHeight: 120,
+              textAlignVertical: "top",
+              ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
+            },
+          ]}
+        />
+
+        {editError ? (
+          <Text style={[feedType.label, { color: flameDeep, marginTop: space.md }]}>
+            {editError}
+          </Text>
+        ) : null}
+
+        {/* Eén gevulde knop, en dat is degene die iets dóet. Annuleren is
+            de rand van het scherm en het kruisje in de kop. */}
+        <Pressable
+          onPress={onSaveEdit}
+          disabled={saving}
+          style={({ pressed }) => ({
+            marginTop: space.lg,
+            height: CONTROL_H,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: saving ? feed.inkDim : pressed ? announceDeep : announce,
+          })}
+        >
+          <Text
+            style={[
+              feedType.label,
+              { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
+            ]}
+          >
+            {saving ? "Bewaren…" : "Bewaren"}
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </ModalShell>
+  );
+
   const shell = (children: React.ReactNode) => (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
       {deleteError && (
@@ -1002,6 +1187,14 @@ export default function PostDetailScreen() {
         title={`${kindLabel} · opties`}
         actions={[
           {
+            label: "Bewerken",
+            icon: "pencil-outline",
+            onPress: () => {
+              setMenuOpen(false);
+              onOpenEdit();
+            },
+          },
+          {
             label: `${kindLabel} verwijderen`,
             icon: "trash-outline",
             destructive: true,
@@ -1009,6 +1202,8 @@ export default function PostDetailScreen() {
           },
         ]}
       />
+
+      {editSheet}
 
       <KeyboardAvoidingView
         className="flex-1"

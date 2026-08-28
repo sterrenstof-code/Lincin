@@ -430,6 +430,49 @@ export async function listPostsByTag(tag: string, limit = 50): Promise<PostWithA
   return hydrate((data ?? []).map(normalizeRow));
 }
 
+/**
+ * Een vondst bijwerken nadat hij geplaatst is.
+ *
+ * `updatePostCaption` hiernaast raakt alleen het onderschrift, en dat is
+ * genoeg voor het snelle menu in de feed. Op de detailpagina moet je ook de
+ * vóndst zelf kunnen bijstellen: sinds notities, ideeën en weetjes naar
+ * `body_text` schrijven is het onderschrift daar de toelichting van de
+ * deler en niet het stuk. Wie een typfout in zijn notitie zag, kon hem
+ * alleen weggooien en opnieuw schrijven.
+ *
+ * Alleen wat je meegeeft wordt geschreven — een veld dat niet in het object
+ * staat blijft wat het was. Zo kan een aanroeper die alleen de kop bijstelt
+ * de tekst niet per ongeluk leegmaken.
+ */
+export async function updatePost(
+  postId: string,
+  fields: { caption?: string | null; body_text?: string | null }
+): Promise<void> {
+  const patch: { caption?: string | null; body_text?: string | null } = {};
+  if ("caption" in fields) patch.caption = fields.caption?.trim() || null;
+  if ("body_text" in fields) patch.body_text = fields.body_text?.trim() || null;
+  if (Object.keys(patch).length === 0) return;
+
+  /**
+   * `select()` erachter, en niet omdat we de rij nodig hebben.
+   *
+   * Weigert row level security de update, dan is dat geen fout maar nul
+   * geraakte rijen — PostgREST geeft netjes `error: null` terug en de app
+   * meldt vrolijk dat het bewaard is. Precies wat er hier gebeurde zolang
+   * `posts` geen update-policy had (zie migratie 0053). Door de rij terug
+   * te vragen weten we of er echt iets veranderd is.
+   */
+  const { data, error } = await supabase
+    .from("posts")
+    .update(patch)
+    .eq("id", postId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Deze vondst kon niet bijgewerkt worden — is hij van jou?");
+  }
+}
+
 export async function updatePostCaption(postId: string, caption: string): Promise<void> {
   const { error } = await supabase
     .from("posts")
