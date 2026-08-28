@@ -25,6 +25,7 @@ import { ModalShell } from "@/components/ModalShell";
 import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
+import { IndexGrid } from "@/components/IndexGrid";
 import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
@@ -1210,7 +1211,7 @@ function FeedBody({
   }
 
   return (
-    <MasonryGrid
+    <ChronoGrid
       slots={slots}
       columns={columns}
       myUserId={myUserId}
@@ -1221,21 +1222,29 @@ function FeedBody({
 }
 
 /**
- * Het chronologische overzicht: metselwerk.
+ * Het chronologische overzicht: een rooster.
  *
  * ---------------------------------------------------------------
- * WAAROM KOLOMMEN EN GEEN RIJEN
+ * WAAROM DIT GEEN METSELWERK MEER IS
  * ---------------------------------------------------------------
- * Hier stond een raster van gelijke cellen. Dat betekent dat élke tegel de
- * hoogte van de hoogste in zijn rij aanneemt, en dus dat elke staande foto
- * werd bijgesneden tot de vorm van zijn buurman. In een overzicht waar de
- * volgorde het enige is dat telt, is de vorm van een foto juist het enige
- * wat de een van de ander onderscheidt — dus houdt elke tegel zijn eigen
- * hoogte en stapelen we ze in kolommen.
+ * Hier stond metselwerk: elke tegel hield zijn eigen hoogte en de kolommen
+ * werden onafhankelijk van elkaar gevuld. Dat vult mooi uit, maar het kost
+ * het enige wat dit overzicht te bieden heeft — de volgorde. Op web deed
+ * `column-count` het werk, en die vult kolom voor kolom: de nieuwste vier
+ * vondsten stonden ónder elkaar in de linkerkolom in plaats van naast
+ * elkaar op de eerste rij. Je las de lijst dus van boven naar beneden en
+ * dan pas weer naar rechts, terwijl er "nieuwste eerst" boven staat.
  *
- * Wie de kolommen vult, verschilt per platform — zie hieronder.
+ * Een rooster leest wél zoals je kijkt: van links naar rechts, rij voor
+ * rij. Dat het onderin niet meer strak uitvult is de prijs, en die is hier
+ * laag — een korte laatste rij houdt zijn lege cellen, dus de lijnen lopen
+ * gewoon door.
+ *
+ * Het rooster is `IndexGrid` uit de rasterlaag (DESIGN.md §4c): cellen
+ * zonder kaders, gescheiden door haarlijnen. Die laag lag klaar maar werd
+ * nergens gebruikt — zie §8. Nu wel.
  */
-function MasonryGrid({
+function ChronoGrid({
   slots,
   columns,
   myUserId,
@@ -1249,84 +1258,27 @@ function MasonryGrid({
   dimmed?: Set<string> | null;
 }) {
   /**
-   * In een kolom bepaalt de tegel zelf zijn hoogte — er is geen rij die
-   * hem er een geeft. De vormen uit de rubrieken vullen juist de hoogte
-   * die ze krijgen, en zouden hier dus tot niets inklappen. Elke vondst
-   * krijgt daarom de rastervorm: beeld op zijn eigen verhouding, tekst
-   * eronder. Wat geen vondst is (activiteit, call, lijst) houdt zijn
-   * eigen kaart.
+   * Elke vondst krijgt de rastervorm: beeld op zijn eigen verhouding, tekst
+   * eronder. De vormen uit de rubrieken vullen juist de hoogte die ze
+   * krijgen en horen hier niet: dit is één maat voor alles.
    */
   const cells = slots.map((slot) =>
     slot.item.type === "post" ? { ...slot, variant: "grid" as TileVariant } : slot
   );
 
-  /**
-   * Op web verdeelt de browser zelf: `column-count` maakt de kolommen even
-   * lang, en hij kent de hoogtes wél — hij heeft ze net gemeten. Dat is het
-   * verschil met om de beurt verdelen: dat is voorspelbaar maar houdt geen
-   * rekening met wat er ín een tegel zit, en dan eindigt de ene kolom een
-   * halve pagina eerder dan de andere.
-   *
-   * `display: block` moet erbij, want react-native-web zet elke View op
-   * flex en een flexcontainer kent geen kolommen. `break-inside: avoid`
-   * houdt een tegel heel; zonder dat knipt de browser hem halverwege af.
-   */
-  if (Platform.OS === "web") {
-    return (
-      <View
-        style={
-          {
-            display: "block",
-            columnCount: columns,
-            // Een kier van één lijnbreedte was te strak: dan lopen twee
-            // donkere tegels in elkaar over en zie je niet meer waar de een
-            // ophoudt. Een klein beetje lucht — het paginavlak dat ertussen
-            // doorkomt — houdt ze uit elkaar zonder dat het losse kaartjes
-            // worden.
-            columnGap: space.sm,
-          } as any
-        }
-      >
-        {cells.map((slot) => (
-          <View
-            key={slot.item.id}
-            style={{ breakInside: "avoid", marginBottom: space.sm } as any}
-          >
-            <CompactItem
-              slot={slot}
-              wide={columns > 1}
-              myUserId={myUserId}
-              onChanged={onChanged}
-              dimmed={dimmed}
-            />
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  // Native kent `column-count` niet: daar blijft het om de beurt. Dezelfde
-  // volgorde, alleen minder strak uitgevuld.
-  const buckets: Slot[][] = Array.from({ length: columns }, () => []);
-  cells.forEach((slot, i) => buckets[i % columns].push(slot));
-
   return (
-    <View style={{ flexDirection: "row", gap: space.sm }}>
-      {buckets.map((bucket, ci) => (
-        <View key={ci} style={{ flex: 1, minWidth: 0, gap: space.sm }}>
-          {bucket.map((slot) => (
-            <CompactItem
-              key={slot.item.id}
-              slot={slot}
-              wide={columns > 1}
-              myUserId={myUserId}
-              onChanged={onChanged}
-              dimmed={dimmed}
-            />
-          ))}
-        </View>
+    <IndexGrid columns={columns}>
+      {cells.map((slot) => (
+        <CompactItem
+          key={slot.item.id}
+          slot={slot}
+          wide={columns > 1}
+          myUserId={myUserId}
+          onChanged={onChanged}
+          dimmed={dimmed}
+        />
       ))}
-    </View>
+    </IndexGrid>
   );
 }
 

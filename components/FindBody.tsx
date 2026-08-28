@@ -1443,12 +1443,17 @@ function GridTile({
       onPress={onPress}
       style={{
         backgroundColor: feed.post,
-        // De kaart sluit zichzelf af. In het metselwerk staan deze tegels
-        // onder elkaar met alleen witruimte ertussen, en zonder vulling
-        // liep de laatste regel van de ene over in de kicker van de
-        // volgende. Zwaarder dan de lijnen hierbinnen — zie DESIGN.md §4.
-        borderBottomWidth: FEED_BORDER,
-        borderBottomColor: rule.card,
+        /**
+         * Geen afsluitlijn meer.
+         *
+         * Die stond hier omdat deze tegels in metselwerk ónder elkaar
+         * hingen met alleen witruimte ertussen: zonder lijn liep de laatste
+         * regel van de ene over in de kicker van de volgende. Sinds het
+         * overzicht een rooster is (`IndexGrid`) trekt de cel eromheen die
+         * lijn zelf, en twee lijnen tegen elkaar aan lezen als een dubbele
+         * rand — precies wat DESIGN.md §4 met "de binnenlijn moet de
+         * zwakste zijn" bedoelt.
+         */
       }}
     >
       {p.image ? (
