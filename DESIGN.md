@@ -244,6 +244,28 @@ Voor tekst over een foto: `Scrim` (`components/Scrim.tsx`). Geen schaduw —
 die staan niet in dit systeem — maar een verloop in twaalf stappen. Drie
 gestapelde vlakken, zoals het eerder ging, zie je als drie banden.
 
+### Stilte en leegte
+
+Een mislukte query en een lege lijst zijn niet hetzelfde, en ze hoorden er
+lang wél hetzelfde uit te zien: "nog geen meldingen" terwijl er tientallen
+waren, "je hebt nog niets gedeeld" terwijl de server niet antwoordde.
+
+Twee onderdelen dekken dat af, en ze staan naast elkaar omdat ze een ander
+soort fout dragen:
+
+| | |
+|---|---|
+| `QueryError` | Een query die niet laadde. Staat wáár de lijst had gestaan, met de melding en een knop om het opnieuw te proberen. Het enige blok in de app met een **rode** omlijning, dus je ziet aan de vorm al dat er iets mis is. |
+| `useToast()` | Een mutatie die faalde nádat het scherm al bijgewerkt was. Een strook onderaan — zwart met crème in béide standen (§2), rode kantlijn bij een fout, en meestal een "Opnieuw"-knop. |
+
+De regel erachter: **een optimistische update is een belofte.** Draai je
+hem terug, dan hoort er te staan dát hij teruggedraaid is. Een rij die
+zonder één woord weer verschijnt leest als een kapotte app in plaats van
+als een eerlijke.
+
+Vang een fout dus nooit af met alleen een `console.warn`. Dat stond op
+eenentwintig plekken en het is precies zo veel feedback als niets.
+
 ### Rubriekkoppen
 
 De kop van een rubriek is een nummer, een woord en een lijn
@@ -337,6 +359,12 @@ Elk v3-scherm heeft dezelfde ruggengraat:
   een telefoon.
 - Er is **geen** breedtebeperking. `ScreenContainer` (600px-kolom) is het
   oude patroon; nieuwe schermen gebruiken het niet.
+- De kop van de pagina is `<PageHead>` (`components/PageHead.tsx`): kicker,
+  titel, één zin. Die opbouw stond drie keer uitgeschreven en op twee
+  tabbladen helemaal niet — dan wissel je van tabblad en wissel je van
+  ontwerp. Een rubriek bínnen een pagina is `<RubricHead>` uit hetzelfde
+  bestand; `SectionBand` (§4b) is iets anders, dat is de genummerde
+  inhoudsopgave van de feed.
 
 ---
 
@@ -370,6 +398,13 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
   §4. Een gevuld vlak is de primaire actie, en verder niets.
 - Geen `feed.text` op een foto of op een gevulde donkere knop. Dat is
   `creamOnDark`.
+- Geen `console.warn` als enige antwoord op een fout — zie §4b.
+- Geen knop zonder naam. Een knop die alleen een icoon is heeft een
+  `accessibilityLabel` nodig; zonder dat staat er voor wie hem niet ziet
+  letterlijk niets. Wisselt de knop van stand, dan wisselt de naam mee.
+- Geen aanraakvlak onder `CONTROL_H` (44). Past de knop zelf niet op die
+  maat, dan is `hitSlop` het antwoord — dat vergroot waar de vinger telt
+  zonder het beeld te veranderen.
 - Niets nakijken in één stand. Wat in de donkere klopt kan in de lichte
   onzichtbaar zijn, en andersom.
 - Geen tweede navigatiebalk: de navigatie zit in de kop (`AppChrome`).
@@ -385,7 +420,19 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
   beide patronen naast elkaar — en dat is precies het soort verschil dat
   vanzelf blijft bestaan als niemand het opschrijft.
 
-Ongeveer twintig schermen draaien nog op het oude patroon
+**De vijf tabbladen zijn nu wél één systeem.** Chats en Lincs hielden
+`text-3xl font-bold` en gevulde `bg-paper-soft`-kaarten aan — het patroon
+van vóór v3 — terwijl feed, agenda en meldingen de redactionele opbouw
+al droegen. Je wisselde van tabblad en je wisselde van ontwerp, terwijl er
+verder niets aan de pagina veranderd was. Allebei staan ze nu op
+`PageHead` (§5), en hun lijsten hebben geen vulling meer maar een kader
+met lijnen erbinnen (§4).
+
+Dat was het soort verschil waar de alinea hierboven over gaat: het bleef
+bestaan zolang het nergens één plek had. Vandaar dat de kop nu een
+onderdeel is en geen patroon om na te tikken.
+
+Ongeveer achttien schermen draaien nog op het oude patroon
 (`ScreenContainer`, 600px-kolom, pre-v3-vormen). Ze werken, maar ze volgen
 dit document niet. Onder meer: `profile-edit`, `group/[id]`,
 `group-create`, `event-create`, `post-compose`, `list/[id]`,

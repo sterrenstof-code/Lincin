@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -15,10 +16,20 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { PageHead, RubricHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
 import { useToast } from "@/lib/toast";
-import { creamOnDark, feed, FEED_BORDER, flameDeep } from "@/lib/design/type";
+import {
+  CONTROL_H,
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flame,
+  flameDeep,
+  space,
+} from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   chatTitle,
@@ -190,58 +201,96 @@ export default function ChatsScreen() {
         contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
       >
         <View>
-          <Text className="text-3xl font-bold tracking-tight text-ink mb-1">
-            Chats
-          </Text>
-          <Text className="text-ink-soft text-base mb-5">
-            Volledig end-to-end versleuteld.
-          </Text>
+          <PageHead
+            kicker="Onder vier ogen"
+            title="Chats"
+            intro="Volledig end-to-end versleuteld — ook wij lezen niet mee."
+            wide={wide}
+            gap={space.xxl}
+          />
 
-          {/* Search pill */}
-          <View className="flex-row items-center gap-2 mb-5">
-            <View className="flex-1 flex-row items-center bg-paper-light px-4 border border-line-paper">
-              <Ionicons name="search" color={feed.inkDim} size={18} />
+          {/* Filterveld en de knop ernaast als één rij van 44 hoog
+              (CONTROL_H). Het veld had een eigen vulling; op een blad
+              waar verder niets gevuld is leest dat als een doos in
+              plaats van als een regel om in te typen (§4). */}
+          <View
+            style={{ flexDirection: "row", gap: space.sm, marginBottom: space.xxl }}
+          >
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                height: CONTROL_H,
+                paddingHorizontal: space.md,
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+              }}
+            >
+              <Ionicons name="search" color={feed.inkDim} size={17} />
               <TextInput
                 value={filter}
                 onChangeText={setFilter}
-                placeholder="Filter chats…"
+                placeholder="Filter gesprekken"
                 placeholderTextColor={feed.inkDim}
-                className="flex-1 text-ink text-base py-3 pl-2"
+                accessibilityLabel="Gesprekken filteren"
+                style={[
+                  feedType.body,
+                  {
+                    flex: 1,
+                    color: feed.ink,
+                    paddingLeft: space.sm,
+                    ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null),
+                  },
+                ]}
               />
               {filter.length > 0 && (
                 <Pressable
                   hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel="Filter wissen"
-                  onPress={() => setFilter("")} className="p-1">
+                  onPress={() => setFilter("")}
+                >
                   <Ionicons name="close-circle" color={feed.inkDim} size={18} />
                 </Pressable>
               )}
             </View>
+            {/* Omlijnd en niet gevuld: de gevulde knop op dit scherm is de
+                oranje plus in de kopbalk, en er is er hoogstens één (§4). */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Nieuwe groep maken"
               onPress={() => router.push("/group-create")}
-              className="bg-ink active:bg-ink-soft w-11 h-11 items-center justify-center"
+              style={({ pressed }) => ({
+                width: CONTROL_H,
+                height: CONTROL_H,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: FEED_BORDER,
+                borderColor: feed.ink,
+                backgroundColor: pressed ? feed.panel : "transparent",
+              })}
             >
-              <Ionicons name="people" color={creamOnDark.DEFAULT} size={18} />
+              <Ionicons name="people" color={feed.ink} size={18} />
             </Pressable>
           </View>
 
           {/* Friends quick row */}
           {friendsWithoutChat.length > 0 && (
-            <View className="mb-5">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-                Start een chat
-              </Text>
+            <View style={{ marginBottom: space.xxl }}>
+              <RubricHead label="Start een gesprek" />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20, gap: 12 }}
+                contentContainerStyle={{ paddingRight: space.xl, gap: space.md }}
               >
                 {friendsWithoutChat.map((f) => (
                   <Pressable
                     key={f.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Gesprek beginnen met ${
+                      f.other.display_name ?? f.other.username
+                    }`}
                     onPress={() => openChatWith(f.other.id)}
                     className="items-center w-16"
                   >
@@ -251,7 +300,10 @@ export default function ChatsScreen() {
                       tint="warm"
                     />
                     <Text
-                      className="text-ink-soft text-xs mt-2 text-center"
+                      style={[
+                        feedType.label,
+                        { color: feed.inkDim, marginTop: space.sm, textAlign: "center" },
+                      ]}
                       numberOfLines={1}
                     >
                       {f.other.display_name ?? f.other.username}
@@ -262,9 +314,7 @@ export default function ChatsScreen() {
             </View>
           )}
 
-          <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-            Gesprekken
-          </Text>
+          <RubricHead label="Gesprekken" count={filtered.length || undefined} />
 
           {chats.isLoading && <SkeletonListCard rows={3} />}
         </View>
@@ -278,17 +328,20 @@ export default function ChatsScreen() {
           />
         ) : filtered.length === 0 ? (
           chats.isLoading ? null : (
-        <View className="bg-paper-soft p-6 items-center">
-          <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
-            <Ionicons name="chatbubbles-outline" color={feed.ink} size={24} />
-          </View>
-          <Text className="text-ink font-semibold text-base mb-1">
+        <View
+          style={{
+            borderWidth: FEED_BORDER,
+            borderColor: feed.ink,
+            padding: space.xxxl,
+          }}
+        >
+          <Text style={[feedType.tile, { fontSize: 20, color: feed.ink, marginBottom: space.sm }]}>
             {filter.trim() ? "Geen gesprek gevonden" : "Nog geen gesprekken"}
           </Text>
-          <Text className="text-ink-soft text-sm text-center">
+          <Text style={[feedType.body, { color: feed.inkDim, maxWidth: 440 }]}>
             {filter.trim()
               ? `Geen gesprek met "${filter.trim()}" in de naam.`
-              : "Start een chat met een vriend hierboven, of deel je link vanuit Profiel."}
+              : "Begin er een met iemand hierboven, of deel je linc vanaf je profiel."}
           </Text>
         </View>
           )
@@ -385,17 +438,36 @@ function ChatRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
+      accessibilityRole="button"
+      accessibilityLabel={
+        unread > 0 ? `${title}, ${unread} ongelezen` : title
+      }
       // Geen afgeronde hoeken meer aan de uiteinden van de lijst: dit
       // systeem kent maar één ronding en dat is de avatar. De rijen worden
       // in plaats daarvan één gekaderd blok met scheidingslijnen ertussen.
-      className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-3.5"
-      style={{
+      //
+      // En geen vulling meer. De rij stond op `bg-paper-soft`, en twintig
+      // gevulde rijen onder elkaar lezen als twintig dozen in plaats van
+      // als één lijst (§4). Wat de opbouw draagt is de lijn: het blok sluit
+      // zichzelf af met inkt, de rijen erbinnen scheiden met de lichtere
+      // `postRule` — de binnenlijn hoort de zwakste te zijn, anders leest
+      // één lijst als losse kaartjes.
+      //
+      // Ingedrukt krijgt hij wél een vlak: dat is geen rusttoestand maar
+      // antwoord op een vinger, en zonder dat voelt een rij dood aan.
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: space.lg,
+        paddingVertical: 14,
+        backgroundColor: pressed ? feed.panel : "transparent",
         borderLeftWidth: FEED_BORDER,
         borderRightWidth: FEED_BORDER,
         borderTopWidth: isFirst ? FEED_BORDER : 0,
-        borderBottomWidth: FEED_BORDER,
+        borderBottomWidth: isLast ? FEED_BORDER : FEED_BORDER,
         borderColor: feed.ink,
-      }}
+        borderBottomColor: isLast ? feed.ink : feed.postRule,
+      })}
     >
       {/* Avatar is geen aparte tap-target meer — op mobile vrat de hitSlop
           regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
@@ -411,38 +483,65 @@ function ChatRow({
         size="md"
         tint="warm"
       />
-      <View className="flex-1 ml-3 mr-2">
-        <View className="flex-row items-center">
+      <View style={{ flex: 1, marginLeft: space.md, marginRight: space.sm }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text
-            className={`flex-1 ${
-              unread > 0 ? "text-ink font-bold" : "text-ink font-semibold"
-            }`}
+            style={[
+              feedType.body,
+              {
+                flex: 1,
+                fontSize: 14,
+                color: feed.ink,
+                fontWeight: unread > 0 ? "700" : "500",
+              },
+            ]}
             numberOfLines={1}
           >
             {title}
           </Text>
           {relTime && (
             <Text
-              className={`text-xs ml-2 ${
-                unread > 0 ? "text-flame font-semibold" : "text-ink-muted"
-              }`}
+              style={[
+                feedType.label,
+                {
+                  marginLeft: space.sm,
+                  color: unread > 0 ? flameDeep : feed.inkDim,
+                  fontWeight: unread > 0 ? "700" : "500",
+                },
+              ]}
             >
               {relTime}
             </Text>
           )}
         </View>
         <Text
-          className={`text-xs mt-0.5 ${
-            unread > 0 ? "text-ink font-medium" : "text-ink-muted"
-          }`}
+          style={[
+            feedType.label,
+            { color: feed.inkDim, marginTop: 3 },
+          ]}
           numberOfLines={1}
         >
           {baseSubtitle}
         </Text>
       </View>
       {unread > 0 ? (
-        <View className="bg-flame min-w-[22px] h-[22px] px-1.5 items-center justify-center mr-1">
-          <Text className="text-cream text-[11px] font-bold">
+        <View
+          style={{
+            minWidth: 22,
+            height: 22,
+            paddingHorizontal: 6,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: flame,
+            marginRight: space.xs,
+          }}
+        >
+          <Text
+            style={[
+              feedType.label,
+              { fontSize: 11, fontWeight: "800", color: creamOnDark.DEFAULT },
+            ]}
+          >
             {unread > 99 ? "99+" : unread}
           </Text>
         </View>

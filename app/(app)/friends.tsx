@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -13,9 +14,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { PageHead, RubricHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
-import { creamOnDark, feed, flameDeep } from "@/lib/design/type";
+import {
+  CONTROL_H,
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  ROW_H,
+  rule,
+  space,
+} from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { useToast } from "@/lib/toast";
@@ -179,50 +190,76 @@ export default function FriendsScreen() {
       >
       <View style={{ paddingVertical: 20, paddingBottom: 40 }}>
         <View>
-          <Text className="text-3xl font-bold tracking-tight text-ink mb-1">
-            Lincs
-          </Text>
-          <Text className="text-ink-soft text-base mb-5">
-            Link up met mensen die je kent.
-          </Text>
+          <PageHead
+            kicker="Wie je kent"
+            title="Lincs"
+            intro="Link up met mensen die je kent — via een QR-code, je eigen link, of hun handle."
+            wide={wide}
+            gap={space.xxl}
+          />
 
-          {/* ── Link up ── */}
-          <View className="bg-paper p-4 mb-5">
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-              Link up
-            </Text>
-            {/* Twee primaire acties naast elkaar */}
-            <View className="flex-row gap-2 mb-2">
-              <Pressable
+          {/* ── Link up ──
+              Stond in een gevuld vlak met een gevulde knop erin. Twee
+              vullingen op een blad dat er verder geen heeft (§4), en de
+              gevulde knop concurreerde bovendien met de oranje plus in de
+              kopbalk — daarvan is er hoogstens één per scherm.
+              Nu: één kader, twee gelijkwaardige knoppen erin. Scannen en
+              je linc delen zijn ook echt twee helften van dezelfde daad. */}
+          <View
+            style={{
+              borderWidth: FEED_BORDER,
+              borderColor: feed.ink,
+              padding: space.lg,
+              marginBottom: space.xxl,
+            }}
+          >
+            <RubricHead label="Link up" />
+            <View style={{ flexDirection: "row", gap: space.sm }}>
+              <OutlineAction
+                icon="qr-code-outline"
+                label="Scan een linc"
                 onPress={() => router.push("/qr-scan")}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-ink active:bg-ink-soft py-3.5 px-4"
-              >
-                <Ionicons name="qr-code-outline" color={creamOnDark.DEFAULT} size={20} />
-                <Text className="text-cream font-semibold text-sm">Scan een linc</Text>
-              </Pressable>
-              <Pressable
+              />
+              <OutlineAction
+                icon="share-outline"
+                label="Jouw linc"
                 onPress={onShareLink}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-paper-soft active:bg-paper py-3.5 px-4"
-              >
-                <Ionicons name="share-outline" color={feed.ink} size={20} />
-                <Text className="text-ink font-semibold text-sm">Jouw linc</Text>
-              </Pressable>
+              />
             </View>
             {/* Secundaire actie: iemand uitnodigen die nog niet op Lincin zit */}
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Iemand uitnodigen die nog niet op Lincin zit"
               onPress={() => router.push("/invite-email")}
-              className="flex-row items-center justify-center gap-2 py-2.5"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: space.sm,
+                height: CONTROL_H,
+                marginTop: space.xs,
+              }}
             >
               <Ionicons name="mail-outline" color={feed.inkDim} size={15} />
-              <Text className="text-ink-muted text-xs">
+              <Text style={[feedType.label, { color: feed.inkDim }]}>
                 Iemand uitnodigen die nog niet op Lincin zit
               </Text>
             </Pressable>
           </View>
 
           {/* ── Zoekbalk ── */}
-          <View className="flex-row items-center bg-paper-light px-4 border border-line-paper mb-4">
-            <Ionicons name="search" color={feed.inkDim} size={18} />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              height: CONTROL_H,
+              paddingHorizontal: space.md,
+              borderWidth: FEED_BORDER,
+              borderColor: feed.ink,
+              marginBottom: space.lg,
+            }}
+          >
+            <Ionicons name="search" color={feed.inkDim} size={17} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -230,14 +267,24 @@ export default function FriendsScreen() {
               placeholderTextColor={feed.inkDim}
               autoCapitalize="none"
               autoCorrect={false}
-              className="flex-1 text-ink text-base py-3 pl-2"
+              accessibilityLabel="Zoek iemand op handle"
+              style={[
+                feedType.body,
+                {
+                  flex: 1,
+                  color: feed.ink,
+                  paddingLeft: space.sm,
+                  ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null),
+                },
+              ]}
             />
             {query.length > 0 && (
               <Pressable
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Zoekopdracht wissen"
-                onPress={() => setQuery("")} className="p-1">
+                onPress={() => setQuery("")}
+              >
                 <Ionicons name="close-circle" color={feed.inkDim} size={18} />
               </Pressable>
             )}
@@ -257,7 +304,7 @@ export default function FriendsScreen() {
               ) : searchResults.length === 0 ? (
                 <PaperHint text="Geen gebruikers gevonden." />
               ) : (
-                <View className="bg-paper-soft overflow-hidden">
+                <View style={LIST_BLOCK}>
                   {searchResults.map((p, i) => (
                     <ProfileRow
                       key={p.id}
@@ -275,8 +322,8 @@ export default function FriendsScreen() {
           )}
 
           {pendingIncoming.length > 0 && (
-            <Section title={`Linc-verzoeken (${pendingIncoming.length})`}>
-              <View className="bg-paper-soft overflow-hidden">
+            <Section title="Linc-verzoeken" count={pendingIncoming.length}>
+              <View style={LIST_BLOCK}>
                 {pendingIncoming.map((f, i) => (
                   <FriendshipRow
                     key={f.id}
@@ -303,7 +350,7 @@ export default function FriendsScreen() {
 
           {pendingOutgoing.length > 0 && (
             <Section title="Verzonden">
-              <View className="bg-paper-soft overflow-hidden">
+              <View style={LIST_BLOCK}>
                 {pendingOutgoing.map((f, i) => (
                   <FriendshipRow
                     key={f.id}
@@ -340,7 +387,7 @@ export default function FriendsScreen() {
             ) : accepted.length === 0 ? (
               <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
             ) : (
-              <View className="bg-paper-soft overflow-hidden">
+              <View style={LIST_BLOCK}>
                 {accepted.map((f, i) => (
                   <FriendshipRow
                     key={f.id}
@@ -370,23 +417,108 @@ export default function FriendsScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Het kader om een lijst. Eén maat, want de vier lijsten op deze pagina
+ * hoorden er al hetzelfde uit te zien en deden dat niet helemaal.
+ *
+ * `rule.soft` en niet `feed.ink`: dit kader zegt alleen "dit hoort bij
+ * elkaar" en hoeft daarom niet zo zwaar te zijn als de lijn waarmee een
+ * kaart zichzelf afsluit (§4).
+ */
+const LIST_BLOCK = {
+  borderWidth: FEED_BORDER,
+  borderColor: rule.soft,
+} as const;
+
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
   return (
-    <View className="mt-6">
-      <Text className="text-xs uppercase tracking-wider text-ink-muted mb-3 px-1">
-        {title}
-      </Text>
+    <View style={{ marginTop: space.xxl }}>
+      <RubricHead label={title} count={count} />
       {children}
     </View>
   );
 }
 
+/**
+ * Eén regel waar anders een lijst had gestaan. Geen vulling: leegte is
+ * hier de mededeling, en een grijs vlak eromheen maakt er een ding van.
+ */
 function PaperHint({ text }: { text: string }) {
   return (
-    <View className="bg-paper-soft p-5">
-      <Text className="text-ink-soft text-sm leading-5">{text}</Text>
+    <View
+      style={{
+        borderWidth: FEED_BORDER,
+        borderColor: rule.soft,
+        padding: space.xl,
+      }}
+    >
+      <Text style={[feedType.body, { color: feed.inkDim }]}>{text}</Text>
     </View>
   );
+}
+
+/**
+ * Een omlijnde knop met een icoon ervoor. Twee ervan naast elkaar zijn
+ * gelijkwaardig — wat een gevulde en een gedempte knop niet zijn.
+ */
+function OutlineAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.sm,
+        height: CONTROL_H,
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        backgroundColor: pressed ? feed.panel : "transparent",
+      })}
+    >
+      <Ionicons name={icon} color={feed.ink} size={18} />
+      <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * De vorm van één rij in een lijst. De scheidingslijn is `postRule` en niet
+ * de rand van het blok: de binnenlijn hoort de zwakste te zijn, anders
+ * leest één lijst als losse kaartjes (§4).
+ */
+function rowStyle(isLast: boolean) {
+  return {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: space.lg,
+    minHeight: ROW_H,
+    paddingVertical: space.md,
+    ...(isLast
+      ? null
+      : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.postRule }),
+  };
 }
 
 function ProfileRow({
@@ -405,32 +537,43 @@ function ProfileRow({
   isLast: boolean;
 }) {
   return (
-    <View
-      className={`flex-row items-center px-4 py-3 ${
-        isLast ? "" : "border-b border-line-paper/60"
-      }`}
-    >
+    <View style={rowStyle(isLast)}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Profiel van ${profile.display_name ?? profile.username}`}
         onPress={onRowPress}
         className="flex-row items-center flex-1"
         hitSlop={4}
       >
         <Avatar name={profile.display_name ?? profile.username} size="md" />
-        <View className="flex-1 ml-3">
-          <Text className="text-ink font-semibold">
+        <View style={{ flex: 1, marginLeft: space.md }}>
+          <Text style={[feedType.body, { fontSize: 14, fontWeight: "600", color: feed.ink }]}>
             {profile.display_name ?? profile.username}
           </Text>
-          <Text className="text-ink-muted text-xs">@{profile.username}</Text>
+          <Text style={[feedType.label, { color: feed.inkDim, marginTop: 2 }]}>
+            @{profile.username}
+          </Text>
         </View>
       </Pressable>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${actionLabel} met ${profile.display_name ?? profile.username}`}
         onPress={onAction}
-        className="bg-ink active:bg-ink-soft px-4 py-2 flex-row items-center"
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.xs,
+          height: 32,
+          paddingHorizontal: space.md,
+          backgroundColor: pressed ? feed.inkDim : feed.ink,
+        })}
       >
         {actionIcon && (
-          <Ionicons name={actionIcon} color={creamOnDark.DEFAULT} size={14} style={{ marginRight: 4 }} />
+          <Ionicons name={actionIcon} color={creamOnDark.DEFAULT} size={14} />
         )}
-        <Text className="text-cream font-semibold text-sm">{actionLabel}</Text>
+        <Text style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT }]}>
+          {actionLabel}
+        </Text>
       </Pressable>
     </View>
   );
@@ -448,39 +591,56 @@ function FriendshipRow({
   isLast: boolean;
 }) {
   return (
-    <View
-      className={`flex-row items-center px-4 py-3 ${
-        isLast ? "" : "border-b border-line-paper/60"
-      }`}
-    >
+    <View style={rowStyle(isLast)}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Profiel van ${
+          friendship.other.display_name ?? friendship.other.username
+        }`}
         onPress={onRowPress}
         className="flex-row items-center flex-1"
         hitSlop={4}
       >
         <Avatar name={friendship.other.display_name ?? friendship.other.username} size="md" />
-        <View className="flex-1 ml-3">
-          <Text className="text-ink font-semibold">
+        <View style={{ flex: 1, marginLeft: space.md }}>
+          <Text style={[feedType.body, { fontSize: 14, fontWeight: "600", color: feed.ink }]}>
             {friendship.other.display_name ?? friendship.other.username}
           </Text>
-          <Text className="text-ink-muted text-xs">@{friendship.other.username}</Text>
+          <Text style={[feedType.label, { color: feed.inkDim, marginTop: 2 }]}>
+            @{friendship.other.username}
+          </Text>
         </View>
       </Pressable>
-      <View className="flex-row gap-2">
+      <View style={{ flexDirection: "row", gap: space.sm }}>
         {actions.map((a) => (
           <Pressable
             key={a.label}
+            accessibilityRole="button"
+            accessibilityLabel={`${a.label} — ${
+              friendship.other.display_name ?? friendship.other.username
+            }`}
             onPress={a.onPress}
-            className={
-              a.primary
-                ? "bg-ink active:bg-ink-soft px-3 py-1.5"
-                : "border border-ink/20 active:bg-paper px-3 py-1.5"
-            }
+            style={({ pressed }) => ({
+              height: 32,
+              paddingHorizontal: space.md,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: a.primary ? 0 : FEED_BORDER,
+              borderColor: rule.soft,
+              backgroundColor: a.primary
+                ? pressed
+                  ? feed.inkDim
+                  : feed.ink
+                : pressed
+                ? feed.panel
+                : "transparent",
+            })}
           >
             <Text
-              className={`text-xs font-semibold ${
-                a.primary ? "text-cream" : "text-ink"
-              }`}
+              style={[
+                feedType.label,
+                { fontSize: 12, color: a.primary ? creamOnDark.DEFAULT : feed.ink },
+              ]}
             >
               {a.label}
             </Text>

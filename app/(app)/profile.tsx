@@ -11,6 +11,7 @@ import { PostGrid } from "@/components/PostGrid";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { RubricHead } from "@/components/PageHead";
 import { creamOnDark, feed, feedType, flameDeep, space } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
@@ -175,14 +176,19 @@ export default function ProfileScreen() {
             </View>
           </Pressable>
           {displayName ? (
-            <Text className="text-2xl font-bold tracking-tight text-ink mt-3">
+            <Text
+              style={[
+                feedType.tagline,
+                { color: feed.ink, marginTop: space.md, textAlign: "center" },
+              ]}
+            >
               {displayName}
             </Text>
           ) : null}
-          <Text className="text-ink-soft text-base mt-0.5">
+          <Text style={[feedType.body, { color: feed.inkDim, marginTop: 2 }]}>
             @{username || "…"}
           </Text>
-          <Text className="text-ink-muted text-xs mt-1">
+          <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.xs }]}>
             {session?.user.email}
           </Text>
           {profile.data?.bio ? (
@@ -216,9 +222,7 @@ export default function ProfileScreen() {
         />
 
         {/* ---- Profile actions ---- */}
-        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
-          Profiel
-        </Text>
+        <RubricHead label="Profiel" style={{ marginTop: space.xxl }} />
         <Pressable
           onPress={() => router.push("/profile-edit")}
           className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"

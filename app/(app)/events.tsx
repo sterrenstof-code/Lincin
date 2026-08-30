@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import {
@@ -11,8 +10,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
 import { SectionMark } from "@/components/IndexGrid";
+import { QueryError } from "@/components/QueryError";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { creamOnDark, feed as feedColor, feedType, flameDeep } from "@/lib/design/type";
+import {
+  announce,
+  announceDeep,
+  CONTROL_H,
+  creamOnDark,
+  feed as feedColor,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  space,
+} from "@/lib/design/type";
 import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
@@ -34,12 +44,6 @@ export default function EventsScreen() {
     refetchOnWindowFocus: true,
   });
 
-  // Log errors zodat we ze in de console kunnen zien tijdens debug
-  if (events.isError) {
-    // eslint-disable-next-line no-console
-    console.error("[events.tsx] query failed:", events.error);
-  }
-
   const data = events.data ?? [];
   const active = data.filter((e) => e.is_active);
   const upcoming = data.filter(
@@ -50,26 +54,16 @@ export default function EventsScreen() {
   );
 
   function renderBody() {
-    // Error state — zichtbaar fout met retry
+    // Stond hier als eigen blok, met een eigen vorm en een eigen tekst.
+    // Vier schermen hadden er een en ze zagen er alle vier anders uit.
     if (events.isError) {
-      const message = (events.error as Error | null)?.message ?? "Onbekende fout";
       return (
-        <View className="bg-paper-soft p-6 mt-2">
-          <View className="flex-row items-center mb-2">
-            <View className="w-9 h-9 bg-flame/20 items-center justify-center">
-              <Ionicons name="alert-circle" color={flameDeep} size={18} />
-            </View>
-            <Text className="text-ink font-semibold ml-3">Kon events niet laden</Text>
-          </View>
-          <Text className="text-ink-soft text-sm leading-5 mb-3" selectable>
-            {message}
-          </Text>
-          <Pressable
-            onPress={() => events.refetch()}
-            className="bg-ink active:bg-ink-soft py-2.5 items-center self-start px-5"
-          >
-            <Text className="text-cream font-semibold text-sm">Probeer opnieuw</Text>
-          </Pressable>
+        <View style={{ marginTop: space.sm }}>
+          <QueryError
+            title="Events konden niet geladen worden"
+            error={events.error}
+            onRetry={() => events.refetch()}
+          />
         </View>
       );
     }
@@ -82,21 +76,41 @@ export default function EventsScreen() {
     // Empty state
     if (data.length === 0) {
       return (
-        <View className="bg-paper-soft p-6 items-center mt-2">
-          <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
-            <Ionicons name="sparkles" color={creamOnDark.DEFAULT} size={24} />
-          </View>
-          <Text className="text-ink font-semibold text-base mb-1">
+        <View
+          style={{
+            marginTop: space.sm,
+            borderWidth: FEED_BORDER,
+            borderColor: feedColor.ink,
+            padding: space.xxxl,
+          }}
+        >
+          <Text
+            style={[feedType.tile, { fontSize: 20, color: feedColor.ink, marginBottom: space.sm }]}
+          >
             Maak je eerste event
           </Text>
-          <Text className="text-ink-soft text-sm text-center mb-4 leading-5">
-            Een verjaardag, een trip, een diner — alle foto's van iedereen op één plek.
+          <Text
+            style={[feedType.body, { color: feedColor.inkDim, maxWidth: 440, marginBottom: space.xl }]}
+          >
+            Een verjaardag, een trip, een diner — alle foto&apos;s van iedereen op
+            één plek.
           </Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Maak event"
             onPress={() => router.push("/event-create")}
-            className="bg-ink active:bg-ink-soft px-5 py-3"
+            style={({ pressed }) => ({
+              alignSelf: "flex-start",
+              height: CONTROL_H,
+              paddingHorizontal: space.xl,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? announceDeep : announce,
+            })}
           >
-            <Text className="text-cream font-semibold">Maak event</Text>
+            <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>
+              Maak event
+            </Text>
           </Pressable>
         </View>
       );

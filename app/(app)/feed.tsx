@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   Platform,
@@ -43,6 +42,7 @@ import { PollCard } from "@/components/PollCard";
 import { PostGrid } from "@/components/PostGrid";
 import { PostReactions } from "@/components/PostReactions";
 import { QueryError } from "@/components/QueryError";
+import { SkeletonPostCard } from "@/components/Skeleton";
 import { useToast } from "@/lib/toast";
 import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
@@ -481,8 +481,12 @@ export default function FeedScreen() {
                   onRetry={() => feed.refetch()}
                 />
               ) : feed.isLoading ? (
-                <View className="items-center py-24">
-                  <ActivityIndicator color={feedColor.ink} />
+                /* Was een schijfje in het midden van een leeg blad. Overal
+                   elders in de app tekent het laden de vorm die er komt;
+                   hier sprong de pagina van niets naar een volle uitgave. */
+                <View style={{ gap: space.section }}>
+                  <SkeletonPostCard />
+                  <SkeletonPostCard />
                 </View>
               ) : empty ? (
                 <EmptyState activeTag={activeTag} wide={wide} />

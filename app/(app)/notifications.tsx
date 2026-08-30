@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { PageHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -23,7 +24,7 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { supabase } from "@/lib/supabase/client";
-import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
@@ -81,26 +82,14 @@ export default function NotificationsScreen() {
           />
         }
       >
-        {/* Paginakop in de redactionele opbouw: kicker, kop, ondertitel. */}
-        <Text
-          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
-        >
-          WAT ER SPEELT
-        </Text>
-        <Text
-          style={[
-            wide ? feedType.hero : feedType.heroSmall,
-            { color: feed.ink, maxWidth: 620 },
-          ]}
-        >
-          Meldingen
-        </Text>
-        <Text
-          style={[feedType.body, { color: feed.inkDim, maxWidth: 520, marginTop: 10, marginBottom: 34 }]}
-        >
-          Nieuwe vondsten uit je kring, en elke beweging op een vondst waar
-          jij iets mee gedaan hebt.
-        </Text>
+        {/* De opbouw stond hier uitgeschreven en op twee andere tabs niet —
+            zie components/PageHead.tsx. */}
+        <PageHead
+          kicker="Wat er speelt"
+          title="Meldingen"
+          intro="Nieuwe vondsten uit je kring, en elke beweging op een vondst waar jij iets mee gedaan hebt."
+          wide={wide}
+        />
 
         {/**
           * Stilte en leegte lezen niet hetzelfde — de uitleg waarom staat nu

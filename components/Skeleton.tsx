@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Animated, View, type StyleProp, type ViewStyle } from "react-native";
 
+import { feed, FEED_BORDER, rule, space } from "@/lib/design/type";
+
 /**
  * Animated placeholder for loading content. Pulses opacity between 0.4 and 0.8
  * on a 1.6s loop, with the same paper-warm fill so it sits naturally inside
@@ -48,9 +50,15 @@ export function Skeleton({
 export function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
   return (
     <View
-      className={`flex-row items-center px-4 py-3 ${
-        isLast ? "" : "border-b border-line-paper/60"
-      }`}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
+        ...(isLast
+          ? null
+          : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.postRule }),
+      }}
     >
       <Skeleton className="w-11 h-11 bg-paper-warm" />
       <View className="flex-1 ml-3">
@@ -62,10 +70,16 @@ export function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
   );
 }
 
-/** Stacked rows inside a paper-soft card, mimics the chats / friends list. */
+/**
+ * De lijst zoals hij eruitziet vóór hij er is.
+ *
+ * Stond op `bg-paper-soft` terwijl de lijst die hij nabootst zijn vulling
+ * kwijt is (§4) — dan is het laden een grijs blok en het resultaat een
+ * kader, en dat springt.
+ */
 export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
   return (
-    <View className="bg-paper-soft overflow-hidden">
+    <View style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonListRow key={i} isLast={i === rows - 1} />
       ))}
@@ -76,7 +90,7 @@ export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
 /** Skeleton for one full feed post card. */
 export function SkeletonPostCard() {
   return (
-    <View className="bg-paper-soft overflow-hidden">
+    <View style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}>
       <View className="flex-row items-center px-4 py-3">
         <Skeleton className="w-11 h-11 bg-paper-warm" />
         <View className="flex-1 ml-3">
@@ -99,7 +113,7 @@ export function SkeletonGallery({ tiles = 6 }: { tiles?: number }) {
     <View className="flex-row flex-wrap" style={{ marginHorizontal: -3 }}>
       {Array.from({ length: tiles }).map((_, i) => (
         <View key={i} className="w-1/3 p-[3px]">
-          <Skeleton style={{ aspectRatio: 1, borderRadius: 12 }} />
+          <Skeleton style={{ aspectRatio: 1 }} />
         </View>
       ))}
     </View>
