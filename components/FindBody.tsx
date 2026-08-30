@@ -226,6 +226,8 @@ function VideoBody({ post, meta }: { post: PostWithAuthor; meta: FindMeta }) {
         </View>
       ) : (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Video afspelen"
           onPress={() => {
             if (meta.embed_url) setPlaying(true);
             else if (url) openUrl(url);

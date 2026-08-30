@@ -971,6 +971,8 @@ export default function ChatDetail() {
               </View>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Videogesprek starten"
               onPress={async () => {
                 if (!id) return;
                 // Op web: open in-app modal. Op native: open in browser.
@@ -996,6 +998,8 @@ export default function ChatDetail() {
             </Pressable>
             {chat?.type === "group" && (
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Groepsinfo openen"
                 onPress={() => router.push(`/group/${id}`)}
                 style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
               >
@@ -1379,6 +1383,9 @@ export default function ChatDetail() {
           {/* Naar-beneden knop */}
           {showScrollDown && (
             <Pressable
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Naar het laatste bericht"
               onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
               style={{
                 position: "absolute",
@@ -1451,6 +1458,8 @@ export default function ChatDetail() {
                       lichte vierkantje dat hier stond trok meer aandacht
                       dan het bericht waar het over ging. */}
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Antwoorden annuleren"
                     onPress={() => setReplyTo(null)}
                     hitSlop={10}
                     style={({ pressed }) => ({
@@ -1479,6 +1488,7 @@ export default function ChatDetail() {
                 >
                   {CHAT_EMOJIS.map((emoji) => (
                     <Pressable
+                      hitSlop={4}
                       key={emoji}
                       onPress={() => {
                         setDraft((d) => d + emoji);
@@ -1503,6 +1513,8 @@ export default function ChatDetail() {
              >
               {!recording && (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Bijlage toevoegen"
                   onPress={() => setAttachMenuOpen(true)}
                   disabled={sending}
                   // Geen eigen vlak: een bijna-zwart vierkant op een zwarte
@@ -1538,6 +1550,8 @@ export default function ChatDetail() {
                   </Text>
                   {/* Cancel */}
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Opname weggooien"
                     onPress={() => stopRecording(false)}
                     hitSlop={8}
                     className="w-7 h-7 bg-red-900/40 items-center justify-center"
@@ -1588,6 +1602,8 @@ export default function ChatDetail() {
               {recording ? (
                 // Recording is active → stop and send
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Opname versturen"
                   onPress={() => stopRecording(true)}
                   className="bg-red-500 active:bg-red-600"
                   style={AUX_BUTTON}
@@ -1607,6 +1623,8 @@ export default function ChatDetail() {
                  * een aanhalingsteken (DESIGN.md §2).
                  */
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Bericht versturen"
                   onPress={onSend}
                   disabled={sending || !draft.trim()}
                   className={
@@ -1625,6 +1643,8 @@ export default function ChatDetail() {
               ) : (
                 // Draft empty → mic button (hold on native, tap on web)
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Spraakbericht opnemen"
                   onPressIn={Platform.OS !== "web" ? startRecording : undefined}
                   onPressOut={Platform.OS !== "web" ? () => stopRecording(true) : undefined}
                   onPress={Platform.OS === "web" ? () => {
@@ -1658,6 +1678,8 @@ export default function ChatDetail() {
             {/* Sluit-knop + teller */}
             <SafeAreaView style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 8 }}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Sluiten"
                 onPress={() => { if (!sending) { setPendingImages(null); setPendingCaption(""); setSelectedPendingIdx(0); } }}
                 hitSlop={12}
                 style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}
@@ -2019,6 +2041,8 @@ function EditBar({
           }}
         />
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Bewerking bewaren"
           onPress={() => onConfirm(value)}
           hitSlop={10}
           style={({ pressed }) => ({
@@ -2032,6 +2056,8 @@ function EditBar({
           <Ionicons name="checkmark" color={flame} size={20} />
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Bewerking annuleren"
           onPress={onCancel}
           hitSlop={10}
           style={({ pressed }) => ({
@@ -2396,7 +2422,10 @@ function MessageBubble({
             style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}
           >
             {onReply && (
-              <Pressable onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Antwoorden op dit bericht"
+                onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
                 <Ionicons name="return-down-back-outline" color={flameDeep} size={16} />
               </Pressable>
             )}
@@ -2407,12 +2436,18 @@ function MessageBubble({
               <Text style={{ fontSize: 15 }}>👍</Text>
             </Pressable>
             {onCopy && (
-              <Pressable onPress={onCopy} hitSlop={6} className="w-8 h-8 items-center justify-center">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Bericht kopiëren"
+                onPress={onCopy} hitSlop={6} className="w-8 h-8 items-center justify-center">
                 <Ionicons name="copy-outline" color={feed.inkDim} size={15} />
               </Pressable>
             )}
             {onDelete && (
-              <Pressable onPress={onDelete} hitSlop={6} className="w-8 h-8 items-center justify-center">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Bericht verwijderen"
+                onPress={onDelete} hitSlop={6} className="w-8 h-8 items-center justify-center">
                 <Ionicons name="trash-outline" color={flameDeep} size={15} />
               </Pressable>
             )}
@@ -2614,6 +2649,8 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
     <>
       {/* Thumbnail */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Foto op volledig scherm openen"
         onPress={() => uri && setOpen(true)}
         className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
@@ -2653,6 +2690,8 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
             style={{ position: "absolute", top: 0, right: 0, zIndex: 10, padding: 12 }}
           >
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Foto sluiten"
               onPress={() => setOpen(false)}
               hitSlop={12}
               style={{
@@ -2773,6 +2812,9 @@ function VoiceMessageBubble({
     >
       {/* Play / pause */}
       <Pressable
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={isPlaying ? "Spraakbericht pauzeren" : "Spraakbericht afspelen"}
         onPress={togglePlay}
         className={`w-10 h-10 items-center justify-center ${
           isMine ? "bg-cream/20" : "bg-paper-light"
@@ -2822,6 +2864,8 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
     <>
       {/* Thumbnail preview */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Video afspelen"
         onPress={() => uri && setOpen(true)}
         className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
@@ -2878,6 +2922,8 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
             style={{ position: "absolute", top: 0, right: 0, zIndex: 10, padding: 12 }}
           >
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Video sluiten"
               onPress={() => setOpen(false)}
               hitSlop={12}
               style={{
@@ -3005,6 +3051,9 @@ function AttachmentView({
       </View>
       {uri && (
         <Pressable
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Bestand downloaden"
           onPress={() => Linking.openURL(uri!).catch(() => {})}
           className="ml-2 p-2"
         >

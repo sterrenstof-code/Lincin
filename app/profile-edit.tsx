@@ -129,6 +129,9 @@ export default function ProfileEditScreen() {
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
           onPress={() => safeBack(router, "/(app)/profile")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
@@ -163,7 +166,10 @@ export default function ProfileEditScreen() {
 
             {/* ── Avatar-picker ── */}
             <View className="items-center mb-5">
-              <Pressable onPress={onPickAvatar} className="relative">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Profielfoto wijzigen"
+                onPress={onPickAvatar} className="relative">
                 <Avatar
                   name={displayName || username}
                   avatarUrl={avatarUrl}

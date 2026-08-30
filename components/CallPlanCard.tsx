@@ -254,7 +254,10 @@ export function CallPlanCard({
           <View className="bg-page-alt px-5 pt-5 pb-10">
             <View className="flex-row items-center mb-4">
               <Text className="flex-1 text-carbon font-bold text-lg">Uitnodigen</Text>
-              <Pressable onPress={() => setInviteOpen(false)} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Sluiten"
+                onPress={() => setInviteOpen(false)} hitSlop={8}>
                 <Ionicons name="close" color={feed.inkDim} size={22} />
               </Pressable>
             </View>

@@ -233,7 +233,11 @@ export default function FriendsScreen() {
               className="flex-1 text-ink text-base py-3 pl-2"
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery("")} className="p-1">
+              <Pressable
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Zoekopdracht wissen"
+                onPress={() => setQuery("")} className="p-1">
                 <Ionicons name="close-circle" color={feed.inkDim} size={18} />
               </Pressable>
             )}

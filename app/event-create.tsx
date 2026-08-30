@@ -186,6 +186,9 @@ export default function EventCreateScreen() {
       >
         <View className="flex-row items-center py-3">
           <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Sluiten"
             onPress={() => safeBack(router, "/(app)/events")}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >

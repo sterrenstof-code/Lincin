@@ -162,7 +162,10 @@ export default function ProfileScreen() {
       >
         {/* ---- Hero on shell ---- */}
         <View className="items-center mt-2 mb-6">
-          <Pressable onPress={onPickAvatar} className="relative">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Profielfoto wijzigen"
+            onPress={onPickAvatar} className="relative">
             <Avatar name={heroName} avatarUrl={avatarUrl} size="hero" tint="warm" />
             <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
               {avatarUploading

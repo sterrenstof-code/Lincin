@@ -155,6 +155,9 @@ export default function GroupInfoScreen() {
       <ScreenContainer>
       <View className="flex-row items-center px-4 py-3">
         <Pressable
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Terug"
           onPress={() => safeBack(router, `/chat/${chatId}`)}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
@@ -171,6 +174,8 @@ export default function GroupInfoScreen() {
           {/* Hero */}
           <View className="bg-paper p-6 items-center">
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Groepsfoto wijzigen"
               onPress={onPickGroupAvatar}
               disabled={!isOwner}
               className="relative mb-3"
@@ -240,6 +245,8 @@ export default function GroupInfoScreen() {
                 </Text>
                 {isOwner && isGroup && (
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Groepsnaam bewerken"
                     onPress={() => setEditingName(true)}
                     hitSlop={8}
                     className="ml-2 p-1"
@@ -365,7 +372,10 @@ function MemberRow({
         </View>
       </Pressable>
       {canRemove && (
-        <Pressable onPress={onRemove} hitSlop={8} className="p-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dit lid uit de groep verwijderen"
+          onPress={onRemove} hitSlop={8} className="p-2">
           <Ionicons name="remove-circle-outline" color="#B23A1C" size={20} />
         </Pressable>
       )}

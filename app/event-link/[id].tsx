@@ -59,6 +59,9 @@ export default function EventLinkComposeScreen() {
       <ScreenContainer>
         <View className="flex-row items-center px-4 py-3">
           <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Sluiten"
             onPress={() => router.back()}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >

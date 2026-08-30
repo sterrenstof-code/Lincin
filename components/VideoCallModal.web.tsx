@@ -35,7 +35,10 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         {/* Header met sluit-knop */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Videogesprek</Text>
-          <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Videogesprek sluiten"
+            onPress={onClose} style={styles.closeBtn} hitSlop={8}>
             <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
           </Pressable>
         </View>

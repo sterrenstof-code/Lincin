@@ -95,7 +95,11 @@ export default function PollComposeScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
             {/* Header */}
             <View className="flex-row items-center justify-between mb-6">
-              <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
+              <Pressable
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel="Terug"
+                onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text className="text-desk-ink font-bold text-lg">
@@ -142,6 +146,9 @@ export default function PollComposeScreen() {
                   />
                   {options.length > 2 && (
                     <Pressable
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Deze optie verwijderen"
                       onPress={() => removeOption(i)}
                       className="w-9 h-9 items-center justify-center bg-paper-soft"
                     >

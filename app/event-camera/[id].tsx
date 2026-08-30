@@ -106,6 +106,9 @@ export default function EventCameraScreen() {
       <SafeAreaView className="flex-1 bg-shell">
         <View className="flex-row items-center px-4 py-3">
           <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Sluiten"
             onPress={() => router.back()}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
@@ -164,6 +167,8 @@ export default function EventCameraScreen() {
       >
         <View className="flex-row items-center justify-between px-4 py-3" pointerEvents="box-none">
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Camera sluiten"
             onPress={() => router.back()}
             className="w-11 h-11 bg-shell/70 items-center justify-center"
           >
@@ -171,6 +176,8 @@ export default function EventCameraScreen() {
           </Pressable>
           <View className="flex-row gap-2">
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={flash === "on" ? "Flits uitzetten" : "Flits aanzetten"}
               onPress={toggleFlash}
               className="w-11 h-11 bg-shell/70 items-center justify-center"
             >
@@ -181,6 +188,8 @@ export default function EventCameraScreen() {
               />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Wisselen tussen voor- en achtercamera"
               onPress={flipCamera}
               className="w-11 h-11 bg-shell/70 items-center justify-center"
             >
@@ -255,6 +264,8 @@ export default function EventCameraScreen() {
           >
             <View className="flex-row items-center px-4 py-3">
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Sluiten"
                 onPress={() => setPreview(null)}
                 disabled={sending}
                 className="w-11 h-11 bg-shell/70 items-center justify-center"

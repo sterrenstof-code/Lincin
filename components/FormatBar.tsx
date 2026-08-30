@@ -97,6 +97,7 @@ export function FormatBar({
     >
       {buttons.map((button, i) => (
         <Pressable
+          hitSlop={6}
           key={button.key}
           accessibilityLabel={button.hint}
           accessibilityRole="button"

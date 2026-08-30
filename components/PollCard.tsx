@@ -102,7 +102,10 @@ export function PollCard({
           <Text className="text-carbon text-xs font-semibold">Stemming</Text>
         </View>
         {isMine && (
-          <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} className="w-8 h-8 items-center justify-center">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Opties voor deze stemming"
+            onPress={() => setMenuOpen(true)} hitSlop={8} className="w-8 h-8 items-center justify-center">
             <Ionicons name="ellipsis-horizontal" color={feed.inkDim} size={18} />
           </Pressable>
         )}

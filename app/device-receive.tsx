@@ -235,6 +235,9 @@ export default function DeviceReceiveScreen() {
       {/* Header */}
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Terug"
           onPress={() => safeBack(router, "/(app)/profile")}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >
@@ -294,7 +297,10 @@ export default function DeviceReceiveScreen() {
           <View className="bg-red-500/20 border border-red-500/40 p-3 flex-row items-center gap-2">
             <Ionicons name="warning-outline" color="#FCA5A5" size={16} />
             <Text className="text-red-300 text-sm flex-1">{error}</Text>
-            <Pressable onPress={() => setError(null)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Waarschuwing sluiten"
+              onPress={() => setError(null)}>
               <Ionicons name="close" color="#FCA5A5" size={16} />
             </Pressable>
           </View>

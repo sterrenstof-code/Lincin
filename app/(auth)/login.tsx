@@ -239,6 +239,8 @@ export default function LoginScreen() {
                 onSubmitEditing={onPasswordSubmit}
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 onPress={() => setShowPassword((s) => !s)}
                 hitSlop={8}
                 className="pl-2"

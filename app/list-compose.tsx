@@ -65,7 +65,11 @@ export default function ListComposeScreen() {
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-              <Pressable onPress={() => safeBack(router, "/(app)/feed")} className="w-10 h-10 items-center justify-center">
+              <Pressable
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel="Terug"
+                onPress={() => safeBack(router, "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text className="text-desk-ink font-bold text-lg">Nieuwe lijst</Text>
@@ -88,6 +92,7 @@ export default function ListComposeScreen() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {EMOJI_OPTIONS.map((e) => (
                     <Pressable
+                      hitSlop={4}
                       key={e}
                       onPress={() => setEmoji(e)}
                       className={`w-10 h-10 items-center justify-center ${emoji === e ? "bg-flame/20 border border-flame/40" : "bg-paper"}`}

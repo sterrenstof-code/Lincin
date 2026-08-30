@@ -104,6 +104,8 @@ export function ShareButton({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Iets delen"
       onPress={onPress}
       style={({ pressed }) => ({
         width: size,

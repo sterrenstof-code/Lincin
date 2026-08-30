@@ -85,6 +85,8 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
             Videogesprek
           </Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Videogesprek sluiten"
             onPress={handleClose}
             hitSlop={8}
             style={{ backgroundColor: closing ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.12)", borderRadius: 20, padding: 6 }}

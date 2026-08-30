@@ -193,7 +193,9 @@ export function PostReactions({
           className="flex-row flex-wrap gap-2 mt-2 px-3 py-2"
         >
           {QUICK_REACTIONS.map((emoji) => (
-            <Pressable key={emoji} onPress={() => handleReaction(emoji)} className="p-1">
+            <Pressable
+              hitSlop={10}
+              key={emoji} onPress={() => handleReaction(emoji)} className="p-1">
               <Text style={{ fontSize: 22 }}>{emoji}</Text>
             </Pressable>
           ))}

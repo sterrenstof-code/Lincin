@@ -103,7 +103,11 @@ export default function ListDetailScreen() {
 
             {/* Header */}
             <View className="flex-row items-center mb-4 gap-3">
-              <Pressable onPress={() => router.back()} className="w-9 h-9 items-center justify-center">
+              <Pressable
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Terug"
+                onPress={() => router.back()} className="w-9 h-9 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text style={{ fontSize: 28 }}>{list.emoji}</Text>
@@ -164,6 +168,9 @@ export default function ListDetailScreen() {
               style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
             />
             <Pressable
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Item toevoegen"
               onPress={onAddItem}
               disabled={!draft.trim() || adding}
               className={`w-10 h-10 items-center justify-center ${draft.trim() ? "bg-flame" : "bg-paper-soft"}`}
@@ -180,14 +187,22 @@ export default function ListDetailScreen() {
 function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onToggle: () => void; onDelete: () => void; canDelete: boolean }) {
   return (
     <View className={`flex-row items-center gap-3 px-4 py-3 ${item.checked ? "bg-paper-soft/50" : "bg-paper-soft"}`}>
-      <Pressable onPress={onToggle} className={`w-5 h-5 border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
+      <Pressable
+        hitSlop={12}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: item.checked }}
+        accessibilityLabel={item.checked ? "Vinkje weghalen" : "Afvinken"}
+        onPress={onToggle} className={`w-5 h-5 border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
         {item.checked && <Ionicons name="checkmark" color="#fff" size={11} />}
       </Pressable>
       <Text className={`flex-1 text-sm ${item.checked ? "text-ink-muted line-through" : "text-ink"}`}>
         {item.text}
       </Text>
       {canDelete && (
-        <Pressable onPress={onDelete} hitSlop={8}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Item verwijderen"
+          onPress={onDelete} hitSlop={8}>
           <Ionicons name="trash-outline" color={feed.inkDim} size={15} />
         </Pressable>
       )}

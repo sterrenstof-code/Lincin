@@ -340,6 +340,8 @@ export default function PostComposeScreen() {
           {/* Kop */}
           <View className="flex-row items-center px-6 py-4">
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={kind ? "Terug" : "Sluiten"}
               onPress={() => (kind ? resetToTypePicker() : safeBack(router, "/(app)/feed"))}
               hitSlop={10}
             >

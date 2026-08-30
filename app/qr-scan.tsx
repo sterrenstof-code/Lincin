@@ -47,6 +47,9 @@ export default function QRScanScreen() {
         <ScreenContainer>
           <View className="flex-row items-center px-4 py-3">
             <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sluiten"
               onPress={() => safeBack(router, "/(app)/friends")}
               className="w-9 h-9 bg-paper-soft items-center justify-center"
             >
@@ -82,6 +85,9 @@ export default function QRScanScreen() {
       {/* Sluitknop over de camera */}
       <View className="absolute top-14 left-4 z-10">
         <Pressable
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Scanner sluiten"
           onPress={() => safeBack(router, "/(app)/friends")}
           className="w-10 h-10 bg-black/50 items-center justify-center"
         >

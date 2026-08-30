@@ -578,7 +578,10 @@ export default function EventDetailScreen() {
                   >
                     TOEGANG
                   </Text>
-                  <Pressable onPress={() => setSettingsOpen(false)} hitSlop={8}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Sluiten"
+                    onPress={() => setSettingsOpen(false)} hitSlop={8}>
                     <Ionicons name="close" color={feed.ink} size={20} />
                   </Pressable>
                 </View>
@@ -902,6 +905,8 @@ function ContributionTile({
 
         {canDelete && (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Bijdrage verwijderen"
             onPress={onDelete}
             hitSlop={8}
             className="absolute top-2 right-2 w-7 h-7 bg-shell/70 items-center justify-center"

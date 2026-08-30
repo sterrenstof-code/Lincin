@@ -866,7 +866,10 @@ export default function PostDetailScreen() {
           <Text className="flex-1 text-ink-muted text-xs">
             Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
           </Text>
-          <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Antwoorden annuleren"
+            onPress={() => setReplyTo(null)} hitSlop={8}>
             <Ionicons name="close" color={feed.inkDim} size={18} />
           </Pressable>
         </View>
@@ -880,6 +883,7 @@ export default function PostDetailScreen() {
           >
             {POST_EMOJIS.map((emoji) => (
               <Pressable
+                hitSlop={4}
                 key={emoji}
                 onPress={() => {
                   setDraft((d) => d + emoji);
@@ -926,6 +930,8 @@ export default function PostDetailScreen() {
               contentFit="cover"
             />
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Foto weghalen"
               onPress={() => setPendingImage(null)}
               hitSlop={8}
               style={{
@@ -957,6 +963,8 @@ export default function PostDetailScreen() {
         */}
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.xs }}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Foto toevoegen"
             onPress={onPickCommentImage}
             style={{
               width: CONTROL_H,
@@ -973,6 +981,8 @@ export default function PostDetailScreen() {
           </Pressable>
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Emoji kiezen"
             onPress={() => {
               setShowEmojiPicker((v) => !v);
               if (!showEmojiPicker) {
@@ -1030,6 +1040,8 @@ export default function PostDetailScreen() {
             const canSend = !sending && (!!draft.trim() || !!pendingImage);
             return (
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Reactie versturen"
                 onPress={onSend}
                 disabled={!canSend}
                 style={{
@@ -1536,11 +1548,17 @@ function CommentRow({
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginLeft: space.sm }}>
-        <Pressable onPress={onReply} hitSlop={8} style={{ padding: space.xs }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Antwoorden op deze reactie"
+          onPress={onReply} hitSlop={8} style={{ padding: space.xs }}>
           <Ionicons name="return-down-back-outline" color={feed.inkDim} size={16} />
         </Pressable>
         {canDelete && (
-          <Pressable onPress={onDelete} hitSlop={8} style={{ padding: space.xs }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reactie verwijderen"
+            onPress={onDelete} hitSlop={8} style={{ padding: space.xs }}>
             <Ionicons name="trash-outline" color={feed.inkDim} size={16} />
           </Pressable>
         )}

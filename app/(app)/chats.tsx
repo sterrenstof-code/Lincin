@@ -209,12 +209,18 @@ export default function ChatsScreen() {
                 className="flex-1 text-ink text-base py-3 pl-2"
               />
               {filter.length > 0 && (
-                <Pressable onPress={() => setFilter("")} className="p-1">
+                <Pressable
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Filter wissen"
+                  onPress={() => setFilter("")} className="p-1">
                   <Ionicons name="close-circle" color={feed.inkDim} size={18} />
                 </Pressable>
               )}
             </View>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Nieuwe groep maken"
               onPress={() => router.push("/group-create")}
               className="bg-ink active:bg-ink-soft w-11 h-11 items-center justify-center"
             >
@@ -447,6 +453,8 @@ function ChatRow({
           row-taps NIET per ongeluk hierheen — alleen wie écht op de drie
           puntjes mikt opent het menu. */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Opties voor dit gesprek"
         onPress={onMenuPress}
         hitSlop={10}
         className="w-9 h-9 items-center justify-center -mr-2"

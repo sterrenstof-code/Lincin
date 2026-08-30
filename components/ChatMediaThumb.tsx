@@ -101,6 +101,8 @@ export function ChatMediaThumb({
         onRequestClose={() => setOpen(false)}
       >
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
           onPress={() => setOpen(false)}
           style={{
             flex: 1,

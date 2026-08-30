@@ -94,6 +94,9 @@ export default function DeviceLinkScreen() {
       {/* Header */}
       <View className="flex-row items-center px-5 pt-4 pb-2">
         <Pressable
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
           onPress={onClose}
           className="w-9 h-9 bg-paper-soft items-center justify-center"
         >

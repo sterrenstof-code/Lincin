@@ -143,7 +143,11 @@ export default function CallPlanComposeScreen() {
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
-              <Pressable onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
+              <Pressable
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel="Terug"
+                onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text className="text-desk-ink font-bold text-lg">
@@ -202,7 +206,10 @@ export default function CallPlanComposeScreen() {
                         {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
                       </Text>
                       {slots.length > 1 && (
-                        <Pressable onPress={() => removeSlot(slot.id)} hitSlop={8}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Dit tijdslot verwijderen"
+                          onPress={() => removeSlot(slot.id)} hitSlop={8}>
                           <Ionicons name="close-circle" color={active ? feed.inkDim : feed.inkDim} size={14} />
                         </Pressable>
                       )}

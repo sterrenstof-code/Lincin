@@ -111,6 +111,8 @@ export default function BugsScreen() {
         }}
       >
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
           onPress={() => safeBack(router)}
           hitSlop={10}
           style={({ pressed }) => ({
@@ -440,6 +442,7 @@ function BugRow({
           <View style={{ flexDirection: "row", gap: space.sm }}>
             {!settled && !mine && (
               <Pressable
+                hitSlop={6}
                 onPress={onConfirm}
                 style={{
                   height: 38,
@@ -463,6 +466,7 @@ function BugRow({
             )}
             {mine && (
               <Pressable
+                hitSlop={6}
                 onPress={onWithdraw}
                 style={{
                   height: 38,

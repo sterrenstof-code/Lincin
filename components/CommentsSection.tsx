@@ -285,6 +285,9 @@ export function CommentsSection({
               />
             </View>
             <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Reactie versturen"
               onPress={onSend}
               disabled={!draft.trim() || sending}
               style={{ backgroundColor: draft.trim() ? c.text : c.fill }}
@@ -346,7 +349,10 @@ function CommentRow({
           <View className="flex-row items-center gap-2">
             <Text style={{ fontSize: 10, color: palette.dim }}>{time}</Text>
             {isMine && (
-              <Pressable onPress={onDelete} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Reactie verwijderen"
+                onPress={onDelete} hitSlop={8}>
                 <Ionicons name="trash-outline" color="#B23A1C" size={12} />
               </Pressable>
             )}
