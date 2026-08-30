@@ -13,9 +13,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
 import { creamOnDark, feed, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
+import { confirm } from "@/lib/confirm";
+import { useToast } from "@/lib/toast";
 import {
   acceptFriendRequest,
   deleteFriendship,
@@ -33,6 +36,7 @@ export default function FriendsScreen() {
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
+  const toast = useToast();
 
   const [query, setQuery] = useState("");
 
@@ -83,19 +87,82 @@ export default function FriendsScreen() {
       await sendFriendRequest(myUserId, targetId);
       await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
       setQuery("");
-    } catch (e: any) {
-      console.warn("sendFriendRequest", e?.message ?? e);
+      toast.show("Linc-verzoek verstuurd.");
+    } catch {
+      toast.error("Het verzoek kon niet verstuurd worden.", {
+        action: { label: "Opnieuw", onPress: () => onSendRequest(targetId) },
+      });
     }
   }
 
   async function onAccept(friendshipId: string, requesterId: string) {
-    await acceptFriendRequest(friendshipId, myUserId, requesterId);
-    await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
+    try {
+      await acceptFriendRequest(friendshipId, myUserId, requesterId);
+      await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
+    } catch {
+      // Stond hier zonder `try`: een mislukte accept werd een onafgevangen
+      // rejection, dus de rij bleef staan en er stond nergens waarom.
+      toast.error("Het verzoek kon niet aanvaard worden.", {
+        action: {
+          label: "Opnieuw",
+          onPress: () => onAccept(friendshipId, requesterId),
+        },
+      });
+    }
   }
 
-  async function onDelete(friendshipId: string) {
-    await deleteFriendship(friendshipId);
-    await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
+  /**
+   * Eén verzoek intrekken, weigeren of een linc verbreken.
+   *
+   * Alle drie de knoppen riepen dit rechtstreeks aan: één tik op
+   * "Verwijder" en de linc was weg — geen bevestiging, geen weg terug, en
+   * bij een fout een onafgevangen rejection. De chatlijst ernaast vraagt
+   * voor precies dezelfde zwaarte wél om bevestiging, in twee stappen.
+   *
+   * Nu bepaalt `kind` wat er hoort te gebeuren:
+   *   remove  — een bestaande linc. Verbreken raakt iemand anders en is
+   *             niet ongedaan te maken: bevestigen.
+   *   reject  — een verzoek dat iemand jou stuurde. Weiger je het, dan moet
+   *             hij opnieuw beginnen: bevestigen.
+   *   cancel  — je eigen verzoek intrekken. Kost jou één tik om opnieuw te
+   *             sturen, dus daar staat een venster alleen maar in de weg.
+   */
+  async function onDelete(
+    friendshipId: string,
+    kind: "remove" | "reject" | "cancel",
+    name: string
+  ) {
+    if (kind !== "cancel") {
+      const ok = await confirm(
+        kind === "remove" ? `Linc met ${name} verbreken?` : `Verzoek van ${name} weigeren?`,
+        kind === "remove"
+          ? "Jullie verdwijnen uit elkaars lijst. Je kunt daarna opnieuw een verzoek sturen."
+          : "Het verzoek verdwijnt. Wil je later toch, dan moet die persoon opnieuw een verzoek sturen.",
+        {
+          affirmativeLabel: kind === "remove" ? "Verbreken" : "Weigeren",
+          destructive: true,
+        }
+      );
+      if (!ok) return;
+    }
+
+    try {
+      await deleteFriendship(friendshipId);
+      await qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
+    } catch {
+      toast.error(
+        kind === "remove"
+          ? "De linc kon niet verbroken worden."
+          : "Het verzoek kon niet ingetrokken worden.",
+        {
+          action: {
+            label: "Opnieuw",
+            // Zonder bevestiging: die is hierboven al gegeven.
+            onPress: () => onDelete(friendshipId, "cancel", name),
+          },
+        }
+      );
+    }
   }
 
   return (
@@ -174,7 +241,14 @@ export default function FriendsScreen() {
 
           {trimmed.length >= 2 && (
             <Section title="Zoekresultaten">
-              {search.isLoading ? (
+              {search.isError ? (
+                <QueryError
+                  compact
+                  title="Zoeken lukte niet"
+                  error={search.error}
+                  onRetry={() => search.refetch()}
+                />
+              ) : search.isLoading ? (
                 <SkeletonListCard rows={2} />
               ) : searchResults.length === 0 ? (
                 <PaperHint text="Geen gebruikers gevonden." />
@@ -207,7 +281,15 @@ export default function FriendsScreen() {
                     onRowPress={() => router.push(`/user/${f.other.username}`)}
                     actions={[
                       { label: "Link up", onPress: () => onAccept(f.id, f.requester_id), primary: true },
-                      { label: "Weiger", onPress: () => onDelete(f.id) },
+                      {
+                        label: "Weiger",
+                        onPress: () =>
+                          onDelete(
+                            f.id,
+                            "reject",
+                            f.other.display_name ?? f.other.username
+                          ),
+                      },
                     ]}
                   />
                 ))}
@@ -224,7 +306,17 @@ export default function FriendsScreen() {
                     friendship={f}
                     isLast={i === pendingOutgoing.length - 1}
                     onRowPress={() => router.push(`/user/${f.other.username}`)}
-                    actions={[{ label: "Annuleer", onPress: () => onDelete(f.id) }]}
+                    actions={[
+                      {
+                        label: "Annuleer",
+                        onPress: () =>
+                          onDelete(
+                            f.id,
+                            "cancel",
+                            f.other.display_name ?? f.other.username
+                          ),
+                      },
+                    ]}
                   />
                 ))}
               </View>
@@ -232,7 +324,14 @@ export default function FriendsScreen() {
           )}
 
           <Section title="Jouw lincs">
-            {friendships.isLoading ? (
+            {friendships.isError ? (
+              <QueryError
+                compact
+                title="Je lincs konden niet geladen worden"
+                error={friendships.error}
+                onRetry={() => friendships.refetch()}
+              />
+            ) : friendships.isLoading ? (
               <SkeletonListCard rows={3} />
             ) : accepted.length === 0 ? (
               <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
@@ -244,7 +343,17 @@ export default function FriendsScreen() {
                     friendship={f}
                     isLast={i === accepted.length - 1}
                     onRowPress={() => router.push(`/user/${f.other.username}`)}
-                    actions={[{ label: "Verwijder", onPress: () => onDelete(f.id) }]}
+                    actions={[
+                      {
+                        label: "Verwijder",
+                        onPress: () =>
+                          onDelete(
+                            f.id,
+                            "remove",
+                            f.other.display_name ?? f.other.username
+                          ),
+                      },
+                    ]}
                   />
                 ))}
               </View>

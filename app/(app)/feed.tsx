@@ -42,6 +42,8 @@ import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostGrid } from "@/components/PostGrid";
 import { PostReactions } from "@/components/PostReactions";
+import { QueryError } from "@/components/QueryError";
+import { useToast } from "@/lib/toast";
 import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
@@ -467,7 +469,18 @@ export default function FeedScreen() {
           */}
           <View style={{ alignItems: "stretch", marginTop: space.lg }}>
             <View style={{ flex: 1, minWidth: 0 }}>
-              {feed.isLoading ? (
+              {/* Een mislukte query viel hier regelrecht door naar `empty`,
+                  en dan zei de hoofdpagina van de app "je hebt nog niets
+                  gedeeld" terwijl de server simpelweg niet antwoordde. Dat
+                  is de ergste plek voor die verwisseling: het is het eerste
+                  wat je ziet. Zie components/QueryError.tsx. */}
+              {feed.isError ? (
+                <QueryError
+                  title="De feed kon niet geladen worden"
+                  error={feed.error}
+                  onRetry={() => feed.refetch()}
+                />
+              ) : feed.isLoading ? (
                 <View className="items-center py-24">
                   <ActivityIndicator color={feedColor.ink} />
                 </View>
@@ -1409,6 +1422,7 @@ function usePostMenu(
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption ?? "");
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
   const isMine = post.user_id === myUserId;
 
   const element = isMine ? (
@@ -1475,8 +1489,10 @@ function usePostMenu(
                 await updatePostCaption(post.id, editCaption);
                 setEditOpen(false);
                 onChanged();
-              } catch (e: any) {
-                console.warn("updatePostCaption", e?.message ?? e);
+              } catch {
+                // Het venster bleef openstaan met de knop weer actief, en
+                // verder niets — niet te onderscheiden van "nog niet gedrukt".
+                toast.error("De toelichting kon niet bewaard worden.");
               } finally {
                 setSaving(false);
               }

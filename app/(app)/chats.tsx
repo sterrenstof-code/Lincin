@@ -15,7 +15,9 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
+import { useToast } from "@/lib/toast";
 import { creamOnDark, feed, FEED_BORDER, flameDeep } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -36,6 +38,7 @@ export default function ChatsScreen() {
   const wide = useWide();
   const chrome = useChromeScroll();
   const qc = useQueryClient();
+  const toast = useToast();
 
   const [filter, setFilter] = useState("");
   // Twee-traps menu voor chat-acties:
@@ -77,8 +80,10 @@ export default function ChatsScreen() {
       const chatId = await getOrCreateDirectChat(friendUserId);
       await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
       router.push(`/chat/${chatId}`);
-    } catch (e: any) {
-      console.warn("openChatWith", e?.message ?? e);
+    } catch {
+      toast.error("Het gesprek kon niet geopend worden.", {
+        action: { label: "Opnieuw", onPress: () => openChatWith(friendUserId) },
+      });
     }
   }
 
@@ -92,13 +97,27 @@ export default function ChatsScreen() {
     );
   }
 
+  /**
+   * Eén weg terug voor alle drie de acties hieronder.
+   *
+   * De rij is al uit de lijst getrokken voordat de server iets zei. Faalt
+   * de mutatie, dan zet de invalidatie hem terug — en dat gebeurde eerder
+   * zonder één woord: je drukt op "verwijder definitief", er beweegt iets,
+   * en dan staat het gesprek er weer. Een optimistische update is een
+   * belofte; wordt die teruggedraaid, dan hoort er te staan dát hij
+   * teruggedraaid is.
+   */
+  function rollback(message: string, retry: () => void) {
+    qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    toast.error(message, { action: { label: "Opnieuw", onPress: retry } });
+  }
+
   async function onHide(chat: ChatWithMembers) {
     removeFromCache(chat.id);
     try {
       await hideChat(chat.id, myUserId);
-    } catch (e: any) {
-      console.warn("hideChat", e?.message ?? e);
-      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    } catch {
+      rollback("Het gesprek kon niet verborgen worden.", () => onHide(chat));
     }
   }
 
@@ -106,9 +125,8 @@ export default function ChatsScreen() {
     removeFromCache(chat.id);
     try {
       await leaveChat(chat.id, myUserId);
-    } catch (e: any) {
-      console.warn("leaveChat", e?.message ?? e);
-      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    } catch {
+      rollback("Je kon de groep niet verlaten.", () => onLeave(chat));
     }
   }
 
@@ -116,9 +134,10 @@ export default function ChatsScreen() {
     removeFromCache(chat.id);
     try {
       await deleteChatForEveryone(chat.id);
-    } catch (e: any) {
-      console.warn("deleteChatForEveryone", e?.message ?? e);
-      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+    } catch {
+      rollback("Het gesprek kon niet verwijderd worden.", () =>
+        onDeleteForEveryone(chat)
+      );
     }
   }
 
@@ -243,17 +262,27 @@ export default function ChatsScreen() {
 
           {chats.isLoading && <SkeletonListCard rows={3} />}
         </View>
-        {filtered.length === 0 ? (
+        {/* Faalt de query, dan stond hier "nog geen gesprekken" — en dan
+            lijkt een lege lijst een feit in plaats van een storing. */}
+        {chats.isError ? (
+          <QueryError
+            title="Gesprekken konden niet geladen worden"
+            error={chats.error}
+            onRetry={() => chats.refetch()}
+          />
+        ) : filtered.length === 0 ? (
           chats.isLoading ? null : (
         <View className="bg-paper-soft p-6 items-center">
           <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
             <Ionicons name="chatbubbles-outline" color={feed.ink} size={24} />
           </View>
           <Text className="text-ink font-semibold text-base mb-1">
-            Nog geen gesprekken
+            {filter.trim() ? "Geen gesprek gevonden" : "Nog geen gesprekken"}
           </Text>
           <Text className="text-ink-soft text-sm text-center">
-            Start een chat met een vriend hierboven, of deel je link vanuit Profiel.
+            {filter.trim()
+              ? `Geen gesprek met "${filter.trim()}" in de naam.`
+              : "Start een chat met een vriend hierboven, of deel je link vanuit Profiel."}
           </Text>
         </View>
           )

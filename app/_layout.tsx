@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { stackScreenLayout } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
 import { installPageTransitions } from "@/lib/page-transition";
+import { ToastProvider } from "@/lib/toast";
 import { loadStoredPreference, useScheme } from "@/lib/design/theme";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
@@ -84,6 +85,10 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider value={scheme === "light" ? DefaultTheme : DarkTheme}>
+          {/* De strook onderaan die zegt wat er zojuist misging. Staat hier
+              en niet per scherm: hij ligt óp de navigatie, dus een melding
+              overleeft de pagina die hem opriep. Zie lib/toast.tsx. */}
+          <ToastProvider>
           {/* `animation: fade_from_bottom` is de native evenknie van de
               web-overgang: vervagen met een lichte stijging, dezelfde
               320ms. Hij geldt als default voor élk scherm hieronder; de
@@ -284,6 +289,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          </ToastProvider>
           {/* De balk bovenaan is in béide standen zwart, dus de
               systeemklok erboven blijft licht. */}
           <StatusBar style="light" />

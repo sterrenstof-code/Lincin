@@ -10,7 +10,6 @@ import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   ActivityIndicator,
   Clipboard,
@@ -43,6 +42,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { chromeTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
+import { useToast } from "@/lib/toast";
 import {
   chatTitle,
   fetchMemberLastRead,
@@ -175,6 +175,7 @@ export default function ChatDetail() {
   const screenFocused = useIsFocused();
   const router = useRouter();
   const qc = useQueryClient();
+  const toast = useToast();
   const { session } = useAuth();
   const myUserId = session?.user.id;
 
@@ -529,8 +530,10 @@ export default function ChatDetail() {
       if (earlier.length > 0) {
         setMessages((prev) => (prev ? [...earlier, ...prev] : earlier));
       }
-    } catch (e: any) {
-      console.warn("loadEarlierMessages", e?.message ?? e);
+    } catch {
+      toast.error("Oudere berichten konden niet opgehaald worden.", {
+        action: { label: "Opnieuw", onPress: () => loadEarlierMessages() },
+      });
     } finally {
       setLoadingEarlier(false);
     }
@@ -600,8 +603,11 @@ export default function ChatDetail() {
     try {
       await deleteMessage(messageId);
       setMessages((prev) => prev ? prev.filter((m) => m.id !== messageId) : prev);
-    } catch (e: any) {
-      console.warn("deleteMessage", e?.message ?? e);
+    } catch {
+      // De bubbel blijft staan; zonder dit was dat het enige signaal.
+      toast.error("Het bericht kon niet verwijderd worden.", {
+        action: { label: "Opnieuw", onPress: () => onDeleteMessage(messageId) },
+      });
     }
   }
 
@@ -620,8 +626,13 @@ export default function ChatDetail() {
             : m
         ) : prev
       );
-    } catch (e: any) {
-      console.warn("editMessage", e?.message ?? e);
+    } catch {
+      toast.error("De bewerking kon niet bewaard worden.", {
+        action: {
+          label: "Opnieuw",
+          onPress: () => onConfirmEdit(messageId, trimmed),
+        },
+      });
     }
   }
 
@@ -706,8 +717,10 @@ export default function ChatDetail() {
       setUploadProgress(100);
       setDraft("");
     } catch (e: any) {
-      console.warn("send attachment", e?.message ?? e);
-      Alert.alert("Fout bij versturen", e?.message ?? "Probeer opnieuw.");
+      // Was een `Alert.alert`: een OS-venster dat het gesprek blokkeert
+      // voor iets waar je niets over hoeft te beslissen. De strook zegt
+      // hetzelfde en laat je doortypen.
+      toast.error(e?.message ?? "De bijlage kon niet verstuurd worden.");
     } finally {
       setSending(false);
       setUploadProgress(null);
@@ -767,8 +780,10 @@ export default function ChatDetail() {
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((d) => d + 1);
       }, 1000);
-    } catch (e: any) {
-      console.warn("startRecording", e?.message ?? e);
+    } catch {
+      // Meestal een geweigerde microfoon. Zonder dit hield je de knop
+      // ingedrukt en gebeurde er niets.
+      toast.error("Opnemen lukte niet. Staat de microfoon aan voor deze app?");
     }
   }
 
@@ -802,8 +817,8 @@ export default function ChatDetail() {
         mimeType,
         filename: `voice-${Date.now()}.${ext}`,
       });
-    } catch (e: any) {
-      console.warn("stopRecording", e?.message ?? e);
+    } catch {
+      toast.error("De spraakopname kon niet verstuurd worden.");
     }
   }
 
@@ -821,8 +836,8 @@ export default function ChatDetail() {
       // Refetch reactions
       const rxs = await listReactionsForMessages((messages ?? []).map((m) => m.id));
       setReactions(rxs);
-    } catch (e: any) {
-      console.warn("toggleReaction", e?.message ?? e);
+    } catch {
+      toast.error("De reactie kon niet bewaard worden.");
     }
   }
 

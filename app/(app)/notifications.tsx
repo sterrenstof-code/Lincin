@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { QueryError } from "@/components/QueryError";
 import { useAuth } from "@/lib/auth/provider";
 import {
   listNotifications,
@@ -102,43 +103,16 @@ export default function NotificationsScreen() {
         </Text>
 
         {/**
-          * Een mislukte query zag er precies hetzelfde uit als een lege lijst.
-          * Toen `bug_report_id` nog niet bestond stond hier "nog geen
-          * meldingen" terwijl er tientallen waren — en dan zoek je de fout
-          * overal behalve waar hij zit. Stilte en leegte horen niet
-          * hetzelfde te lezen.
+          * Stilte en leegte lezen niet hetzelfde — de uitleg waarom staat nu
+          * in `components/QueryError.tsx`, want vier andere schermen hadden
+          * dezelfde val en dit was het enige scherm met de oplossing.
           */}
         {isError ? (
-          <View
-            style={{
-              borderWidth: FEED_BORDER,
-              borderColor: flame,
-              backgroundColor: feed.post,
-              padding: 32,
-            }}
-          >
-            <Text style={[feedType.tile, { fontSize: 20, color: feed.text, marginBottom: 8 }]}>
-              Meldingen konden niet geladen worden
-            </Text>
-            <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
-              {(error as Error)?.message ?? "Onbekende fout."}
-            </Text>
-            <Pressable
-              onPress={() => refetch()}
-              style={{
-                marginTop: 20,
-                alignSelf: "flex-start",
-                paddingHorizontal: 20,
-                height: 40,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-              }}
-            >
-              <Text style={[feedType.label, { color: feed.ink }]}>Opnieuw proberen</Text>
-            </Pressable>
-          </View>
+          <QueryError
+            title="Meldingen konden niet geladen worden"
+            error={error}
+            onRetry={() => refetch()}
+          />
         ) : (data ?? []).length === 0 ? (
           isLoading ? null : (
             <View

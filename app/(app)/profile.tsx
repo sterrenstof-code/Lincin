@@ -25,6 +25,7 @@ import {
   type KeySyncStatus,
 } from "@/lib/crypto/sync";
 import { confirm } from "@/lib/confirm";
+import { useToast } from "@/lib/toast";
 import { getPushStatus, sendTestPush, type PushStatus } from "@/lib/push";
 
 export default function ProfileScreen() {
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   const wide = useWide();
   const chrome = useChromeScroll();
   const qc = useQueryClient();
+  const toast = useToast();
   const myUserId = session!.user.id;
 
   const [pubkey, setPubkey] = useState<string | null>(null);
@@ -136,8 +138,12 @@ export default function ProfileScreen() {
       const newUrl = await uploadAvatar(myUserId, bytes, mime);
       await updateMyProfile(myUserId, { avatar_url: newUrl });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
-    } catch (e: any) {
-      console.warn("avatar upload", e?.message ?? e);
+    } catch {
+      // Zonder dit draaide het schijfje, stopte het, en bleef dezelfde
+      // avatar staan — de enige aanwijzing dat er iets mislukt was.
+      toast.error("De foto kon niet geüpload worden.", {
+        action: { label: "Opnieuw", onPress: () => onPickAvatar() },
+      });
     } finally {
       setAvatarUploading(false);
     }

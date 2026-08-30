@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Skeleton, SkeletonListCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
+import { confirm } from "@/lib/confirm";
 import { safeBack } from "@/lib/nav";
 import {
   getChatRow,
@@ -122,7 +122,8 @@ export default function GroupInfoScreen() {
     const name = member.profile?.display_name ?? member.profile?.username ?? "Lid";
     const confirmed = await confirm(
       "Lid verwijderen",
-      `Wil je ${name} uit de groep verwijderen?`
+      `Wil je ${name} uit de groep verwijderen?`,
+      { affirmativeLabel: "Verwijderen", destructive: true }
     );
     if (!confirmed) return;
     try {
@@ -136,7 +137,8 @@ export default function GroupInfoScreen() {
   async function onLeave() {
     const confirmed = await confirm(
       "Verlaat groep",
-      `Je verlaat "${chat.data?.name ?? "deze groep"}". Je kan oude berichten niet meer ophalen.`
+      `Je verlaat "${chat.data?.name ?? "deze groep"}". Je kan oude berichten niet meer ophalen.`,
+      { affirmativeLabel: "Verlaten", destructive: true }
     );
     if (!confirmed) return;
     try {
@@ -371,16 +373,3 @@ function MemberRow({
   );
 }
 
-function confirm(title: string, message: string): Promise<boolean> {
-  if (Platform.OS === "web") {
-    return Promise.resolve(
-      typeof window !== "undefined" && window.confirm(`${title}\n\n${message}`)
-    );
-  }
-  return new Promise((resolve) => {
-    Alert.alert(title, message, [
-      { text: "Annuleer", style: "cancel", onPress: () => resolve(false) },
-      { text: "OK", style: "destructive", onPress: () => resolve(true) },
-    ]);
-  });
-}
