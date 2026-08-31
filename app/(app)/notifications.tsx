@@ -23,10 +23,12 @@ import {
   markNotificationRead,
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
+import { usePageTitle } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { carbon, feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
 
 export default function NotificationsScreen() {
+  usePageTitle("Meldingen");
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();

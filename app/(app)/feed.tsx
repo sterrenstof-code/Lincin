@@ -63,6 +63,7 @@ import {
 import { withHeroTransition } from "@/lib/hero-transition";
 import { useFeedPrefs, type FeedLayout } from "@/lib/feed-prefs";
 import { useSeenPosts } from "@/lib/read-state";
+import { usePageTitle } from "@/lib/page-title";
 import {
   collectTags,
   deletePost,
@@ -273,6 +274,7 @@ function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slo
 }
 
 export default function FeedScreen() {
+  usePageTitle("Feed");
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();

@@ -25,8 +25,10 @@ import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyEvents } from "@/lib/api/events";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function EventsScreen() {
+  usePageTitle("Events");
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();

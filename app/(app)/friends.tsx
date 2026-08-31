@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   Platform,
   Pressable,
+  RefreshControl,
   Text,
   TextInput,
   View,
@@ -38,8 +39,10 @@ import {
 } from "@/lib/api/friends";
 import { searchProfilesByUsername, getProfile, type Profile } from "@/lib/api/profiles";
 import { buildAddFriendUrl, shareText } from "@/lib/share";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function FriendsScreen() {
+  usePageTitle("Vrienden");
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const qc = useQueryClient();
@@ -194,6 +197,17 @@ export default function FriendsScreen() {
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         compact
+        // Naar beneden trekken om te verversen. Stond op de feed, de agenda
+        // en de meldingen, en op deze drie niet — terwijl het gebaar hier
+        // net zo hard verwacht wordt. `isFetching && !isLoading`: bij de
+        // eerste keer laden dragen de skeletons het, dit is voor daarna.
+        refreshControl={
+          <RefreshControl
+            refreshing={friendships.isFetching && !friendships.isLoading}
+            onRefresh={() => void friendships.refetch()}
+            tintColor={feed.ink}
+          />
+        }
       >
       <View style={{ paddingVertical: 20, paddingBottom: 40 }}>
         <View>

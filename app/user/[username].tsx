@@ -27,6 +27,7 @@ import {
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { listUserPosts } from "@/lib/api/posts";
 import { feed, feedType, flameDeep, space } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 
 export default function UserProfileScreen() {
@@ -46,6 +47,10 @@ export default function UserProfileScreen() {
     queryFn: () => getProfileByUsername(username),
     enabled: !!username,
   });
+
+  usePageTitle(
+    profile.data ? (profile.data.display_name ?? `@${profile.data.username}`) : null
+  );
 
   const friendships = useQuery({
     queryKey: ["friendships", session?.user.id ?? "anon"],

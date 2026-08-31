@@ -11,6 +11,7 @@ import "react-native-reanimated";
 import { AuthProvider } from "@/lib/auth/provider";
 import { WebAnalytics } from "@/components/WebAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import { stackScreenLayout } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
 import { installPageTransitions } from "@/lib/page-transition";
@@ -289,6 +290,9 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          {/* Blijft staan zolang de toestand duurt — anders dan de toast,
+              die een gebeurtenis meldt en weer weggaat. Zie het onderdeel. */}
+          <OfflineNotice />
           </ToastProvider>
           {/* De balk bovenaan is in béide standen zwart, dus de
               systeemklok erboven blijft licht. */}

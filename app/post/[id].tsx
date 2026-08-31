@@ -80,6 +80,7 @@ import { safeBack } from "@/lib/nav";
 import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -451,6 +452,10 @@ export default function PostDetailScreen() {
   // volgorde — zie de twee `return`s onderaan.
 
   const loading = post.isLoading || !post.data;
+
+  // De kop van de vondst in de browsertab; `null` zolang hij nog laadt,
+  // anders staat er "undefined" in je geschiedenis. Zie lib/page-title.ts.
+  usePageTitle(post.data?.caption?.trim() || (post.data ? "Vondst" : null));
 
   /**
    * Heeft deze vondst iets te tónen?

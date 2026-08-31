@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
@@ -28,8 +28,10 @@ import {
 import { confirm } from "@/lib/confirm";
 import { useToast } from "@/lib/toast";
 import { getPushStatus, sendTestPush, type PushStatus } from "@/lib/push";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function ProfileScreen() {
+  usePageTitle("Profiel");
   const { session, signOut } = useAuth();
   const router = useRouter();
   const wide = useWide();
@@ -171,6 +173,20 @@ export default function ProfileScreen() {
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         compact
+        // Naar beneden trekken om te verversen. Stond op de feed, de agenda
+        // en de meldingen, en op deze drie niet — terwijl het gebaar hier
+        // net zo hard verwacht wordt. `isFetching && !isLoading`: bij de
+        // eerste keer laden dragen de skeletons het, dit is voor daarna.
+        refreshControl={
+          <RefreshControl
+            refreshing={myPosts.isFetching && !myPosts.isLoading}
+            onRefresh={() => {
+              void myPosts.refetch();
+              void profile.refetch();
+            }}
+            tintColor={feed.ink}
+          />
+        }
         contentStyle={{ paddingVertical: 20, paddingBottom: 60 }}
       >
         {/* ---- Hero on shell ---- */}

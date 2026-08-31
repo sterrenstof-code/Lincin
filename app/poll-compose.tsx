@@ -20,6 +20,7 @@ import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
 import { CONTROL_H, creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { useUnsavedGuard } from "@/lib/unsaved";
 
 export default function PollComposeScreen() {
   const router = useRouter();
@@ -31,6 +32,21 @@ export default function PollComposeScreen() {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Weglopen met tekst die nog nergens staat.
+   *
+   * Er was geen enkele bewaking op verlaten in de hele app, en juist hier
+   * doet dat pijn: de tekst bestaat nergens anders dan in dit veld — er is
+   * geen concept op de server, want de server ziet alleen ciphertext.
+   * Tijdens het versturen staat de bewaking uit, anders houdt hij de
+   * navigatie tegen die het versturen zelf veroorzaakt.
+   */
+  useUnsavedGuard(
+    !submitting &&
+      (question.trim().length > 0 || options.some((o) => o.trim().length > 0)),
+    { message: "Deze poll is nog niet geplaatst. Weggaan betekent dat je hem kwijt bent." }
+  );
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =

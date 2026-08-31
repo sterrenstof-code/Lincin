@@ -21,6 +21,7 @@ import { createSharedList } from "@/lib/api/shared-lists";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { useUnsavedGuard } from "@/lib/unsaved";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
 
@@ -36,6 +37,19 @@ export default function ListComposeScreen() {
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Weglopen met tekst die nog nergens staat.
+   *
+   * Er was geen enkele bewaking op verlaten in de hele app, en juist hier
+   * doet dat pijn: de tekst bestaat nergens anders dan in dit veld — er is
+   * geen concept op de server, want de server ziet alleen ciphertext.
+   * Tijdens het versturen staat de bewaking uit, anders houdt hij de
+   * navigatie tegen die het versturen zelf veroorzaakt.
+   */
+  useUnsavedGuard(!submitting && title.trim().length > 0, {
+    message: "Deze lijst is nog niet aangemaakt. Weggaan betekent dat je hem kwijt bent.",
+  });
 
   useEffect(() => {
     listMyFriendships(myUserId).then((fs) => setFriends(fs.filter((f) => f.status === "accepted")));

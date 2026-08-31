@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -41,8 +42,10 @@ import {
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function ChatsScreen() {
+  usePageTitle("Chats");
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
@@ -198,6 +201,20 @@ export default function ChatsScreen() {
         onScroll={chrome.onScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
         compact
+        // Naar beneden trekken om te verversen. Stond op de feed, de agenda
+        // en de meldingen, en op deze drie niet — terwijl het gebaar hier
+        // net zo hard verwacht wordt. `isFetching && !isLoading`: bij de
+        // eerste keer laden dragen de skeletons het, dit is voor daarna.
+        refreshControl={
+          <RefreshControl
+            refreshing={chats.isFetching && !chats.isLoading}
+            onRefresh={() => {
+              void chats.refetch();
+              void friendships.refetch();
+            }}
+            tintColor={feed.ink}
+          />
+        }
         contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
       >
         <View>

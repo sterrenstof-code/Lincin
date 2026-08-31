@@ -37,6 +37,8 @@ import {
   space,
 } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { useUnsavedGuard } from "@/lib/unsaved";
+import { CharCount } from "@/components/CharCount";
 
 function plusHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 3_600_000);
@@ -105,6 +107,20 @@ export default function EventCreateScreen() {
   const [coverMime, setCoverMime] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Weglopen met tekst die nog nergens staat.
+   *
+   * Er was geen enkele bewaking op verlaten in de hele app, en juist hier
+   * doet dat pijn: de tekst bestaat nergens anders dan in dit veld — er is
+   * geen concept op de server, want de server ziet alleen ciphertext.
+   * Tijdens het versturen staat de bewaking uit, anders houdt hij de
+   * navigatie tegen die het versturen zelf veroorzaakt.
+   */
+  useUnsavedGuard(
+    !submitting && (name.trim().length > 0 || description.trim().length > 0),
+    { message: "Dit event is nog niet aangemaakt. Weggaan betekent dat je het kwijt bent." }
+  );
   const [error, setError] = useState<string | null>(null);
 
   async function pickCover() {
@@ -247,6 +263,7 @@ export default function EventCreateScreen() {
                 className="text-ink text-base"
                 style={[FIELD, { minHeight: 84, textAlignVertical: "top" }]}
               />
+              <CharCount value={description} max={500} />
             </View>
 
             {/* Cover (optioneel) */}

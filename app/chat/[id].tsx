@@ -95,6 +95,7 @@ import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";
 import { color } from "@/lib/design/theme";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * De leesmaat van een gesprek.
@@ -418,6 +419,8 @@ export default function ChatDetail() {
       clearInterval(interval);
     };
   }, [id, myUserId]);
+
+  usePageTitle(chat && myUserId ? chatTitle(chat, myUserId) : null);
 
   const title = useMemo(
     () => (chat && myUserId ? chatTitle(chat, myUserId) : "Chat"),

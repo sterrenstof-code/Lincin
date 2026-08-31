@@ -44,6 +44,7 @@ import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -260,6 +261,8 @@ export default function EventDetailScreen() {
       setTimeout(() => setCopied(false), 1800);
     }
   }
+
+  usePageTitle(event.data?.name ?? null);
 
   // Drie standen, geen één. Zolang dit `isLoading || !data` was, las een
   // verwijderd event en een mislukte query allebei als "laden…" — voor

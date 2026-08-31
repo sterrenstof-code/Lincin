@@ -26,6 +26,8 @@ import { createFind, type FindKind } from "@/lib/api/posts";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
 import { continueList, type EditResult, type Selection } from "@/lib/richtext";
+import { useUnsavedGuard } from "@/lib/unsaved";
+import { CharCount } from "@/components/CharCount";
 import {
   findUrl,
   formatDuration,
@@ -154,6 +156,24 @@ export default function PostComposeScreen() {
   const [unfurling, setUnfurling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Weglopen met tekst die nog nergens staat.
+   *
+   * Er was geen enkele bewaking op verlaten in de hele app, en juist hier
+   * doet dat pijn: de tekst bestaat nergens anders dan in dit veld — er is
+   * geen concept op de server, want de server ziet alleen ciphertext.
+   * Tijdens het versturen staat de bewaking uit, anders houdt hij de
+   * navigatie tegen die het versturen zelf veroorzaakt.
+   */
+  useUnsavedGuard(
+    !submitting &&
+      (body.trim().length > 0 ||
+        note.trim().length > 0 ||
+        url.trim().length > 0 ||
+        imageUris.length > 0),
+    { message: "Je vondst is nog niet geplaatst. Weggaan betekent dat je hem kwijt bent." }
+  );
 
   const lastUnfurled = useRef<string>("");
 
@@ -473,6 +493,7 @@ export default function PostComposeScreen() {
                         Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                       ]}
                     />
+                    <CharCount value={body} max={2000} />
                     {/* Eén regel uitleg is genoeg: de knoppen zeggen wat ze
                         doen, maar niet dat je het ook zelf kunt typen — en
                         wie plakt uit een andere app heeft de sterretjes vaak
@@ -607,10 +628,15 @@ export default function PostComposeScreen() {
                         minHeight: 70,
                         textAlignVertical: "top",
                         ...feedType.body,
-                        color: feed.inkDim,
+                        // Stond op `inkDim` — dezelfde kleur als de
+                        // placeholder ernaast, dus je kon niet zien of je
+                        // al iets getypt had. Elk ander veld op dit scherm
+                        // staat op `ink`.
+                        color: feed.ink,
                         paddingVertical: 11,
                       }}
                     />
+                    <CharCount value={note} max={500} />
                   </Field>
                 )}
 

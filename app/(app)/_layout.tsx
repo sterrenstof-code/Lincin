@@ -12,6 +12,7 @@ import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
 import { touchLastSeen } from "@/lib/api/profiles";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
+import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
 import { tabScreenLayout } from "@/components/PageTransition";
@@ -126,16 +127,14 @@ export default function AppLayout() {
   // gebruikers in de app zien WAT er nieuw is.
   const unreadNotifCount = unreadNotifications.data ?? 0;
   const totalAttention = totalUnread + pendingIncoming + unreadNotifCount;
+  //
+  // Het aantal is maar de hélft van de titel. Welke pagina dit is stond er
+  // niet in, dus elke vondst, elk event en elk gesprek heette `Lincin` —
+  // zeven tabs open en ze zijn niet uit elkaar te houden. Twee schrijvers
+  // op één `document.title` gaat mis zodra ze elkaar niet kennen, dus
+  // schrijft `lib/page-title.ts` hem en leveren wij alleen ons stuk aan.
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const base = "Lincin";
-    document.title =
-      totalAttention > 0
-        ? `(${totalAttention > 99 ? "99+" : totalAttention}) ${base}`
-        : base;
-    return () => {
-      document.title = base;
-    };
+    setUnreadBadge(totalAttention);
   }, [totalAttention]);
 
   // PWA app-icoon badge — toont het ongelezen-aantal op het homescreen-icoon,
