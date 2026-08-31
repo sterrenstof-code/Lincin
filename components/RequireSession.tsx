@@ -34,6 +34,20 @@ import { desk } from "@/lib/design/type";
  * `/e/[code]` bewaart zijn uitnodiging en stuurt je zelf naar het
  * inlogscherm. Eén regel per scherm dat het nodig heeft is preciezer dan
  * een regel met drie uitzonderingen.
+ *
+ * ---------------------------------------------------------------
+ * EN WAAROM DE DEEP-LINK-PARAMETERS NIET BEWAARD WORDEN
+ * ---------------------------------------------------------------
+ * Bij `/e/[code]` bewaren we de uitnodiging wél over het inloggen heen (zie
+ * lib/pending-invite.ts). Hier nadrukkelijk niet: `device-receive?s=…` draagt
+ * het gedeelde geheim van een sleuteloverdracht. Dat in `localStorage`
+ * parkeren om een navigatie te overleven zou het langer laten leven dan de
+ * handeling zelf, op een toestel waarvan we op dat moment nog niet eens
+ * weten van wie het is.
+ *
+ * De code leeft toch maar tien minuten en de QR-code staat op het scherm
+ * ernaast, dus opnieuw scannen ná het inloggen is één gebaar. Dat is
+ * goedkoper dan een geheim dat blijft rondslingeren.
  */
 export function RequireSession({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
