@@ -17,6 +17,7 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { EmptyState } from "@/components/EmptyState";
 import { PageHead, RubricHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
@@ -357,24 +358,37 @@ export default function ChatsScreen() {
           />
         ) : filtered.length === 0 ? (
           chats.isLoading ? null : (
-        <View
-          style={{
-            borderWidth: FEED_BORDER,
-            borderColor: feed.ink,
-            padding: space.xxxl,
-          }}
-        >
-          <Text style={[feedType.tile, { fontSize: 20, color: feed.ink, marginBottom: space.sm }]}>
-            {filter.trim() ? "Geen gesprek gevonden" : "Nog geen gesprekken"}
-          </Text>
-          <Text style={[feedType.body, { color: feed.inkDim, maxWidth: 440 }]}>
-            {filter.trim()
-              ? `Geen gesprek met "${filter.trim()}" in de naam.`
-              : friendsWithoutChat.length > 0
-              ? "Begin er een met iemand hierboven."
-              : "Je hebt nog geen lincs. Ga naar Lincs om iemand toe te voegen."}
-          </Text>
-        </View>
+            /**
+             * Drie leegtes, en maar één ervan is een doodlopende weg.
+             *
+             * Bij een zoekterm valt er niets te doen dan hem weghalen, en
+             * dat veld staat er al. Heb je lincs maar nog geen gesprek, dan
+             * staat de rij met gezichten er vlak boven — dáár begin je er
+             * een, en een knop ernaast zou naar diezelfde rij wijzen.
+             *
+             * Maar "Ga naar Lincs om iemand toe te voegen" noemde een scherm
+             * en bood er geen ingang bij, terwijl dat de énige plek is waar
+             * dit scherm ooit vandaan gevuld wordt. Dat is de leegte die een
+             * knop verdient.
+             */
+            <EmptyState
+              title={filter.trim() ? "Geen gesprek gevonden" : "Nog geen gesprekken"}
+              body={
+                filter.trim()
+                  ? `Geen gesprek met "${filter.trim()}" in de naam.`
+                  : friendsWithoutChat.length > 0
+                  ? "Begin er een met iemand hierboven."
+                  : "Een gesprek begint bij een linc, en die heb je er nog niet bij."
+              }
+              action={
+                !filter.trim() && friendsWithoutChat.length === 0
+                  ? {
+                      label: "Zoek je lincs",
+                      onPress: () => router.push("/(app)/friends"),
+                    }
+                  : undefined
+              }
+            />
           )
         ) : (
           filtered.map((item, index) => (

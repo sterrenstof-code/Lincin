@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityHistory } from "@/components/ActivityHistory";
 import { PostGrid } from "@/components/PostGrid";
 import { Avatar } from "@/components/Avatar";
+import { DetailState } from "@/components/DetailState";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { Skeleton } from "@/components/Skeleton";
@@ -132,6 +133,33 @@ export default function UserProfileScreen() {
   }
 
   const heroName = profile.data?.display_name ?? username;
+
+  /**
+   * Een mislukte query is geen niet-bestaand mens.
+   *
+   * `relation` keek alleen naar `isLoading` en `data`, dus alles wat niet
+   * laadde viel door naar `not-found` — en dan stond er "@tom bestaat niet
+   * (of heeft een andere handle)" terwijl de server simpelweg niet
+   * antwoordde. Dat is dezelfde verwisseling die DESIGN.md §4b beschrijft,
+   * en juist hier weegt hij zwaar: dit is het scherm achter "Jouw linc"
+   * (lib/share.ts). Iemand krijgt jouw link doorgestuurd, de verbinding
+   * hapert één keer, en de app vertelt hem dat jij niet bestaat.
+   *
+   * `DetailState` brengt de schil mee inclusief de terug-knop — zonder dat
+   * is een deep-link naar deze pagina een kamer zonder deur.
+   */
+  if (profile.isError) {
+    return (
+      <DetailState
+        kind="error"
+        subject={`@${username}`}
+        error={profile.error}
+        onRetry={() => profile.refetch()}
+        backLabel="Terug"
+        onBack={() => safeBack(router, "/(app)/feed")}
+      />
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>

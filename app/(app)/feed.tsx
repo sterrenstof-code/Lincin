@@ -27,7 +27,9 @@ import { CommentsSection } from "@/components/CommentsSection";
 import { IndexGrid } from "@/components/IndexGrid";
 import { Meta } from "@/components/Editorial";
 import { listMyEvents } from "@/lib/api/events";
+import { listMyFriendships } from "@/lib/api/friends";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { EmptyState as SharedEmptyState } from "@/components/EmptyState";
 import { EventCard } from "@/components/EventCard";
 import { ActivityBand } from "@/components/ActivityBand";
 import { ShareButton } from "@/components/FeedChrome";
@@ -342,6 +344,28 @@ export default function FeedScreen() {
     staleTime: 60_000,
   });
 
+  /**
+   * Hoeveel lincs je hebt — alleen om te weten wélke leegte dit is.
+   *
+   * Een lege feed heeft twee verschillende oorzaken en die vragen om een
+   * ander antwoord. Heb je lincs en heeft niemand iets gedeeld, dan is er
+   * niets aan de hand en wacht je gewoon. Heb je ze niet, dan is de feed
+   * niet leeg maar onmogelijk: er is geen bron. Zonder dit onderscheid
+   * stuurde het scherm iedereen naar "deel zelf iets", ook wie in zijn
+   * eentje in de app zat.
+   *
+   * Dezelfde sleutel als op Lincs en op de chatlijst, dus react-query
+   * dedupliceert dit met wat daar al draait; het kost geen extra vraag.
+   */
+  const friendships = useQuery({
+    queryKey: ["friendships", myUserId],
+    queryFn: () => listMyFriendships(myUserId),
+    staleTime: 60_000,
+  });
+  const acceptedFriendCount = (friendships.data ?? []).filter(
+    (f) => f.status === "accepted"
+  ).length;
+
   useFocusEffect(
     useCallback(() => {
       qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -490,11 +514,9 @@ export default function FeedScreen() {
                   <SkeletonPostCard />
                   <SkeletonPostCard />
                 </View>
-              ) : empty ? (
-                <EmptyState activeTag={activeTag} wide={wide} />
               ) : (
                 <>
-                  {hero ? (
+                  {!empty && hero ? (
                     <HeroBlock
                       post={hero.data}
                       myUserId={myUserId}
@@ -523,7 +545,13 @@ export default function FeedScreen() {
                         Dat is één plakkend ding te veel op een pagina waar
                         de kop al blijft staan: je kiest je ordening als je
                         begint, niet halverwege, en wat wél mee moet scrollen
-                        is de knop om zelf iets te delen. Zie de zijbalk. */}
+                        is de knop om zelf iets te delen. Zie de zijbalk.
+
+                        Bij een lege uitgave staan ze er niet: kiezen hoe je
+                        nul vondsten geordend wil zien is een keuze zonder
+                        gevolg, en drie schakelaars boven een lege pagina
+                        lezen als de pagina zelf. */}
+                    {!empty ? (
                     <View style={{ marginBottom: space.xl }}>
                       {/* Eén kader om alle drie de schakelaars.
                           Ze stonden in twee losse doosjes die op een smal
@@ -626,7 +654,13 @@ export default function FeedScreen() {
                           .join(" · ")}
                       </Text>
                     </View>
+                    ) : null}
 
+                    {/* De tagstrook blíjft staan als er niets is, want een
+                        lege lijst is hier meestal het gevolg van de tag die
+                        aanstaat — en dan is dit de enige knop waarmee je hem
+                        weer uitzet. Hem verbergen zou je opsluiten in je
+                        eigen filter. */}
                     {tags.length > 0 ? (
                       <TagStrip
                         tags={tags}
@@ -640,7 +674,25 @@ export default function FeedScreen() {
                         staat en niet alleen op /notifications. */}
                     <ActivityBand myUserId={myUserId} items={feed.data} />
 
-                    {order === "thematic" && (liveEvents.data?.length ?? 0) > 0 ? (
+                    {/*
+                        Ook — en juist — als de uitgave leeg is.
+
+                        De lege stand verving hier eerder de hele pagina, dus
+                        wie vandaag zijn eerste dag heeft en toevallig in een
+                        lopend event zit, kreeg te zien dat er "nog niets
+                        gedeeld" was terwijl het event op dat moment aan de
+                        gang was. Dat is het enige in deze app met een klok
+                        erop: het is straks voorbij, en dan is de kans om
+                        erbij te zijn ook voorbij. Dat mag geen lege lijst
+                        elders wegdrukken.
+
+                        Daarom valt de ordening hier weg als de feed leeg is:
+                        de chronologische stand kent geen rubrieken, maar een
+                        lopend event verstoppen omdat je "nieuwste eerst"
+                        aanstaan hebt is geen ordening maar verlies.
+                    */}
+                    {(order === "thematic" || empty) &&
+                    (liveEvents.data?.length ?? 0) > 0 ? (
                       <SectionFrame index={0} label="Nu aan de gang">
                         <View style={{ padding: space.lg, gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
@@ -648,6 +700,14 @@ export default function FeedScreen() {
                           ))}
                         </View>
                       </SectionFrame>
+                    ) : null}
+
+                    {empty ? (
+                      <EmptyState
+                        activeTag={activeTag}
+                        hasFriends={acceptedFriendCount > 0}
+                        onFindFriends={() => router.push("/(app)/friends")}
+                      />
                     ) : null}
 
                     {sections.map((section, sectionIndex) => (
@@ -751,7 +811,9 @@ export default function FeedScreen() {
                       </SectionFrame>
                     ) : null}
 
-                    <Colophon />
+                    {/* "Je bent bij." onder een pagina waar niets stond is
+                        geen geruststelling maar een grap. */}
+                    {empty ? null : <Colophon />}
                   </View>
                 </>
               )}
@@ -1215,17 +1277,49 @@ function FeedBody({
   dimmed?: Set<string> | null;
 }) {
   if (layout === "grid") {
+    /**
+     * Het vierkante raster is alleen voor vondsten — een stemming of een
+     * call is tekst met knoppen erin en die in een vierkant persen levert
+     * een afgeknipte kaart op. Dat was de bedoeling en die klopt.
+     *
+     * Wat er niet bij hoorde: ze verdwénen. `PostGrid` kreeg de lijst met
+     * alleen posts erin en de rest viel er zonder één woord uit — stemmingen,
+     * calls, lijsten en activiteit, weg zodra je op "Raster" tikte. En stond
+     * er in een rubriek níéts anders dan zulke kaarten, dan zei het lege
+     * raster "Nog niets gedeeld." middenin een feed die vol stond.
+     *
+     * Nu splitst de rubriek: de vondsten in het vierkante raster, en wat er
+     * niet in past eronder in de vorm die het al had. Een weergaveknop mag
+     * bepalen hoe iets eruitziet, niet óf het er is.
+     */
+    const gridPosts = slots
+      .map((slot) =>
+        slot.item.type === "post" || slot.item.type === "memory"
+          ? slot.item.data
+          : null
+      )
+      .filter((post): post is PostWithAuthor => !!post);
+    const rest = slots.filter(
+      (slot) => slot.item.type !== "post" && slot.item.type !== "memory"
+    );
+
     return (
-      <PostGrid
-        posts={slots
-          .map((slot) =>
-            slot.item.type === "post" || slot.item.type === "memory"
-              ? slot.item.data
-              : null
-          )
-          .filter((post): post is PostWithAuthor => !!post)}
-        emptyLabel="Nog niets gedeeld."
-      />
+      <>
+        {gridPosts.length > 0 ? (
+          <PostGrid posts={gridPosts} emptyLabel="Nog niets gedeeld." />
+        ) : null}
+        {rest.length > 0 ? (
+          <View style={{ marginTop: gridPosts.length > 0 ? space.md : 0 }}>
+            <ChronoGrid
+              slots={rest}
+              columns={columns}
+              myUserId={myUserId}
+              onChanged={onChanged}
+              dimmed={dimmed}
+            />
+          </View>
+        ) : null}
+      </>
     );
   }
 
@@ -1612,29 +1706,62 @@ function TagChip({
   );
 }
 
+/**
+ * Wat er staat als de uitgave leeg is.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM HIER MAAR SOMS EEN KNOP STAAT
+ * ---------------------------------------------------------------
+ * Dit was een doodlopende weg. Er stond "voeg vrienden toe" en er was geen
+ * enkele ingang naar Lincs — terwijl een vers account per definitie nul
+ * lincs heeft, en de feed dus letterlijk niet kán vullen tot je er iemand
+ * bij hebt. Het scherm dat de oorzaak noemde was het enige scherm zonder de
+ * knop ernaar.
+ *
+ * Maar niet altijd een knop. §4 laat één gevuld vlak per scherm toe en dat
+ * is de primaire actie; op dit scherm ís die er al — de zwevende oranje
+ * plus rechtsonder, en die doet precies "deel zelf iets". Een tweede oranje
+ * knop naar dezelfde handeling is exact de fout die de agenda eerder
+ * maakte: twee gevulde knoppen, één route, en dan is geen van beide meer
+ * de actie.
+ *
+ * Dus: heb je lincs, dan vertelt deze stand alleen en handelt de plus. Heb
+ * je ze niet, dan is de weg die híer ontbreekt een andere dan die de plus
+ * biedt, en krijgt hij zijn eigen knop.
+ */
 function EmptyState({
   activeTag,
-  wide,
+  hasFriends,
+  onFindFriends,
 }: {
   activeTag: string | null;
-  wide: boolean;
+  hasFriends: boolean;
+  onFindFriends: () => void;
 }) {
+  if (activeTag) {
+    return (
+      <SharedEmptyState
+        title="Niets onder deze tag"
+        body="Probeer een andere tag, of deel zelf de eerste."
+      />
+    );
+  }
+
+  if (!hasFriends) {
+    return (
+      <SharedEmptyState
+        title="Je kring is nog leeg"
+        body="De feed vult zich met wat je lincs delen — en die heb je er nog niet bij. Voeg iemand toe en het begint te lopen."
+        action={{ label: "Zoek je lincs", onPress: onFindFriends }}
+      />
+    );
+  }
+
   return (
-    <View style={{ paddingVertical: 80 }}>
-      <Text style={[feedType.heroSmall, { color: feedColor.ink }]}>
-        {activeTag ? "Niets onder deze tag." : "Nog niets gedeeld."}
-      </Text>
-      <Text
-        style={[
-          feedType.body,
-          { color: feedColor.inkDim, marginTop: 10, maxWidth: 460 },
-        ]}
-      >
-        {activeTag
-          ? "Probeer een andere tag, of deel zelf de eerste."
-          : "Plak een link, tik een zin over uit wat je aan het lezen bent, of voeg vrienden toe."}
-      </Text>
-    </View>
+    <SharedEmptyState
+      title="Nog niets gedeeld"
+      body="Plak een link, of tik een zin over uit wat je aan het lezen bent. De plus rechtsonder is waar dat begint."
+    />
   );
 }
 

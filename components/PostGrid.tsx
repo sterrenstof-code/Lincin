@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import { EmptyState } from "@/components/EmptyState";
 import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { Skeleton } from "@/components/Skeleton";
@@ -37,11 +38,19 @@ import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
 export function PostGrid({
   posts,
   loading,
+  emptyTitle = "Nog niets gedeeld",
   emptyLabel,
+  emptyAction,
 }: {
   posts: PostWithAuthor[] | undefined;
   loading?: boolean;
+  emptyTitle?: string;
   emptyLabel: string;
+  /**
+   * De weg naar buiten als het raster leeg is. Optioneel, want op andermans
+   * profiel is er niets dat jíj kunt doen — zie components/EmptyState.tsx.
+   */
+  emptyAction?: { label: string; onPress: () => void };
 }) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -62,10 +71,11 @@ export function PostGrid({
   }
 
   if (!posts || posts.length === 0) {
+    // Stond op `feed.panel` — een gevulde doos, en §4 houdt het gevulde vlak
+    // voor de primaire actie. `EmptyState` draagt de vorm nu voor alle vier
+    // de lege lijsten in de app, en brengt de uitweg mee.
     return (
-      <View style={{ backgroundColor: feed.panel, padding: space.xl }}>
-        <Text style={[feedType.body, { color: feed.ink }]}>{emptyLabel}</Text>
-      </View>
+      <EmptyState title={emptyTitle} body={emptyLabel} action={emptyAction} />
     );
   }
 

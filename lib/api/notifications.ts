@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
+import { IMG, signedImageUrls } from "@/lib/media";
 import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type NotificationRow = {
@@ -52,6 +53,21 @@ export type NotificationWithDetails = NotificationRow & {
   post_source_title: string | null;
   comment_body: string | null;
   event_name: string | null;
+  /**
+   * De miniatuur, al ondertekend.
+   *
+   * Stond eerder per rij: elk `NotificationRow` deed zijn eigen
+   * `createSignedUrl`, dus bij veertig meldingen veertig losse
+   * storage-aanroepen naast elkaar op het moment dat je de tab opende —
+   * voor plaatjes van veertig punten. En met een geldigheid van vijf
+   * minuten, waardoor de browser bij elke terugkeer dezelfde foto opnieuw
+   * ophaalde onder een nieuw token.
+   *
+   * `signedImageUrls` doet ze in één keer, ontdubbelt op pad, onthoudt de
+   * URL zeven dagen en vraagt meteen de avatarmaat aan in plaats van het
+   * origineel — zie lib/media.ts.
+   */
+  post_image_url: string | null;
 };
 
 export async function listNotifications(
@@ -139,11 +155,22 @@ export async function listNotifications(
     }
   }
 
+  // Alle miniaturen in één keer, op de maat waarop ze getekend worden.
+  const thumbs = await signedImageUrls(
+    "posts",
+    Object.values(postMap).map((p) => p.image_path),
+    IMG.avatar(40)
+  );
+
   return rows.map((r) => ({
     ...r,
     actor: actorMap[r.actor_id] ?? null,
     post_caption: r.post_id ? (postMap[r.post_id]?.caption ?? null) : null,
     post_image_path: r.post_id ? (postMap[r.post_id]?.image_path ?? null) : null,
+    post_image_url: (() => {
+      const path = r.post_id ? postMap[r.post_id]?.image_path : null;
+      return path ? (thumbs.get(path) ?? null) : null;
+    })(),
     post_source_title: r.post_id ? (postMap[r.post_id]?.source_title ?? null) : null,
     comment_body:
       (r.entity_comment_id ? commentMap[r.entity_comment_id]?.body : null) ??

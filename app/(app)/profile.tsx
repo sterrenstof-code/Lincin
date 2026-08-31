@@ -243,10 +243,18 @@ export default function ProfileScreen() {
         >
           JOUW VONDSTEN
         </Text>
+        {/* "Plaats je eerste vondst vanaf de feed" noemde een scherm en gaf
+            er geen ingang bij — terwijl dit de pagina over jouw werk is en
+            de composer één tik verderop ligt. */}
         <PostGrid
           posts={myPosts.data}
           loading={myPosts.isLoading}
-          emptyLabel="Je hebt nog niets gedeeld. Plaats je eerste vondst vanaf de feed."
+          emptyTitle="Je hebt nog niets gedeeld"
+          emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto. Wat je hier deelt komt in de feed van je lincs."
+          emptyAction={{
+            label: "Deel je eerste vondst",
+            onPress: () => router.push("/post-compose"),
+          }}
         />
 
         {/* ---- Profile actions ---- */}

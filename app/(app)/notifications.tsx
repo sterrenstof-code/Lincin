@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { EmptyState } from "@/components/EmptyState";
 import { PageHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { useAuth } from "@/lib/auth/provider";
@@ -24,7 +25,6 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { usePageTitle } from "@/lib/page-title";
-import { supabase } from "@/lib/supabase/client";
 import { carbon, feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
 
 export default function NotificationsScreen() {
@@ -44,9 +44,18 @@ export default function NotificationsScreen() {
 
   // Mark all as read when this screen is opened
   useEffect(() => {
-    markAllNotificationsRead(myUserId).then(() => {
-      qc.invalidateQueries({ queryKey: ["notifications-unread", myUserId] });
-    });
+    markAllNotificationsRead(myUserId)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["notifications-unread", myUserId] });
+      })
+      // Zonder dit was een mislukte update een onafgevangen rejection: het
+      // bolletje in de tabstrip bleef staan en niets zei waarom. Er valt
+      // hier niets te herstellen — de volgende opening probeert het opnieuw
+      // — maar stil doorlopen is precies wat §4b verbiedt, dus staat het
+      // tenminste in de console van wie het bugbord leest.
+      .catch((e) => {
+        console.warn("markAllNotificationsRead", e?.message ?? e);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myUserId]);
 
@@ -55,16 +64,12 @@ export default function NotificationsScreen() {
   }
 
   async function onPressNotification(item: NotificationWithDetails) {
+    const to = destinationFor(item);
+    if (!to) return;
     if (!item.read) {
       markNotificationRead(item.id);
     }
-    if (item.bug_report_id) {
-      router.push("/bugs");
-    } else if (item.event_id) {
-      router.push(`/event/${item.event_id}`);
-    } else if (item.post_id) {
-      router.push(`/post/${item.post_id}`);
-    }
+    router.push(to as never);
   }
 
   return (
@@ -106,22 +111,14 @@ export default function NotificationsScreen() {
           />
         ) : (data ?? []).length === 0 ? (
           isLoading ? null : (
-            <View
-              style={{
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-                backgroundColor: feed.post,
-                padding: 32,
-              }}
-            >
-              <Text style={[feedType.tile, { fontSize: 20, color: feed.text, marginBottom: 8 }]}>
-                Nog geen meldingen
-              </Text>
-              <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
-                Zodra iemand uit je kring iets deelt, of reageert op een vondst
-                waar jij iets mee gedaan hebt, verschijnt het hier.
-              </Text>
-            </View>
+            /* Vierde variant van dezelfde lege lijst — kader, vulling, eigen
+               maatvoering. Staat nu in één onderdeel; zie
+               components/EmptyState.tsx. Geen knop: er valt hier niets te
+               doen dan wachten tot iemand iets doet. */
+            <EmptyState
+              title="Nog geen meldingen"
+              body="Zodra iemand uit je kring iets deelt, of reageert op een vondst waar jij iets mee gedaan hebt, verschijnt het hier."
+            />
           )
         ) : (
           /* Eén gekaderd blok met scheidingslijnen — geen zwevende kaartjes
@@ -142,6 +139,35 @@ export default function NotificationsScreen() {
   );
 }
 
+/**
+ * Waar deze melding je heen brengt, of niets.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT NAAR DE KOLOMMEN KIJKT EN NIET NAAR HET SOORT
+ * ---------------------------------------------------------------
+ * Er zijn zeventien soorten melding en er waren drie bestemmingen. Vijf
+ * soorten — `mention`, `invited_to_list`, `invited_to_call`, `vote_on_poll`
+ * en `vote_on_call` — wezen nergens heen, want de rij draagt geen `list_id`
+ * en geen `chat_id`. Ze kregen wél een chevron, en dat pijltje is in deze
+ * app de belofte dat er iets achter zit. Je tikte, er gebeurde niets, en
+ * dat leest als een kapotte app.
+ *
+ * Wat die vijf soorten echt nodig hebben is een kolom in de tabel, en dat
+ * is een migratie. Tot die er is hoort het pijltje er niet te staan.
+ *
+ * Deze functie kijkt daarom naar de kolommen die er zijn en niet naar het
+ * soort: een `mention` in een reactie ónder een vondst heeft wél een
+ * `post_id` en gaat dus gewoon ergens heen. Een lijst met soorten zou dat
+ * geval verkeerd afstraffen, en zou opnieuw fout staan zodra er een soort
+ * bijkomt.
+ */
+function destinationFor(item: NotificationWithDetails): string | null {
+  if (item.bug_report_id) return "/bugs";
+  if (item.event_id) return `/event/${item.event_id}`;
+  if (item.post_id) return `/post/${item.post_id}`;
+  return null;
+}
+
 function NotificationRow({
   item,
   onPress,
@@ -152,6 +178,9 @@ function NotificationRow({
   /** Laatste rij krijgt geen scheidingslijn — het kader sluit al af. */
   isLast?: boolean;
 }) {
+  // Geen bestemming: dan is dit een mededeling en geen ingang. Hij blijft
+  // leesbaar — er stáát iets — maar hij doet niet alsof hij een knop is.
+  const to = destinationFor(item);
   const actorName =
     item.actor?.display_name ?? item.actor?.username ?? "Iemand";
 
@@ -201,6 +230,8 @@ function NotificationRow({
   return (
     <Pressable
       onPress={onPress}
+      disabled={!to}
+      accessibilityRole={to ? "button" : "text"}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -208,6 +239,10 @@ function NotificationRow({
         paddingHorizontal: 16,
         paddingVertical: 14,
         backgroundColor: item.read ? feed.panel : feed.lav,
+        // Geen aparte kleur maar minder dekking, net als een al gelezen
+        // tegel in de feed: de regel blijft leesbaar, hij belooft alleen
+        // niets meer.
+        opacity: to ? 1 : 0.62,
         ...(isLast ? null : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
       }}
     >
@@ -243,39 +278,29 @@ function NotificationRow({
         </Text>
       </View>
 
-      {/* Post thumbnail */}
-      {item.post_image_path && (
-        <PostThumb imagePath={item.post_image_path} />
-      )}
+      {/* De miniatuur komt nu mee uit de query — één ondertekening voor de
+          hele lijst in plaats van veertig naast elkaar bij het openen van
+          de tab. Zie lib/api/notifications.ts. */}
+      {item.post_image_url ? (
+        <Image
+          source={{
+            uri: item.post_image_url,
+            // Op het pad en niet op de URL: een signed URL krijgt bij elke
+            // aanroep een nieuw token, en dan haalt de cache dezelfde foto
+            // toch opnieuw op. Zie lib/media.ts.
+            cacheKey: item.post_image_path ?? undefined,
+          }}
+          cachePolicy="disk"
+          // Alles in dit systeem is vierkant (§7); dit was de enige
+          // afronding op het scherm.
+          style={{ width: 40, height: 40 }}
+          contentFit="cover"
+        />
+      ) : null}
 
-      <Ionicons name="chevron-forward" color={feed.inkDim} size={14} />
+      {/* Alleen waar er ook echt iets achter zit — zie destinationFor. */}
+      {to ? <Ionicons name="chevron-forward" color={feed.inkDim} size={14} /> : null}
     </Pressable>
-  );
-}
-
-function PostThumb({ imagePath }: { imagePath: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    // `cancelled` voorkomt een setState nadat de rij uit de lijst is
-    // gevallen — de ondertekende URL komt asynchroon binnen.
-    let cancelled = false;
-    supabase.storage
-      .from("posts")
-      .createSignedUrl(imagePath, 300)
-      .then(({ data }) => {
-        if (!cancelled && data?.signedUrl) setUrl(data.signedUrl);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [imagePath]);
-  if (!url) return null;
-  return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: 40, height: 40, borderRadius: 8 }}
-      contentFit="cover"
-    />
   );
 }
 
