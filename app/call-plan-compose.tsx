@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
@@ -323,7 +324,9 @@ export default function CallPlanComposeScreen() {
               </View>
             )}
 
-            {error && <Text className="text-red-400 text-sm px-5 mt-3">{error}</Text>}
+            {error ? (
+              <FormError tone="desk" style={{ marginHorizontal: 20 }}>{error}</FormError>
+            ) : null}
           </ScrollView>
         </ScreenContainer>
       </KeyboardAvoidingView>

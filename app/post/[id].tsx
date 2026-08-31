@@ -23,6 +23,7 @@ import { FormatBar } from "@/components/FormatBar";
 import { Avatar } from "@/components/Avatar";
 import { RichText } from "@/components/RichText";
 import { MentionsText } from "@/components/MentionsText";
+import { DetailState } from "@/components/DetailState";
 import { useWide } from "@/components/Editorial";
 import {
   AppChrome,
@@ -1225,6 +1226,24 @@ export default function PostDetailScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+
+  // Een mislukte query en een verwijderde vondst zagen er hetzelfde uit
+  // als een trage: `loading` hierboven is `isLoading || !data`, dus de
+  // skeletons bleven in beide gevallen staan tot je de app afsloot. De
+  // wachtstand houdt zijn skeletons — die kloppen — maar de andere twee
+  // krijgen hun eigen antwoord, mét de weg terug. Zie DetailState.
+  if (post.isError || (!post.isLoading && !post.data)) {
+    return (
+      <DetailState
+        kind={post.isError ? "error" : "missing"}
+        subject="Deze vondst"
+        error={post.error}
+        onRetry={() => post.refetch()}
+        backLabel="Terug naar de feed"
+        onBack={() => safeBack(router, "/(app)/feed")}
+      />
+    );
+  }
 
   // ---------------------------------------------------------------
   // BREED — de foto links, het gesprek ernaast

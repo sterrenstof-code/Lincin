@@ -24,6 +24,8 @@ import {
   type EntityType,
 } from "@/lib/api/entity-comments";
 import { listMyFriendships } from "@/lib/api/friends";
+import { confirm } from "@/lib/confirm";
+import { useToast } from "@/lib/toast";
 import { useMentions, type MentionCandidate } from "@/lib/useMentions";
 import { supabase } from "@/lib/supabase/client";
 
@@ -97,6 +99,7 @@ export function CommentsSection({
   const c = paletteFor(tone);
   const { session } = useAuth();
   const myUserId = session!.user.id;
+  const toast = useToast();
   const inputRef = useRef<TextInput>(null);
 
   const [open, setOpen] = useState(false);
@@ -153,6 +156,45 @@ export function CommentsSection({
     };
   }, [open, entityType, entityId]);
 
+  /**
+   * Een reactie wissen.
+   *
+   * Stond hier als `deleteEntityComment(row.id)` — zonder `await`, zonder
+   * `catch`, zonder bevestiging. Drie dingen misten daardoor tegelijk: er
+   * was geen weg terug van een misklik, een geweigerde verwijdering kwam
+   * bij de volgende load geruisloos terug (§4b: een optimistische update
+   * is een belofte), en de zwevende promise landde als een niet-afgevangen
+   * afwijzing.
+   */
+  async function onDelete(row: EntityComment) {
+    const ok = await confirm(
+      "Reactie verwijderen?",
+      "Deze reactie wordt voor iedereen verwijderd.",
+      { affirmativeLabel: "Verwijder", destructive: true }
+    );
+    if (!ok) return;
+
+    const index = comments.findIndex((x) => x.id === row.id);
+    setComments((prev) => prev.filter((x) => x.id !== row.id));
+    setCount((n) => Math.max(0, n - 1));
+    try {
+      await deleteEntityComment(row.id);
+    } catch {
+      // Zet hem terug wáár hij stond, niet onderaan: een reactie die na een
+      // mislukte verwijdering van plek wisselt leest als een tweede fout.
+      setComments((prev) => {
+        if (prev.some((x) => x.id === row.id)) return prev;
+        const next = [...prev];
+        next.splice(index < 0 ? next.length : index, 0, row);
+        return next;
+      });
+      setCount((n) => n + 1);
+      toast.error("Reactie niet verwijderd.", {
+        action: { label: "Opnieuw", onPress: () => void onDelete(row) },
+      });
+    }
+  }
+
   async function onSend() {
     const text = draft.trim();
     if (!text || sending) return;
@@ -171,6 +213,14 @@ export function CommentsSection({
         prev.some((x) => x.id === comment.id) ? prev : [...prev, comment]
       );
       setCount((n) => n + 1);
+    } catch {
+      // Het veld is al leeggemaakt voordat we het wisten — zonder deze tak
+      // is je reactie weg én is er niets dat zegt dat hij niet verstuurd
+      // is. Zet hem terug zoals je hem typte en bied opnieuw aan (§4b).
+      setDraft(text);
+      toast.error("Reactie niet verstuurd.", {
+        action: { label: "Opnieuw", onPress: () => void onSend() },
+      });
     } finally {
       setSending(false);
     }
@@ -209,11 +259,7 @@ export function CommentsSection({
                   comment={row}
                   palette={c}
                   isMine={row.user_id === myUserId}
-                  onDelete={() => {
-                    deleteEntityComment(row.id);
-                    setComments((prev) => prev.filter((x) => x.id !== row.id));
-                    setCount((n) => Math.max(0, n - 1));
-                  }}
+                  onDelete={() => void onDelete(row)}
                 />
               ))}
               {comments.length === 0 && (

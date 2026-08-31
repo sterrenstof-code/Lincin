@@ -13,12 +13,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
 import { createSharedList } from "@/lib/api/shared-lists";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
+import { creamOnDark, desk } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
@@ -146,7 +147,7 @@ export default function ListComposeScreen() {
                 </View>
               )}
 
-              {error && <Text className="text-red-400 text-sm">{error}</Text>}
+              {error ? <FormError tone="desk">{error}</FormError> : null}
             </View>
           </ScrollView>
         </ScreenContainer>

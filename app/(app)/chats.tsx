@@ -307,6 +307,7 @@ export default function ChatsScreen() {
                   >
                     <Avatar
                       name={f.other.display_name ?? f.other.username}
+                      avatarUrl={f.other.avatar_url}
                       size="lg"
                       tint="warm"
                     />

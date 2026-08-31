@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FieldError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { sendEmailInvite } from "@/lib/api/invites";
 import { feed } from "@/lib/design/type";
@@ -96,7 +97,7 @@ export default function InviteEmailScreen() {
               />
 
               {typeof status === "object" && status.kind === "error" && (
-                <Text className="text-red-700 text-sm mt-3">{status.message}</Text>
+                <FieldError tone="desk">{status.message}</FieldError>
               )}
 
               {status === "sent" ? (

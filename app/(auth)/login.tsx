@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FieldError } from "@/components/FormError";
 import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth/provider";
 import { feed as feedColor, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
@@ -38,6 +39,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const passwordRef = useRef<TextInput>(null);
 
   const submitting = status.kind === "submitting";
 
@@ -210,6 +212,14 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
+              // Zonder deze drie zwijgt elke wachtwoordmanager op het
+              // inlogscherm: Keychain, 1Password en Chrome herkennen een
+              // veld aan zijn `autoComplete`/`textContentType`, niet aan
+              // zijn label. Ze stonden nergens in de app.
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
               placeholder="jij@voorbeeld.be"
               placeholderTextColor={feedColor.inkDim}
               style={{ borderWidth: FEED_BORDER, borderColor: feedColor.ink, backgroundColor: feedColor.panel, paddingHorizontal: 16, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
@@ -232,6 +242,14 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry={!showPassword}
+                ref={passwordRef}
+                // "new-password" laat iOS/Chrome een sterk wachtwoord
+                // vóórstellen bij registreren; "current-password" laat ze
+                // het opgeslagen wachtwoord invullen bij inloggen. Eén
+                // waarde voor allebei doet geen van beide goed.
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                textContentType={mode === "signup" ? "newPassword" : "password"}
+                returnKeyType={mode === "signup" ? "done" : "go"}
                 placeholder={mode === "signup" ? "min. 8 tekens" : "•••••••••"}
                 placeholderTextColor={feedColor.inkDim}
                 style={{ flex: 1, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
@@ -255,7 +273,7 @@ export default function LoginScreen() {
 
             {/* Status banners */}
             {status.kind === "error" && (
-              <Text className="text-red-700 text-sm mt-3">{status.message}</Text>
+              <FieldError style={{ marginTop: 12 }}>{status.message}</FieldError>
             )}
             {status.kind === "magic-sent" && (
               <Banner

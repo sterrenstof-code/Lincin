@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
+import { FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { createGroupChat } from "@/lib/api/chats";
@@ -163,6 +164,7 @@ export default function GroupCreateScreen() {
                     >
                       <Avatar
                         name={f.other.display_name ?? f.other.username}
+                        avatarUrl={f.other.avatar_url}
                         size="md"
                       />
                       <View className="flex-1 ml-3">
@@ -186,9 +188,7 @@ export default function GroupCreateScreen() {
           </View>
 
           {error && (
-            <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
-              <Text className="text-red-800 text-sm">{error}</Text>
-            </View>
+            <FormError tone="desk">{error}</FormError>
           )}
         </ScrollView>
       </KeyboardAvoidingView>

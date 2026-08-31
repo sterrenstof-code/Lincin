@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FieldError, FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { feed } from "@/lib/design/type";
@@ -38,6 +39,7 @@ export default function SetPasswordScreen() {
   const [saving, setSaving] = useState(false);
   const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirmRef = useRef<TextInput>(null);
 
   const canSave =
     !saving && password.length >= 8 && password === confirmPwd;
@@ -118,6 +120,10 @@ export default function SetPasswordScreen() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="next"
+                onSubmitEditing={() => confirmRef.current?.focus()}
                 placeholder="min. 8 tekens"
                 placeholderTextColor={feed.inkDim}
                 className="bg-paper-light text-ink text-base px-5 py-3.5 border border-line-paper"
@@ -134,6 +140,10 @@ export default function SetPasswordScreen() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="done"
+                ref={confirmRef}
                 placeholder="herhaal"
                 placeholderTextColor={feed.inkDim}
                 onSubmitEditing={onSave}
@@ -141,14 +151,10 @@ export default function SetPasswordScreen() {
               />
 
               {password.length > 0 && password.length < 8 && (
-                <Text className="text-red-700 text-xs mt-2">
-                  Minstens 8 tekens.
-                </Text>
+                <FieldError tone="desk">Minstens 8 tekens.</FieldError>
               )}
               {confirmPwd.length > 0 && password !== confirmPwd && (
-                <Text className="text-red-700 text-xs mt-2">
-                  Bevestiging matcht niet.
-                </Text>
+                <FieldError tone="desk">Bevestiging matcht niet.</FieldError>
               )}
 
               <Pressable
@@ -168,9 +174,7 @@ export default function SetPasswordScreen() {
               </Pressable>
 
               {error && (
-                <Text className="text-red-700 text-sm mt-3 text-center">
-                  {error}
-                </Text>
+                <FormError tone="desk">{error}</FormError>
               )}
 
               {/* Escape voor accounts die al een wachtwoord hebben */}

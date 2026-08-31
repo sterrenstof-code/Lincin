@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActionSheet } from "@/components/ActionSheet";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { Avatar } from "@/components/Avatar";
+import { DetailState } from "@/components/DetailState";
 import { useWide } from "@/components/Editorial";
 import {
   approveEventJoinRequest,
@@ -260,13 +261,19 @@ export default function EventDetailScreen() {
     }
   }
 
-  if (event.isLoading || !event.data) {
+  // Drie standen, geen één. Zolang dit `isLoading || !data` was, las een
+  // verwijderd event en een mislukte query allebei als "laden…" — voor
+  // altijd, en zonder terug-knop. Zie components/DetailState.tsx.
+  if (event.isLoading || event.isError || !event.data) {
     return (
-      <SafeAreaView className="flex-1 bg-feed-lav">
-        <View className="flex-1 items-center justify-center">
-          <Text style={[feedType.label, { color: feed.inkDim }]}>Event laden…</Text>
-        </View>
-      </SafeAreaView>
+      <DetailState
+        kind={event.isError ? "error" : event.isLoading ? "loading" : "missing"}
+        subject="Dit event"
+        error={event.error}
+        onRetry={() => event.refetch()}
+        backLabel="Alle events"
+        onBack={() => safeBack(router, "/(app)/events")}
+      />
     );
   }
 

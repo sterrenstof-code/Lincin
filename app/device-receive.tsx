@@ -23,9 +23,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
+import { FieldError } from "@/components/FormError";
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import {
+  creamOnDark,
+  desk,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flame,
+} from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 export default function DeviceReceiveScreen() {
@@ -159,7 +167,7 @@ export default function DeviceReceiveScreen() {
         />
 
         {error && (
-          <Text className="text-red-400 text-sm mb-3">{error}</Text>
+          <FieldError tone="desk" style={{ marginBottom: 12 }}>{error}</FieldError>
         )}
 
         <Pressable
@@ -207,7 +215,7 @@ export default function DeviceReceiveScreen() {
         </Text>
 
         {error && (
-          <Text className="text-red-400 text-sm mb-4 text-center">{error}</Text>
+          <FieldError tone="desk" style={{ marginBottom: 16 }}>{error}</FieldError>
         )}
 
         <Pressable
@@ -294,14 +302,24 @@ export default function DeviceReceiveScreen() {
       {/* Foutmelding onderaan */}
       {error ? (
         <View className="px-6 pb-4">
-          <View className="bg-red-500/20 border border-red-500/40 p-3 flex-row items-center gap-2">
-            <Ionicons name="warning-outline" color="#FCA5A5" size={16} />
-            <Text className="text-red-300 text-sm flex-1">{error}</Text>
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              padding: 12,
+              borderWidth: FEED_BORDER,
+              borderColor: flame,
+            }}
+          >
+            <Ionicons name="warning-outline" color={flame} size={16} />
+            <Text style={[feedType.body, { color: desk.ink, flex: 1 }]}>{error}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Waarschuwing sluiten"
               onPress={() => setError(null)}>
-              <Ionicons name="close" color="#FCA5A5" size={16} />
+              <Ionicons name="close" color={desk.muted} size={16} />
             </Pressable>
           </View>
         </View>

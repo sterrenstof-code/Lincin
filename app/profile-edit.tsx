@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { Avatar } from "@/components/Avatar";
+import { FieldError, FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -202,7 +203,7 @@ export default function ProfileEditScreen() {
                 />
               </View>
               {usernameError ? (
-                <Text className="text-red-700 text-xs mt-2">{usernameError}</Text>
+                <FieldError tone="desk">{usernameError}</FieldError>
               ) : (
                 <Text className="text-ink-muted text-xs mt-2">
                   3–32 tekens. Kleine letters, cijfers, punt of underscore.
@@ -248,9 +249,7 @@ export default function ProfileEditScreen() {
             </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
-                <Text className="text-red-800 text-sm">{error}</Text>
-              </View>
+              <FormError tone="desk">{error}</FormError>
             )}
 
             {/* Wachtwoord instellen / wijzigen */}
@@ -297,14 +296,10 @@ export default function ProfileEditScreen() {
               />
 
               {password.length > 0 && password.length < 8 && (
-                <Text className="text-red-700 text-xs mt-2">
-                  Minstens 8 tekens.
-                </Text>
+                <FieldError tone="desk">Minstens 8 tekens.</FieldError>
               )}
               {passwordConfirm.length > 0 && password !== passwordConfirm && (
-                <Text className="text-red-700 text-xs mt-2">
-                  Bevestiging matcht niet.
-                </Text>
+                <FieldError tone="desk">Bevestiging matcht niet.</FieldError>
               )}
 
               <Pressable
@@ -329,9 +324,7 @@ export default function ProfileEditScreen() {
                 </Text>
               )}
               {pwdResult && pwdResult.ok === false && (
-                <Text className="text-red-700 text-sm mt-3 text-center">
-                  {pwdResult.message}
-                </Text>
+                <FormError tone="desk">{pwdResult.message}</FormError>
               )}
             </View>
           </ScrollView>

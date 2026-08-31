@@ -565,7 +565,11 @@ function ProfileRow({
         className="flex-row items-center flex-1"
         hitSlop={4}
       >
-        <Avatar name={profile.display_name ?? profile.username} size="md" />
+        <Avatar
+          name={profile.display_name ?? profile.username}
+          avatarUrl={profile.avatar_url}
+          size="md"
+        />
         <View style={{ flex: 1, marginLeft: space.md }}>
           <Text style={[feedType.body, { fontSize: 14, fontWeight: "600", color: feed.ink }]}>
             {profile.display_name ?? profile.username}
@@ -622,7 +626,11 @@ function FriendshipRow({
         className="flex-row items-center flex-1"
         hitSlop={4}
       >
-        <Avatar name={friendship.other.display_name ?? friendship.other.username} size="md" />
+        <Avatar
+          name={friendship.other.display_name ?? friendship.other.username}
+          avatarUrl={friendship.other.avatar_url}
+          size="md"
+        />
         <View style={{ flex: 1, marginLeft: space.md }}>
           <Text style={[feedType.body, { fontSize: 14, fontWeight: "600", color: feed.ink }]}>
             {friendship.other.display_name ?? friendship.other.username}

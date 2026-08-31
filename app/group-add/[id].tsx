@@ -178,6 +178,7 @@ export default function GroupAddMembersScreen() {
                     >
                       <Avatar
                         name={f.other.display_name ?? f.other.username}
+                        avatarUrl={f.other.avatar_url}
                         size="md"
                       />
                       <View className="flex-1 ml-3">

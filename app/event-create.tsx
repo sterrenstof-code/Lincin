@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useWide } from "@/components/Editorial";
 import { useAuth } from "@/lib/auth/provider";
@@ -392,9 +393,7 @@ export default function EventCreateScreen() {
             </View>
 
             {error && (
-              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
-                <Text className="text-red-800 text-sm">{error}</Text>
-              </View>
+              <FormError tone="desk">{error}</FormError>
             )}
           </ScrollView>
         </KeyboardAvoidingView>

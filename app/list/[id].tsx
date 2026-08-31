@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/Avatar";
+import { DetailState } from "@/components/DetailState";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -24,8 +25,11 @@ import {
   type SharedListWithDetails,
   type ListItem,
 } from "@/lib/api/shared-lists";
+import { confirm } from "@/lib/confirm";
+import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
-import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
+import { useToast } from "@/lib/toast";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,15 +39,31 @@ export default function ListDetailScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const [list, setList] = useState<SharedListWithDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  /**
+   * Drie standen, geen booleaan. `loading` alleen kon niet uitdrukken dat
+   * het ophalen *mislukt* was: `load()` had geen `catch`, dus een fout liet
+   * `setLoading(false)` nooit lopen en de spinner draaide tot je de app
+   * afsloot — zonder terug-knop, want die tak tekende alleen een spinner.
+   * Zie components/DetailState.tsx.
+   */
+  const [status, setStatus] = useState<"loading" | "ready" | "missing" | "error">(
+    "loading"
+  );
+  const [error, setError] = useState<unknown>(null);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
+  const toast = useToast();
 
   async function load() {
     if (!id) return;
-    const data = await getSharedListWithDetails(id);
-    setList(data);
-    setLoading(false);
+    try {
+      const data = await getSharedListWithDetails(id);
+      setList(data);
+      setStatus(data ? "ready" : "missing");
+    } catch (e) {
+      setError(e);
+      setStatus("error");
+    }
   }
 
   useEffect(() => {
@@ -56,34 +76,89 @@ export default function ListDetailScreen() {
   async function onAddItem() {
     if (!draft.trim() || !id) return;
     setAdding(true);
+    const text = draft.trim();
     try {
-      await addListItem({ listId: id, userId: myUserId, text: draft.trim() });
+      await addListItem({ listId: id, userId: myUserId, text });
       setDraft("");
       await load();
+    } catch {
+      toast.error("Item niet toegevoegd.", {
+        action: { label: "Opnieuw", onPress: () => void onAddItem() },
+      });
     } finally {
       setAdding(false);
     }
   }
 
-  async function onToggle(item: ListItem) {
-    await toggleListItem({ itemId: item.id, userId: myUserId, checked: !item.checked });
+  /**
+   * Afvinken. Het vinkje verschuift meteen en de server volgt — andersom
+   * voelt een boodschappenlijst traag. Faalt hij, dan gaat het vinkje
+   * terug én staat er wát er misging: een vinkje dat uit zichzelf
+   * terugspringt leest als een kapotte app (§4b).
+   */
+  function applyToggle(itemId: string, checked: boolean) {
     setList((prev) => prev ? {
       ...prev,
-      items: prev.items.map((i) => i.id === item.id ? { ...i, checked: !item.checked, checked_by: !item.checked ? myUserId : null } : i),
-      checked_count: prev.items.filter((i) => i.id === item.id ? !item.checked : i.checked).length,
+      items: prev.items.map((i) => i.id === itemId ? { ...i, checked, checked_by: checked ? myUserId : null } : i),
+      checked_count: prev.items.filter((i) => i.id === itemId ? checked : i.checked).length,
     } : prev);
   }
 
-  async function onDelete(itemId: string) {
-    await deleteListItem(itemId);
-    setList((prev) => prev ? { ...prev, items: prev.items.filter((i) => i.id !== itemId), item_count: prev.item_count - 1 } : prev);
+  async function onToggle(item: ListItem) {
+    const next = !item.checked;
+    applyToggle(item.id, next);
+    try {
+      await toggleListItem({ itemId: item.id, userId: myUserId, checked: next });
+    } catch {
+      applyToggle(item.id, item.checked);
+      toast.error(next ? "Afvinken lukte niet." : "Vinkje weghalen lukte niet.", {
+        action: { label: "Opnieuw", onPress: () => void onToggle(item) },
+      });
+    }
   }
 
-  if (loading || !list) {
+  async function onDelete(itemId: string) {
+    const item = list?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const ok = await confirm(
+      "Item verwijderen?",
+      `"${item.text}" verdwijnt voor iedereen op deze lijst.`,
+      { affirmativeLabel: "Verwijder", destructive: true }
+    );
+    if (!ok) return;
+
+    const index = list?.items.findIndex((i) => i.id === itemId) ?? -1;
+    setList((prev) => prev ? { ...prev, items: prev.items.filter((i) => i.id !== itemId), item_count: prev.item_count - 1 } : prev);
+    try {
+      await deleteListItem(itemId);
+    } catch {
+      // Terug op zijn eigen plek — een item dat na een mislukte
+      // verwijdering onderaan opduikt leest als een tweede fout.
+      setList((prev) => {
+        if (!prev || prev.items.some((i) => i.id === itemId)) return prev;
+        const items = [...prev.items];
+        items.splice(index < 0 ? items.length : index, 0, item);
+        return { ...prev, items, item_count: prev.item_count + 1 };
+      });
+      toast.error("Item niet verwijderd.", {
+        action: { label: "Opnieuw", onPress: () => void onDelete(itemId) },
+      });
+    }
+  }
+
+  if (status !== "ready" || !list) {
     return (
-      <SafeAreaView className="flex-1 bg-desk items-center justify-center">
-        <ActivityIndicator color={desk.ink} />
-      </SafeAreaView>
+      <DetailState
+        kind={status === "ready" ? "missing" : status}
+        subject="Deze lijst"
+        error={error}
+        onRetry={() => {
+          setStatus("loading");
+          void load();
+        }}
+        backLabel="Terug"
+        onBack={() => safeBack(router, "/(app)/chats")}
+      />
     );
   }
 

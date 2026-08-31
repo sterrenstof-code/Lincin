@@ -1,13 +1,29 @@
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Text, View } from "react-native";
 
+import { feed } from "@/lib/design/type";
 import { IMG, resizedPublicUrl, stableCacheKey } from "@/lib/media";
 
 /**
  * Initial-circle avatar. Used everywhere a user is shown.
- * Als `lastSeenAt` meegegeven wordt, toont een activiteitsdot:
- *   groen  = actief < 5 min geleden
- *   grijs  = actief < 30 min geleden
+ * Als `lastSeenAt` meegegeven wordt, toont een activiteitsmarkering.
+ *
+ * ---------------------------------------------------------------
+ * TWEE DINGEN DIE HIER EERDER MISGINGEN
+ * ---------------------------------------------------------------
+ * **De foto viel weg zonder terugval.** Dit onderdeel zette `expo-image`
+ * rechtstreeks neer, zonder `onError`. Een verlopen signed URL of een
+ * pad dat niet meer bestaat liet dus een lege cirkel achter — terwijl de
+ * initialen die eronder hadden moeten staan hier al berekend worden. Nu
+ * valt hij terug, precies zoals `SafeImage` dat voor gewoon beeld doet.
+ *
+ * **De stand stond in kleur alleen.** Groen tegenover grijs, allebei als
+ * hex uitgeschreven (§7 kent geen hex inline), en verder niets. Wie het
+ * kleurverschil niet ziet — een schermlezer, of iemand die rood-groen
+ * niet onderscheidt — kreeg twee identieke stippen. Nu verschillen ze óók
+ * van vorm: nu actief is een gevulde schijf, recent actief een open ring.
+ * Vorm draagt de betekenis, kleur bevestigt hem.
  */
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "hero";
 
@@ -41,24 +57,25 @@ export function Avatar({
   lastSeenAt?: string | null;
 }) {
   const s = SIZE[size];
+  const [errored, setErrored] = useState(false);
   const bg =
     tint === "warm" ? "bg-paper-warm" : tint === "light" ? "bg-paper-light" : "bg-paper-soft";
 
   const status = activityStatus(lastSeenAt);
-  const dotColor = status === "online" ? "#22C55E" : "#9CA3AF"; // green-500 / gray-400
 
   // De avatar staat als volledige foto in de bucket — vaak megabytes voor
   // een cirkel van veertig pixels. We vragen hem op de maat op waarop hij
   // getoond wordt; zie lib/media.ts.
   const src = resizedPublicUrl(avatarUrl, IMG.avatar(s.px));
 
-  const inner = src ? (
+  const inner = src && !errored ? (
     <View className={`${s.box} rounded-full overflow-hidden`}>
       <Image
         source={{ uri: src, cacheKey: stableCacheKey(avatarUrl, IMG.avatar(s.px)) }}
         cachePolicy="disk"
         style={{ width: s.px, height: s.px }}
         contentFit="cover"
+        onError={() => setErrored(true)}
       />
     </View>
   ) : (
@@ -71,10 +88,14 @@ export function Avatar({
 
   if (!status) return inner;
 
+  const online = status === "online";
+
   return (
     <View style={{ position: "relative" }}>
       {inner}
       <View
+        accessibilityRole="text"
+        accessibilityLabel={online ? "Nu actief" : "Recent actief"}
         style={{
           position: "absolute",
           bottom: 0,
@@ -82,9 +103,12 @@ export function Avatar({
           width: s.dot,
           height: s.dot,
           borderRadius: s.dot / 2,
-          backgroundColor: dotColor,
-          borderWidth: 1.5,
-          borderColor: "#F3EDE4",
+          // Gevuld tegenover open — zie de kop van dit bestand. De ring
+          // eromheen is het paginavlak, zodat de stip loskomt van de foto
+          // eronder in béide standen.
+          backgroundColor: online ? feed.teal : feed.lav,
+          borderWidth: online ? 1.5 : 2,
+          borderColor: online ? feed.lav : feed.inkDim,
         }}
       />
     </View>
