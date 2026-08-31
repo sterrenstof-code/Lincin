@@ -102,3 +102,73 @@
   --a-ink-dim: 0.58;
   --a-on-dark: 0.22;
 }
+
+/* ===============================================================
+   WAAR JE BENT ALS JE NIET KLIKT
+   ===============================================================
+
+   Zo'n twintig invoervelden zetten op web `outlineWidth: 0` — en met
+   reden: Chrome tekent daar een blauwe ring die niets met dit palet te
+   maken heeft, en op een veld dat zélf al een kader van 1.5px draagt is
+   dat een tweede rand eromheen.
+
+   Wat ontbrak was het vervolg. De ring ging uit en er kwam niets voor
+   in de plaats, dus je kon met Tab door een heel compose-scherm lopen
+   zonder te zien waar je stond. Web is hier het hoofdplatform; dat is
+   geen randgeval maar de gewone manier waarop iemand met een toetsenbord
+   dit formulier invult.
+
+   `:focus-visible` en niet `:focus`: de browser beslist zelf dat een
+   muisklik geen ring verdient en een Tab wél. Precies het onderscheid
+   waarvoor die `outlineWidth: 0` bedoeld was, maar dan zonder het kind
+   met het badwater.
+
+   De ring staat in `--c-flame` en niet in de inkt: hij moet zichtbaar
+   zijn óp een kader dat al in inkt getekend is. `outline-offset` houdt
+   hem daarbuiten, zodat hij het kader van 1.5px niet overschrijft maar
+   eromheen ligt — hetzelfde onderscheid als tussen de binnenlijn en de
+   afsluitlijn van een kaart (§4).
+
+   Er staat geen `border-radius` bij: alles hier is vierkant (§4), dus
+   de ring is dat ook. Alleen de avatar en de deelknop zijn rond, en die
+   dragen hun eigen `border-radius` die de outline vanzelf volgt.
+   =============================================================== */
+
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="link"]:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="radio"]:focus-visible {
+  outline: 2px solid rgb(var(--c-flame));
+  outline-offset: 2px;
+}
+
+/* Wie met de muis werkt heeft die ring niet nodig; `:focus-visible`
+   hierboven regelt dat al, maar Safari zet bij een klik op een knop nog
+   steeds zijn eigen `:focus`-ring. Die halen we hier weg — en alleen
+   die, want `:focus-visible` staat erboven en wint op specificiteit. */
+:where(a, button, [role="button"], [role="tab"]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ===============================================================
+   BEWEGING UIT
+   ===============================================================
+   DESIGN.md §6: bij `prefers-reduced-motion` gaat alles direct. De
+   keyframes in `app/+html.tsx` respecteren dat al; dit dekt de
+   overgangen die daarbuiten vallen (een `active:`-klasse, een
+   hover-vervaging) zodat er niet één beweging overblijft die zich er
+   niets van aantrekt.
+   =============================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

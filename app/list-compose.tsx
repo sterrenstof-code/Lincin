@@ -19,7 +19,7 @@ import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
 import { createSharedList } from "@/lib/api/shared-lists";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { creamOnDark, desk } from "@/lib/design/type";
+import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
@@ -109,7 +109,7 @@ export default function ListComposeScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Naam van de lijst, bijv. Bucketlist"
-                placeholderTextColor="#6B5E4E"
+                placeholderTextColor={feed.inkDim}
                 autoFocus
                 className="bg-paper-soft px-4 py-3 text-ink text-base"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}

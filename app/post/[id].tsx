@@ -24,6 +24,7 @@ import { Avatar } from "@/components/Avatar";
 import { RichText } from "@/components/RichText";
 import { MentionsText } from "@/components/MentionsText";
 import { DetailState } from "@/components/DetailState";
+import { IconButton } from "@/components/IconButton";
 import { useWide } from "@/components/Editorial";
 import {
   AppChrome,
@@ -1566,19 +1567,23 @@ function CommentRow({
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginLeft: space.sm }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Antwoorden op deze reactie"
-          onPress={onReply} hitSlop={8} style={{ padding: space.xs }}>
-          <Ionicons name="return-down-back-outline" color={feed.inkDim} size={16} />
-        </Pressable>
+        <IconButton
+          name="return-down-back-outline"
+          label="Antwoorden op deze reactie"
+          onPress={onReply}
+          size={16}
+          color={feed.inkDim}
+          dense
+        />
         {canDelete && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Reactie verwijderen"
-            onPress={onDelete} hitSlop={8} style={{ padding: space.xs }}>
-            <Ionicons name="trash-outline" color={feed.inkDim} size={16} />
-          </Pressable>
+          <IconButton
+            name="trash-outline"
+            label="Reactie verwijderen"
+            onPress={onDelete}
+            size={16}
+            color={feed.inkDim}
+            dense
+          />
         )}
       </View>
     </View>

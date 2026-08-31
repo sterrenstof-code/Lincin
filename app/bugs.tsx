@@ -29,6 +29,7 @@ import {
 import { confirm } from "@/lib/confirm";
 import { safeBack } from "@/lib/nav";
 import {
+  carbon,
   creamOnDark,
   feed,
   FEED_BORDER,
@@ -404,7 +405,7 @@ function BugRow({
             avatarUrl={bug.reporter?.avatar_url ?? null}
             size="xs"
           />
-          <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.5 }]}>
+          <Text style={[feedType.kicker, { color: carbon.soft, letterSpacing: 0.5 }]}>
             {(bug.reporter?.display_name ?? bug.reporter?.username ?? "Iemand").toUpperCase()}
             {bug.platform ? ` · ${bug.platform.toUpperCase()}` : ""}
             {bug.app_version ? ` · v${bug.app_version}` : ""}

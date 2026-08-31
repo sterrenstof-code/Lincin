@@ -21,7 +21,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { SmartTextInput } from "@/components/SmartTextInput";
 import { FormatBar } from "@/components/FormatBar";
 import { useAuth } from "@/lib/auth/provider";
-import { feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
+import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
@@ -740,14 +740,14 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
               <Text
                 style={[
                   feedType.kicker,
-                  { color: "#FFFFFF", opacity: 0.75, letterSpacing: 0.55, marginBottom: 8 },
+                  { color: creamOnDark.DEFAULT, opacity: 0.75, letterSpacing: 0.55, marginBottom: 8 },
                 ]}
                 numberOfLines={1}
               >
                 {extra.toUpperCase()}
               </Text>
               {preview.title ? (
-                <Text style={[feedType.cover, { color: "#FFFFFF" }]} numberOfLines={4}>
+                <Text style={[feedType.cover, { color: creamOnDark.DEFAULT }]} numberOfLines={4}>
                   {preview.title}
                 </Text>
               ) : null}

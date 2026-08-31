@@ -28,6 +28,11 @@ import { countUnreadNotifications } from "@/lib/api/notifications";
 import { getProfiles } from "@/lib/api/profiles";
 import { chromeTag } from "@/lib/hero-transition";
 import {
+  registerScroller,
+  scrollActiveToTop,
+  unregisterScroller,
+} from "@/lib/scroll-top";
+import {
   announce,
   announceDeep,
   creamOnDark,
@@ -236,7 +241,8 @@ function TabBadge({ count, floating = false }: { count: number; floating?: boole
           lineHeight: 13,
           fontWeight: "800",
           letterSpacing: 0,
-          color: "#FFFFFF",
+          // Op een gevuld flame-vlak; §7 kent geen text-white.
+          color: creamOnDark.DEFAULT,
         }}
       >
         {count > 99 ? "99+" : String(count)}
@@ -408,9 +414,12 @@ function TabStrip({ tone }: { tone: "dark" | "paper" }) {
   const iconOnly = stripWidth === 0 || stripWidth < LABELS_NEED_WIDTH;
 
   const onDark = tone === "dark";
-  const idle = onDark ? "rgba(250,248,245,0.78)" : feed.ink;
+  // Crème uit het token, niet als hex overgeschreven (§7). Het vlak van
+  // het actieve tabblad is dezelfde crème als zijn tekst elders in de
+  // balk — daarom leest het als omgekeerd en niet als een derde kleur.
+  const idle = creamOnDark.soft;
   const onActive = onDark ? feed.ink : feed.lav;
-  const activeBg = onDark ? "#FAF8F5" : feed.ink;
+  const activeBg = onDark ? creamOnDark.DEFAULT : feed.ink;
 
   return (
     <View
@@ -424,9 +433,24 @@ function TabStrip({ tone }: { tone: "dark" | "paper" }) {
           <Pressable
             key={tab.href}
             onPress={() => {
-              if (!active) router.push(tab.href);
+              // Tweede tik op waar je al bent: terug naar boven. Dit was
+              // de enige knop in de app die niets deed — zie lib/scroll-top.
+              if (active) scrollActiveToTop();
+              else router.push(tab.href);
             }}
-            accessibilityLabel={tab.label}
+            // Dit ís de navigatie van de app (§5, er is geen tweede balk).
+            // Zonder rol en stand hoort wie hem niet ziet vijf knoppen
+            // zonder te weten in welke hij staat.
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            // De teller stond alleen in het rood bolletje. Wie dat niet
+            // ziet hoorde "Chats" terwijl er drie ongelezen gesprekken
+            // stonden — de badge was puur beeld.
+            accessibilityLabel={
+              badge > 0
+                ? `${tab.label}, ${badge} ongelezen`
+                : tab.label
+            }
             style={{
               // Altijd de breedte delen. Zonder dit sizen de cellen naar hun
               // inhoud en duwen ze elkaar buiten de rij zodra één woord
@@ -1203,6 +1227,25 @@ export function PageScroll({
   const sticky = Platform.OS === "web";
 
   /**
+   * De scroller van dit scherm, ook als de pagina zelf geen `scrollRef`
+   * meegaf. Zonder eigen ref zou terug-naar-boven alleen werken op de
+   * schermen die er toevallig al één hadden.
+   */
+  const ownRef = useRef<ScrollView | null>(null);
+  const activeRef = scrollRef ?? ownRef;
+
+  /**
+   * Meld je aan zolang je in beeld staat. Een navigator houdt schermen
+   * gemount, dus zonder de focus-voorwaarde zou een tik op het tabblad de
+   * scroller van een ándere pagina omhoog sturen. Zie lib/scroll-top.ts.
+   */
+  useEffect(() => {
+    if (!focused) return;
+    registerScroller(activeRef);
+    return () => unregisterScroller(activeRef);
+  }, [focused, activeRef]);
+
+  /**
    * Hoeveel er weg te scrollen valt voor de kop op zijn balk staat. De
    * stand van de kop is een rechtstreekse functie van de scrollpositie —
    * geen drempel, geen animatie, geen geheugen. Daardoor is er ook niets
@@ -1238,7 +1281,7 @@ export function PageScroll({
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        ref={scrollRef}
+        ref={activeRef}
         onScroll={handleScroll}
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={refreshControl}

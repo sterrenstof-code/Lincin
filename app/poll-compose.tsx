@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
-import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
+import { CONTROL_H, creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
 export default function PollComposeScreen() {
@@ -125,7 +125,7 @@ export default function PollComposeScreen() {
               value={question}
               onChangeText={setQuestion}
               placeholder="Stel je vraag…"
-              placeholderTextColor="#6B5E4E"
+              placeholderTextColor={feed.inkDim}
               multiline
               className="bg-paper-soft px-4 py-3 text-ink text-base mb-6"
               style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
@@ -140,17 +140,17 @@ export default function PollComposeScreen() {
                     value={opt}
                     onChangeText={(v) => updateOption(i, v)}
                     placeholder={`Optie ${i + 1}`}
-                    placeholderTextColor="#6B5E4E"
+                    placeholderTextColor={feed.inkDim}
                     className="flex-1 bg-paper-soft px-4 py-3 text-ink text-base"
                     style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
                   />
                   {options.length > 2 && (
                     <Pressable
-                      hitSlop={8}
                       accessibilityRole="button"
                       accessibilityLabel="Deze optie verwijderen"
                       onPress={() => removeOption(i)}
-                      className="w-9 h-9 items-center justify-center bg-paper-soft"
+                      className="items-center justify-center bg-paper-soft"
+                      style={{ width: CONTROL_H, height: CONTROL_H }}
                     >
                       <Ionicons name="close" color={feed.inkDim} size={16} />
                     </Pressable>

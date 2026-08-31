@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
+import { IconButton } from "@/components/IconButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
@@ -236,7 +237,7 @@ export default function ListDetailScreen() {
               value={draft}
               onChangeText={setDraft}
               placeholder="Voeg item toe…"
-              placeholderTextColor="#6B5E4E"
+              placeholderTextColor={feed.inkDim}
               returnKeyType="done"
               onSubmitEditing={onAddItem}
               className="flex-1 bg-paper-soft px-4 py-2.5 text-ink text-sm"
@@ -276,12 +277,14 @@ function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onTo
         {item.text}
       </Text>
       {canDelete && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Item verwijderen"
-          onPress={onDelete} hitSlop={8}>
-          <Ionicons name="trash-outline" color={feed.inkDim} size={15} />
-        </Pressable>
+        <IconButton
+          name="trash-outline"
+          label="Item verwijderen"
+          onPress={onDelete}
+          size={15}
+          color={feed.inkDim}
+          dense
+        />
       )}
     </View>
   );

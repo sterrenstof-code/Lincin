@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
 import {
-  Image,
   Pressable,
   ScrollView,
   Text,
@@ -13,7 +12,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { FieldError } from "@/components/FormError";
 import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth/provider";
-import { feed as feedColor, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
+import {
+  CONTROL_H,
+  feed as feedColor,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+} from "@/lib/design/type";
 
 type Mode = "signin" | "signup";
 type Status =
@@ -256,12 +261,23 @@ export default function LoginScreen() {
                 editable={!submitting}
                 onSubmitEditing={onPasswordSubmit}
               />
+              {/* Een eigen doos van CONTROL_H, geen `hitSlop`: die doet
+                  niets op web (§7) en dit is een oogje van twintig punten
+                  in een veld waar je met je duim naast tikt. De doos
+                  duwt bovendien in plaats van over de tekst heen te
+                  liggen, dus hij pakt je cursor niet af. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                accessibilityState={{ checked: showPassword }}
                 onPress={() => setShowPassword((s) => !s)}
-                hitSlop={8}
-                className="pl-2"
+                style={{
+                  width: CONTROL_H,
+                  height: CONTROL_H,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: -12,
+                }}
               >
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -357,9 +373,15 @@ export default function LoginScreen() {
 
             {/* Primary button */}
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                mode === "signin" ? "Inloggen" : "Account aanmaken"
+              }
+              accessibilityState={{ disabled: submitting, busy: submitting }}
               onPress={onPasswordSubmit}
               disabled={submitting}
-              className="mt-5 bg-ink active:bg-ink-soft py-3.5 items-center"
+              className="mt-5 bg-ink active:bg-ink-soft items-center justify-center"
+              style={{ height: CONTROL_H, marginTop: 20 }}
             >
               <Text className="text-cream font-semibold text-base">
                 {submitting
@@ -371,14 +393,42 @@ export default function LoginScreen() {
             </Pressable>
 
             {/* Secondary actions */}
-            <View className="mt-5 items-center gap-2">
-              <Pressable onPress={onMagicLink} disabled={submitting} hitSlop={6}>
+            {/* Twee tekstlinks van veertien en twaalf punten hoog. Met
+                `hitSlop={6}` waren ze op een telefoon net te raken en op
+                web precies zo groot als hun letters — §7, de slop valt
+                daar weg. Ze krijgen nu allebei een rij van CONTROL_H. */}
+            <View className="mt-5 items-center">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Of stuur een magic link"
+                accessibilityState={{ disabled: submitting }}
+                onPress={onMagicLink}
+                disabled={submitting}
+                style={{
+                  height: CONTROL_H,
+                  alignSelf: "stretch",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Text className="text-ink-soft text-sm underline">
                   Of stuur een magic link
                 </Text>
               </Pressable>
               {mode === "signin" && (
-                <Pressable onPress={onForgotPassword} disabled={submitting} hitSlop={6}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Wachtwoord vergeten"
+                  accessibilityState={{ disabled: submitting }}
+                  onPress={onForgotPassword}
+                  disabled={submitting}
+                  style={{
+                    height: CONTROL_H,
+                    alignSelf: "stretch",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Text className="text-ink-muted text-xs">
                     Wachtwoord vergeten?
                   </Text>
@@ -407,11 +457,16 @@ function ModeTab({
 }) {
   return (
     <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={{
         flex: 1,
-        paddingVertical: 12,
+        // Eén besturingshoogte, net als elk ander bedieningselement (§4b).
+        height: CONTROL_H,
         alignItems: "center",
+        justifyContent: "center",
         backgroundColor: active ? feedColor.ink : "transparent",
       }}
     >

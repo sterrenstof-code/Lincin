@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { FormError } from "@/components/FormError";
+import { IconButton } from "@/components/IconButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
@@ -174,7 +175,7 @@ export default function CallPlanComposeScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Onderwerp, bijv. Catch-up"
-                placeholderTextColor="#6B5E4E"
+                placeholderTextColor={feed.inkDim}
                 className="bg-paper-soft px-4 py-3 text-ink text-base"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
               />
@@ -182,7 +183,7 @@ export default function CallPlanComposeScreen() {
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Toelichting (optioneel)"
-                placeholderTextColor="#6B5E4E"
+                placeholderTextColor={feed.inkDim}
                 multiline
                 className="bg-paper-soft px-4 py-3 text-ink text-base"
                 style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
@@ -207,12 +208,14 @@ export default function CallPlanComposeScreen() {
                         {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
                       </Text>
                       {slots.length > 1 && (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Dit tijdslot verwijderen"
-                          onPress={() => removeSlot(slot.id)} hitSlop={8}>
-                          <Ionicons name="close-circle" color={active ? feed.inkDim : feed.inkDim} size={14} />
-                        </Pressable>
+                        <IconButton
+                          name="close-circle"
+                          label="Dit tijdslot verwijderen"
+                          onPress={() => removeSlot(slot.id)}
+                          size={14}
+                          color={feed.inkDim}
+                          dense
+                        />
                       )}
                     </Pressable>
                   );

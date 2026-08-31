@@ -17,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 
 import { Avatar } from "@/components/Avatar";
+import { IconButton } from "@/components/IconButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Skeleton, SkeletonListCard } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
@@ -34,7 +35,7 @@ import {
 import { sendMessage } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { creamOnDark, desk, feed, flameDeep } from "@/lib/design/type";
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -372,12 +373,13 @@ function MemberRow({
         </View>
       </Pressable>
       {canRemove && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Dit lid uit de groep verwijderen"
-          onPress={onRemove} hitSlop={8} className="p-2">
-          <Ionicons name="remove-circle-outline" color="#B23A1C" size={20} />
-        </Pressable>
+        <IconButton
+          name="remove-circle-outline"
+          label="Dit lid uit de groep verwijderen"
+          onPress={onRemove}
+          size={20}
+          color={flameDeep}
+        />
       )}
     </View>
   );

@@ -24,7 +24,7 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { supabase } from "@/lib/supabase/client";
-import { feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
+import { carbon, feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
@@ -236,7 +236,7 @@ function NotificationRow({
             {snippet}
           </Text>
         ) : null}
-        <Text style={[feedType.kicker, { color: "#3A3540", letterSpacing: 0.5, marginTop: 4 }]}>
+        <Text style={[feedType.kicker, { color: carbon.soft, letterSpacing: 0.5, marginTop: 4 }]}>
           {formatRelativeTime(item.created_at).toUpperCase()}
         </Text>
       </View>

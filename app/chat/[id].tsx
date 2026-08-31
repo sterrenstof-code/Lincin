@@ -2438,7 +2438,8 @@ function MessageBubble({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Bericht kopiëren"
-                onPress={onCopy} hitSlop={6} className="w-8 h-8 items-center justify-center">
+                onPress={onCopy} className="items-center justify-center"
+                style={{ minWidth: 36, height: CONTROL_H }}>
                 <Ionicons name="copy-outline" color={feed.inkDim} size={15} />
               </Pressable>
             )}
@@ -2446,7 +2447,8 @@ function MessageBubble({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Bericht verwijderen"
-                onPress={onDelete} hitSlop={6} className="w-8 h-8 items-center justify-center">
+                onPress={onDelete} className="items-center justify-center"
+                style={{ minWidth: 36, height: CONTROL_H }}>
                 <Ionicons name="trash-outline" color={flameDeep} size={15} />
               </Pressable>
             )}

@@ -12,8 +12,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
+import { IconButton } from "@/components/IconButton";
 import type { Tone } from "@/components/Editorial";
-import { carbon, feed, page } from "@/lib/design/type";
+import { carbon, feed, flameDeep, page } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   addEntityComment,
@@ -395,12 +396,14 @@ function CommentRow({
           <View className="flex-row items-center gap-2">
             <Text style={{ fontSize: 10, color: palette.dim }}>{time}</Text>
             {isMine && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Reactie verwijderen"
-                onPress={onDelete} hitSlop={8}>
-                <Ionicons name="trash-outline" color="#B23A1C" size={12} />
-              </Pressable>
+              <IconButton
+                name="trash-outline"
+                label="Reactie verwijderen"
+                onPress={onDelete}
+                size={12}
+                color={flameDeep}
+                dense
+              />
             )}
           </View>
         </View>

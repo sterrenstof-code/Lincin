@@ -1,10 +1,19 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { feed } from "@/lib/design/type";
+import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { useWide } from "@/components/Editorial";
+import {
+  announce,
+  announceDeep,
+  CONTROL_H,
+  creamOnDark,
+  feed,
+  feedType,
+  flameDeep,
+  space,
+} from "@/lib/design/type";
 
 /**
  * Catch-all 404 voor paden die de router niet kan matchen. Dit gebeurt
@@ -12,50 +21,102 @@ import { feed } from "@/lib/design/type";
  * username intypt, of een share-link uit een ander gesprek volgt.
  *
  * In plaats van de naakte Vercel-edge 404 (waar geen weg terug uit is)
- * landt de gebruiker hier binnen de Lincin-shell met een duidelijke
- * boodschap + knop terug naar de feed. Werkt op web én native.
+ * landt de gebruiker hier binnen de Lincin-shell. Werkt op web én native.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT SCHERM OPNIEUW GETEKEND IS
+ * ---------------------------------------------------------------
+ * Het stond nog volledig op het systeem van vóór v3: `ScreenContainer`
+ * met zijn kolom van 600, `text-3xl font-semibold`, een grijs vierkant
+ * met een kompas erin, en twee hexwaarden (`#1a1a1a`, `#fdfaf3`) die met
+ * geen van beide standen meeschoven. Uitgerekend hier telt dat: dit is
+ * het scherm dat iemand ziet die van búiten de app binnenkomt via een
+ * link die niet meer klopt, en dat is vaak hun eerste beeld ervan.
+ *
+ * Nu draagt het dezelfde ruggengraat als elk ander scherm (§5) — dus ook
+ * de balk, en daarmee de navigatie. Dat is het echte verschil: je zat
+ * hier eerder vast aan één knop.
+ *
+ * ---------------------------------------------------------------
+ * DE KNOP ZEI IETS ANDERS DAN HIJ DEED
+ * ---------------------------------------------------------------
+ * Er stond "Terug naar Lincin" en er gebeurde `router.back()`. Kom je van
+ * buiten binnen, dan is "terug" de pagina wáár je vandaan kwam — een
+ * mailtje, een gesprek in een andere app — en niet Lincin. De knop bracht
+ * je dus precies weg van waar hij zei je heen te brengen.
+ *
+ * Het zijn nu twee dingen. "Naar de feed" gaat naar de feed en zegt dat
+ * ook. Terug is de terug-knop in de balk, die overal in de app hetzelfde
+ * doet.
  */
 export default function NotFoundScreen() {
   const router = useRouter();
-
-  function goHome() {
-    // replace ipv push — we willen niet dat de 404 in de back-stack blijft
-    // hangen zodat een tweede tap op "terug" niet hier opnieuw belandt.
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/");
-    }
-  }
+  const wide = useWide();
+  const chrome = useChromeScroll();
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenContainer className="px-6 justify-center">
-        <View className="items-center gap-6">
-          <View className="size-20 bg-paper-soft items-center justify-center">
-            <Ionicons name="compass-outline" size={40} color="#1a1a1a" />
-          </View>
-
-          <View className="items-center gap-2">
-            <Text className="text-3xl font-semibold text-ink text-center">
-              Verdwaald
-            </Text>
-            <Text className="text-base text-ink/60 text-center leading-snug">
-              Deze pagina bestaat niet (meer). Misschien is de link verlopen
-              of werd hij verkeerd gekopieerd.
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={goHome}
-            className="bg-shell active:bg-ink px-6 py-3 flex-row items-center gap-2"
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
+        backLabel="Terug"
+        onBack={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace("/");
+        }}
+        contentStyle={{ paddingVertical: space.section }}
+      >
+        <View style={{ maxWidth: 460 }}>
+          <Text
+            style={[
+              feedType.kicker,
+              { color: flameDeep, letterSpacing: 0.55, marginBottom: space.md },
+            ]}
           >
-            <Ionicons name="arrow-back" size={18} color="#fdfaf3" />
-            <Text className="text-cream font-medium">Terug naar Lincin</Text>
+            404 — VERDWAALD
+          </Text>
+          <Text
+            style={[
+              wide ? feedType.hero : feedType.heroSmall,
+              { color: feed.ink, marginBottom: space.lg },
+            ]}
+          >
+            Deze pagina bestaat niet
+          </Text>
+          <Text
+            style={[
+              feedType.body,
+              { color: feed.inkDim, marginBottom: space.section },
+            ]}
+          >
+            Misschien is de link verlopen, of werd hij verkeerd gekopieerd.
+            Er staat in elk geval niets meer achter.
+          </Text>
+
+          {/* De enige gevulde knop op dit scherm, en dus oranje (§2, §4). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Naar de feed"
+            onPress={() => router.replace("/(app)/feed")}
+            style={({ pressed }) => ({
+              alignSelf: "flex-start",
+              height: CONTROL_H,
+              paddingHorizontal: space.xxl,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? announceDeep : announce,
+            })}
+          >
+            <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>
+              Naar de feed
+            </Text>
           </Pressable>
         </View>
-      </ScreenContainer>
+      </PageScroll>
     </SafeAreaView>
   );
 }
