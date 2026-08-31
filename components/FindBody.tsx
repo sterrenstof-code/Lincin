@@ -1519,6 +1519,25 @@ function GridTile({
       style={{
         backgroundColor: feed.post,
         /**
+         * De tegel vult zijn cel.
+         *
+         * Hij was zo hoog als zijn inhoud, en in een rooster is dat een
+         * probleem dat je pas ziet als er een lange buur naast staat: de
+         * rij is zo hoog als de hoogste cel, dus onder een liggende foto
+         * viel een half scherm leeg lavendel. En omdat elke kop meteen
+         * onder zijn eigen beeld hing, stond geen enkele kop op dezelfde
+         * hoogte als die ernaast — drie kaarten, drie hoogtes, geen lijn
+         * om langs te lezen.
+         *
+         * Nu vult hij de cel en zakt de tekst naar de onderrand (zie de
+         * `marginTop: "auto"` verderop). Daarmee ligt élke kop in een rij
+         * op één lijn, en dát is wat een kaart een kaart maakt: hij
+         * eindigt ergens. Dezelfde redenering als §4 — de opbouw komt uit
+         * lijn en inspringing, en een gedeelde grondlijn is de sterkste
+         * lijn die er is.
+         */
+        flex: 1,
+        /**
          * Geen afsluitlijn meer.
          *
          * Die stond hier omdat deze tegels in metselwerk ónder elkaar
@@ -1536,6 +1555,19 @@ function GridTile({
           style={{
             width: "100%",
             aspectRatio: shape,
+            /**
+             * De verhouding is de ondergrens, niet de maat.
+             *
+             * Blijft er in de cel hoogte over — omdat de buur langer is —
+             * dan neemt het beeld die op in plaats van hem als gat onder
+             * de kaart te laten staan. `contentFit="cover"` snijdt daarbij
+             * hooguit een randje weg, en dat is minder erg dan een leeg
+             * vlak van driehonderd punten.
+             *
+             * De twee vormen uit `shape` blijven bestaan: die bepalen nog
+             * steeds waar een tegel begínt, en dus het ritme van de rij.
+             */
+            flexGrow: 1,
             ...heroStyle,
           }}
         >
@@ -1570,6 +1602,9 @@ function GridTile({
       <View
         style={{
           padding: space.lg,
+          // Naar de onderrand. Zie de uitleg bij `flex: 1` hierboven: dit
+          // is wat de koppen van een rij op één lijn zet.
+          marginTop: "auto",
           ...(p.image
             ? { borderTopWidth: FEED_BORDER, borderTopColor: feed.postRule }
             : null),

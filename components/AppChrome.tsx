@@ -435,7 +435,15 @@ function TabStrip({ tone }: { tone: "dark" | "paper" }) {
   // Crème uit het token, niet als hex overgeschreven (§7). Het vlak van
   // het actieve tabblad is dezelfde crème als zijn tekst elders in de
   // balk — daarom leest het als omgekeerd en niet als een derde kleur.
-  const idle = creamOnDark.soft;
+  //
+  // De rústende tabbladen hangen wél aan de toon, en dat is precies wat
+  // hier misging: bij het vervangen van de hex verdween de voorwaarde en
+  // stond er crème op élke ondergrond. Op de donkere balk klopte dat, op
+  // de lavendel strip werd het crème op lavendel — vier tabbladen die je
+  // alleen zag als je wist dat ze er stonden. Een kleur voor tekst op een
+  // donker vlak hoort nooit onvoorwaardelijk te zijn; dat is het hele
+  // punt van de drie paren in §2.
+  const idle = onDark ? creamOnDark.soft : feed.ink;
   const onActive = onDark ? feed.ink : feed.lav;
   const activeBg = onDark ? creamOnDark.DEFAULT : feed.ink;
 
