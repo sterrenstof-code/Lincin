@@ -42,8 +42,16 @@ export function QueryError({
   onRetry?: () => void;
   compact?: boolean;
 }) {
-  const message =
-    (error as Error | undefined)?.message ?? "Onbekende fout.";
+  /**
+   * De ruwe melding staat er wel, maar klein en onder een gewone zin.
+   *
+   * Dit blok stond eerst alleen op het meldingenscherm; nu het op de feed
+   * en de lijsten staat, is een onverkorte PostgREST-melding ("new row
+   * violates row-level security policy for table …") het eerste wat je op
+   * de voorpagina leest. Dat zegt de bezoeker niets en de ontwikkelaar
+   * alles, dus in die volgorde staat het er ook.
+   */
+  const detail = (error as Error | undefined)?.message;
 
   return (
     <View
@@ -64,8 +72,20 @@ export function QueryError({
         {title}
       </Text>
       <Text style={[feedType.body, { color: feed.textDim, maxWidth: 440 }]}>
-        {message}
+        Er ging iets mis bij het ophalen. Controleer je verbinding en
+        probeer het opnieuw.
       </Text>
+      {detail ? (
+        <Text
+          selectable
+          style={[
+            feedType.caption,
+            { color: feed.textDim, opacity: 0.7, marginTop: space.md, maxWidth: 440 },
+          ]}
+        >
+          {detail}
+        </Text>
+      ) : null}
       {onRetry ? (
         <Pressable
           onPress={onRetry}

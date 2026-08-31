@@ -10,17 +10,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
 import { SectionMark } from "@/components/IndexGrid";
+import { PageHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import {
-  announce,
-  announceDeep,
   CONTROL_H,
   creamOnDark,
   feed as feedColor,
   FEED_BORDER,
   feedType,
-  flameDeep,
   space,
 } from "@/lib/design/type";
 import { useWide } from "@/components/Editorial";
@@ -95,23 +93,11 @@ export default function EventsScreen() {
             Een verjaardag, een trip, een diner — alle foto&apos;s van iedereen op
             één plek.
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Maak event"
-            onPress={() => router.push("/event-create")}
-            style={({ pressed }) => ({
-              alignSelf: "flex-start",
-              height: CONTROL_H,
-              paddingHorizontal: space.xl,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: pressed ? announceDeep : announce,
-            })}
-          >
-            <Text style={[feedType.label, { color: creamOnDark.DEFAULT }]}>
-              Maak event
-            </Text>
-          </Pressable>
+          {/* Geen knop hier. "Nieuw event" staat al in de kop, tweehonderd
+              punten hierboven, en twee gevulde knoppen naar dezelfde plek
+              is er één te veel (§4). Hij stond hier bovendien in oranje met
+              crème erop op 11px — 2,8:1, terwijl de knop in de kop 17:1
+              haalt. De lege stand vertelt; de kop handelt. */}
         </View>
       );
     }
@@ -168,53 +154,38 @@ export default function EventsScreen() {
         }
       >
         <View style={{ paddingVertical: 28, paddingBottom: 80 }}>
-          {/* Paginakop: kicker, kop, ondertitel — dezelfde opbouw als de
-              hero van een vondst, één maat kleiner. */}
-          <Text
-            style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
-          >
-            SAMEN VASTGELEGD
-          </Text>
-          <View
-            style={{
-              flexDirection: wide ? "row" : "column",
-              justifyContent: "space-between",
-              alignItems: wide ? "flex-end" : "flex-start",
-              marginBottom: 10,
-            }}
-          >
-            <Text
-              style={[
-                wide ? feedType.hero : feedType.heroSmall,
-                { color: feedColor.ink, maxWidth: 620 },
-              ]}
-            >
-              Events
-            </Text>
-            <Pressable
-              onPress={() => router.push("/event-create")}
-              style={({ pressed }) => ({
-                backgroundColor: pressed ? flameDeep : feedColor.ink,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                marginTop: wide ? 0 : 16,
-              })}
-            >
-              <Text
-                style={[
-                  feedType.label,
-                  { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
-                ]}
+          {/* Was hier uitgeschreven terwijl `PageHead` er al was — dan
+              draagt het onderdeel niet alles en staat de opbouw alsnog op
+              twee plekken. De knop gaat mee als `action`. */}
+          <PageHead
+            kicker="Samen vastgelegd"
+            title="Events"
+            intro="Maak momenten samen. Foto's worden onthuld op het juiste moment."
+            wide={wide}
+            action={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Nieuw event maken"
+                onPress={() => router.push("/event-create")}
+                style={({ pressed }) => ({
+                  height: CONTROL_H,
+                  paddingHorizontal: space.lg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: pressed ? feedColor.inkDim : feedColor.ink,
+                })}
               >
-                Nieuw event
-              </Text>
-            </Pressable>
-          </View>
-          <Text
-            style={[feedType.body, { color: feedColor.inkDim, maxWidth: 560, marginBottom: 34 }]}
-          >
-            Maak momenten samen. Foto's worden onthuld op het juiste moment.
-          </Text>
+                <Text
+                  style={[
+                    feedType.label,
+                    { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
+                  ]}
+                >
+                  Nieuw event
+                </Text>
+              </Pressable>
+            }
+          />
           {renderBody()}
         </View>
       </PageScroll>

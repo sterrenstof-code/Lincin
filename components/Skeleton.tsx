@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { feed, FEED_BORDER, rule, space } from "@/lib/design/type";
+import { feed, FEED_BORDER, space } from "@/lib/design/type";
 
 /**
  * Animated placeholder for loading content. Pulses opacity between 0.4 and 0.8
@@ -38,8 +38,16 @@ export function Skeleton({
 
   return (
     <Animated.View
-      className={className ?? "bg-paper-warm h-4"}
-      style={[style, { opacity }]}
+      className={className ?? "h-4"}
+      style={[
+        // Was ``. Toen het omhulsel zijn vulling verloor stond
+        // die balk niet meer op `panel` maar op `page`, en dat is in de
+        // donkere stand 1,19:1 — een balk die je niet ziet is geen balk.
+        // `postRule` is inkt op lage dekking: hij leest op béide vlakken.
+        { backgroundColor: feed.postRule },
+        style,
+        { opacity },
+      ]}
     />
   );
 }
@@ -60,11 +68,11 @@ export function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
           : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.postRule }),
       }}
     >
-      <Skeleton className="w-11 h-11 bg-paper-warm" />
+      <Skeleton className="w-11 h-11" />
       <View className="flex-1 ml-3">
-        <Skeleton className="w-32 h-3.5 bg-paper-warm" />
+        <Skeleton className="w-32 h-3.5" />
         <View className="h-1.5" />
-        <Skeleton className="w-48 h-3 bg-paper-warm" />
+        <Skeleton className="w-48 h-3" />
       </View>
     </View>
   );
@@ -79,7 +87,7 @@ export function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
  */
 export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
   return (
-    <View style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}>
+    <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonListRow key={i} isLast={i === rows - 1} />
       ))}
@@ -90,18 +98,18 @@ export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
 /** Skeleton for one full feed post card. */
 export function SkeletonPostCard() {
   return (
-    <View style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}>
+    <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
       <View className="flex-row items-center px-4 py-3">
-        <Skeleton className="w-11 h-11 bg-paper-warm" />
+        <Skeleton className="w-11 h-11" />
         <View className="flex-1 ml-3">
-          <Skeleton className="w-32 h-3.5 bg-paper-warm" />
+          <Skeleton className="w-32 h-3.5" />
           <View className="h-1.5" />
-          <Skeleton className="w-20 h-3 bg-paper-warm" />
+          <Skeleton className="w-20 h-3" />
         </View>
       </View>
       <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
       <View className="px-4 py-3">
-        <Skeleton className="w-3/4 h-3.5 bg-paper-warm" />
+        <Skeleton className="w-3/4 h-3.5" />
       </View>
     </View>
   );

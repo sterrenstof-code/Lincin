@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 
 import { feed, feedType, flameDeep, space } from "@/lib/design/type";
@@ -26,6 +27,15 @@ export function PageHead({
   title,
   intro,
   wide,
+  /**
+   * Eén knop naast de titel. Op een breed scherm staat hij ernaast op de
+   * grondlijn, op een smal eronder — anders duwt hij de kop weg.
+   *
+   * Bestaat omdat de agenda hem nodig had en daarom zijn eigen kop bleef
+   * uitschrijven; dan is het onderdeel er wel maar draagt het niet alles,
+   * en staat de opbouw alsnog op twee plekken.
+   */
+  action,
   /** Ruimte onder het blok. Een pagina die meteen een lijst begint mag
    *  dichter, een pagina met rubrieken eronder hoort ruimer. */
   gap = 34,
@@ -34,6 +44,7 @@ export function PageHead({
   title: string;
   intro?: string;
   wide: boolean;
+  action?: ReactNode;
   gap?: number;
 }) {
   return (
@@ -46,14 +57,25 @@ export function PageHead({
       >
         {kicker.toUpperCase()}
       </Text>
-      <Text
-        style={[
-          wide ? feedType.hero : feedType.heroSmall,
-          { color: feed.ink, maxWidth: 620 },
-        ]}
+      <View
+        style={{
+          flexDirection: wide ? "row" : "column",
+          justifyContent: "space-between",
+          alignItems: wide ? "flex-end" : "flex-start",
+        }}
       >
-        {title}
-      </Text>
+        <Text
+          style={[
+            wide ? feedType.hero : feedType.heroSmall,
+            { color: feed.ink, maxWidth: 620 },
+          ]}
+        >
+          {title}
+        </Text>
+        {action ? (
+          <View style={{ marginTop: wide ? 0 : space.lg }}>{action}</View>
+        ) : null}
+      </View>
       {intro ? (
         <Text
           style={[

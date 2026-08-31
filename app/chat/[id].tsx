@@ -1488,7 +1488,6 @@ export default function ChatDetail() {
                 >
                   {CHAT_EMOJIS.map((emoji) => (
                     <Pressable
-                      hitSlop={4}
                       key={emoji}
                       onPress={() => {
                         setDraft((d) => d + emoji);
@@ -2649,8 +2648,6 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
     <>
       {/* Thumbnail */}
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Foto op volledig scherm openen"
         onPress={() => uri && setOpen(true)}
         className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
@@ -2813,8 +2810,6 @@ function VoiceMessageBubble({
       {/* Play / pause */}
       <Pressable
         hitSlop={4}
-        accessibilityRole="button"
-        accessibilityLabel={isPlaying ? "Spraakbericht pauzeren" : "Spraakbericht afspelen"}
         onPress={togglePlay}
         className={`w-10 h-10 items-center justify-center ${
           isMine ? "bg-cream/20" : "bg-paper-light"
@@ -2864,8 +2859,6 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
     <>
       {/* Thumbnail preview */}
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Video afspelen"
         onPress={() => uri && setOpen(true)}
         className="overflow-hidden"
         style={{ opacity: loading ? 0.6 : 1 }}
@@ -3052,8 +3045,6 @@ function AttachmentView({
       {uri && (
         <Pressable
           hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Bestand downloaden"
           onPress={() => Linking.openURL(uri!).catch(() => {})}
           className="ml-2 p-2"
         >

@@ -23,7 +23,6 @@ import {
   feed,
   FEED_BORDER,
   feedType,
-  ROW_H,
   rule,
   space,
 } from "@/lib/design/type";
@@ -141,9 +140,16 @@ export default function FriendsScreen() {
   async function onDelete(
     friendshipId: string,
     kind: "remove" | "reject" | "cancel",
-    name: string
+    name: string,
+    /**
+     * Overslaan van het bevestigingsvenster bij een tweede poging — je hebt
+     * net al ja gezegd. Dit stond eerder als `kind: "cancel"` meegegeven, en
+     * daardoor koos de fóutmelding erna ook de cancel-tekst: "het verzoek kon
+     * niet ingetrokken worden" voor een linc die je probeerde te verbreken.
+     */
+    alreadyConfirmed = false
   ) {
-    if (kind !== "cancel") {
+    if (kind !== "cancel" && !alreadyConfirmed) {
       const ok = await confirm(
         kind === "remove" ? `Linc met ${name} verbreken?` : `Verzoek van ${name} weigeren?`,
         kind === "remove"
@@ -164,12 +170,13 @@ export default function FriendsScreen() {
       toast.error(
         kind === "remove"
           ? "De linc kon niet verbroken worden."
+          : kind === "reject"
+          ? "Het verzoek kon niet geweigerd worden."
           : "Het verzoek kon niet ingetrokken worden.",
         {
           action: {
             label: "Opnieuw",
-            // Zonder bevestiging: die is hierboven al gegeven.
-            onPress: () => onDelete(friendshipId, "cancel", name),
+            onPress: () => onDelete(friendshipId, kind, name, true),
           },
         }
       );
@@ -280,10 +287,21 @@ export default function FriendsScreen() {
             />
             {query.length > 0 && (
               <Pressable
-                hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Zoekopdracht wissen"
                 onPress={() => setQuery("")}
+                style={{
+                  // Was `hitSlop={12}`. Het kruisje heeft geen eigen doos —
+                  // het ís het glyph van 18 — en zijn buur is de `flex: 1`
+                  // TextInput, zonder tussenruimte. Twaalf punten slop
+                  // liggen dan over het einde van je eigen tekst, en omdat
+                  // dit de latere broer is wint hij het raken: je tikt om
+                  // je cursor te zetten en je filter is weg.
+                  // Een eigen kolom van 44 hoog raakt niemand anders.
+                  height: CONTROL_H,
+                  paddingLeft: space.sm,
+                  justifyContent: "center",
+                }}
               >
                 <Ionicons name="close-circle" color={feed.inkDim} size={18} />
               </Pressable>
@@ -421,13 +439,14 @@ export default function FriendsScreen() {
  * Het kader om een lijst. Eén maat, want de vier lijsten op deze pagina
  * hoorden er al hetzelfde uit te zien en deden dat niet helemaal.
  *
- * `rule.soft` en niet `feed.ink`: dit kader zegt alleen "dit hoort bij
- * elkaar" en hoeft daarom niet zo zwaar te zijn als de lijn waarmee een
- * kaart zichzelf afsluit (§4).
+ * `feed.ink` en niet `rule.soft`: de chatlijst op het tabblad ernaast
+ * kadert met inkt, en twee lijsten met dezelfde bedoeling horen niet zeven
+ * keer in gewicht te verschillen. Dat de rand ván een lijst zwaarder is dan
+ * de lijnen erbinnen is precies de bedoeling (§4).
  */
 const LIST_BLOCK = {
   borderWidth: FEED_BORDER,
-  borderColor: rule.soft,
+  borderColor: feed.ink,
 } as const;
 
 function Section({
@@ -456,7 +475,7 @@ function PaperHint({ text }: { text: string }) {
     <View
       style={{
         borderWidth: FEED_BORDER,
-        borderColor: rule.soft,
+        borderColor: feed.ink,
         padding: space.xl,
       }}
     >
@@ -513,8 +532,9 @@ function rowStyle(isLast: boolean) {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     paddingHorizontal: space.lg,
-    minHeight: ROW_H,
-    paddingVertical: space.md,
+    // Dezelfde rijhoogte als de chatlijst; anders verspringt alles onder
+    // een lijst zodra je van tabblad wisselt.
+    paddingVertical: 14,
     ...(isLast
       ? null
       : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.postRule }),
@@ -559,11 +579,12 @@ function ProfileRow({
         accessibilityRole="button"
         accessibilityLabel={`${actionLabel} met ${profile.display_name ?? profile.username}`}
         onPress={onAction}
+        hitSlop={6}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
           gap: space.xs,
-          height: 32,
+          height: 36,
           paddingHorizontal: space.md,
           backgroundColor: pressed ? feed.inkDim : feed.ink,
         })}
@@ -620,8 +641,12 @@ function FriendshipRow({
               friendship.other.display_name ?? friendship.other.username
             }`}
             onPress={a.onPress}
+            hitSlop={6}
             style={({ pressed }) => ({
-              height: 32,
+              // 36 en een hitSlop erbij: de regel die dit systeem zichzelf
+              // stelt is 44 (§7), en "Weiger"/"Verwijder" zijn de
+              // gevaarlijkste knoppen op deze pagina.
+              height: 36,
               paddingHorizontal: space.md,
               alignItems: "center",
               justifyContent: "center",

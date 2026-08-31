@@ -131,19 +131,31 @@ export default function ProfileScreen() {
       quality: 0.85,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
+    await uploadPickedAvatar(result.assets[0].uri, result.assets[0].mimeType);
+  }
+
+  /**
+   * De upload apart van het kiezen, en wel hierom: "Opnieuw" hoort de
+   * mislukte handeling over te doen. Toen dit één functie was, opende die
+   * knop de fotobibliotheek opnieuw — dan gooi je de foto die de gebruiker
+   * net gekozen én bijgesneden heeft weg om hem hetzelfde nog eens te laten
+   * doen. Dat is geen nieuwe poging, dat is opnieuw beginnen.
+   */
+  async function uploadPickedAvatar(uri: string, mimeType?: string | null) {
     setAvatarUploading(true);
     try {
-      const bytes = await uriToBytes(asset.uri);
-      const mime = asset.mimeType ?? "image/jpeg";
-      const newUrl = await uploadAvatar(myUserId, bytes, mime);
+      const bytes = await uriToBytes(uri);
+      const newUrl = await uploadAvatar(myUserId, bytes, mimeType ?? "image/jpeg");
       await updateMyProfile(myUserId, { avatar_url: newUrl });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
     } catch {
       // Zonder dit draaide het schijfje, stopte het, en bleef dezelfde
       // avatar staan — de enige aanwijzing dat er iets mislukt was.
       toast.error("De foto kon niet geüpload worden.", {
-        action: { label: "Opnieuw", onPress: () => onPickAvatar() },
+        action: {
+          label: "Opnieuw",
+          onPress: () => uploadPickedAvatar(uri, mimeType),
+        },
       });
     } finally {
       setAvatarUploading(false);

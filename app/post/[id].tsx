@@ -883,7 +883,6 @@ export default function PostDetailScreen() {
           >
             {POST_EMOJIS.map((emoji) => (
               <Pressable
-                hitSlop={4}
                 key={emoji}
                 onPress={() => {
                   setDraft((d) => d + emoji);

@@ -16,11 +16,12 @@ import {
   FEED_BORDER,
   feedType,
   flame,
+  shell,
   space,
 } from "@/lib/design/type";
 
 /**
- * De strook onderaan die zegt wat er zojuist misging.
+ * De strook bovenaan die zegt wat er zojuist misging.
  *
  * ---------------------------------------------------------------
  * WAAROM DIT ER IS
@@ -46,8 +47,9 @@ import {
  * Bij een fout krijgt hij een linkerkant in `flame`. Geen tweede kleurvlak
  * en geen icoon: één lijn is genoeg om te zeggen dat dit geen bevestiging is.
  *
- * De beweging is die van `ModalShell` — 200ms op, 140ms af, 8px van onder.
- * Eén beweging in de app, niet twee die op elkaar lijken.
+ * De beweging is die van `ModalShell` — 200ms op, 140ms af, 8px. Eén
+ * beweging in de app, niet twee die op elkaar lijken. Hij komt van bóven,
+ * want daar staat hij; zie de uitleg bij `ToastLayer`.
  */
 
 type ToastTone = "info" | "error";
@@ -181,8 +183,20 @@ function ToastLayer({
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: 0,
-        paddingBottom: insets.bottom + space.lg,
+        // Bovenaan, en niet onderaan.
+        //
+        // Onderaan is waar in deze app het werk gebeurt: de berichtenbalk
+        // in een gesprek, de zwevende deelknop op de feed. Een strook van
+        // ~60 punten die daar vijf seconden overheen ligt bedekt precies
+        // het veld waarin je aan het typen was — en omdat hij zijn eigen
+        // tikken opvangt, kon je er ook niet doorheen drukken. Op native
+        // ligt bovendien het toetsenbord in een venster boven de app, dus
+        // een strook onderaan verdween daar gewoon achter.
+        //
+        // Bovenaan ligt alleen de kopbalk. Die overdekken kost vier
+        // seconden navigatie en niets waar je middenin zat.
+        top: 0,
+        paddingTop: insets.top + space.sm,
         paddingHorizontal: space.lg,
         alignItems: "center",
       }}
@@ -196,7 +210,7 @@ function ToastLayer({
             {
               translateY: anim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [8, 0],
+                outputRange: [-8, 0],
               }),
             },
           ],
@@ -210,7 +224,8 @@ function ToastLayer({
             alignItems: "center",
             gap: space.md,
             // Blijft zwart in béide standen — zie de kop van dit bestand.
-            backgroundColor: "#0B0A0C",
+            // Via het token, niet via een hex: §7.
+            backgroundColor: shell,
             borderWidth: FEED_BORDER,
             borderColor: isError ? flame : creamOnDark.rule,
             borderLeftWidth: isError ? 4 : FEED_BORDER,

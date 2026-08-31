@@ -95,9 +95,11 @@ export function FormatBar({
         marginTop: space.sm,
       }}
     >
+      {/* Geen hitSlop op deze knoppen: ze staan zonder tussenruimte tegen
+          elkaar (alleen een lijn ertussen), dus elke slop legt de ene knop
+          over de andere — de rechterrand van B zou cursief maken. */}
       {buttons.map((button, i) => (
         <Pressable
-          hitSlop={6}
           key={button.key}
           accessibilityLabel={button.hint}
           accessibilityRole="button"

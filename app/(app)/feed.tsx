@@ -43,7 +43,6 @@ import { PostGrid } from "@/components/PostGrid";
 import { PostReactions } from "@/components/PostReactions";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonPostCard } from "@/components/Skeleton";
-import { useToast } from "@/lib/toast";
 import { SectionBand } from "@/components/SectionBand";
 import { SharedListCard } from "@/components/SharedListCard";
 import { useAuth } from "@/lib/auth/provider";
@@ -56,6 +55,7 @@ import {
   FEED_BORDER,
   FEED_BREAKPOINT,
   feedType,
+  flame,
   flameDeep,
   rule,
   space,
@@ -1426,7 +1426,16 @@ function usePostMenu(
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption ?? "");
   const [saving, setSaving] = useState(false);
-  const toast = useToast();
+  /**
+   * De fout hoort in het venster, niet in de strook eronder.
+   *
+   * De strook ligt in de wortel van de app; dit venster is een `Modal`, en
+   * die staat op native in een eigen laag erboven en op web in een portal
+   * ná de wortel — met een sluier van 55% ertussen. De melding kwam dus
+   * áchter het venster terecht dat er nog stond, en dat is precies de
+   * toestand die hij moest opheffen.
+   */
+  const [editError, setEditError] = useState<string | null>(null);
   const isMine = post.user_id === myUserId;
 
   const element = isMine ? (
@@ -1460,7 +1469,10 @@ function usePostMenu(
 
       <ModalShell
         visible={editOpen}
-        onClose={() => setEditOpen(false)}
+        onClose={() => {
+          setEditError(null);
+          setEditOpen(false);
+        }}
         title="Toelichting bewerken"
       >
         <View style={{ padding: space.lg }}>
@@ -1486,9 +1498,24 @@ function usePostMenu(
               Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
             ]}
           />
+          {editError ? (
+            <View
+              style={{
+                marginTop: space.md,
+                borderLeftWidth: 4,
+                borderLeftColor: flame,
+                paddingLeft: space.md,
+              }}
+            >
+              <Text style={[feedType.body, { color: feedColor.ink }]}>
+                {editError}
+              </Text>
+            </View>
+          ) : null}
           <Pressable
             onPress={async () => {
               setSaving(true);
+              setEditError(null);
               try {
                 await updatePostCaption(post.id, editCaption);
                 setEditOpen(false);
@@ -1496,7 +1523,9 @@ function usePostMenu(
               } catch {
                 // Het venster bleef openstaan met de knop weer actief, en
                 // verder niets — niet te onderscheiden van "nog niet gedrukt".
-                toast.error("De toelichting kon niet bewaard worden.");
+                setEditError(
+                  "De toelichting kon niet bewaard worden. Probeer het opnieuw."
+                );
               } finally {
                 setSaving(false);
               }

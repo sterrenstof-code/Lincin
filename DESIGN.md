@@ -404,7 +404,12 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
   letterlijk niets. Wisselt de knop van stand, dan wisselt de naam mee.
 - Geen aanraakvlak onder `CONTROL_H` (44). Past de knop zelf niet op die
   maat, dan is `hitSlop` het antwoord — dat vergroot waar de vinger telt
-  zonder het beeld te veranderen.
+  zonder het beeld te veranderen. **Twee voorbehouden.** `hitSlop` doet
+  niets op web (react-native-web laat de prop vallen), dus daar telt alleen
+  de échte maat. En slop over een buur zónder tussenruimte maakt het erger
+  in plaats van beter: de latere broer wint het raken, dus een wis-kruisje
+  naast een invoerveld wist je tekst als je je cursor probeert te zetten.
+  Staat er geen ruimte tussen, geef de knop dan een eigen doos.
 - Niets nakijken in één stand. Wat in de donkere klopt kan in de lichte
   onzichtbaar zijn, en andersom.
 - Geen tweede navigatiebalk: de navigatie zit in de kop (`AppChrome`).
@@ -420,19 +425,28 @@ Eén beweging tegelijk. Morpht er een beeld, dan schuift het blad niet mee.
   beide patronen naast elkaar — en dat is precies het soort verschil dat
   vanzelf blijft bestaan als niemand het opschrijft.
 
-**De vijf tabbladen zijn nu wél één systeem.** Chats en Lincs hielden
-`text-3xl font-bold` en gevulde `bg-paper-soft`-kaarten aan — het patroon
-van vóór v3 — terwijl feed, agenda en meldingen de redactionele opbouw
-al droegen. Je wisselde van tabblad en je wisselde van ontwerp, terwijl er
-verder niets aan de pagina veranderd was. Allebei staan ze nu op
-`PageHead` (§5), en hun lijsten hebben geen vulling meer maar een kader
-met lijnen erbinnen (§4).
+**De tabbladen delen nu wél één kop.** Chats en Lincs hielden `text-3xl
+font-bold` en gevulde `bg-paper-soft`-kaarten aan — het patroon van vóór
+v3 — terwijl feed, agenda en meldingen de redactionele opbouw al droegen.
+Je wisselde van tabblad en je wisselde van ontwerp, terwijl er verder
+niets aan de pagina veranderd was.
 
-Dat was het soort verschil waar de alinea hierboven over gaat: het bleef
-bestaan zolang het nergens één plek had. Vandaar dat de kop nu een
-onderdeel is en geen patroon om na te tikken.
+Chats, Lincs, meldingen en de agenda lezen nu alle vier `PageHead` (§5);
+hun lijsten hebben geen vulling meer maar een kader met lijnen erbinnen
+(§4), en beide lijstkaders staan op `feed.ink` — twee lijsten met dezelfde
+bedoeling horen niet in gewicht te verschillen.
 
-Ongeveer achttien schermen draaien nog op het oude patroon
+**Profiel is bewust de uitzondering.** Dat scherm opent met een avatar in
+het midden in plaats van met een kop links; dat is een andere vorm en geen
+achterstand. Wel leest het inmiddels uit dezelfde typeschaal.
+
+Dat dit zo lang uit elkaar liep is het soort verschil waar de alinea
+hierboven over gaat: het bleef bestaan zolang het nergens één plek had.
+Vandaar dat de kop nu een onderdeel is en geen patroon om na te tikken —
+inclusief de knop ernaast (`action`), want zolang die ontbrak bleef de
+agenda zijn eigen kop uitschrijven.
+
+Zeventien schermen draaien nog op het oude patroon
 (`ScreenContainer`, 600px-kolom, pre-v3-vormen). Ze werken, maar ze volgen
 dit document niet. Onder meer: `profile-edit`, `group/[id]`,
 `group-create`, `event-create`, `post-compose`, `list/[id]`,

@@ -191,7 +191,9 @@ function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onTo
         hitSlop={12}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: item.checked }}
-        accessibilityLabel={item.checked ? "Vinkje weghalen" : "Afvinken"}
+        accessibilityLabel={`${item.text} — ${
+          item.checked ? "vinkje weghalen" : "afvinken"
+        }`}
         onPress={onToggle} className={`w-5 h-5 border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
         {item.checked && <Ionicons name="checkmark" color="#fff" size={11} />}
       </Pressable>

@@ -192,9 +192,11 @@ export function PostReactions({
           style={{ backgroundColor: c.fill }}
           className="flex-row flex-wrap gap-2 mt-2 px-3 py-2"
         >
+          {/* Geen hitSlop op deze tegels: ze staan 8 punten uit elkaar, en
+              een reactie die je per ongeluk naast de juiste zet blijft
+              zichtbaar voor iedereen. */}
           {QUICK_REACTIONS.map((emoji) => (
             <Pressable
-              hitSlop={10}
               key={emoji} onPress={() => handleReaction(emoji)} className="p-1">
               <Text style={{ fontSize: 22 }}>{emoji}</Text>
             </Pressable>

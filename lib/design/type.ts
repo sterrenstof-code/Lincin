@@ -516,6 +516,15 @@ export let desk = {
   panel: color("deskPanel"),
 };
 
+/**
+ * Het vlak dat in béide standen zwart blijft: de kopbalk, en de strook
+ * onderaan die zegt wat er misging (`lib/toast.tsx`). Bestond alleen als
+ * Tailwind-klasse (`bg-shell`), maar wie het als prop nodig heeft — een
+ * style-object, een `backgroundColor` — schreef de hex over. §7 kent geen
+ * hexwaarden inline, dus staat hij nu hier.
+ */
+export let shell = color("shell");
+
 export let creamOnDark = {
   DEFAULT: color("cream"),
   soft: color("creamSoft"),
@@ -694,6 +703,7 @@ if (Platform.OS !== "web") {
       muted: color("deskMuted"),
       panel: color("deskPanel"),
     };
+    shell = color("shell");
     creamOnDark = {
       DEFAULT: color("cream"),
       soft: color("creamSoft"),

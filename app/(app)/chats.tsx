@@ -246,10 +246,21 @@ export default function ChatsScreen() {
               />
               {filter.length > 0 && (
                 <Pressable
-                  hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel="Filter wissen"
                   onPress={() => setFilter("")}
+                  style={{
+                    // Was `hitSlop={12}`. Het kruisje heeft geen eigen doos —
+                    // het ís het glyph van 18 — en zijn buur is de `flex: 1`
+                    // TextInput, zonder tussenruimte. Twaalf punten slop
+                    // liggen dan over het einde van je eigen tekst, en omdat
+                    // dit de latere broer is wint hij het raken: je tikt om
+                    // je cursor te zetten en je filter is weg.
+                    // Een eigen kolom van 44 hoog raakt niemand anders.
+                    height: CONTROL_H,
+                    paddingLeft: space.sm,
+                    justifyContent: "center",
+                  }}
                 >
                   <Ionicons name="close-circle" color={feed.inkDim} size={18} />
                 </Pressable>
@@ -341,7 +352,9 @@ export default function ChatsScreen() {
           <Text style={[feedType.body, { color: feed.inkDim, maxWidth: 440 }]}>
             {filter.trim()
               ? `Geen gesprek met "${filter.trim()}" in de naam.`
-              : "Begin er een met iemand hierboven, of deel je linc vanaf je profiel."}
+              : friendsWithoutChat.length > 0
+              ? "Begin er een met iemand hierboven."
+              : "Je hebt nog geen lincs. Ga naar Lincs om iemand toe te voegen."}
           </Text>
         </View>
           )
@@ -464,7 +477,7 @@ function ChatRow({
         borderLeftWidth: FEED_BORDER,
         borderRightWidth: FEED_BORDER,
         borderTopWidth: isFirst ? FEED_BORDER : 0,
-        borderBottomWidth: isLast ? FEED_BORDER : FEED_BORDER,
+        borderBottomWidth: FEED_BORDER,
         borderColor: feed.ink,
         borderBottomColor: isLast ? feed.ink : feed.postRule,
       })}
@@ -551,9 +564,10 @@ function ChatRow({
           de visuele scheiding (rechts, klein icoon) en kleine hitbox gaan
           row-taps NIET per ongeluk hierheen — alleen wie écht op de drie
           puntjes mikt opent het menu. */}
+      {/* Geen eigen label: deze knop zit ín de rij-Pressable, en RN
+          behandelt die als één a11y-element — een label hier wordt
+          gewoon niet voorgelezen. De rij draagt de naam. */}
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Opties voor dit gesprek"
         onPress={onMenuPress}
         hitSlop={10}
         className="w-9 h-9 items-center justify-center -mr-2"
