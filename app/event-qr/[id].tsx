@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 const QR_SIZE = 260;
 
@@ -114,7 +115,7 @@ export default function EventQrScreen() {
               {ev.name}
             </Text>
             <Text className="text-ink-soft text-sm text-center mb-5">
-              {new Date(ev.starts_at).toLocaleDateString("nl-BE", {
+              {new Date(ev.starts_at).toLocaleDateString(NL, {
                 weekday: "long",
                 day: "numeric",
                 month: "long",

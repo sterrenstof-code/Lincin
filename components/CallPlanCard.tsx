@@ -10,6 +10,7 @@ import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends
 import { useAuth } from "@/lib/auth/provider";
 import { downloadCalendarEvent } from "@/lib/calendar";
 import { creamOnDark, feed } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 export function CallPlanCard({
   plan,
@@ -332,11 +333,11 @@ function formatRelativeTime(iso: string): string {
   const days = Math.floor(hours / 24);
   return days < 7
     ? `${days}d`
-    : new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+    : new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }
 
 function formatSlotDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("nl-NL", {
+  return new Date(iso).toLocaleDateString(NL, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -344,5 +345,5 @@ function formatSlotDate(iso: string): string {
 }
 
 function formatSlotTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(NL, { hour: "2-digit", minute: "2-digit" });
 }

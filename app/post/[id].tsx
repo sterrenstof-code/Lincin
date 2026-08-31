@@ -34,7 +34,7 @@ import {
 } from "@/components/AppChrome";
 import { InteractionPeople } from "@/components/InteractionPeople";
 import { PostCarousel } from "@/components/PostCarousel";
-import { formatFeedTime } from "@/components/FindBody";
+import { formatFeedTime, openUrl } from "@/components/FindBody";
 import { SafeImage } from "@/components/SafeImage";
 import { PostReactions } from "@/components/PostReactions";
 import { PostSignalBar } from "@/components/PostSignalBar";
@@ -82,6 +82,7 @@ import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
 import { usePageTitle } from "@/lib/page-title";
+import { NL } from "@/lib/locale";
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -732,9 +733,13 @@ export default function PostDetailScreen() {
 
   const linkBlock = post.data?.link_url ? (
     <Pressable
-      onPress={() =>
-        post.data?.link_url && require("expo-linking").openURL(post.data.link_url).catch(() => {})
-      }
+      accessibilityRole="link"
+      accessibilityLabel={`Open ${post.data.link_url}`}
+      onPress={() => {
+        // Was `require("expo-linking")` in deze closure, met een lege catch:
+        // faalde hij, dan gebeurde er niets. Zie openUrl in FindBody.
+        if (post.data?.link_url) void openUrl(post.data.link_url);
+      }}
       style={{
         /**
          * Alleen een lijn bóven zich. Elke band in deze stapel opent met
@@ -1101,10 +1106,12 @@ export default function PostDetailScreen() {
         contentContainerStyle={{ padding: space.lg }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Was "TITEL" bij een foto en "ONDERSCHRIFT" zonder — twee namen
+            voor hetzelfde veld, in hetzelfde venster, afhankelijk van iets
+            waar de schrijver niet aan denkt. Zie post-compose voor de vier
+            namen die `post.caption` had. */}
         <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-          {post.data?.image_path || (post.data?.album_urls?.length ?? 0) > 0
-            ? "TITEL"
-            : "ONDERSCHRIFT"}
+          TOELICHTING
         </Text>
         <View style={{ height: FEED_BORDER, backgroundColor: feed.ink, marginTop: 6 }} />
         <TextInput
@@ -1149,7 +1156,7 @@ export default function PostDetailScreen() {
           onChangeText={setEditBody}
           onSelectionChange={(e) => setEditSelection(e.nativeEvent.selection)}
           selection={forcedSelection ?? undefined}
-          placeholder="Leeg laten mag — dan draagt de kop de vondst."
+          placeholder="Leeg laten mag — dan draagt de toelichting de vondst."
           placeholderTextColor={feed.inkDim}
           multiline
           maxLength={2000}
@@ -1624,5 +1631,5 @@ function formatCommentTime(iso: string): string {
   if (diffHr < 24) return `${diffHr}u`;
   const diffDay = Math.floor(diffHr / 24);
   if (diffDay < 7) return `${diffDay}d`;
-  return date.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
+  return date.toLocaleDateString(NL, { day: "numeric", month: "short" });
 }

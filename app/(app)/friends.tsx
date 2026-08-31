@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -73,10 +73,28 @@ export default function FriendsScreen() {
     queryFn: () => listMyFriendships(myUserId),
   });
 
+  /**
+   * Zoeken zonder per toetsaanslag te flikkeren.
+   *
+   * Twee dingen ontbraken. Er was geen rem, dus "tomcoysman" waren elf
+   * queries naar de server voor tien antwoorden die je nooit gezien hebt. En
+   * er was geen `placeholderData`, dus bij élke aanslag ging `data` naar
+   * `undefined` en verving een skeleton de lijst die er stond — de resultaten
+   * knipperden weg en terug terwijl je typte, wat het lezen ervan onmogelijk
+   * maakt.
+   *
+   * `useDeferredValue` en geen `setTimeout`: React stelt de zoekterm zelf uit
+   * zolang er getypt wordt, en dat is nauwkeuriger dan een vast aantal
+   * milliseconden raden. `keepPreviousData` laat de vorige lijst staan tot de
+   * volgende er is; dat hij dan even één letter achterloopt is minder erg dan
+   * dat hij verdwijnt.
+   */
+  const deferredQuery = useDeferredValue(trimmed);
   const search = useQuery({
-    queryKey: ["search-profiles", trimmed, myUserId],
-    queryFn: () => searchProfilesByUsername(trimmed, myUserId),
-    enabled: trimmed.length >= 2,
+    queryKey: ["search-profiles", deferredQuery, myUserId],
+    queryFn: () => searchProfilesByUsername(deferredQuery, myUserId),
+    enabled: deferredQuery.length >= 2,
+    placeholderData: keepPreviousData,
   });
 
   const pendingIncoming = (friendships.data ?? []).filter(

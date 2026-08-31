@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/notifications";
 import { usePageTitle } from "@/lib/page-title";
 import { carbon, feed, FEED_BORDER, feedType, flame } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 export default function NotificationsScreen() {
   usePageTitle("Meldingen");
@@ -322,5 +323,5 @@ function formatRelativeTime(iso: string): string {
   if (hours < 24) return `${hours}u`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }

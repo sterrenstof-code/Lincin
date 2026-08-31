@@ -39,6 +39,7 @@ import { MentionsText } from "@/components/MentionsText";
 import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
 import { useWide } from "@/components/Editorial";
 import { QueryError } from "@/components/QueryError";
+import { plural } from "@/lib/plural";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { chromeTag } from "@/lib/hero-transition";
@@ -96,6 +97,7 @@ import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";
 import { color } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
+import { NL } from "@/lib/locale";
 
 /**
  * De leesmaat van een gesprek.
@@ -249,6 +251,10 @@ export default function ChatDetail() {
   const [pendingCaption, setPendingCaption] = useState("");
   const [selectedPendingIdx, setSelectedPendingIdx] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  /** Het hoeveelste bestand van hoeveel, tijdens een reeks. */
+  const [batchProgress, setBatchProgress] = useState<
+    { done: number; total: number } | null
+  >(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0); // seconds
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -756,13 +762,22 @@ export default function ChatDetail() {
     }
   }
 
+  /**
+   * Eén bijlage versturen. Geeft terug óf het gelukt is.
+   *
+   * `silent` voor wie in een reeks zit: de toastwachtrij is één diep, dus
+   * bij tien foto's verving elke mislukking de vorige melding en bleef er
+   * uiteindelijk één regel over die over één bestand ging. De lus vertelt
+   * het verhaal nu zelf, één keer, over alle tien.
+   */
   async function onSendAttachment(args: {
     uri: string;
     mimeType: string;
     filename?: string;
     caption?: string;
-  }) {
-    if (!myUserId || !id) return;
+    silent?: boolean;
+  }): Promise<boolean> {
+    if (!myUserId || !id) return false;
     setSending(true);
     setUploadProgress(0);
     try {
@@ -790,11 +805,17 @@ export default function ChatDetail() {
       });
       setUploadProgress(100);
       setDraft("");
+      return true;
     } catch (e: any) {
       // Was een `Alert.alert`: een OS-venster dat het gesprek blokkeert
       // voor iets waar je niets over hoeft te beslissen. De strook zegt
       // hetzelfde en laat je doortypen.
-      toast.error(e?.message ?? "De bijlage kon niet verstuurd worden.");
+      if (!args.silent) {
+        toast.error(e?.message ?? "De bijlage kon niet verstuurd worden.");
+      } else {
+        console.warn("attachment", e?.message ?? e);
+      }
+      return false;
     } finally {
       setSending(false);
       setUploadProgress(null);
@@ -1909,21 +1930,58 @@ export default function ChatDetail() {
                   }}
                 />
                 <Pressable
+                  /**
+                   * Tien foto's versturen, en waar je dan naar kijkt.
+                   *
+                   * Dit venster ging dicht vóór de lus begon —
+                   * `setPendingImages(null)` als eerste regel. Daarmee
+                   * verdween ook de voortgangsbalk die er twintig regels
+                   * hoger in staat, dus de enige plek waar te zien was dat
+                   * er iets gebeurde. Je stond terug in het gesprek terwijl
+                   * er tien versleutelde uploads liepen, zonder één signaal.
+                   *
+                   * En mislukte er iets, dan gaf elke foto zijn eigen toast.
+                   * De wachtrij is één diep: nummer zeven duwde nummer zes
+                   * weg, en je hield één melding over die over één bestand
+                   * ging terwijl er drie misgingen.
+                   *
+                   * Nu blijft het venster staan met "3 van 10", en aan het
+                   * eind gebeurt er één van twee dingen: alles weg, of de
+                   * mislukte foto's blijven staan zodat "verstuur" ze
+                   * opnieuw probeert — precies degene die het nog niet
+                   * gehaald hebben.
+                   */
                   onPress={async () => {
                     if (!pendingImages?.length || sending) return;
                     const images = [...pendingImages];
                     const caption = pendingCaption;
-                    setPendingImages(null);
-                    setPendingCaption("");
-                    setSelectedPendingIdx(0);
+                    const batch = images.length > 1;
+                    setBatchProgress(batch ? { done: 0, total: images.length } : null);
+                    const failed: typeof images = [];
                     for (let i = 0; i < images.length; i++) {
-                      await onSendAttachment({
+                      const ok = await onSendAttachment({
                         uri: images[i].uri,
                         mimeType: images[i].mimeType,
                         filename: images[i].filename,
                         caption: i === images.length - 1 ? caption : undefined,
+                        silent: batch,
                       });
+                      if (!ok) failed.push(images[i]);
+                      if (batch) setBatchProgress({ done: i + 1, total: images.length });
                     }
+                    setBatchProgress(null);
+                    if (failed.length === 0) {
+                      setPendingImages(null);
+                      setPendingCaption("");
+                      setSelectedPendingIdx(0);
+                      return;
+                    }
+                    setPendingImages(failed);
+                    setSelectedPendingIdx(0);
+                    toast.error(
+                      `${images.length - failed.length} van ${images.length} verstuurd. ` +
+                        `${plural(failed.length, "foto", "foto's")} staan nog klaar.`
+                    );
                   }}
                   disabled={sending}
                   style={{
@@ -1933,7 +1991,13 @@ export default function ChatDetail() {
                   }}
                 >
                   {sending ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    batchProgress ? (
+                      <Text style={{ color: creamOnDark.DEFAULT, fontSize: 11, fontWeight: "700" }}>
+                        {batchProgress.done}/{batchProgress.total}
+                      </Text>
+                    ) : (
+                      <ActivityIndicator color={creamOnDark.DEFAULT} size="small" />
+                    )
                   ) : (
                     <View style={{ alignItems: "center", justifyContent: "center" }}>
                       {pendingImages && pendingImages.length > 1 ? (
@@ -2043,12 +2107,12 @@ function formatChatDate(iso: string): string {
 
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
   if (diffDays < 7) {
-    return d.toLocaleDateString("nl-NL", { weekday: "long" });
+    return d.toLocaleDateString(NL, { weekday: "long" });
   }
   if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long" });
+    return d.toLocaleDateString(NL, { day: "numeric", month: "long" });
   }
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString(NL, { day: "numeric", month: "long", year: "numeric" });
 }
 
 function EditBar({
@@ -2189,7 +2253,10 @@ function MessageBubble({
   selected?: boolean;
   onSelect?: () => void;
 }) {
-  const time = new Date(msg.created_at).toLocaleTimeString([], {
+  // `[]` betekende "de taal van het besturingssysteem", en op een toestel
+  // dat op Engels staat gaf dat `3:45 PM` — in dezelfde bubbel als een
+  // Nederlandse datum. Zie lib/locale.ts.
+  const time = new Date(msg.created_at).toLocaleTimeString(NL, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -2455,7 +2522,7 @@ function MessageBubble({
               )}
               {failed && (
                 <Text className="text-cream text-[10px] ml-2 underline">
-                  Tap om opnieuw te proberen
+                  Tik om opnieuw te proberen
                 </Text>
               )}
             </View>
@@ -2614,7 +2681,10 @@ function CallNotificationCard({
   senderName: string;
   onJoin: () => void;
 }) {
-  const time = new Date(msg.created_at).toLocaleTimeString([], {
+  // `[]` betekende "de taal van het besturingssysteem", en op een toestel
+  // dat op Engels staat gaf dat `3:45 PM` — in dezelfde bubbel als een
+  // Nederlandse datum. Zie lib/locale.ts.
+  const time = new Date(msg.created_at).toLocaleTimeString(NL, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -3249,10 +3319,10 @@ function ChatCallPlanCard({
             >
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: onDark }]}>
-                  {new Date(slot.starts_at).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })}
+                  {new Date(slot.starts_at).toLocaleDateString(NL, { weekday: "short", day: "numeric", month: "short" })}
                 </Text>
                 <Text style={[feedType.label, { color: onDarkDim, marginTop: 1 }]}>
-                  {new Date(slot.starts_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} – {new Date(slot.ends_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(slot.starts_at).toLocaleTimeString(NL, { hour: "2-digit", minute: "2-digit" })} – {new Date(slot.ends_at).toLocaleTimeString(NL, { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </View>
               {/* Wie kan, en of dit de winnaar is. Het cijfer is de

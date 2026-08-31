@@ -44,7 +44,9 @@ import {
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
+import { plural } from "@/lib/plural";
 import { usePageTitle } from "@/lib/page-title";
+import { NL } from "@/lib/locale";
 
 export default function ChatsScreen() {
   usePageTitle("Chats");
@@ -473,8 +475,11 @@ function ChatRow({
   const title = chatTitle(chat, myUserId);
   const baseSubtitle =
     chat.type === "direct"
-      ? "Direct • E2E"
-      : `Groep • ${chat.members.length} leden`;
+      // De scheidingsstip is `·` — achttien andere plekken in de app doen
+      // dat, de zijkolom van dit exacte gesprek incluis, en deze twee regels
+      // stonden als enige op de dikke `•`.
+      ? "Direct · E2E"
+      : `Groep · ${plural(chat.members.length, "lid", "leden")}`;
   const lastAt = chat.last_message_at;
   const relTime = lastAt ? relativeTime(lastAt) : null;
   const unread = chat.unread_count;
@@ -625,7 +630,7 @@ function relativeTime(iso: string): string {
   if (h < 24) return `${h}u`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString("nl-BE", {
+  return new Date(iso).toLocaleDateString(NL, {
     day: "numeric",
     month: "short",
   });

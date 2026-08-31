@@ -14,9 +14,14 @@ import { feed } from "@/lib/design/type";
 export function Embed({
   url,
   aspectRatio = 16 / 9,
+  // Alleen om de twee varianten dezelfde signatuur te geven; op native
+  // heeft een WebView geen toegankelijke naam nodig omdat hij er zelf al
+  // een heeft. Zie Embed.web.tsx voor waarom hij daar wél telt.
+  title: _title = "Ingesloten speler",
 }: {
   url: string;
   aspectRatio?: number;
+  title?: string;
 }) {
   return (
     <View style={{ width: "100%", aspectRatio }} className="bg-shell">

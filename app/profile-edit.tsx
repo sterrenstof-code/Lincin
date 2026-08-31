@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -43,6 +43,8 @@ function ProfileEditScreenBody() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
+  const displayNameRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
   const [loading, setLoading] = useState(true);
   /** Waarom het formulier er niet is; zie de laadhaak hieronder. */
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -251,6 +253,13 @@ function ProfileEditScreenBody() {
                   placeholderTextColor={feed.inkDim}
                   className="flex-1 text-ink text-base py-3 pl-1"
                   maxLength={32}
+                  /* Vijf velden op dit scherm en geen enkele reageerde op
+                     Enter; met een toetsenbord moest je na elk veld naar de
+                     muis. Een enkelregelig veld hoort door te geven aan het
+                     volgende, en het laatste hoort te bewaren. */
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => displayNameRef.current?.focus()}
                 />
               </View>
               {usernameError ? (
@@ -267,12 +276,17 @@ function ProfileEditScreenBody() {
                 Weergavenaam (optioneel)
               </Text>
               <TextInput
+                ref={displayNameRef}
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholder="bv. Tom"
                 placeholderTextColor={feed.inkDim}
                 className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
                 maxLength={48}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (canSave) void onSave();
+                }}
               />
               <Text className="text-ink-muted text-xs mt-2">
                 Dit zien je vrienden in chats en op je posts.
@@ -328,6 +342,9 @@ function ProfileEditScreenBody() {
                 placeholder="min. 8 tekens"
                 placeholderTextColor={feed.inkDim}
                 className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => confirmRef.current?.focus()}
               />
 
               <View className="h-4" />
@@ -341,9 +358,14 @@ function ProfileEditScreenBody() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                ref={confirmRef}
                 placeholder="herhaal je wachtwoord"
                 placeholderTextColor={feed.inkDim}
                 className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (passwordValid) void onSavePassword();
+                }}
               />
 
               {password.length > 0 && password.length < 8 && (

@@ -207,8 +207,23 @@ Twee uitzonderingen, en allebei omdat er anders een gat valt:
 - **Kaders zijn echte lijnen**, geen haarlijnen: `FEED_BORDER = 1.5`.
   Het ontwerp leest als gedrukt raster.
 - **Geen schaduwen.** Hiërarchie komt uit vlak en lijn, niet uit diepte.
-- Breekpunten: `FEED_BREAKPOINT = 800` (feed valt naar één kolom),
-  `WIDE_BREAKPOINT = 900` (affiche-tweekolomsstructuur).
+- **Breekpunten.** Er zijn er drie, en ze meten drie verschillende dingen.
+  Dit stond hier fout — `WIDE_BREAKPOINT` was ooit 900 en staat sinds de
+  iPad-correctie op 800 — en de derde stond er helemaal niet.
+
+  | Naam | Waarde | Waar hij over gaat |
+  |---|---|---|
+  | `FEED_BREAKPOINT` | 800 | De feed valt naar één kolom (`lib/design/type.ts`) |
+  | `WIDE_BREAKPOINT` | 800 | Leesmaat, gutter, paginakop — gelijk aan de vorige, en dat is bewust: zolang ze verschilden was er een band waarin het scherm half het een en half het ander was |
+  | `SPREAD_BREAKPOINT` | 900 | Wanneer het affiche-tweeluik écht twee kolommen wordt (`components/StickySpread.tsx`) |
+
+  Daarnaast tellen twee plekken kolommen in plaats van een stand te kiezen:
+  `columnsFor()` in `app/(app)/feed.tsx` (640 / 1100 / 1600) en het
+  profielraster in `components/PostGrid.tsx` (560 / 900). Die twee gaan over
+  hoeveel tegels er naast elkaar pássen, en dat is een andere vraag dan of
+  het scherm breed is — een tegel onder ~260px is te smal voor een kop van
+  twee regels naast een beeld van 4:3. Wie een vierde kolom wil toevoegen
+  kijkt dus naar de tegel, niet naar het venster.
 
 ---
 

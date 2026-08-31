@@ -122,6 +122,13 @@ export default function GroupCreateScreen() {
               placeholderTextColor={feed.inkDim}
               maxLength={64}
               className="bg-paper-light text-ink text-base px-5 py-3 border border-line-paper"
+              /* Het enige tekstveld op dit scherm, en Enter deed er niets.
+                 Met een toetsenbord moest je na het typen van de naam naar
+                 de muis om verder te komen. */
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (canSubmit) void onSubmit();
+              }}
             />
             <Text className="text-ink-muted text-xs mt-2">
               Iedereen in de groep ziet deze naam.

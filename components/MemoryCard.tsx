@@ -2,6 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import type { PostWithAuthor } from "@/lib/api/posts";
+import { NL } from "@/lib/locale";
 
 export function MemoryCard({ post }: { post: PostWithAuthor }) {
   const router = useRouter();
@@ -34,7 +35,7 @@ export function MemoryCard({ post }: { post: PostWithAuthor }) {
           <Text className="text-page text-sm italic">Geen bijschrift</Text>
         )}
         <Text className="text-page text-xs mt-1">
-          {new Date(post.created_at).toLocaleDateString("nl-NL", {
+          {new Date(post.created_at).toLocaleDateString(NL, {
             day: "numeric",
             month: "long",
             year: "numeric",

@@ -7,6 +7,7 @@ import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
 import { plural } from "@/lib/plural";
 import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 /**
  * Een event als **cover-band**.
@@ -40,12 +41,12 @@ export function EventCard({
   const status = eventStatusLabel(event);
   const start = new Date(event.starts_at);
 
-  const dateLabel = start.toLocaleDateString("nl-BE", {
+  const dateLabel = start.toLocaleDateString(NL, {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-  const timeLabel = start.toLocaleTimeString("nl-BE", {
+  const timeLabel = start.toLocaleTimeString(NL, {
     hour: "2-digit",
     minute: "2-digit",
   });

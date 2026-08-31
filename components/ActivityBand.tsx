@@ -11,6 +11,7 @@ import {
 import type { FeedItem } from "@/lib/api/posts";
 import type { Profile } from "@/lib/api/profiles";
 import { announce, feed, FEED_BORDER, feedType, rule, space } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 /**
  * Wat er sinds je laatste bezoek over jóu gebeurd is, bovenaan de feed.
@@ -282,7 +283,7 @@ function relativeTime(iso: string): string {
   if (hours < 24) return `${hours}u`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }
 
 // ---------------------------------------------------------------

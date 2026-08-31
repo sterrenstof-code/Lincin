@@ -30,6 +30,7 @@ import { useHeroTag } from "@/lib/hero-transition";
 import { RichText } from "@/components/RichText";
 import { stripMarkdown } from "@/lib/richtext";
 import { buildPostUrl, shareText } from "@/lib/share";
+import { NL } from "@/lib/locale";
 
 /**
  * De inhoud van één vondst, per soort anders gezet.
@@ -48,7 +49,22 @@ type FindMeta = Partial<LinkPreview>;
 /** Horizontale inspringing van tekst. Beeld loopt door tot de rand. */
 const PAD = "px-6";
 
-async function openUrl(url: string) {
+/**
+ * Een externe link openen.
+ *
+ * Geëxporteerd omdat `post/[id].tsx` zijn eigen versie had: een
+ * `require("expo-linking")` middenin een render-closure, met een lege
+ * `catch` erachter. Twee dingen mis. Metro moet zo'n runtime-require zelf
+ * kunnen vinden, wat op web in een productiebundel niet gegarandeerd is; en
+ * mislukt hij, dan gebeurt er letterlijk niets — je tikt op de link van een
+ * artikel en de app doet alsof je niets deed.
+ *
+ * Deze versie opent op native bovendien een browser ín de app, met de
+ * kleuren van de app eromheen, en valt bij een fout terug op de gewone
+ * `Linking`. Dat stond hier al klaar en werd op de detailpagina niet
+ * gebruikt.
+ */
+export async function openUrl(url: string) {
   try {
     if (Platform.OS === "web") {
       await Linking.openURL(url);
@@ -223,7 +239,11 @@ function VideoBody({ post, meta }: { post: PostWithAuthor; meta: FindMeta }) {
     <View>
       {playing && meta.embed_url ? (
         <View className="mt-4">
-          <Embed url={meta.embed_url} aspectRatio={16 / 9} />
+          <Embed
+            url={meta.embed_url}
+            aspectRatio={16 / 9}
+            title={meta.title ?? post.source_title ?? "Video"}
+          />
         </View>
       ) : (
         <Pressable
@@ -304,7 +324,11 @@ function MusicBody({ post, meta }: { post: PostWithAuthor; meta: FindMeta }) {
     return (
       <View>
         <View className="mt-4">
-          <Embed url={meta.embed_url} aspectRatio={2.35} />
+          <Embed
+            url={meta.embed_url}
+            aspectRatio={2.35}
+            title={meta.title ?? post.source_title ?? "Muziek"}
+          />
         </View>
         <SharerNote text={post.caption} />
         <TagsBlock tags={post.tags} />
@@ -604,7 +628,7 @@ export function formatFeedTime(iso: string): string {
   if (hrs < 24) return `${hrs} uur geleden`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days} ${days === 1 ? "dag" : "dagen"} geleden`;
-  return new Date(iso).toLocaleDateString("nl-BE", { day: "numeric", month: "long" });
+  return new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "long" });
 }
 
 /**
@@ -679,15 +703,12 @@ function FeedKicker({
 export function FindHero({
   post,
   wide,
-  minHeight,
   onPress,
   onMenu,
   footer,
 }: {
   post: PostWithAuthor;
   wide: boolean;
-  /** Wordt gebruikt als het tweeluik terugvalt op één kolom. */
-  minHeight: number;
   onPress?: () => void;
   onMenu?: () => void;
   /**

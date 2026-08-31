@@ -196,6 +196,28 @@ export function CommentsSection({
     }
   }
 
+  /**
+   * Enter verstuurt, Shift+Enter maakt een regel.
+   *
+   * `onSubmitEditing` staat hieronder bewust op `Platform.OS !== "web"` —
+   * een `multiline` veld op react-native-web vuurt die callback nooit, dus
+   * daar zou hij toch niets doen. Alleen: er kwam niets voor in de plaats.
+   * Op web, het hoofdplatform, was er dus geen enkele manier om een reactie
+   * te versturen met het toetsenbord; je moest elke keer naar de knop ernaast
+   * grijpen, midden in het typen.
+   *
+   * `app/post/[id].tsx` en `app/chat/[id].tsx` hebben allebei precies deze
+   * `onKeyPress` — dit gedeelte was het enige tekstveld in de app dat hem
+   * miste.
+   */
+  function onComposerKeyPress(e: any) {
+    if (Platform.OS !== "web") return;
+    if (e?.nativeEvent?.key === "Enter" && !e?.nativeEvent?.shiftKey) {
+      e.preventDefault?.();
+      void onSend();
+    }
+  }
+
   async function onSend() {
     const text = draft.trim();
     if (!text || sending) return;
@@ -265,7 +287,10 @@ export function CommentsSection({
               ))}
               {comments.length === 0 && (
                 <Text style={{ fontSize: 12, color: c.dim }} className="py-1">
-                  Nog geen reacties. Wees de eerste!
+                  {/* Stond hier als "Wees de eerste!" — het enige
+                      uitroepteken in de hele UI, en op de detailpagina zegt
+                      dezelfde lege lijst iets anders. Eén zin. */}
+                  Nog geen reacties. Stuur de eerste hieronder.
                 </Text>
               )}
             </View>
@@ -312,6 +337,7 @@ export function CommentsSection({
                 maxLength={500}
                 returnKeyType="send"
                 onSubmitEditing={Platform.OS !== "web" ? onSend : undefined}
+                onKeyPress={onComposerKeyPress}
                 className="px-1 py-2 text-sm"
                 style={[
                   {

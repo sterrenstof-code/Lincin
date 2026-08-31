@@ -281,7 +281,7 @@ export default function FeedScreen() {
   const myUserId = session!.user.id;
   const router = useRouter();
   const qc = useQueryClient();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const wide = width >= FEED_BREAKPOINT;
   // Kolommen van het chronologische overzicht — zie columnsFor.
   const gridColumns = columnsFor(width);
@@ -521,7 +521,6 @@ export default function FeedScreen() {
                       post={hero.data}
                       myUserId={myUserId}
                       wide={wide}
-                      minHeight={Math.round(height * (wide ? 0.88 : 0.7))}
                       onChanged={invalidate}
                     />
                   ) : null}
@@ -746,6 +745,7 @@ export default function FeedScreen() {
                           <CompactSection
                             slots={section.slots}
                             wide={wide}
+                            columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
                             dimmed={dimSeen ? seen : null}
@@ -887,13 +887,11 @@ const HeroBlock = memo(function HeroBlock({
   post,
   myUserId,
   wide,
-  minHeight,
   onChanged,
 }: {
   post: PostWithAuthor;
   myUserId: string;
   wide: boolean;
-  minHeight: number;
   onChanged: () => void;
 }) {
   const router = useRouter();
@@ -904,7 +902,11 @@ const HeroBlock = memo(function HeroBlock({
       <FindHero
         post={post}
         wide={wide}
-        minHeight={minHeight}
+        /* `minHeight` is hier weg: de prop stond in `FindHero` gedeclareerd,
+           werd door drie lagen doorgegeven en nergens gelezen. Wat de
+           ingeklapte hoogte echt bepaalt is `aspectRatio: 4/5` in
+           StickySpread — dus dit getal, berekend uit de vensterhoogte, deed
+           al die tijd niets behalve suggereren dat het iets deed. */
         onPress={() => withHeroTransition(() => router.push(`/post/${post.id}`))}
         onMenu={menu.isMine ? menu.open : undefined}
         // De reacties horen in de kolom naast het beeld, niet als losse
@@ -1102,12 +1104,15 @@ function SectionFrame({
 function CompactSection({
   slots,
   wide,
+  columns,
   myUserId,
   onChanged,
   dimmed,
 }: {
   slots: Slot[];
   wide: boolean;
+  /** Uit `columnsFor(width)`; bepaalt of er vier tegels naast elkaar passen. */
+  columns: number;
   myUserId: string;
   onChanged: () => void;
   /** Al geziene id's; `null` als dimmen uitstaat. */
@@ -1116,7 +1121,21 @@ function CompactSection({
   const rows = useMemo(() => {
     const out: Slot[][] = [];
     let buffer: Slot[] = [];
-    const perRow = wide ? 4 : 2;
+    /**
+     * Vier naast elkaar pas als er vier naast elkaar pássen.
+     *
+     * Dit stond op `wide ? 4 : 2`, en `wide` is `FEED_BREAKPOINT` — 800. De
+     * rij eromheen heeft `flexWrap: "nowrap"`, dus op precies 800 punten
+     * werden het vier tegels van ongeveer 187 breed, terwijl `columnsFor`
+     * twintig regels verderop uitlegt dat een kaart onder de 260 te smal is
+     * voor een kop van twee regels naast een beeld van 4:3. Dat is de
+     * iPad-in-staande-stand: net breed genoeg om `wide` te heten en veel te
+     * smal voor vier kolommen.
+     *
+     * De grens ligt nu op 1100 — dezelfde waarde waarop `columnsFor` naar
+     * drie kolommen gaat, en dus het punt waarop er echt ruimte bijkomt.
+     */
+    const perRow = columns >= 3 ? 4 : 2;
     for (const s of slots) {
       const isBand =
         s.item.type !== "post" || s.variant === "cover" || s.variant === "quote";
@@ -1134,7 +1153,7 @@ function CompactSection({
     }
     if (buffer.length) out.push(buffer);
     return out;
-  }, [slots, wide]);
+  }, [slots, columns]);
 
   return (
     <View>
@@ -1177,7 +1196,9 @@ function CompactSection({
             key={`row-${ri}`}
             style={{
               flexDirection: "row",
-              flexWrap: wide ? "nowrap" : "wrap",
+              // Zelfde grens als `perRow` hierboven: alleen als er vier
+              // passen mag de rij weigeren om te breken.
+              flexWrap: columns >= 3 ? "nowrap" : "wrap",
               // Geen eigen kader en geen eigen marge meer: de rubriek is het
               // kader, en de rijen erbinnen worden gescheiden door een lijn.
               // Twee kaders om elkaar heen leest als twee dingen.
@@ -1201,7 +1222,7 @@ function CompactSection({
                    * pagina. Zonder beeld bepaalt de tekst de hoogte.
                    */
                   ...(rowHasImage ? { height: wide ? 380 : 260 } : null),
-                  ...(wide
+                  ...(columns >= 3
                     ? { flex: 1 }
                     : { width: "50%" as const }),
                   ...(ci < row.length - 1
@@ -1849,22 +1870,31 @@ function MosaicGrid({
         <CompactItem slot={lead} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
       </View>
 
-      {/* De kleinere cellen rechts, twee per rij. */}
+      {/* De kleinere cellen rechts, twee per rij.
+
+          De onderlijn stond op `i < 2`: dat klopt precies zolang de rubriek
+          vijf tegels heeft — de beeldrubriek heeft `limit: 5` — en nergens
+          anders. Bij zes stonden de laatste twee zonder scheidingslijn onder
+          elkaar, bij drie kreeg de laatste rij er een die nergens naartoe
+          liep. Nu uit de telling zelf: alles behalve de laatste rij. */}
       <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap" }}>
-        {rest.map((slot, i) => (
+        {rest.map((slot, i) => {
+          const lastRowStart = Math.floor((rest.length - 1) / 2) * 2;
+          return (
           <View
             key={slot.item.id}
             style={{
               width: "50%",
               height: cellH,
-              borderBottomWidth: i < 2 ? FEED_BORDER : 0,
+              borderBottomWidth: i < lastRowStart ? FEED_BORDER : 0,
               borderRightWidth: i % 2 === 0 ? FEED_BORDER : 0,
               borderColor: feedColor.ink,
             }}
           >
             <CompactItem slot={slot} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
           </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );

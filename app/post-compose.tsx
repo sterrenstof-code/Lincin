@@ -548,15 +548,29 @@ export default function PostComposeScreen() {
                           </ScrollView>
                         )}
 
+                        {/* Eén knop met twee namen: bij één foto stond er
+                            "Meer foto's" en bij twee "Meer toevoegen",
+                            terwijl hij allebei de keren precies hetzelfde
+                            doet. Dan leer je hem niet herkennen maar lees je
+                            hem elke keer opnieuw. En "Verwijder" ernaast
+                            terwijl de rest van de app "Verwijderen" zegt. */}
                         <View className="flex-row px-6 py-4">
-                          <Pressable onPress={() => pickImage(false)}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Meer foto's toevoegen"
+                            onPress={() => pickImage(false)}
+                          >
                             <Meta tone="feed" strong>
-                              {imageUris.length > 1 ? "Meer toevoegen" : "Meer foto's"}
+                              Meer toevoegen
                             </Meta>
                           </Pressable>
                           <Meta tone="feed" dim style={{ marginHorizontal: 10 }}>/</Meta>
-                          <Pressable onPress={() => setImageUris([])}>
-                            <Meta tone="feed" dim>Verwijder</Meta>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Alle gekozen foto's verwijderen"
+                            onPress={() => setImageUris([])}
+                          >
+                            <Meta tone="feed" dim>Verwijderen</Meta>
                           </Pressable>
                           {imageUris.length > 1 && (
                             <Meta tone="feed" dim style={{ marginLeft: 12 }}>
@@ -617,9 +631,21 @@ export default function PostComposeScreen() {
                   </View>
                 )}
 
-                {/* --- Toelichting --- */}
+                {/*
+                    --- Toelichting ---
+
+                    Eén naam voor dit veld, en dat is "toelichting".
+
+                    `post.caption` heette op vier plekken vier dingen:
+                    "TITEL"/"ONDERSCHRIFT" op de detailpagina, "Toelichting"
+                    in het menu van de feed, "Bijschrift" hier, en "de kop"
+                    in een placeholder. Dat is één veld dat je vier keer
+                    opnieuw moet herkennen — en de plek waar je het bewerkt
+                    ("Toelichting bewerken") heette weer anders dan de plek
+                    waar je het invult.
+                */}
                 {kind !== "note" && (
-                  <Field label={kind === "image" ? "Bijschrift" : "Waarom deel je dit?"}>
+                  <Field label="Toelichting">
                     <SmartTextInput
                       value={note}
                       onChangeText={onNoteChange}

@@ -23,6 +23,7 @@ import { sendMessage } from "@/lib/api/messages";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { NL } from "@/lib/locale";
 
 type SlotDraft = {
   id: string;
@@ -38,8 +39,8 @@ function buildDayOptions(n = 28): { date: Date; label: string; short: string }[]
     d.setHours(0, 0, 0, 0);
     return {
       date: new Date(d),
-      label: d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" }),
-      short: d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }),
+      label: d.toLocaleDateString(NL, { weekday: "long", day: "numeric", month: "long" }),
+      short: d.toLocaleDateString(NL, { weekday: "short", day: "numeric", month: "short" }),
     };
   });
 }
@@ -205,7 +206,7 @@ export default function CallPlanComposeScreen() {
                       className={`flex-row items-center gap-1.5 px-4 py-2 border ${active ? "bg-desk-ink border-desk-ink" : "bg-paper-soft border-paper-soft"}`}
                     >
                       <Text className={`text-sm font-semibold ${active ? "text-desk" : "text-ink-muted"}`}>
-                        {slot.date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
+                        {slot.date.toLocaleDateString(NL, { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
                       </Text>
                       {slots.length > 1 && (
                         <IconButton
@@ -241,13 +242,13 @@ export default function CallPlanComposeScreen() {
                         className={`items-center px-3 py-2 min-w-[52px] ${selected ? "bg-flame" : "bg-paper"}`}
                       >
                         <Text className={`text-[10px] font-semibold uppercase ${selected ? "text-cream/80" : "text-ink-muted"}`}>
-                          {opt.date.toLocaleDateString("nl-NL", { weekday: "short" })}
+                          {opt.date.toLocaleDateString(NL, { weekday: "short" })}
                         </Text>
                         <Text className={`text-base font-bold mt-0.5 ${selected ? "text-cream" : "text-ink"}`}>
                           {opt.date.getDate()}
                         </Text>
                         <Text className={`text-[9px] ${selected ? "text-cream/70" : "text-ink-muted"}`}>
-                          {opt.date.toLocaleDateString("nl-NL", { month: "short" })}
+                          {opt.date.toLocaleDateString(NL, { month: "short" })}
                         </Text>
                       </Pressable>
                     );

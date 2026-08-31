@@ -47,6 +47,7 @@ import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
+import { NL } from "@/lib/locale";
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -434,7 +435,7 @@ export default function EventDetailScreen() {
                       textAlign: wide ? "right" : "left" },
                   ]}
                 >
-                  {start.toLocaleString("nl-BE", {
+                  {start.toLocaleString(NL, {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
@@ -446,7 +447,7 @@ export default function EventDetailScreen() {
                     { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
                   ]}
                 >
-                  {start.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
+                  {start.toLocaleTimeString(NL, { hour: "2-digit", minute: "2-digit" })}
                 </Text>
                 <Text
                   style={[

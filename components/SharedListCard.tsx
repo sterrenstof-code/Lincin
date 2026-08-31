@@ -5,6 +5,7 @@ import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
 import type { SharedListWithDetails } from "@/lib/api/shared-lists";
 import { feed } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 export function SharedListCard({ list }: { list: SharedListWithDetails }) {
   const router = useRouter();
@@ -106,5 +107,5 @@ function formatRelativeTime(iso: string): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}u`;
   const days = Math.floor(hours / 24);
-  return days < 7 ? `${days}d` : new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+  return days < 7 ? `${days}d` : new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }

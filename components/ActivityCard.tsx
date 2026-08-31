@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import type { ActivityEventWithActor } from "@/lib/api/activity-events";
 import { feed } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 const KIND_ICON: Record<string, { name: any; color: string }> = {
   friend_accepted: { name: "person-add-outline", color: "#5B8DEF" },
@@ -78,5 +79,5 @@ function formatRelativeTime(iso: string): string {
   const days = Math.floor(hours / 24);
   return days < 7
     ? `${days}d`
-    : new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+    : new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }

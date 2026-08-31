@@ -7,6 +7,7 @@ import { CommentsSection } from "./CommentsSection";
 import { votePoll, deletePoll, type PollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
+import { NL } from "@/lib/locale";
 
 export function PollCard({
   poll,
@@ -232,7 +233,7 @@ function formatRelativeTime(iso: string): string {
   if (hours < 24) return `${hours}u`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(NL, { day: "numeric", month: "short" });
 }
 
 /**
