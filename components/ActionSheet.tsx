@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { ModalShell } from "@/components/ModalShell";
-import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
+import { feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 
 export type ActionSheetAction = {
   label: string;
@@ -46,6 +46,26 @@ export function ActionSheet({
    */
   footer?: ReactNode;
 }) {
+  /**
+   * Een bevestiging heeft twee antwoorden, en er stond er maar één.
+   *
+   * De bevestigingssheets van de chatlijst bestaan uit precies één regel:
+   * "Verwijder definitief", of "Verlaat groep". Je krijgt de vraag "verwijder
+   * dit gesprek voor iedereen?" en er is geen "nee" — alleen wegtikken naast
+   * het venster, wat tot deze commit niet eens zichtbaar was. Dat is een val:
+   * de énige knop in beeld is degene die iets kapotmaakt.
+   *
+   * De uitweg staat er nu automatisch bij zodra er iets destructiefs in de
+   * lijst zit, en niet als losse regel per aanroeper — anders staat hij op de
+   * ene sheet wel en op de andere niet, en dat is precies het soort verschil
+   * dat vanzelf blijft bestaan (§8).
+   *
+   * Bij een gewoon menu ("Verberg gesprek", "Poll", "Videocall plannen")
+   * blijft hij weg: daar is elke regel een keuze en niet een laatste kans, en
+   * een "Annuleer" onder een keuzelijst is ruis.
+   */
+  const needsCancel = actions.some((a) => a.destructive);
+
   return (
     <ModalShell visible={visible} onClose={onClose} title={title}>
       <View>
@@ -66,6 +86,8 @@ export function ActionSheet({
         {actions.map((action, i) => (
           <Pressable
             key={action.label}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
             onPress={async () => {
               onClose();
               // Kleine vertraging zodat de overgang klaar is voor een
@@ -80,7 +102,7 @@ export function ActionSheet({
               gap: space.md,
               paddingHorizontal: space.lg,
               paddingVertical: space.lg,
-              ...(i === actions.length - 1 && !footer
+              ...(i === actions.length - 1 && !footer && !needsCancel
                 ? null
                 : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
             }}
@@ -89,7 +111,11 @@ export function ActionSheet({
               <Ionicons
                 name={action.icon}
                 size={20}
-                color={action.destructive ? "#B23A1C" : feed.ink}
+                // Was `#B23A1C`: een negende rood, ingebakken in het
+                // onderdeel dat élke destructieve actie in de app tekent —
+                // en een hexwaarde die niet meekantelt met de stand (§7).
+                // `flameDeep` is het rood voor tekst onder ~16px (§2).
+                color={action.destructive ? flameDeep : feed.ink}
               />
             )}
             <Text
@@ -98,7 +124,7 @@ export function ActionSheet({
                 {
                   fontSize: 15,
                   fontWeight: "700",
-                  color: action.destructive ? "#B23A1C" : feed.ink,
+                  color: action.destructive ? flameDeep : feed.ink,
                 },
               ]}
             >
@@ -106,6 +132,34 @@ export function ActionSheet({
             </Text>
           </Pressable>
         ))}
+
+        {needsCancel ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Annuleer"
+            onPress={onClose}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: space.md,
+              paddingHorizontal: space.lg,
+              paddingVertical: space.lg,
+              ...(footer
+                ? { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }
+                : null),
+            }}
+          >
+            <Ionicons name="close" size={20} color={feed.inkDim} />
+            <Text
+              style={[
+                feedType.tile,
+                { fontSize: 15, fontWeight: "700", color: feed.inkDim },
+              ]}
+            >
+              Annuleer
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       {footer ? (
         <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>

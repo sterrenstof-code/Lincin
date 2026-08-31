@@ -469,7 +469,24 @@ export default function ProfileScreen() {
 
         {/* ---- Sign out ---- */}
         <Pressable
-          onPress={signOut}
+          /**
+           * Uitloggen vroeg niets. Eén tik en weg.
+           *
+           * Het was de enige destructieve handeling in de app zónder
+           * bevestiging — en hij staat onderaan een scherm waar je met je
+           * duim langs scrolt. In een end-to-end versleutelde app is dat
+           * bovendien geen "even opnieuw inloggen": de sleutels van dit
+           * toestel raak je niet kwijt, maar je bent er wel uit en moet
+           * terug via de mail.
+           */
+          onPress={async () => {
+            const ok = await confirm(
+              "Uitloggen",
+              "Je wordt uitgelogd op dit toestel. Om terug te komen heb je je e-mail of je wachtwoord nodig.",
+              { affirmativeLabel: "Uitloggen", destructive: true }
+            );
+            if (ok) signOut();
+          }}
           className="mt-8 border border-ink py-3 items-center"
         >
           <Text className="text-ink font-semibold">Uitloggen</Text>

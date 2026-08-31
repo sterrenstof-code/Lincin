@@ -34,6 +34,7 @@ import {
 } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
+  chatAvatarUrl,
   chatTitle,
   deleteChatForEveryone,
   getOrCreateDirectChat,
@@ -518,13 +519,12 @@ function ChatRow({
           regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
           chat. Toegang tot het profiel zit nu via de header binnen de chat
           (tap op de naam → /user/[username]). */}
+      {/* Dezelfde afweging als de zijkolom op breed scherm — hij stond hier
+          uitgeschreven en daar helemaal niet, dus stond dezelfde vriend
+          links als initialen en rechts als foto. Zie chatAvatarUrl. */}
       <Avatar
         name={title}
-        avatarUrl={
-          chat.type === "group"
-            ? chat.avatar_url ?? null
-            : (chat.members.find((m) => m.id !== myUserId)?.avatar_url ?? null)
-        }
+        avatarUrl={chatAvatarUrl(chat, myUserId)}
         size="md"
         tint="warm"
       />

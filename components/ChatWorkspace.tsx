@@ -14,6 +14,7 @@ import { Avatar } from "@/components/Avatar";
 import { ChatMediaThumb } from "@/components/ChatMediaThumb";
 import type { AttachmentInfo } from "@/lib/api/messages";
 import {
+  chatAvatarUrl,
   chatTitle,
   listChatMembers,
   listMyChats,
@@ -267,7 +268,14 @@ function ChatRailRow({
         backgroundColor: active ? feed.ink : "transparent",
       }}
     >
-      <Avatar name={title} avatarUrl={chat.avatar_url} size="sm" tint="light" />
+      {/* Niet `chat.avatar_url`: dat is bij een direct gesprek altijd null.
+          Zie chatAvatarUrl in lib/api/chats.ts. */}
+      <Avatar
+        name={title}
+        avatarUrl={chatAvatarUrl(chat, myUserId)}
+        size="sm"
+        tint="light"
+      />
       <View style={{ flex: 1, minWidth: 0, marginLeft: space.md }}>
         <Text
           style={[
@@ -290,7 +298,9 @@ function ChatRailRow({
       </View>
       {chat.unread_count > 0 ? (
         <View style={{ backgroundColor: flame, paddingHorizontal: 6, paddingVertical: 2 }}>
-          <Text style={[feedType.kicker, { color: "#FFFFFF" }]}>
+          {/* Crème en geen `#FFFFFF`: dit staat op `flame`, een vlak dat in
+              béide standen dezelfde blijft, en §7 kent geen hexwaarden. */}
+          <Text style={[feedType.kicker, { color: creamOnDark.DEFAULT }]}>
             {chat.unread_count > 99 ? "99+" : String(chat.unread_count)}
           </Text>
         </View>

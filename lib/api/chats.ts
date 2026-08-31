@@ -184,6 +184,25 @@ export function chatTitle(chat: ChatWithMembers, myUserId: string): string {
   return other?.display_name ?? other?.username ?? "Direct";
 }
 
+/**
+ * De foto die bij een gesprek hoort.
+ *
+ * Staat hier, naast `chatTitle`, om dezelfde reden als die: het antwoord
+ * hangt af van het soort gesprek, en dat mag niet per scherm anders
+ * uitpakken. Precies dat gebeurde. De chatlijst deed de goede afweging —
+ * bij een groep de groepsfoto, bij een direct gesprek die van de ander —
+ * en de zijkolom op breed scherm gaf blind `chat.avatar_url` mee. Dat veld
+ * is bij een direct gesprek altijd `null`, dus dezelfde vriend stond links
+ * als twee initialen en rechts als foto. Eén gesprek, twee gezichten.
+ */
+export function chatAvatarUrl(
+  chat: ChatWithMembers,
+  myUserId: string
+): string | null {
+  if (chat.type === "group") return chat.avatar_url ?? null;
+  return chat.members.find((m) => m.id !== myUserId)?.avatar_url ?? null;
+}
+
 /** Find the other party in a direct chat (returns null for groups or self-only). */
 export function otherMember(
   chat: ChatWithMembers,

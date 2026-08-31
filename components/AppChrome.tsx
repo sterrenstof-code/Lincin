@@ -35,12 +35,14 @@ import {
 import {
   announce,
   announceDeep,
+  carbon,
   creamOnDark,
   feed,
   FEED_BORDER,
   feedType,
   flameDeep,
   gutter as gutterFor,
+  shell,
   sheetWidth,
   space,
 } from "@/lib/design/type";
@@ -357,7 +359,23 @@ export function AnnouncementBar({
               fontSize: 12,
               fontWeight: "700",
               letterSpacing: 0.35,
-              color: "#1A0A05",
+              /**
+               * Inkt op oranje, en bewust niet de `text-cream` die §2's
+               * tabel bij `bg-announce` noemt.
+               *
+               * Die tabel gaat over gevúlde knoppen: crème op `announce`
+               * haalt ongeveer 3:1, en dat is genoeg voor een label van 15
+               * punten in een knop. Dit is een strook van 12 punten vet over
+               * de volle breedte, en daar haalt inkt ruim 5:1 waar crème
+               * blijft steken. Precies dezelfde afweging als `flame` tegen
+               * `flameDeep`: onder een bepaalde maat wint het contrast van
+               * de tabel.
+               *
+               * `carbon` en geen `#1A0A05`: die waarde is in béide standen
+               * hetzelfde, dus er verandert niets aan het beeld — behalve
+               * dat hij nu uit §2 komt en niet uit een regel code.
+               */
+              color: carbon.DEFAULT,
               textAlign: "center",
             },
           ]}
@@ -367,7 +385,7 @@ export function AnnouncementBar({
         </Text>
       </Pressable>
       <Pressable onPress={() => setDismissed(true)} hitSlop={10} style={{ paddingLeft: 10 }}>
-        <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: "#1A0A05" }]}>
+        <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: carbon.DEFAULT }]}>
           ✕
         </Text>
       </Pressable>
@@ -540,7 +558,11 @@ function CompactBar({
         height: BAR_H,
         flexDirection: "row",
         alignItems: "stretch",
-        backgroundColor: "#17181B",
+        // Was `#17181B`: een eigen zwart voor het ding dat §2 letterlijk
+        // beschrijft — "`shell` · de balk · donker in béide standen". Een
+        // hexwaarde kantelt niet mee, en dit is de balk waar élk scherm in
+        // begint, dus juist hier mag hij niet van het systeem afwijken.
+        backgroundColor: shell,
         borderWidth: FEED_BORDER,
         borderColor: feed.ink,
         overflow: "hidden",
@@ -576,9 +598,12 @@ function CompactBar({
           {/* De pijl als icoon en niet als teken in de tekst: zo blijft hij
               staan wanneer het label wegvalt, en houdt hij zijn maat los van
               de letterhoogte. */}
-          <Ionicons name="arrow-back" size={19} color="#FAF8F5" />
+          {/* Crème uit het systeem en geen eigen `#FAF8F5`: dit staat op
+              een vlak dat in béide standen donker blijft, en dan is
+              `creamOnDark` het antwoord (§2). */}
+          <Ionicons name="arrow-back" size={19} color={creamOnDark.DEFAULT} />
           <Text
-            style={[feedType.label, { fontSize: 12, color: "#FAF8F5", flexShrink: 1 }]}
+            style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT, flexShrink: 1 }]}
             numberOfLines={1}
           >
             {/* Op een smal scherm het korte woord: "Terug naar de feed" duwt

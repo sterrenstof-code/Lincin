@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -10,7 +10,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
+import { IconButton } from "@/components/IconButton";
+import { CONTROL_H, feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
 
 /**
  * De vorm en de beweging van élk venster in deze app.
@@ -48,15 +49,41 @@ export function ModalShell({
 }) {
   const anim = useRef(new Animated.Value(0)).current;
   const { height } = useWindowDimensions();
+  /**
+   * Of er überhaupt een `Modal` in de boom hangt.
+   *
+   * ---------------------------------------------------------------
+   * WAAROM DIT NIET GEWOON `visible` IS
+   * ---------------------------------------------------------------
+   * De `Modal` stond hier onvoorwaardelijk, met alleen zijn eigen
+   * `visible`-prop uit. Dat leek gratis en was het niet. `usePostMenu` in de
+   * feed wordt per tegel aangeroepen en levert een `ActionSheet` plus een
+   * `ModalShell` terug, dus twintig eigen vondsten op het scherm betekende
+   * veertig gemonteerde vensters — elk met hun eigen animatie die bij het
+   * monteren afloopt, en één ervan met een `autoFocus`-invoerveld erin. Een
+   * veld dat focus grijpt in een venster dat niemand ziet is op web een
+   * scherm dat zonder aanleiding naar beneden springt.
+   *
+   * Maar hij mag ook niet meteen verdwijnen als `visible` op `false` gaat:
+   * dan is het venster weg vóórdat de 140ms van het wegvallen gelopen heeft,
+   * en dat is precies de beweging die dit bestand beschrijft. Vandaar één
+   * stand extra: gemonteerd blijven tot de animatie klaar is.
+   */
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
+    if (visible) setMounted(true);
     Animated.timing(anim, {
       toValue: visible ? 1 : 0,
       duration: visible ? 200 : 140,
       easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
       useNativeDriver: true,
-    }).start();
+    }).start(({ finished }) => {
+      if (finished && !visible) setMounted(false);
+    });
   }, [visible, anim]);
+
+  if (!mounted) return null;
 
   return (
     <Modal
@@ -79,10 +106,14 @@ export function ModalShell({
             opacity: anim,
           }}
         >
+          {/* De sluier sluit ook, maar hij is geen knop: hij heet nergens
+              iets. Zolang hij "Sluiten" heette waren er voor een schermlezer
+              twee knoppen met dezelfde naam — de echte staat nu in de kop. */}
           <Pressable
             onPress={onClose}
+            accessible={false}
+            importantForAccessibility="no"
             style={{ width: "100%", height: "100%" }}
-            accessibilityLabel="Sluiten"
           />
         </Animated.View>
 
@@ -107,8 +138,11 @@ export function ModalShell({
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                paddingHorizontal: space.lg,
-                paddingVertical: space.md,
+                paddingLeft: space.lg,
+                paddingRight: space.md,
+                // De knop is zelf CONTROL_H hoog; een eigen verticale marge
+                // erbovenop zou de kopbalk hoger maken dan zijn inhoud.
+                minHeight: CONTROL_H,
                 borderBottomWidth: FEED_BORDER,
                 borderBottomColor: feed.ink,
               }}
@@ -122,6 +156,29 @@ export function ModalShell({
               >
                 {title.toUpperCase()}
               </Text>
+              {/**
+                * De enige zichtbare manier om dit venster te sluiten.
+                *
+                * Er was er geen. Het venster ging dicht door naast de doos
+                * te tikken — een onzichtbare `Pressable` over de sluier —
+                * en verder nergens aan te zien. Wie dat gebaar niet kent,
+                * en wie het venster met een toetsenbord bedient, zat vast
+                * aan het venster tot hij toevallig raak klikte. Op native
+                * vangt de terug-knop het nog op; op web, het hoofdplatform,
+                * is er niets.
+                *
+                * `IconButton` en geen los kruisje: §7 wil een échte doos van
+                * 44 punten, want `hitSlop` valt op web weg.
+                */}
+              <IconButton
+                name="close"
+                label="Sluiten"
+                onPress={onClose}
+                size={18}
+                color={feed.ink}
+                dense
+                style={{ marginRight: -space.sm }}
+              />
             </View>
           ) : null}
 
