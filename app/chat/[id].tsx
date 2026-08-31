@@ -38,6 +38,7 @@ import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
 import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
 import { useWide } from "@/components/Editorial";
+import { QueryError } from "@/components/QueryError";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { chromeTag } from "@/lib/hero-transition";
@@ -74,7 +75,6 @@ import {
   addReaction,
   groupReactions,
   listReactionsForMessages,
-  QUICK_REACTIONS,
   removeReaction,
   subscribeToReactions,
   type GroupedReaction,
@@ -135,6 +135,17 @@ const AUX_BUTTON = {
 const AUX_PRESSED = { opacity: 0.6 } as const;
 
 /**
+ * Eén lege lijst voor alle berichten zónder reacties, en één voor een draad
+ * die er nog niet is.
+ *
+ * `[]` schrijven levert elke keer een nieuwe referentie op, en dan is een
+ * bericht zonder reacties bij élke render "veranderd" — precies wat de
+ * memoisatie hieronder juist wil voorkomen.
+ */
+const EMPTY_REACTIONS: GroupedReaction[] = [];
+const EMPTY_MESSAGES: DecryptedMessage[] = [];
+
+/**
  * Eén kolom voor álles in de berichtenbalk — antwoord, bewerken, knoppen.
  * Ze hingen elk aan hun eigen padding, waardoor de rode kantlijn van een
  * antwoord niet boven de plus-knop uitkwam.
@@ -182,6 +193,28 @@ export default function ChatDetail() {
 
   const [chat, setChat] = useState<ChatWithMembers | null>(null);
   const [messages, setMessages] = useState<DecryptedMessage[] | null>(null);
+  /**
+   * Waarom het gesprek er niet is, als het er niet is.
+   *
+   * `messages === null` betekende twee dingen tegelijk: hij laadt nog, of
+   * hij is er nooit gekomen. De tweede bleef staan tot je de app afsloot,
+   * want er was niets dat `messages` alsnog zou vullen. Zie de laadhaak
+   * hieronder.
+   */
+  const [loadError, setLoadError] = useState<string | null>(null);
+  /** Ophogen = opnieuw proberen; de laadhaak hangt eraan. */
+  const [reloadKey, setReloadKey] = useState(0);
+  /**
+   * De berichten zoals ze nú zijn, voor wie er buiten de render bij moet.
+   *
+   * Het reactie-abonnement hieronder sloot over `messages` héén op het
+   * moment van abonneren, en dat moment is precies het moment waarop hij
+   * nog `null` is. De handler deed dus voor altijd `msgIds.length === 0` en
+   * keerde meteen om: reacties van anderen kwamen nooit live binnen, alleen
+   * na een herlaadbeurt. Een ref leest altijd de laatste stand.
+   */
+  const messagesRef = useRef<DecryptedMessage[] | null>(null);
+  messagesRef.current = messages;
   const [failedMessages, setFailedMessages] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -193,7 +226,6 @@ export default function ChatDetail() {
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [reactionPicker, setReactionPicker] = useState<{ msg: DecryptedMessage; onReply?: () => void; canEdit?: boolean; copyText?: string } | null>(null);
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
@@ -285,22 +317,51 @@ export default function ChatDetail() {
     if (!myUserId || !id) return;
     let cancelled = false;
 
+    /**
+     * Het eerste laden van een gesprek — en wat er gebeurde als dat faalde.
+     *
+     * Deze IIFE had geen `catch`. Viel `fetchMessages` om — een netwerk dat
+     * wegvalt, een sleutel die niet klopt, RLS die weigert — dan bleef
+     * `messages` op `null` staan, en `null` is hier de wachtstand: je keek
+     * voor altijd naar twee grijze balkjes. Er kwam geen melding, want de
+     * rejection ging nergens heen.
+     *
+     * En dat was niet eens het ergste. De berichtenbalk eronder rendert
+     * onvoorwaardelijk, dus je kon vrolijk typen en verzenden in een draad
+     * waarvan je niets zag — een bericht sturen zonder te weten wat er
+     * boven staat, in een app waar dat het hele punt is.
+     *
+     * Nu drie standen in plaats van twee: laden, mislukt, geladen. Bij
+     * "mislukt" staat er waarom, met een knop om het opnieuw te proberen,
+     * en de balk laat je niet verzenden.
+     */
     (async () => {
-      const [allChats, msgs] = await Promise.all([
-        listMyChats(myUserId),
-        fetchMessages(id, myUserId),
-      ]);
-      if (cancelled) return;
-      const c = allChats.find((x) => x.id === id) ?? null;
-      setChat(c);
-      setMessages(msgs);
-      const rxs = await listReactionsForMessages(msgs.map((m) => m.id));
-      if (!cancelled) setReactions(rxs);
-      // Belangrijk: await zodat de bottom-bar badge meteen 0 toont na opening.
+      setLoadError(null);
       try {
-        await markChatRead(id);
-      } catch {}
-      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+        const [allChats, msgs] = await Promise.all([
+          listMyChats(myUserId),
+          fetchMessages(id, myUserId),
+        ]);
+        if (cancelled) return;
+        const c = allChats.find((x) => x.id === id) ?? null;
+        setChat(c);
+        setMessages(msgs);
+
+        // Naast elkaar. De reacties en het gelezen-merk weten niets van
+        // elkaar, en na elkaar wachten kostte een extra heen-en-weer
+        // voordat het gesprek zijn emoji's had.
+        const [rxs] = await Promise.all([
+          listReactionsForMessages(msgs.map((m) => m.id)),
+          // Een mislukt gelezen-merk mag het gesprek niet tegenhouden: dan
+          // klopt hoogstens de teller in de balk even niet.
+          markChatRead(id).catch(() => {}),
+        ]);
+        if (!cancelled) setReactions(rxs);
+        qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+      } catch (e: any) {
+        if (cancelled) return;
+        setLoadError(e?.message ?? "Het gesprek kon niet geladen worden.");
+      }
     })();
 
     const channel = subscribeToChatMessages(id, myUserId, (msg) => {
@@ -334,7 +395,9 @@ export default function ChatDetail() {
     });
 
     const rChannel = subscribeToReactions(id, async () => {
-      const msgIds = (messages ?? []).map((m) => m.id);
+      // Uit de ref en niet uit `messages`: zie messagesRef hierboven voor
+      // waarom deze handler anders altijd op nul berichten uitkwam.
+      const msgIds = (messagesRef.current ?? []).map((m) => m.id);
       if (msgIds.length === 0) return;
       const rxs = await listReactionsForMessages(msgIds);
       setReactions(rxs);
@@ -368,8 +431,11 @@ export default function ChatDetail() {
       supabase.removeChannel(readChannel);
       supabase.removeChannel(globalChannel);
     };
+    // `reloadKey` hoort erbij: opnieuw proberen betekent ook opnieuw
+    // abonneren — een kanaal dat opgezet werd terwijl het laden faalde
+    // hoeft niet per se te leven.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, myUserId]);
+  }, [id, myUserId, reloadKey]);
 
   // Focus input zodra replyTo gezet wordt.
   // InteractionManager wacht tot alle animaties/transities klaar zijn
@@ -544,6 +610,11 @@ export default function ChatDetail() {
 
   async function onSend() {
     if (!myUserId || !id) return;
+    // Niet verzenden in een draad die je niet ziet. De balk rendert
+    // onvoorwaardelijk, dus zonder deze regel kon je een bericht in een
+    // gesprek gooien waarvan het laden mislukt was — en in een app waar de
+    // context van wat erboven staat het hele punt is, is dat blind schieten.
+    if (loadError) return;
     const text = draft.trim();
     if (!text) return;
 
@@ -844,12 +915,50 @@ export default function ChatDetail() {
     }
   }
 
+  /**
+   * De reacties, één keer per bericht gegroepeerd in plaats van per render.
+   *
+   * Dit was een functie die de hele reactielijst filterde en groepeerde, en
+   * `renderItem` riep hem aan voor élke rij. Bij tweehonderd berichten en
+   * driehonderd reacties is dat zestigduizend vergelijkingen per render —
+   * en er komt een render bij élke toetsaanslag in de balk eronder, want
+   * `draft` staat in ditzelfde onderdeel. Zo wordt typen langzamer naarmate
+   * het gesprek langer duurt, wat precies de verkeerde kant op is.
+   *
+   * Nu één doorloop over de reacties zodra die veranderen, en per rij een
+   * opzoeking. Wat er niet in zit levert `EMPTY_REACTIONS` — dezelfde lege
+   * array, zodat een bericht zonder reacties niet alsnog elke render een
+   * nieuwe prop krijgt.
+   */
+  const reactionsByMessage = useMemo(() => {
+    const grouped = new Map<string, ReactionRow[]>();
+    for (const r of reactions) {
+      const list = grouped.get(r.message_id);
+      if (list) list.push(r);
+      else grouped.set(r.message_id, [r]);
+    }
+    const out = new Map<string, GroupedReaction[]>();
+    for (const [messageId, rows] of grouped) {
+      out.set(messageId, groupReactions(rows, myUserId ?? ""));
+    }
+    return out;
+  }, [reactions, myUserId]);
+
   function reactionsForMessage(messageId: string): GroupedReaction[] {
-    return groupReactions(
-      reactions.filter((r) => r.message_id === messageId),
-      myUserId ?? ""
-    );
+    return reactionsByMessage.get(messageId) ?? EMPTY_REACTIONS;
   }
+
+  /**
+   * De draad omgekeerd, één keer per wijziging.
+   *
+   * `data={[...(messages ?? [])].reverse()}` bouwde een vérse array bij
+   * elke render — dus ook bij elke toetsaanslag — en een `FlatList` die
+   * een nieuwe `data`-referentie krijgt gaat opnieuw aan het rekenen.
+   */
+  const reversedMessages = useMemo(
+    () => (messages ? [...messages].reverse() : EMPTY_MESSAGES),
+    [messages]
+  );
 
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
@@ -1017,7 +1126,17 @@ export default function ChatDetail() {
           className="flex-1"
           keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-          {messages === null ? (
+          {loadError ? (
+            /* Laden en mislukken lazen hier hetzelfde: twee grijze balkjes,
+               voor altijd. Zie de laadhaak bovenaan. */
+            <View className="flex-1 px-4 pt-4">
+              <QueryError
+                title="Dit gesprek kon niet geladen worden"
+                error={loadError}
+                onRetry={() => setReloadKey((k) => k + 1)}
+              />
+            </View>
+          ) : messages === null ? (
             <View className="flex-1 px-4 pt-4 gap-3">
               <View className="self-start max-w-[60%]">
                 <Skeleton
@@ -1035,7 +1154,7 @@ export default function ChatDetail() {
           ) : (
             <FlatList
               ref={listRef}
-              data={[...(messages ?? [])].reverse()}
+              data={reversedMessages}
               keyExtractor={(m) => m.id}
               inverted
               /**
@@ -1285,11 +1404,39 @@ export default function ChatDetail() {
                         Clipboard.setString(item.content!.text!);
                         setSelectedMsgId(null);
                       } : undefined}
+                      /**
+                       * Bewerken was volledig gebouwd en nergens bereikbaar.
+                       *
+                       * `editMessage` in lib/api, `onConfirmEdit` hier, de
+                       * `EditBar` in de balk, "· bewerkt" achter de tijd, en
+                       * een `ReactionPickerModal` met een potloodregel erin —
+                       * alles compleet. Alleen werd die modal met geen
+                       * mogelijkheid geopend: `setReactionPicker` werd op zes
+                       * plekken aangeroepen en zes keer met `null`, en
+                       * `onMenuPress` stond hardgecodeerd op `undefined`.
+                       *
+                       * Wat er wél opengaat bij een tik is de inline balk
+                       * hieronder, en die had antwoorden, twee emoji's,
+                       * kopiëren en verwijderen — geen bewerken. Nu wel, op
+                       * dezelfde voorwaarde als de dode modal hem stelde:
+                       * je eigen bericht, en er moet tekst in zitten (een
+                       * foto valt niet te herschrijven).
+                       */
+                      onEdit={
+                        isMine && !isPending && !isFailed && !!item.content?.text
+                          ? () => {
+                              setEditingMessage({
+                                id: item.id,
+                                text: item.content!.text!,
+                              });
+                              setSelectedMsgId(null);
+                            }
+                          : undefined
+                      }
                       onDelete={isMine && !isPending && !isFailed ? () => {
                         onDeleteMessage(item.id);
                         setSelectedMsgId(null);
                       } : undefined}
-                      onMenuPress={undefined}
                       onReplyQuotePress={(messageId) => {
                         const msgs = messages ?? [];
                         const idx = msgs.findIndex((m) => m.id === messageId);
@@ -1824,34 +1971,6 @@ export default function ChatDetail() {
           ]}
         />
 
-        <ReactionPickerModal
-          visible={!!reactionPicker}
-          onClose={() => setReactionPicker(null)}
-          onReply={reactionPicker?.onReply ? () => {
-            reactionPicker.onReply?.();
-            setReactionPicker(null);
-          } : undefined}
-          canEdit={reactionPicker?.canEdit}
-          onEdit={reactionPicker?.canEdit ? () => {
-            const text = reactionPicker!.msg.content?.text ?? "";
-            setEditingMessage({ id: reactionPicker!.msg.id, text });
-            setReactionPicker(null);
-          } : undefined}
-          onDelete={reactionPicker?.msg.sender_id === myUserId ? () => {
-            const msgId = reactionPicker!.msg.id;
-            setReactionPicker(null);
-            onDeleteMessage(msgId);
-          } : undefined}
-          onCopy={reactionPicker?.copyText ? () => {
-            Clipboard.setString(reactionPicker!.copyText!);
-            setReactionPicker(null);
-          } : undefined}
-          onPick={(emoji) => {
-            if (reactionPicker) onToggleReaction(reactionPicker.msg.id, emoji);
-            setReactionPicker(null);
-          }}
-        />
-
         {id && (
           <VideoCallModal
             chatId={id}
@@ -1906,80 +2025,6 @@ function typingLabel(
   if (names.length === 1) return `${names[0]} is aan het typen…`;
   if (names.length === 2) return `${names[0]} en ${names[1]} zijn aan het typen…`;
   return `${names[0]} en ${names.length - 1} anderen typen…`;
-}
-
-function ReactionPickerModal({
-  visible,
-  onClose,
-  onPick,
-  onReply,
-  canEdit,
-  onEdit,
-  onDelete,
-  onCopy,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onPick: (emoji: string) => void;
-  onReply?: () => void;
-  canEdit?: boolean;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onCopy?: () => void;
-}) {
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}
-      >
-        <View
-          className="bg-paper mx-6 overflow-hidden"
-          style={{ maxWidth: 480, alignSelf: "center", width: "90%" }}
-        >
-          {/* Reacties */}
-          <View className="flex-row justify-around px-3 py-3">
-            {QUICK_REACTIONS.map((emoji) => (
-              <Pressable
-                key={emoji}
-                onPress={() => onPick(emoji)}
-                hitSlop={6}
-                className="w-12 h-12 items-center justify-center"
-              >
-                <Text style={{ fontSize: 28 }}>{emoji}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View className="h-px bg-line-paper mx-1" />
-          {/* Acties */}
-          {onReply && (
-            <Pressable onPress={onReply} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="return-down-back-outline" color={flameDeep} size={18} />
-              <Text className="text-ink font-medium ml-3">Beantwoorden</Text>
-            </Pressable>
-          )}
-          {canEdit && onEdit && (
-            <Pressable onPress={onEdit} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="pencil-outline" color={feed.ink} size={18} />
-              <Text className="text-ink font-medium ml-3">Bewerken</Text>
-            </Pressable>
-          )}
-          {onCopy && (
-            <Pressable onPress={onCopy} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="copy-outline" color={feed.ink} size={18} />
-              <Text className="text-ink font-medium ml-3">Kopiëren</Text>
-            </Pressable>
-          )}
-          {onDelete && (
-            <Pressable onPress={onDelete} className="flex-row items-center px-5 py-3.5 active:bg-paper-warm">
-              <Ionicons name="trash-outline" color={flameDeep} size={18} />
-              <Text className="font-medium ml-3" style={{ color: flameDeep }}>Verwijderen</Text>
-            </Pressable>
-          )}
-        </View>
-      </Pressable>
-    </Modal>
-  );
 }
 
 function formatChatDate(iso: string): string {
@@ -2113,8 +2158,8 @@ function MessageBubble({
   showReadReceipt,
   onReply,
   onCopy,
+  onEdit,
   onDelete,
-  onMenuPress,
   onReplyQuotePress,
   onReactionLongPress,
   selected,
@@ -2136,8 +2181,9 @@ function MessageBubble({
   showReadReceipt?: boolean;
   onReply?: () => void;
   onCopy?: () => void;
+  /** Alleen bij een eigen bericht mét tekst; zie de aanroep in renderItem. */
+  onEdit?: () => void;
   onDelete?: () => void;
-  onMenuPress?: () => void;
   onReplyQuotePress?: (messageId: string) => void;
   onReactionLongPress?: (emoji: string, userIds: string[]) => void;
   selected?: boolean;
@@ -2444,6 +2490,19 @@ function MessageBubble({
                 onPress={onCopy} className="items-center justify-center"
                 style={{ minWidth: 36, height: CONTROL_H }}>
                 <Ionicons name="copy-outline" color={feed.inkDim} size={15} />
+              </Pressable>
+            )}
+            {/* De enige ingang naar het bewerken — zie renderItem voor
+                waarom die er tot nu toe niet was. Náást verwijderen, want
+                de twee horen bij elkaar: het zijn allebei dingen die je
+                alleen met je eigen bericht kunt. */}
+            {onEdit && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Bericht bewerken"
+                onPress={onEdit} className="items-center justify-center"
+                style={{ minWidth: 36, height: CONTROL_H }}>
+                <Ionicons name="pencil-outline" color={feed.inkDim} size={15} />
               </Pressable>
             )}
             {onDelete && (

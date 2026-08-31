@@ -180,7 +180,7 @@ export default function PostDetailScreen() {
       if (error) throw error;
       if (!data) return null;
       const author = await getProfile(data.user_id);
-      const [imageUrl, albumUrls] = await Promise.all([
+      const [imageUrl, album] = await Promise.all([
         signedImageUrl("posts", data.image_path, IMG.hero),
         getAlbumUrls(String(id)),
       ]);
@@ -193,7 +193,9 @@ export default function PostDetailScreen() {
         ...normalizeRow(data),
         author,
         image_url: imageUrl,
-        ...(albumUrls.length > 0 ? { album_urls: albumUrls } : null),
+        ...(album.urls.length > 0
+          ? { album_urls: album.urls, album_paths: album.paths }
+          : null),
       } as PostWithAuthor;
     },
     enabled: !!id,
@@ -617,6 +619,7 @@ export default function PostDetailScreen() {
         // staat. Zelfde vlak, zelfde maat, alleen meer om te zien.
         <PostCarousel
           urls={post.data!.album_urls!}
+          cacheKeys={post.data!.album_paths}
           style={{ position: "absolute", width: "100%", height: "100%" }}
           contentFit={fill ? "contain" : "cover"}
         />

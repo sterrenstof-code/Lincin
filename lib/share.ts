@@ -52,15 +52,34 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
+ * Waar deze app naar buiten wijst. Op web het huidige adres, zodat een
+ * link uit een dev-omgeving ook in die omgeving uitkomt.
+ */
+function publicBase(): string {
+  return (
+    process.env.EXPO_PUBLIC_PUBLIC_URL ??
+    (typeof window !== "undefined" && (window as any).location?.origin
+      ? (window as any).location.origin
+      : "https://lincin.app")
+  );
+}
+
+/**
  * Build the public Lincin profile / add-friend URL for a given username.
  * On web we use the current origin so dev with localhost just works;
  * on native we fall back to an env-configured public URL.
  */
 export function buildAddFriendUrl(username: string): string {
-  const base =
-    process.env.EXPO_PUBLIC_PUBLIC_URL ??
-    (typeof window !== "undefined" && (window as any).location?.origin
-      ? (window as any).location.origin
-      : "https://lincin.app");
-  return `${base}/user/${encodeURIComponent(username)}`;
+  return `${publicBase()}/user/${encodeURIComponent(username)}`;
+}
+
+/**
+ * De link naar één vondst.
+ *
+ * De feed had een knop met "Delen ↗" erop en er was in de hele app geen
+ * enkele manier om een vondst te delen — die knop deed iets anders. Zie
+ * `FindHero` in components/FindBody.tsx.
+ */
+export function buildPostUrl(postId: string): string {
+  return `${publicBase()}/post/${encodeURIComponent(postId)}`;
 }

@@ -29,6 +29,7 @@ import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
 import { useHeroTag } from "@/lib/hero-transition";
 import { RichText } from "@/components/RichText";
 import { stripMarkdown } from "@/lib/richtext";
+import { buildPostUrl, shareText } from "@/lib/share";
 
 /**
  * De inhoud van één vondst, per soort anders gezet.
@@ -436,6 +437,7 @@ function ImageBody({ post, onPress }: { post: PostWithAuthor; onPress?: () => vo
         <View className="mt-4 bg-page-alt">
           <PostCarousel
             urls={post.album_urls!}
+            cacheKeys={post.album_paths}
             style={{ width: "100%", aspectRatio: 1 }}
             onPressImage={onPress}
           />
@@ -721,7 +723,12 @@ export function FindHero({
         // Een reeks foto's bij één vondst: blader erdoor in plaats van
         // alleen de omslag te tonen. De tik op een foto opent de vondst,
         // net als bij één foto.
-        <PostCarousel urls={album} style={{ flex: 1 }} onPressImage={onPress} />
+        <PostCarousel
+          urls={album}
+          cacheKeys={post.album_paths}
+          style={{ flex: 1 }}
+          onPressImage={onPress}
+        />
       ) : (
         <SafeImage
           uri={p.image}
@@ -811,13 +818,58 @@ export function FindHero({
             <Text style={[feedType.label, { color: feed.inkDim }]} numberOfLines={1}>
               {[p.time, p.source ?? p.host, p.reading].filter(Boolean).join(" · ")}
             </Text>
-            {/* Delen is één van de dingen die je met een vondst kunt doen,
-                niet dé actie: een regel, geen kader. */}
-            <Pressable onPress={onMenu ?? onPress} style={{ marginLeft: "auto" }}>
-              <Text style={[feedType.label, { color: flameDeep, fontWeight: "700" }]}>
-                Delen ↗
-              </Text>
-            </Pressable>
+            {/**
+              * Twee dingen, en ze heetten allebei "Delen ↗".
+              *
+              * Hier stond één knop met `onMenu ?? onPress` erachter. Op je
+              * eigen vondst was `onMenu` gevuld, dus "Delen" opende het
+              * optiemenu — en de tweede regel daarin is "Verwijderen". Een
+              * knop die zegt dat hij iets deelt en twee tikken later je
+              * vondst weggooit, is het gevaarlijkste soort verkeerd label.
+              *
+              * Op andermans vondst viel hij terug op `onPress`, en dan deed
+              * hij precies wat de kaart eromheen al doet: opendoen. Dus geen
+              * van beide takken deelde ook maar iets, en delen bestond in de
+              * hele app niet.
+              *
+              * Nu twee regels die zeggen wat ze zijn. Geen kader en geen
+              * vulling — delen is één van de dingen die je met een vondst
+              * kunt doen, niet dé actie (§4).
+              */}
+            <View
+              style={{
+                marginLeft: "auto",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: space.lg,
+              }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Deel deze vondst"
+                onPress={() => {
+                  void shareText({
+                    title: p.title ?? "Een vondst op Lincin",
+                    message: `${p.title ?? "Een vondst op Lincin"}: ${buildPostUrl(post.id)}`,
+                  });
+                }}
+              >
+                <Text style={[feedType.label, { color: flameDeep, fontWeight: "700" }]}>
+                  Delen ↗
+                </Text>
+              </Pressable>
+              {onMenu ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Opties voor deze vondst"
+                  onPress={onMenu}
+                >
+                  <Text style={[feedType.label, { color: feed.inkDim, fontWeight: "700" }]}>
+                    Opties
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         </SpreadBlock>
 

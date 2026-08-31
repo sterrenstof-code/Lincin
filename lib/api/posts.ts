@@ -68,6 +68,18 @@ export type PostWithAuthor = PostRow & {
    * een vondst met één of geen foto — dan zegt `image_url` alles.
    */
   album_urls?: string[];
+  /**
+   * De opslagpaden van diezelfde foto's, in dezelfde volgorde.
+   *
+   * Nodig als **cachesleutel**, niet om iets mee op te halen. `PostCarousel`
+   * had daar al een `cacheKeys`-prop voor, doorgegeven tot in `SafeImage` —
+   * en geen enkele aanroeper vulde hem. De carrousel viel dus terug op de
+   * URL zelf, en dat is precies de fout die lib/media.ts met zoveel woorden
+   * beschrijft: een signed URL krijgt bij elke ondertekening een nieuw
+   * token, dus dezelfde foto onder een andere sleutel, dus opnieuw
+   * downloaden. Bij een album van tien foto's is dat tien keer.
+   */
+  album_paths?: string[];
   /** Hoeveel emoji er onder deze vondst staan. */
   reaction_count: number;
   /** Hoe vaak deze vondst omhoog geduwd is. */
@@ -300,8 +312,10 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
  * De extra foto's van albums, in één vraag voor de hele lijst.
  * Vondsten zonder album staan er niet in — die kosten dus ook niets.
  */
-async function attachAlbums(postIds: string[]): Promise<Map<string, string[]>> {
-  const out = new Map<string, string[]>();
+async function attachAlbums(
+  postIds: string[]
+): Promise<Map<string, { urls: string[]; paths: string[] }>> {
+  const out = new Map<string, { urls: string[]; paths: string[] }>();
   if (postIds.length === 0) return out;
   const { data } = await supabase
     .from("post_images")
@@ -314,23 +328,43 @@ async function attachAlbums(postIds: string[]): Promise<Map<string, string[]>> {
   for (const row of data) {
     const url = urls.get(row.image_path);
     if (!url) continue;
-    const list = out.get(row.post_id) ?? [];
-    list.push(url);
-    out.set(row.post_id, list);
+    // URL en pad blijven per foto naast elkaar staan: de carrousel zoekt de
+    // sleutel op index op, dus een foto die overgeslagen wordt mag de twee
+    // lijsten niet uit de pas laten lopen.
+    const entry = out.get(row.post_id) ?? { urls: [], paths: [] };
+    entry.urls.push(url);
+    entry.paths.push(row.image_path);
+    out.set(row.post_id, entry);
   }
   return out;
 }
 
-/** De foto's van één album, op detailmaat. Leeg als het geen album is. */
-export async function getAlbumUrls(postId: string): Promise<string[]> {
+/**
+ * De foto's van één album, op detailmaat. Leeg als het geen album is.
+ *
+ * Geeft de paden erbij terug, om dezelfde reden als `attachAlbums`: de
+ * carrousel heeft ze nodig als cachesleutel, en zonder die sleutel haalt
+ * hij dezelfde foto opnieuw op zodra de ondertekening ververst.
+ */
+export async function getAlbumUrls(
+  postId: string
+): Promise<{ urls: string[]; paths: string[] }> {
   const { data } = await supabase
     .from("post_images")
     .select("image_path, position")
     .eq("post_id", postId)
     .order("position", { ascending: true });
-  if (!data || data.length === 0) return [];
-  const urls = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.hero);
-  return data.map((r) => urls.get(r.image_path)).filter((u): u is string => !!u);
+  if (!data || data.length === 0) return { urls: [], paths: [] };
+  const signed = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.hero);
+  const urls: string[] = [];
+  const paths: string[] = [];
+  for (const row of data) {
+    const url = signed.get(row.image_path);
+    if (!url) continue;
+    urls.push(url);
+    paths.push(row.image_path);
+  }
+  return { urls, paths };
 }
 
 /**
@@ -375,19 +409,36 @@ async function countSignals(
 async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
   if (rows.length === 0) return [];
   const authorIds = Array.from(new Set(rows.map((r) => r.user_id)));
-  const authors = await getProfiles(authorIds);
+  const postIds = rows.map((r) => r.id);
+  /**
+   * Vijf vragen die niets van elkaar weten, dus vijf vragen tegelijk.
+   *
+   * Ze stonden achter elkaar met een `await` per regel: profielen, dan
+   * beeld-URL's, dan albums, dan emoji en duwen, dan reacties. Geen van de
+   * vijf heeft de uitkomst van een van de andere nodig, dus de wachttijd
+   * was gewoon de som — vijf keer heen en weer naar Supabase voordat er ook
+   * maar één pixel op het scherm kwam. Dat is de langzaamste plek in de
+   * app, want dit is wat de feed laadt.
+   *
+   * Naast elkaar is de wachttijd die van de traagste.
+   */
+  const [authors, urlByPath, albums, signalCounts, commentCounts] =
+    await Promise.all([
+      getProfiles(authorIds),
+      attachSignedUrls(rows),
+      attachAlbums(postIds),
+      countSignals(postIds),
+      countCommentsByPost(postIds),
+    ]);
   const byId = new Map(authors.map((a) => [a.id, a]));
-  const urlByPath = await attachSignedUrls(rows);
-  const albums = await attachAlbums(rows.map((r) => r.id));
-  const signalCounts = await countSignals(rows.map((r) => r.id));
-  const commentCounts = await countCommentsByPost(rows.map((r) => r.id));
 
   return rows.map((r) => ({
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
     comment_count: commentCounts.get(r.id) ?? 0,
-    album_urls: albums.get(r.id),
+    album_urls: albums.get(r.id)?.urls,
+    album_paths: albums.get(r.id)?.paths,
     reaction_count: signalCounts.get(r.id)?.reactions ?? 0,
     boost_count: signalCounts.get(r.id)?.boosts ?? 0,
     interaction_count:
