@@ -23,6 +23,7 @@ import { FormatBar } from "@/components/FormatBar";
 import { useAuth } from "@/lib/auth/provider";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
 import { createFind, type FindKind } from "@/lib/api/posts";
+import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
 import { continueList, type EditResult, type Selection } from "@/lib/richtext";
@@ -342,7 +343,9 @@ export default function PostComposeScreen() {
       await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       safeBack(router, "/(app)/feed");
     } catch (e: any) {
-      setError(humanizeError(e));
+      setError(
+        humanizeError(e, "post-compose", "Je vondst kon niet geplaatst worden. Probeer het opnieuw.")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -806,19 +809,3 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
   );
 }
 
-function humanizeError(err: any): string {
-  const msg = err?.message ?? String(err ?? "Onbekende fout");
-  if (/schema is invalid|schema is incompatible/i.test(msg)) {
-    return "Supabase Storage gaf een schema-fout. Run `0003_storage_repair.sql` en probeer opnieuw.";
-  }
-  if (/row-level security|permission denied/i.test(msg)) {
-    return "Toegang geweigerd — controleer of de migratie is toegepast.";
-  }
-  if (/posts_kind_check|column .* does not exist/i.test(msg)) {
-    return "Migratie 0042 is nog niet toegepast in Supabase.";
-  }
-  if (/mime type/i.test(msg)) {
-    return "Dit bestandstype is niet toegelaten. Gebruik JPG, PNG, WebP of HEIC.";
-  }
-  return msg;
-}

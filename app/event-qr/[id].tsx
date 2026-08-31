@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   Text,
@@ -12,7 +11,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 
+import { DetailState } from "@/components/DetailState";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { safeBack } from "@/lib/nav";
 import { useAuth } from "@/lib/auth/provider";
 import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
@@ -55,15 +56,28 @@ export default function EventQrScreen() {
     if (await copyToClipboard(url)) flashHint("Link gekopieerd");
   }
 
-  if (event.isLoading || !event.data) {
+  /**
+   * Een schijfje in het midden van een leeg scherm, en geen uitweg.
+   *
+   * `isLoading || !data` dekte drie situaties met één beeld — nog bezig,
+   * mislukt, of het event bestaat niet meer — en bij de laatste twee bleef
+   * die spinner draaien tot je de app afsloot. Er stond geen kop boven en
+   * dus ook geen sluitknop: dit scherm wordt vanaf de eventpagina geopend,
+   * maar je komt er ook via een deep-link, en dan was er niets.
+   *
+   * `DetailState` scheidt de drie standen en brengt de balk mee. Zie
+   * components/DetailState.tsx.
+   */
+  if (event.isLoading || event.isError || !event.data) {
     return (
-      <SafeAreaView className="flex-1 bg-desk">
-        <ScreenContainer>
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color={desk.ink} />
-          </View>
-        </ScreenContainer>
-      </SafeAreaView>
+      <DetailState
+        kind={event.isLoading ? "loading" : event.isError ? "error" : "missing"}
+        subject="Dit event"
+        error={event.error}
+        onRetry={() => event.refetch()}
+        backLabel="Terug"
+        onBack={() => safeBack(router, `/event/${eventId}`)}
+      />
     );
   }
 
@@ -78,7 +92,7 @@ export default function EventQrScreen() {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Sluiten"
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, `/event/${eventId}`)}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
             <Ionicons name="close" color={feed.ink} size={20} />

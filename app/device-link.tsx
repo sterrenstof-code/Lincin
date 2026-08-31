@@ -16,18 +16,21 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { RequireSession } from "@/components/RequireSession";
 import { useAuth } from "@/lib/auth/provider";
+import { FormError } from "@/components/FormError";
+import { safeBack } from "@/lib/nav";
 import {
   cancelTransferPackage,
   createTransferPackage,
   type TransferPackage,
 } from "@/lib/crypto/transfer";
 import { copyToClipboard } from "@/lib/share";
-import { desk, feed } from "@/lib/design/type";
+import { desk, feed, flameDeep } from "@/lib/design/type";
 
 const EXPIRY_SECS = 600;
 
-export default function DeviceLinkScreen() {
+function DeviceLinkScreenBody() {
   const { session } = useAuth();
   const router = useRouter();
   const [pkg, setPkg] = useState<TransferPackage | null>(null);
@@ -53,13 +56,25 @@ export default function DeviceLinkScreen() {
       const result = await createTransferPackage(session!.user.id);
       setPkg(result);
       setSecondsLeft(EXPIRY_SECS);
-      // Afteltimer — auto-vernieuwen bij 0
+      /**
+       * Aftellen, en op nul stóppen in plaats van stilletjes vernieuwen.
+       *
+       * Hij maakte bij 0:00 vanzelf een nieuw pakket aan. Dat leek
+       * behulpzaam en was het tegenovergestelde: de link die je net
+       * gekopieerd en in een bericht geplakt had, was op dat moment dood —
+       * zonder dat er iets veranderde aan wat je op het scherm zag, want er
+       * stond gewoon weer 10:00. De ontvanger kreeg "ongeldig pakket" en jij
+       * had geen idee waarom.
+       *
+       * Nu loopt hij af en zegt het. Een nieuwe link is één tik, en dan
+       * weet je ook dat de vorige niet meer werkt.
+       */
       timerRef.current = setInterval(() => {
         setSecondsLeft((s) => {
           if (s <= 1) {
             clearInterval(timerRef.current!);
-            generate();
-            return EXPIRY_SECS;
+            timerRef.current = null;
+            return 0;
           }
           return s - 1;
         });
@@ -74,7 +89,7 @@ export default function DeviceLinkScreen() {
   async function onClose() {
     if (timerRef.current) clearInterval(timerRef.current);
     await cancelTransferPackage(session!.user.id).catch(() => {});
-    router.back();
+    safeBack(router, "/(app)/profile");
   }
 
   async function onCopy() {
@@ -112,7 +127,7 @@ export default function DeviceLinkScreen() {
           <ActivityIndicator color={desk.ink} size="large" />
         ) : error ? (
           <View className="items-center gap-4">
-            <Text className="text-red-400 text-sm text-center">{error}</Text>
+            <FormError tone="desk">{error}</FormError>
             <Pressable
               onPress={generate}
               className="bg-paper-soft active:bg-paper px-6 py-3"
@@ -137,16 +152,38 @@ export default function DeviceLinkScreen() {
               />
             </View>
 
-            {/* Afteltimer */}
+            {/* Afteltimer, en op nul een knop in plaats van een nieuwe code
+                die er stilletjes voor in de plaats komt. Zie `generate`. */}
             <View className="flex-row items-center gap-2 mb-5">
-              <Ionicons name="time-outline" color={feed.inkDim} size={15} />
-              <Text className="text-ink-muted text-sm">
-                Verloopt over{" "}
-                <Text className="text-ink font-semibold">
-                  {mins}:{secs.toString().padStart(2, "0")}
+              <Ionicons
+                name={secondsLeft === 0 ? "alert-circle-outline" : "time-outline"}
+                color={secondsLeft === 0 ? flameDeep : feed.inkDim}
+                size={15}
+              />
+              {secondsLeft === 0 ? (
+                <Text className="text-sm" style={{ color: flameDeep }}>
+                  Deze code is verlopen.
                 </Text>
-              </Text>
+              ) : (
+                <Text className="text-ink-muted text-sm">
+                  Verloopt over{" "}
+                  <Text className="text-ink font-semibold">
+                    {mins}:{secs.toString().padStart(2, "0")}
+                  </Text>
+                </Text>
+              )}
             </View>
+
+            {secondsLeft === 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Maak een nieuwe code"
+                onPress={generate}
+                className="bg-ink active:bg-ink-soft px-6 py-3 mb-5"
+              >
+                <Text className="text-cream font-semibold">Nieuwe code</Text>
+              </Pressable>
+            ) : null}
 
             {/* Kopieerknop — voor desktop-browsers die geen camera-QR-scan hebben */}
             <Pressable
@@ -169,12 +206,30 @@ export default function DeviceLinkScreen() {
               </Text>
             )}
 
+            {/* Stond er als "na 10 minuten wordt automatisch een nieuwe code
+                aangemaakt" — en dat is precies wat er niet meer gebeurt, want
+                die stille vervanging maakte de link die je net doorstuurde
+                dood zonder dat het scherm iets zei. */}
             <Text className="text-ink-muted text-xs text-center mt-4 leading-5 max-w-xs">
-              Na 10 minuten wordt automatisch een nieuwe code aangemaakt.
+              De code werkt tien minuten. Daarna moet je zelf een nieuwe maken,
+              zodat je weet dat de vorige niet meer werkt.
             </Text>
           </>
         ) : null}
       </View>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Dit scherm leest `session!.user.id` en staat in de wortelstack, die niets
+ * bewaakt — zie components/RequireSession.tsx voor waarom dat een wit scherm
+ * opleverde in plaats van een inlogpagina.
+ */
+export default function DeviceLinkScreen() {
+  return (
+    <RequireSession>
+      <DeviceLinkScreenBody />
+    </RequireSession>
   );
 }

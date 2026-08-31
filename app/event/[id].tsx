@@ -4,7 +4,7 @@ import { ResizeMode, Video } from "expo-av";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -40,6 +40,8 @@ import {
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { useHeroTag } from "@/lib/hero-transition";
+import { humanizeError } from "@/lib/errors";
+import { plural } from "@/lib/plural";
 import { safeBack } from "@/lib/nav";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
@@ -65,6 +67,24 @@ export default function EventDetailScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guestsOpen, setGuestsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  /** Hoeveel van hoeveel, tijdens een reeks uploads. */
+  const [uploadProgress, setUploadProgress] = useState<
+    { done: number; total: number } | null
+  >(null);
+  /**
+   * Of dit scherm er nog is.
+   *
+   * Een reeks van tien video's duurt lang genoeg om ondertussen weg te
+   * navigeren, en dan schreef de lus zijn voortgang naar een onderdeel dat
+   * niet meer bestond.
+   */
+  const cancelledRef = useRef(false);
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
 
   const event = useQuery({
     queryKey: ["event", eventId],
@@ -216,11 +236,31 @@ export default function EventDetailScreen() {
     });
     if (result.canceled || result.assets.length === 0) return;
 
+    /**
+     * Tien foto's, en wat er gebeurde als er één omviel.
+     *
+     * De lus zat in één `try`. Er stond bij dat "een fout op de vierde de
+     * eerste drie niet ongedaan mag maken" — dat klopte, maar het probleem
+     * lag aan de andere kant: nummer vier gooide, de `catch` ving, en
+     * nummer vijf tot en met tien werden nooit geprobeerd. Je koos tien
+     * foto's, er kwamen er drie aan, en de melding zei alleen dat er iets
+     * misging. Welke, en hoeveel er wél doorkwamen, stond nergens.
+     *
+     * Nu een `try` per bestand. De lus loopt af, en wat er daarna staat is
+     * een telling in plaats van een vermoeden.
+     *
+     * En een teller terwijl het loopt, want dit is het enige in de app dat
+     * honderd megabyte kan zijn: zonder dat is het verschil tussen "hij is
+     * bezig" en "hij hangt" niet te zien. Geen bytes maar bestanden — de
+     * voortgang ván één upload komt niet uit `contributeToEvent`, en "4 van
+     * 10" zegt hier meer dan een balk die tien keer opnieuw begint.
+     */
     setUploading(true);
-    try {
-      // Eén voor één: de bucket kijkt per bestand naar de grootte, en een
-      // fout op de vierde mag de eerste drie niet ongedaan maken.
-      for (const asset of result.assets) {
+    setUploadProgress({ done: 0, total: result.assets.length });
+    setError(null);
+    let failed = 0;
+    for (const [i, asset] of result.assets.entries()) {
+      try {
         await contributeToEvent({
           eventId,
           userId: myUserId,
@@ -229,14 +269,41 @@ export default function EventDetailScreen() {
             asset.mimeType ??
             (asset.type === "video" ? "video/mp4" : "image/jpeg"),
         });
+      } catch (e: any) {
+        failed += 1;
+        // De eerste fout bepaalt de zin; de rest is meestal dezelfde
+        // oorzaak, en drie keer hetzelfde onder elkaar helpt niemand.
+        if (failed === 1) {
+          setError(
+            humanizeError(
+              e,
+              "event-contribute",
+              "Er ging iets mis bij het plaatsen. Probeer het opnieuw."
+            )
+          );
+        }
       }
-      await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
-      await qc.invalidateQueries({ queryKey: ["event", eventId] });
-    } catch (e: any) {
-      setError(humanizeContributeError(e));
-    } finally {
-      setUploading(false);
+      // `cancelledRef` en niet een gewone vlag: als je halverwege wegloopt
+      // is dit onderdeel al ontkoppeld, en een `setState` daarna is een
+      // update op iets wat er niet meer is.
+      if (cancelledRef.current) return;
+      setUploadProgress({ done: i + 1, total: result.assets.length });
     }
+
+    const ok = result.assets.length - failed;
+    if (failed > 0) {
+      setError(
+        (prev) =>
+          `${plural(ok, "bestand", "bestanden")} toegevoegd, ${failed} niet. ` +
+          (prev ?? "Probeer de rest opnieuw.")
+      );
+    }
+
+    await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
+    await qc.invalidateQueries({ queryKey: ["event", eventId] });
+    if (cancelledRef.current) return;
+    setUploadProgress(null);
+    setUploading(false);
   }
 
   async function onShareInvite() {
@@ -387,7 +454,11 @@ export default function EventDetailScreen() {
                     { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
                   ]}
                 >
-                  {`${ev.members_count} gasten · ${ev.contributions_count} bijdragen`}
+                  {`${plural(ev.members_count, "gast", "gasten")} · ${plural(
+                    ev.contributions_count,
+                    "bijdrage",
+                    "bijdragen"
+                  )}`}
                 </Text>
 
                 {/* En wie dat dan zijn. Een aantal zegt hoevéél mensen er
@@ -473,7 +544,11 @@ export default function EventDetailScreen() {
               flexDirection: "row",
             }}
           >
-            <ActionCell label="Bewaren" onPress={onCopyInvite} icon="download-outline" />
+            {/* Heette "Bewaren", met een downloadpijl ernaast, en kopieerde
+                de uitnodigingslink naar je klembord. Drie keer hetzelfde
+                misverstand: het woord, het icoon, en het feit dat er
+                helemaal niets bewaard wordt. */}
+            <ActionCell label="Kopieer link" onPress={onCopyInvite} icon="link-outline" />
             <ActionCell label="Uitnodigen" onPress={onOpenInvite} icon="qr-code-outline" />
             {ev.is_host ? (
               <ActionCell
@@ -485,7 +560,13 @@ export default function EventDetailScreen() {
               />
             ) : null}
             <ActionCell
-              label={uploading ? "Bezig…" : "Voeg toe"}
+              label={
+                uploadProgress
+                  ? `${uploadProgress.done} van ${uploadProgress.total}`
+                  : uploading
+                    ? "Bezig…"
+                    : "Voeg toe"
+              }
               onPress={() => setAddMenuOpen(true)}
               icon="add"
               filled
@@ -846,21 +927,6 @@ function JoinRequestRow({
   );
 }
 
-function humanizeContributeError(err: any): string {
-  const msg = err?.message ?? String(err ?? "Onbekende fout");
-  // Log the technical detail for debugging, but never surface it to users.
-  console.warn("[event] contribute error:", msg);
-  if (/row-level security|permission denied/i.test(msg)) {
-    return "Kon je bijdrage niet plaatsen. Controleer of je nog deelnemer bent van dit event en probeer opnieuw.";
-  }
-  if (/mime type|not supported/i.test(msg)) {
-    return "Dit bestandstype werkt niet. Gebruik een foto (JPG, PNG, HEIC of WebP) of video (MP4, MOV of WebM).";
-  }
-  if (/exceeded|too large/i.test(msg)) {
-    return "Dit bestand is te groot. De limiet is 100 MB.";
-  }
-  return "Er ging iets mis bij het plaatsen. Probeer het opnieuw.";
-}
 
 /**
  * Eén tegel in de bijdrage-grid: foto, video (met play-badge) of tekst/link.
@@ -880,7 +946,9 @@ function ContributionTile({
     <View className="w-1/2 p-[3px]">
       <View
         className="bg-paper-warm overflow-hidden"
-        style={{ aspectRatio: 1, borderRadius: 18 }}
+        // Alles in dit systeem is vierkant (§7); dit was de enige ronding
+        // op de pagina.
+        style={{ aspectRatio: 1 }}
       >
         {c.media_type === "video" && c.image_url ? (
           <>

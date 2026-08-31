@@ -48,15 +48,31 @@ export default function LoginScreen() {
 
   const submitting = status.kind === "submitting";
 
-  function validate(needPassword: boolean): string | null {
+  /**
+   * De acht-tekens-eis geldt bij aanmelden, niet bij inloggen.
+   *
+   * `validate(true)` stond op allebei, en dat is een deur die alleen naar
+   * binnen opengaat: wie een account heeft van vóór die regel — of een
+   * wachtwoord van zeven tekens uit een wachtwoordmanager — kwam er nooit
+   * meer in. Het scherm zei "wachtwoord moet minstens 8 tekens hebben" over
+   * een wachtwoord dat gewoon klopt, en er is geen enkele manier om dat
+   * vanaf de inlogkant op te lossen.
+   *
+   * Een regel over hoe sterk een wachtwoord móet zijn hoort thuis op het
+   * moment dat je er een kiest. Bij het controleren telt alleen of hij
+   * klopt, en dat weet de server.
+   */
+  function validate(mode: "email" | "signin" | "signup"): string | null {
     if (!email.includes("@")) return "Geef een geldig e-mailadres.";
-    if (needPassword && password.length < 8)
-      return "Wachtwoord moet minstens 8 tekens hebben.";
+    if (mode === "signin" && password.length === 0)
+      return "Vul je wachtwoord in.";
+    if (mode === "signup" && password.length < 8)
+      return "Kies een wachtwoord van minstens 8 tekens.";
     return null;
   }
 
   async function onPasswordSubmit() {
-    const err = validate(true);
+    const err = validate(mode === "signin" ? "signin" : "signup");
     if (err) {
       setStatus({ kind: "error", message: err });
       return;
@@ -102,7 +118,7 @@ export default function LoginScreen() {
   }
 
   async function onMagicLink() {
-    const err = validate(false);
+    const err = validate("email");
     if (err) {
       setStatus({ kind: "error", message: err });
       return;
@@ -114,7 +130,7 @@ export default function LoginScreen() {
   }
 
   async function onResendConfirmation() {
-    const err = validate(false);
+    const err = validate("email");
     if (err) {
       setStatus({ kind: "error", message: err });
       return;
@@ -125,7 +141,10 @@ export default function LoginScreen() {
       setStatus({
         kind: "error",
         message: /rate limit|too many/i.test(error.message)
-          ? "Te veel pogingen. Wacht een uurtje, of zet Resend SMTP op in Supabase."
+          ? // Stond hier als "…of zet Resend SMTP op in Supabase" — een
+          // opdracht aan de beheerder, in het scherm van iemand die niet
+          // meer kan doen dan wachten.
+          "Te veel pogingen op dit adres. Probeer het over een uurtje opnieuw."
           : error.message,
       });
     } else {
@@ -134,7 +153,7 @@ export default function LoginScreen() {
   }
 
   async function onForgotPassword() {
-    const err = validate(false);
+    const err = validate("email");
     if (err) {
       setStatus({ kind: "error", message: err });
       return;

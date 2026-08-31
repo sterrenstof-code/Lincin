@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -16,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/lib/auth/provider";
 import { contributeToEvent } from "@/lib/api/events";
 import { creamOnDark, feed } from "@/lib/design/type";
+import { safeBack } from "@/lib/nav";
 
 /**
  * Full-screen camera met paper-cream shutter controls. Tap shutter →
@@ -109,7 +111,7 @@ export default function EventCameraScreen() {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Sluiten"
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, `/event/${eventId}`)}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
             <Ionicons name="close" color={feed.ink} size={20} />
@@ -126,18 +128,51 @@ export default function EventCameraScreen() {
             <Text className="text-ink font-bold text-xl text-center mb-1">
               Camera-toegang nodig
             </Text>
+            {/**
+              * Twee verschillende doodlopende wegen, en er stond er maar één.
+              *
+              * `canAskAgain` werd nergens gelezen. Heb je één keer geweigerd,
+              * dan doet "Geef toegang" niets meer — het systeem stelt de vraag
+              * niet nog eens — en dan is dit scherm een knop die je blijft
+              * indrukken terwijl er niets gebeurt. Precies het gedrag dat een
+              * app kapot laat lijken.
+              *
+              * En de uitleg ernaast stond alleen op iOS. Op Android en op web
+              * was het een lége string, dus de zin eindigde na "voor dit
+              * event." en er werd nergens gezegd wáár je het dan wél aanzet.
+              */}
             <Text className="text-ink-soft text-sm text-center mb-5 leading-5">
-              Geef Lincin toegang om foto's te maken voor dit event.
-              {Platform.OS === "ios"
-                ? " Op iOS kan je dit aanpassen in Instellingen → Lincin."
-                : ""}
+              {permission.canAskAgain
+                ? "Geef Lincin toegang om foto's te maken voor dit event. De foto's gaan alleen naar de gasten van dit event."
+                : Platform.OS === "web"
+                  ? "Je browser heeft de camera geblokkeerd voor deze site. Klik op het slotje in de adresbalk en zet camera weer op \"toestaan\"."
+                  : "Je hebt de camera eerder geweigerd, dus de app mag het niet nog eens vragen. Zet hem aan in de instellingen van je toestel."}
             </Text>
-            <Pressable
-              onPress={requestPermission}
-              className="bg-ink active:bg-ink-soft px-6 py-3"
-            >
-              <Text className="text-cream font-semibold">Geef toegang</Text>
-            </Pressable>
+            {/* Wat de knop kán doen hangt af van welke van de twee het is.
+                Op web bestaat `openSettings` niet — daar zit de schakelaar in
+                de browser en niet in het besturingssysteem — dus daar blijft
+                alleen de uitleg over. */}
+            {permission.canAskAgain ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Geef toegang"
+                onPress={requestPermission}
+                className="bg-ink active:bg-ink-soft px-6 py-3"
+              >
+                <Text className="text-cream font-semibold">Geef toegang</Text>
+              </Pressable>
+            ) : Platform.OS !== "web" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open de instellingen"
+                onPress={() => {
+                  Linking.openSettings().catch(() => {});
+                }}
+                className="bg-ink active:bg-ink-soft px-6 py-3"
+              >
+                <Text className="text-cream font-semibold">Open instellingen</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </SafeAreaView>
@@ -169,7 +204,7 @@ export default function EventCameraScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Camera sluiten"
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, `/event/${eventId}`)}
             className="w-11 h-11 bg-shell/70 items-center justify-center"
           >
             <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
@@ -222,7 +257,7 @@ export default function EventCameraScreen() {
             <View className="w-16 h-16 bg-cream border-2 border-shell" />
           </Pressable>
           <Text className="text-cream-soft text-xs mt-3">
-            Tap om foto te maken
+            Tik om een foto te maken
           </Text>
         </View>
       </SafeAreaView>

@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
+import { RequireSession } from "@/components/RequireSession";
 import { FieldError } from "@/components/FormError";
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
@@ -36,7 +37,7 @@ import {
 } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 
-export default function DeviceReceiveScreen() {
+function DeviceReceiveScreenBody() {
   const { session } = useAuth();
   const router = useRouter();
   // Params via deep link: lincin://device-receive?s=<secret>&u=<userId>
@@ -200,8 +201,24 @@ export default function DeviceReceiveScreen() {
     );
   }
 
+  /**
+   * Nog niets gevraagd is nog geen weigering.
+   *
+   * `!permission?.granted` was op de eerste render altijd waar — `permission`
+   * is dan `null`, want de hook heeft het systeem nog niet gesproken. Je zag
+   * dus "Camera nodig" flitsen vóórdat er iemand iets geweigerd had, en pas
+   * daarna verscheen de camera. Een scherm dat zegt dat je iets weigerde
+   * terwijl je nog niets gevraagd is, is een leugen met een knop eronder.
+   *
+   * `qr-scan.tsx` doet dit twintig regels verderop wél goed; dit is dezelfde
+   * regel.
+   */
+  if (!permission) {
+    return <View className="flex-1 bg-desk" />;
+  }
+
   // ── Camera toestemming vragen ────────────────────────────────────────────────
-  if (!permission?.granted) {
+  if (!permission.granted) {
     return (
       <SafeAreaView className="flex-1 bg-desk items-center justify-center px-6">
         <View className="w-14 h-14 bg-brand/20 items-center justify-center mb-4">
@@ -325,5 +342,18 @@ export default function DeviceReceiveScreen() {
         </View>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+/**
+ * Dit scherm leest `session!.user.id` en staat in de wortelstack, die niets
+ * bewaakt — zie components/RequireSession.tsx voor waarom dat een wit scherm
+ * opleverde in plaats van een inlogpagina.
+ */
+export default function DeviceReceiveScreen() {
+  return (
+    <RequireSession>
+      <DeviceReceiveScreenBody />
+    </RequireSession>
   );
 }

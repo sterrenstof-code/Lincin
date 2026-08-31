@@ -6,6 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 
+import { RequireSession } from "@/components/RequireSession";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { getProfile } from "@/lib/api/profiles";
@@ -15,7 +16,7 @@ import { safeBack } from "@/lib/nav";
 
 const QR_SIZE = 260;
 
-export default function QRCodeScreen() {
+function QRCodeScreenBody() {
   const router = useRouter();
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -37,9 +38,26 @@ export default function QRCodeScreen() {
     setTimeout(() => setCopyHint(null), 1600);
   }
 
+  /**
+   * Kopiëren en delen zeggen allebei óf het gelukt is.
+   *
+   * `lib/share.ts` geeft nadrukkelijk een uitkomst terug — `"shared"`,
+   * `"copied"`, `"cancelled"`, `"failed"` — en beide functies keken alleen
+   * naar één van de vier. Bij `"failed"` (een klembord dat geweigerd wordt,
+   * een browser zonder rechten) gebeurde er dus letterlijk niets: je tikt op
+   * "Kopieer link", er verschijnt geen bevestiging, en je weet niet of er nu
+   * wel of niet iets in je klembord staat. Dan plak je het en dan blijkt het.
+   *
+   * `"cancelled"` blijft stil — dat is een keuze van de gebruiker en geen
+   * mislukking.
+   */
   async function onCopyUrl() {
     if (!addUrl) return;
-    if (await copyToClipboard(addUrl)) flashHint("Link gekopieerd");
+    flashHint(
+      (await copyToClipboard(addUrl))
+        ? "Link gekopieerd"
+        : "Kopiëren lukte niet — de link staat hieronder."
+    );
   }
 
   async function onShare() {
@@ -49,6 +67,7 @@ export default function QRCodeScreen() {
       message: `Voeg me toe op Lincin: ${addUrl}`,
     });
     if (r === "copied") flashHint("Link gekopieerd");
+    else if (r === "failed") flashHint("Delen lukte niet — de link staat hieronder.");
   }
 
   return (
@@ -127,5 +146,18 @@ export default function QRCodeScreen() {
       </View>
       </ScreenContainer>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Dit scherm leest `session!.user.id` en staat in de wortelstack, die niets
+ * bewaakt — zie components/RequireSession.tsx voor waarom dat een wit scherm
+ * opleverde in plaats van een inlogpagina.
+ */
+export default function QRCodeScreen() {
+  return (
+    <RequireSession>
+      <QRCodeScreenBody />
+    </RequireSession>
   );
 }

@@ -76,6 +76,7 @@ import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { asideTag, useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
+import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
@@ -328,7 +329,9 @@ export default function PostDetailScreen() {
       });
       qc.invalidateQueries({ queryKey: ["feed", myUserId] });
     } catch (e: any) {
-      setCommentError(humanizeCommentError(e));
+      setCommentError(
+        humanizeError(e, "post-comment", "Je reactie kon niet geplaatst worden. Probeer het opnieuw.")
+      );
     } finally {
       setSending(false);
     }
@@ -340,7 +343,9 @@ export default function PostDetailScreen() {
       await deleteEntityComment(commentId);
       setComments((prev) => prev?.filter((c) => c.id !== commentId) ?? null);
     } catch (e: any) {
-      setCommentError(humanizeCommentError(e));
+      setCommentError(
+        humanizeError(e, "post-comment", "Je reactie kon niet geplaatst worden. Probeer het opnieuw.")
+      );
     }
   }
 
@@ -1598,19 +1603,6 @@ function CommentRow({
   );
 }
 
-function humanizeCommentError(err: any): string {
-  const code = err?.code ?? "";
-  const msg = err?.message ?? String(err ?? "Onbekende fout");
-  if (code === "42P01" || /relation .* does not exist/i.test(msg))
-    return "De `entity_comments` tabel bestaat nog niet. Run migratie 0038_entity_comments.sql.";
-  if (code === "42501" || /row-level security/i.test(msg))
-    return "Server-beveiliging weigerde de reactie. Check migratie 0038.";
-  if (code === "PGRST116" || code === "PGRST204")
-    return "De reactie werd ingevoerd maar de server gaf hem niet terug — waarschijnlijk een RLS-issue.";
-  if (/network|fetch/i.test(msg))
-    return "Geen netwerkverbinding. Probeer opnieuw.";
-  return msg;
-}
 
 const POST_EMOJIS = [
   "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",

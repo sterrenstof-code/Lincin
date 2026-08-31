@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
+import { safeBack } from "@/lib/nav";
 import { contributeToEvent } from "@/lib/api/events";
 import { feed } from "@/lib/design/type";
 
@@ -46,7 +47,7 @@ export default function EventLinkComposeScreen() {
       });
       await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
       await qc.invalidateQueries({ queryKey: ["event", eventId] });
-      router.back();
+      safeBack(router, `/event/${eventId}`);
     } catch (e: any) {
       setError(e?.message ?? "Kon link niet toevoegen.");
     } finally {
@@ -62,7 +63,7 @@ export default function EventLinkComposeScreen() {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Sluiten"
-            onPress={() => router.back()}
+            onPress={() => safeBack(router, `/event/${eventId}`)}
             className="w-9 h-9 bg-paper-soft items-center justify-center"
           >
             <Ionicons name="close" color={feed.ink} size={20} />

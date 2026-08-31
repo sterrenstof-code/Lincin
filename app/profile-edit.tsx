@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as ImagePicker from "expo-image-picker";
 
+import { RequireSession } from "@/components/RequireSession";
 import { Avatar } from "@/components/Avatar";
 import { FieldError, FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -28,9 +29,10 @@ import {
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 
-export default function ProfileEditScreen() {
+function ProfileEditScreenBody() {
   const router = useRouter();
   const qc = useQueryClient();
   const { session, setPassword } = useAuth();
@@ -42,6 +44,8 @@ export default function ProfileEditScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Waarom het formulier er niet is; zie de laadhaak hieronder. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,17 +56,58 @@ export default function ProfileEditScreen() {
     null | { ok: true } | { ok: false; message: string }
   >(null);
 
+  /**
+   * Je profiel ophalen — en waarom een mislukking hier gevaarlijk is.
+   *
+   * ---------------------------------------------------------------
+   * TWEE DINGEN GINGEN MIS
+   * ---------------------------------------------------------------
+   * De IIFE had geen `catch`. Viel `getProfile` om, dan werd `setLoading`
+   * nooit bereikt en bleef er een schijfje draaien tot je de app afsloot.
+   *
+   * En het stille geval was erger. Kwam er `null` terug — een rij die de
+   * RLS niet teruggeeft, een net aangemaakt account — dan sloeg de `if`
+   * over, `loading` ging op `false`, en het formulier verscheen met lege
+   * velden. Die velden zíjn de invoer: op "Bewaren" drukken had dan je
+   * echte gebruikersnaam, weergavenaam en bio overschreven met niets, en
+   * `updateMyProfile` weet niet dat het formulier nooit iets ingelezen had.
+   * Eén hapering in het netwerk en je profiel is leeg.
+   *
+   * Vandaar drie standen in plaats van twee, en "Bewaren" bestaat alleen in
+   * de derde.
+   */
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const p = await getProfile(myUserId);
-      if (p) {
+      try {
+        const p = await getProfile(myUserId);
+        if (cancelled) return;
+        if (!p) {
+          setLoadError(
+            "Je profiel kon niet gelezen worden. Bewaren zou nu je bestaande gegevens overschrijven, dus dat kan even niet."
+          );
+          return;
+        }
         setUsername(p.username);
         setDisplayName(p.display_name ?? "");
         setBio(p.bio ?? "");
         setAvatarUrl(p.avatar_url);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          humanizeError(
+            e,
+            "profile-edit",
+            "Je profiel kon niet geladen worden. Probeer het opnieuw."
+          )
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [myUserId]);
 
   async function onPickAvatar() {
@@ -161,6 +206,12 @@ export default function ProfileEditScreen() {
         {loading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={desk.ink} />
+          </View>
+        ) : loadError ? (
+          /* Geen leeg formulier tonen dat je profiel kan wissen zodra je op
+             Bewaren drukt — zie de laadhaak. */
+          <View className="flex-1 items-center justify-center px-6">
+            <FormError tone="desk">{loadError}</FormError>
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
@@ -332,5 +383,18 @@ export default function ProfileEditScreen() {
       </KeyboardAvoidingView>
       </ScreenContainer>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Dit scherm leest `session!.user.id` en staat in de wortelstack, die niets
+ * bewaakt — zie components/RequireSession.tsx voor waarom dat een wit scherm
+ * opleverde in plaats van een inlogpagina.
+ */
+export default function ProfileEditScreen() {
+  return (
+    <RequireSession>
+      <ProfileEditScreenBody />
+    </RequireSession>
   );
 }

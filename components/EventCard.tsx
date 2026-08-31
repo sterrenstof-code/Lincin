@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { useWide } from "@/components/Editorial";
 import { eventStatusLabel, type EventWithMeta } from "@/lib/api/events";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
+import { plural } from "@/lib/plural";
 import { feed, FEED_BORDER, feedType, flame, flameDeep } from "@/lib/design/type";
 
 /**
@@ -129,9 +130,14 @@ export function EventCard({
               {dateLabel}
             </Text>
             <Text style={[feedType.label, { color: feed.textDim, marginTop: 2 }]}>
-              {`${timeLabel} · ${event.members_count} ${
-                event.members_count === 1 ? "gast" : "gasten"
-              } · ${event.contributions_count} foto's`}
+              {/* `${n} foto's` gaf "1 foto's". Eén regel in dit bestand deed
+                  het wél goed, met een ternary ter plekke — zie lib/plural.ts
+                  voor waarom dat nu op één plek staat. */}
+              {[
+                timeLabel,
+                plural(event.members_count, "gast", "gasten"),
+                plural(event.contributions_count, "foto", "foto's"),
+              ].join(" · ")}
             </Text>
             {event.is_host ? (
               <Text
