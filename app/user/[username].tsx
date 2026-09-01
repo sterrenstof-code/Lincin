@@ -11,6 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
 import { PostGrid } from "@/components/PostGrid";
+import { ProfileHeroPlate, ProfileLinkList } from "@/components/ProfileHeader";
+import { RichText } from "@/components/RichText";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
@@ -217,7 +219,17 @@ export default function UserProfileScreen() {
             </>
           ) : (
             <>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.lg }}>
+              {/* Alleen als hij er is: op andermans profiel is er niets te
+                  kiezen, dus een leeg vak zou alleen maar ruimte kosten. */}
+              <ProfileHeroPlate uri={profile.data?.hero_url} userId={profile.data?.id} />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: space.lg,
+                  marginTop: profile.data?.hero_url ? space.lg : 0,
+                }}
+              >
                 <Avatar
                   name={heroName}
                   avatarUrl={profile.data?.avatar_url}
@@ -244,15 +256,17 @@ export default function UserProfileScreen() {
                   >
                     @{profile.data?.username ?? username}
                   </Text>
+                  {/* De bio draagt opmaak sinds 0054. Als platte `Text`
+                      stonden de sterretjes er letterlijk in. */}
                   {profile.data?.bio ? (
-                    <Text
-                      style={[
-                        feedType.body,
-                        { color: feed.inkDim, marginTop: space.sm, maxWidth: 520 },
-                      ]}
-                    >
-                      {profile.data.bio}
-                    </Text>
+                    <View style={{ marginTop: space.sm, maxWidth: 520 }}>
+                      <RichText
+                        text={profile.data.bio}
+                        style={feedType.body}
+                        color={feed.inkDim}
+                        dimColor={feed.inkDim}
+                      />
+                    </View>
                   ) : null}
                 </View>
               </View>
@@ -278,6 +292,9 @@ export default function UserProfileScreen() {
               )}
             </>
           )}
+          {profile.data?.links?.length ? (
+            <ProfileLinkList links={profile.data.links} />
+          ) : null}
         </View>
 
         {/* Posts */}
@@ -295,6 +312,9 @@ export default function UserProfileScreen() {
             <PostGrid
               posts={posts.data}
               loading={posts.isLoading}
+              // Elke tegel hier is van dezelfde persoon; zijn naam eronder
+              // zetten is dan geen informatie meer. Zie `bare` in PostGrid.
+              bare
               emptyLabel={
                 relation.kind === "self"
                   ? "Je hebt nog niks gedeeld. Plaats je eerste vondst vanaf de feed."

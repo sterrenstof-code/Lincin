@@ -2,19 +2,26 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, Text, View } from "react-native";
+import { Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
+import { InteractionSummaryCard } from "@/components/InteractionSummary";
 import { PostGrid } from "@/components/PostGrid";
-import { Avatar } from "@/components/Avatar";
+import { ProfileHeader } from "@/components/ProfileHeader";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { RubricHead } from "@/components/PageHead";
-import { creamOnDark, feed, feedType, flameDeep, space } from "@/lib/design/type";
+import { feed, feedType, flameDeep, space } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
-import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
+import {
+  getProfile,
+  updateMyProfile,
+  uploadAvatar,
+  uploadProfileHero,
+} from "@/lib/api/profiles";
+import { getInteractionSummary } from "@/lib/api/interactions";
 import { listUserPosts } from "@/lib/api/posts";
 import { uriToBytes } from "@/lib/crypto/file";
 import { bytesToBase64 } from "@/lib/crypto/base64";
@@ -43,6 +50,7 @@ export default function ProfileScreen() {
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [heroUploading, setHeroUploading] = useState(false);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
@@ -54,6 +62,18 @@ export default function ProfileScreen() {
     queryKey: ["posts-by-user", myUserId],
     queryFn: () => listUserPosts(myUserId, 60),
     enabled: !!myUserId,
+  });
+
+  /**
+   * Hoeveel je de laatste maand gedaan hebt. Eigen query en geen onderdeel
+   * van `profile`: hij is trager (zes tellingen), hij mag falen zonder de
+   * kop mee te nemen, en hij hoeft niet opnieuw als je je bio aanpast.
+   */
+  const interactions = useQuery({
+    queryKey: ["interaction-summary", myUserId],
+    queryFn: () => getInteractionSummary(myUserId, 30),
+    enabled: !!myUserId,
+    staleTime: 5 * 60_000,
   });
 
   const profile = useQuery({
@@ -120,10 +140,43 @@ export default function ProfileScreen() {
     setPushBusy(false);
   }
 
-  const username = profile.data?.username ?? "";
-  const displayName = profile.data?.display_name;
-  const heroName = displayName ?? username;
-  const avatarUrl = profile.data?.avatar_url ?? null;
+
+  /**
+   * De plaat. Bijsnijden op 3:1 en niet vierkant: dat is de verhouding
+   * waarin hij getoond wordt, en iemand een vierkant laten kiezen dat
+   * daarna tot een strook wordt geknipt is de bijsnijder twee keer laten
+   * doen — één keer voor niets.
+   */
+  async function onPickHero() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [3, 1],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    await uploadPickedHero(result.assets[0].uri, result.assets[0].mimeType);
+  }
+
+  /** Apart van het kiezen, om dezelfde reden als bij de avatar hieronder. */
+  async function uploadPickedHero(uri: string, mimeType?: string | null) {
+    setHeroUploading(true);
+    try {
+      const bytes = await uriToBytes(uri);
+      const newUrl = await uploadProfileHero(myUserId, bytes, mimeType ?? "image/jpeg");
+      await updateMyProfile(myUserId, { hero_url: newUrl });
+      await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
+    } catch {
+      toast.error("De plaat kon niet geüpload worden.", {
+        action: {
+          label: "Opnieuw",
+          onPress: () => uploadPickedHero(uri, mimeType),
+        },
+      });
+    } finally {
+      setHeroUploading(false);
+    }
+  }
 
   async function onPickAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -189,73 +242,79 @@ export default function ProfileScreen() {
         }
         contentStyle={{ paddingVertical: 20, paddingBottom: 60 }}
       >
-        {/* ---- Hero on shell ---- */}
-        <View className="items-center mt-2 mb-6">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Profielfoto wijzigen"
-            onPress={onPickAvatar} className="relative">
-            <Avatar name={heroName} avatarUrl={avatarUrl} size="hero" tint="warm" />
-            <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
-              {avatarUploading
-                ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
-                : <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
-              }
-            </View>
-          </Pressable>
-          {displayName ? (
+        {/* ---- De kop: plaat, avatar, bio, links ---- */}
+        {/*
+            Stond hier uitgeschreven en op andermans profiel nóg een keer,
+            met een eigen opbouw. Nu één onderdeel voor allebei; het
+            verschil is alleen wat je mag — zie components/ProfileHeader.tsx.
+        */}
+        <ProfileHeader
+          profile={profile.data}
+          email={session?.user.email}
+          heroBusy={heroUploading}
+          avatarBusy={avatarUploading}
+          onPickHero={onPickHero}
+          onPickAvatar={onPickAvatar}
+          onEditBio={() => router.push("/profile-edit")}
+        />
+
+        {/*
+            Op een breed scherm staat het overzicht náást je vondsten en
+            niet eronder: het is een samenvatting van hetzelfde, en een
+            samenvatting die je pas ziet nadat je langs zestig tegels
+            gescrold bent vat niets meer samen. Op een telefoon is er geen
+            kolom naast, en dan gaat hij erbóven — nog steeds vóór de
+            tegels, want dat is waar hij thuishoort.
+        */}
+        <View
+          style={{
+            // `column-reverse` op smal, en dat is geen truc: het overzicht
+            // staat in de opmaak ná het raster omdat het op breed rechts
+            // hoort, maar het hoort er vóór te staan als er geen kolom
+            // naast is. RN kent geen `order`, dus de richting doet het.
+            flexDirection: wide ? "row" : "column-reverse",
+            gap: space.section,
+            marginTop: space.section,
+          }}
+        >
+          <View style={{ flex: wide ? 1 : undefined }}>
             <Text
               style={[
-                feedType.tagline,
-                { color: feed.ink, marginTop: space.md, textAlign: "center" },
+                feedType.kicker,
+                { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
               ]}
             >
-              {displayName}
+              JOUW VONDSTEN
             </Text>
-          ) : null}
-          <Text style={[feedType.body, { color: feed.inkDim, marginTop: 2 }]}>
-            @{username || "…"}
-          </Text>
-          <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.xs }]}>
-            {session?.user.email}
-          </Text>
-          {profile.data?.bio ? (
-            <Text className="text-ink-soft text-sm leading-5 text-center mt-3 px-6" style={{ maxWidth: 460 }}>
-              {profile.data.bio}
-            </Text>
-          ) : (
-            <Pressable onPress={() => router.push("/profile-edit")} className="mt-3">
-              <Text className="text-ink-muted text-xs underline">Voeg een bio toe</Text>
-            </Pressable>
-          )}
+            {/* "Plaats je eerste vondst vanaf de feed" noemde een scherm en
+                gaf er geen ingang bij — terwijl dit de pagina over jouw werk
+                is en de composer één tik verderop ligt. */}
+            <PostGrid
+              posts={myPosts.data}
+              loading={myPosts.isLoading}
+              // Onder élke tegel hier staat dezelfde naam: die van jou. Dan
+              // is een naam op de tegel geen informatie maar een sluier
+              // over de foto. Zie `bare` in components/PostGrid.tsx.
+              bare
+              emptyTitle="Je hebt nog niets gedeeld"
+              emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto. Wat je hier deelt komt in de feed van je lincs."
+              emptyAction={{
+                label: "Deel je eerste vondst",
+                onPress: () => router.push("/post-compose"),
+              }}
+            />
+          </View>
+
+          <View style={{ width: wide ? 300 : undefined }}>
+            <InteractionSummaryCard
+              data={interactions.data}
+              loading={interactions.isLoading}
+              error={interactions.isError ? interactions.error : undefined}
+              onRetry={() => interactions.refetch()}
+            />
+          </View>
         </View>
 
-        {/* ---- Alles wat je gedeeld hebt ---- */}
-        {/*
-            Hier stond het "Link up"-blok: scan een linc, deel je linc,
-            nodig iemand uit. Dat hoort bij Vrienden — daar staan die drie
-            knoppen ook al — en niet op de pagina over je account. Wat hier
-            wél hoort is je eigen werk: het raster van je vondsten, met
-            dezelfde beweging naar de volledige plaat als vanuit de feed.
-        */}
-        <Text
-          style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg }]}
-        >
-          JOUW VONDSTEN
-        </Text>
-        {/* "Plaats je eerste vondst vanaf de feed" noemde een scherm en gaf
-            er geen ingang bij — terwijl dit de pagina over jouw werk is en
-            de composer één tik verderop ligt. */}
-        <PostGrid
-          posts={myPosts.data}
-          loading={myPosts.isLoading}
-          emptyTitle="Je hebt nog niets gedeeld"
-          emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto. Wat je hier deelt komt in de feed van je lincs."
-          emptyAction={{
-            label: "Deel je eerste vondst",
-            onPress: () => router.push("/post-compose"),
-          }}
-        />
 
         {/* ---- Profile actions ---- */}
         <RubricHead label="Profiel" style={{ marginTop: space.xxl }} />

@@ -78,8 +78,15 @@ export type Database = {
           created_at: string;
           /** 0035_last_seen — voedt de activiteitsindicator. */
           last_seen_at: string | null;
-          /** 0044_bio_follows_boosts — vrije tekst op je profiel. */
+          /**
+           * 0044_bio_follows_boosts — vrije tekst op je profiel.
+           * Sinds 0054 markdown; zie lib/richtext.ts.
+           */
           bio: string | null;
+          /** 0054_profile_hero_links — de plaat bovenaan. */
+          hero_url: string | null;
+          /** 0054_profile_hero_links — hoogstens tien {label, url}. */
+          links: { label: string; url: string }[];
         };
         Insert: {
           id: string;
@@ -91,6 +98,8 @@ export type Database = {
           created_at?: string;
           last_seen_at?: string | null;
           bio?: string | null;
+          hero_url?: string | null;
+          links?: { label: string; url: string }[];
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];

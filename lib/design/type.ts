@@ -435,6 +435,22 @@ export let announce = color("announce");
 export let announceDeep = color("announceDeep");
 
 /**
+ * Het blauw van het merk.
+ *
+ * §2 hield dit bij het logo en de e2e-badge, en dat was juist zolang het
+ * nergens anders nodig was. Het profielraster maakt er een derde gebruik
+ * van: het stipje op een tegel die méér draagt dan zijn foto (zie
+ * `components/PostGrid.tsx`).
+ *
+ * Waarom niet flame of announce, de twee accenten die er al waren: die
+ * zeggen allebei iets. Rood is de redactie — citaten, indexcijfers — en
+ * oranje is "hier kun je op drukken". Het stipje zegt geen van beide; het
+ * is een voetnootteken. Blauw is de enige kleur in dit palet die nergens
+ * anders een betekenis draagt, en dat is precies waarom het geschikt is.
+ */
+export let brand = color("brand");
+
+/**
  * Breekpunt waarboven de tweekolomsstructuur van het affiche aan gaat.
  *
  * Stond op 900 en dat gaf een dode zone precies waar de meeste tablets
@@ -683,6 +699,7 @@ if (Platform.OS !== "web") {
     flameDeep = color("flameDeep");
     announce = color("announce");
     announceDeep = color("announceDeep");
+    brand = color("brand");
     feed = {
       lav: color("page"),
       ink: color("ink"),

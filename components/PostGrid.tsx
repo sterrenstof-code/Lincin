@@ -7,9 +7,9 @@ import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import { Skeleton } from "@/components/Skeleton";
 import {
+  brand,
   creamOnDark,
   feed,
-  FEED_BORDER,
   feedType,
   flameDeep,
   rule,
@@ -32,20 +32,55 @@ import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
  * groeit een tegel op beide plekken uit tot de volledige plaat — dezelfde
  * beweging als vanuit de feed.
  *
- * De cel is vierkant en de tegels raken elkaar met één maat ertussen; het
- * raster is de structuur, niet de kaartjes.
+ * ---------------------------------------------------------------
+ * HET RASTER IS HET BEELD
+ * ---------------------------------------------------------------
+ * De tegels stonden op een zestiende marge met een eigen omlijning
+ * eromheen — zestien punten lucht en een lijn tussen elke twee foto's.
+ * Op een profiel is dat de verkeerde nadruk: daar kijk je naar een reeks,
+ * en een reeks ontstaat pas als de beelden elkaar raken. Zodra er lucht
+ * tussen zit lees je losse kaartjes en niet één blad.
+ *
+ * Nu een naad van twee punten. Genoeg om te zien dát het aparte tegels
+ * zijn, te weinig om ze uit elkaar te trekken — en de omlijning kan weg,
+ * want de naad zelf is de lijn. Dat is dezelfde redenering als §4c: een
+ * cel tussen twee lijnen ís de pagina, een kaart met een kader ligt erop.
+ *
+ * ---------------------------------------------------------------
+ * HET STIPJE
+ * ---------------------------------------------------------------
+ * Zonder tekst op de tegel is er niets dat verklapt of er méér achter zit
+ * dan de foto — een toelichting, een reeks, een link. Het stipje
+ * linksboven zegt dat, en verder niets. Het staat er dus ook níet als er
+ * niets achter zit: een markering die altijd brandt is geen markering
+ * maar decoratie, en dan is de tegel zonder toelichting de enige die
+ * liegt.
  */
+
+/** De naad tussen twee tegels. Zie de kop van dit bestand. */
+const SEAM = 2;
 export function PostGrid({
   posts,
   loading,
   emptyTitle = "Nog niets gedeeld",
   emptyLabel,
   emptyAction,
+  bare = false,
 }: {
   posts: PostWithAuthor[] | undefined;
   loading?: boolean;
   emptyTitle?: string;
   emptyLabel: string;
+  /**
+   * Alleen beeld, met het stipje als enige markering.
+   *
+   * Op een profiel staat onder élke tegel dezelfde naam — die van degene
+   * wiens profiel je bekijkt — en dan is een naam op de tegel geen
+   * informatie maar ruis. In de feed ligt dat andersom: daar kijk je naar
+   * wat verschillende mensen deelden, en is de naam het verschil tussen
+   * bladeren en herkennen. Vandaar een schakelaar en geen keuze.
+   */
+  bare?: boolean;
   /**
    * De weg naar buiten als het raster leeg is. Optioneel, want op andermans
    * profiel is er niets dat jíj kunt doen — zie components/EmptyState.tsx.
@@ -55,14 +90,15 @@ export function PostGrid({
   const router = useRouter();
   const { width } = useWindowDimensions();
   // Een tegel mag nooit smaller dan ongeveer 150px worden: daaronder is een
-  // foto geen foto meer maar een kleurvlak.
-  const columns = width < 560 ? 2 : width < 900 ? 3 : 4;
+  // foto geen foto meer maar een kleurvlak. Drie is de maat waarop een
+  // reeks nog als reeks leest; vier pas als er echt breedte is.
+  const columns = width < 560 ? 2 : width < 1100 ? 3 : 4;
 
   if (loading) {
     return (
-      <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -space.xs }}>
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <View key={i} style={{ width: `${100 / columns}%`, padding: space.xs }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -SEAM / 2 }}>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <View key={i} style={{ width: `${100 / columns}%`, padding: SEAM / 2 }}>
             <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
           </View>
         ))}
@@ -80,10 +116,14 @@ export function PostGrid({
   }
 
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -space.xs }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -SEAM / 2 }}>
       {posts.map((post) => (
-        <View key={post.id} style={{ width: `${100 / columns}%`, padding: space.xs }}>
-          <GridCell post={post} onPress={() => router.push(`/post/${post.id}`)} />
+        <View key={post.id} style={{ width: `${100 / columns}%`, padding: SEAM / 2 }}>
+          <GridCell
+            post={post}
+            bare={bare}
+            onPress={() => router.push(`/post/${post.id}`)}
+          />
         </View>
       ))}
     </View>
@@ -100,32 +140,105 @@ export function PostGrid({
  * twee elementen met dezelfde naam laat de browser de hele overgang
  * overslaan. Zie lib/hero-transition.web.ts.
  */
-function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void }) {
+function GridCell({
+  post,
+  bare,
+  onPress,
+}: {
+  post: PostWithAuthor;
+  bare: boolean;
+  onPress: () => void;
+}) {
   const tag = useHeroTag(post.id);
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={gridCellLabel(post)}
       onPress={() => withHeroTransition(onPress)}
       style={{
         width: "100%",
         aspectRatio: 1,
-        // Geen vulling meer. Een tegel zonder foto was een grijs vlak met
-        // tekst erop; nu draagt de omlijning hem en staat de tekst op het
-        // blad zelf. Bij een foto maakt het niets uit — die dekt de tegel —
-        // en tijdens het laden vult SafeImage zijn eigen achtergrond.
+        // Geen vulling en geen omlijning meer. De omlijning zat hier omdat
+        // de tegels op een marge stonden en zonder lijn in de lucht
+        // hingen; nu ze elkaar raken ís de naad de lijn, en een kader
+        // daarbovenop leest als een dubbele rand (§4). Een tegel zonder
+        // foto houdt zijn vlak, want daar staat tekst op.
         backgroundColor: feed.post,
-        borderWidth: FEED_BORDER,
-        borderColor: rule.soft,
+        overflow: "hidden",
         // Ankerpunt van de morph: deze tegel groeit uit tot de plaat op de
         // detailpagina.
         ...tag,
       }}
     >
-      <Cell post={post} />
+      <Cell post={post} bare={bare} />
+      {hasMoreThanImage(post) ? <MoreDot /> : null}
     </Pressable>
   );
 }
 
-function Cell({ post }: { post: PostWithAuthor }) {
+/**
+ * Zit er meer achter deze tegel dan wat je ziet?
+ *
+ * Een foto met een toelichting, een reeks van meer dan één, een link, een
+ * stuk tekst. Alle vier zijn ze een reden om erop te drukken, en geen van
+ * vieren is te zien aan het beeld.
+ *
+ * Een tegel zónder foto valt hier buiten: die tóónt zijn tekst al, dus
+ * daar zou het stipje herhalen wat er letterlijk staat.
+ */
+function hasMoreThanImage(post: PostWithAuthor): boolean {
+  if (!post.image_url) return false;
+  return (
+    !!post.caption?.trim() ||
+    !!post.body_text?.trim() ||
+    !!post.link_url ||
+    (post.album_urls?.length ?? 0) > 1
+  );
+}
+
+/** Wat een schermlezer van een tegel hoort. */
+function gridCellLabel(post: PostWithAuthor): string {
+  const what =
+    post.caption?.trim() ||
+    post.source_title?.trim() ||
+    stripMarkdown(post.body_text).slice(0, 60) ||
+    "Vondst";
+  return hasMoreThanImage(post) ? `${what} — meer info` : what;
+}
+
+/**
+ * Het stipje linksboven.
+ *
+ * Het enige ronde ding in een raster van rechte hoeken, en daarom leest
+ * het als een teken en niet als nóg een vlak — dezelfde reden waarom
+ * `Disc` in de rasterlaag rond is (§4c). Geen `Pressable`: de hele tegel
+ * is al de knop, en een aanraakvlak van tien punten bovenop een knop van
+ * driehonderd is een val, geen extra.
+ *
+ * De witte ring eromheen is er omdat het stipje op élke foto moet landen —
+ * op een lichte lucht verdwijnt blauw zonder rand net zo hard als op een
+ * donkere.
+ */
+function MoreDot() {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: space.sm,
+        left: space.sm,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: brand,
+        borderWidth: 1.5,
+        borderColor: creamOnDark.DEFAULT,
+      }}
+    />
+  );
+}
+
+function Cell({ post, bare }: { post: PostWithAuthor; bare: boolean }) {
   const album = post.album_urls ?? [];
 
   if (post.image_url) {
@@ -140,10 +253,14 @@ function Cell({ post }: { post: PostWithAuthor }) {
           fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
-        {/* Ook in het strakke raster staat erbij van wie het is en waar het
-            over gaat. Alleen beeld is mooi als je zelf de maker bent en elke
-            foto herkent; hier kijk je naar wat vrienden delen, en dan is een
-            naam het verschil tussen bladeren en herkennen. */}
+        {/* In de feed staat erbij van wie het is en waar het over gaat:
+            daar kijk je naar wat verschillende mensen deelden, en dan is
+            een naam het verschil tussen bladeren en herkennen.
+            Op een profiel is die naam op élke tegel dezelfde, en dan is
+            hij geen informatie meer maar een sluier over de foto. Zie
+            `bare` bovenaan. */}
+        {bare ? null : (
+          <>
         <Scrim height={104} strength={0.68} steps={10} />
         <View
           style={{
@@ -193,6 +310,8 @@ function Cell({ post }: { post: PostWithAuthor }) {
             </Text>
           ) : null}
         </View>
+          </>
+        )}
       </>
     );
   }

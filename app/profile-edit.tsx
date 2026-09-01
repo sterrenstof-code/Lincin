@@ -18,14 +18,20 @@ import * as ImagePicker from "expo-image-picker";
 
 import { RequireSession } from "@/components/RequireSession";
 import { Avatar } from "@/components/Avatar";
+import { CharCount } from "@/components/CharCount";
+import { FormatBar } from "@/components/FormatBar";
+import { IconButton } from "@/components/IconButton";
 import { FieldError, FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
+  MAX_PROFILE_LINKS,
+  normalizeLinks,
   updateMyProfile,
   uploadAvatar,
   validateUsername,
+  type ProfileLink,
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
@@ -41,6 +47,16 @@ function ProfileEditScreenBody() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
+  /**
+   * Waar de cursor staat in de bio, en waar hij na een opmaakknop hóórt te
+   * staan. Twee stukjes staat en niet één, want ze bewegen de andere kant
+   * op — dezelfde opbouw als in de composer (`app/post-compose.tsx`).
+   */
+  const [bioSelection, setBioSelection] = useState({ start: 0, end: 0 });
+  const [forcedBioSelection, setForcedBioSelection] = useState<
+    { start: number; end: number } | null
+  >(null);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
   const displayNameRef = useRef<TextInput>(null);
@@ -93,6 +109,7 @@ function ProfileEditScreenBody() {
         setUsername(p.username);
         setDisplayName(p.display_name ?? "");
         setBio(p.bio ?? "");
+        setLinks(p.links ?? []);
         setAvatarUrl(p.avatar_url);
       } catch (e: unknown) {
         if (cancelled) return;
@@ -143,6 +160,7 @@ function ProfileEditScreenBody() {
         username: username.toLowerCase(),
         display_name: displayName,
         bio: bio.trim() ? bio.trim() : null,
+        links: normalizeLinks(links),
         ...(newAvatarUrl !== undefined && { avatar_url: newAvatarUrl }),
       });
       await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
@@ -297,9 +315,36 @@ function ProfileEditScreenBody() {
               <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
                 Bio (optioneel)
               </Text>
+              {/*
+                  De bio draagt opmaak sinds 0054, en dus staat hier
+                  dezelfde balk als boven de toelichting van een vondst.
+                  Niet omdat het kan: een bio is het enige stuk tekst op je
+                  profiel dat je zelf schrijft, en een opsomming van drie
+                  dingen waar je mee bezig bent leest als een opsomming
+                  zodra je er een lijstje van mag maken.
+
+                  Er is niets voor gemigreerd en dat hoefde niet — platte
+                  tekst is geldige markdown, dus bestaande bio's lezen
+                  ongewijzigd door.
+              */}
+              <FormatBar
+                value={bio}
+                selection={bioSelection}
+                onChange={(next) => {
+                  setBio(next.text);
+                  setForcedBioSelection(next.selection);
+                }}
+              />
               <TextInput
                 value={bio}
                 onChangeText={setBio}
+                onSelectionChange={(e) => {
+                  setBioSelection(e.nativeEvent.selection);
+                  // Eén render aan. Laat je hem staan, dan springt de cursor
+                  // terug bij elke toetsaanslag.
+                  if (forcedBioSelection) setForcedBioSelection(null);
+                }}
+                selection={forcedBioSelection ?? undefined}
                 placeholder="Waar ben je mee bezig?"
                 placeholderTextColor={feed.inkDim}
                 className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
@@ -308,9 +353,83 @@ function ProfileEditScreenBody() {
                 maxLength={280}
                 style={{ minHeight: 88, textAlignVertical: "top" }}
               />
+              <CharCount value={bio} max={280} />
               <Text className="text-ink-muted text-xs mt-2">
-                Twee regels over jezelf, bovenaan je profiel. {280 - bio.length} tekens over.
+                Een paar regels over jezelf, bovenaan je profiel. Selecteer
+                tekst en tik B of I, of typ **vet** en *cursief*.
               </Text>
+
+              <View className="h-6" />
+
+              {/* ---- Je links ---- */}
+              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
+                Links (optioneel)
+              </Text>
+              <Text className="text-ink-muted text-xs mb-3">
+                Waar je heen wijst — hoogstens {MAX_PROFILE_LINKS}. Zonder
+                naam gebruiken we het adres.
+              </Text>
+              {links.map((link, i) => (
+                <View
+                  key={i}
+                  className="flex-row items-start gap-2 mb-2"
+                >
+                  <View className="flex-1 gap-2">
+                    <TextInput
+                      value={link.label}
+                      onChangeText={(t) =>
+                        setLinks((prev) =>
+                          prev.map((l, j) => (j === i ? { ...l, label: t } : l))
+                        )
+                      }
+                      placeholder="Naam"
+                      placeholderTextColor={feed.inkDim}
+                      className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
+                      maxLength={48}
+                      accessibilityLabel={`Naam van link ${i + 1}`}
+                    />
+                    <TextInput
+                      value={link.url}
+                      onChangeText={(t) =>
+                        setLinks((prev) =>
+                          prev.map((l, j) => (j === i ? { ...l, url: t } : l))
+                        )
+                      }
+                      placeholder="voorbeeld.be"
+                      placeholderTextColor={feed.inkDim}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                      className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
+                      maxLength={200}
+                      accessibilityLabel={`Adres van link ${i + 1}`}
+                    />
+                  </View>
+                  <IconButton
+                    name="close"
+                    label={`Link ${i + 1} verwijderen`}
+                    onPress={() =>
+                      setLinks((prev) => prev.filter((_, j) => j !== i))
+                    }
+                    size={16}
+                    color={feed.inkDim}
+                  />
+                </View>
+              ))}
+              {links.length < MAX_PROFILE_LINKS ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Link toevoegen"
+                  onPress={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
+                  className="flex-row items-center justify-center border border-line-paper"
+                  style={{ height: 44 }}
+                >
+                  <Ionicons name="add" color={feed.ink} size={16} />
+                  <Text className="text-ink text-sm font-semibold ml-1">
+                    Link toevoegen
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {error && (
