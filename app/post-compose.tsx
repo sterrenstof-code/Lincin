@@ -65,7 +65,17 @@ import {
  * iets in te vullen. Al het overige is optioneel.
  */
 
-type ComposeKind = "link" | "video" | "music" | "fragment" | "fact" | "idea" | "image" | "note";
+type ComposeKind =
+  | "link"
+  | "video"
+  | "music"
+  | "fragment"
+  | "fact"
+  | "idea"
+  | "image"
+  | "note"
+  | "quote"
+  | "swatch";
 
 /**
  * De soorten komen uit `lib/share-kinds.ts` — dezelfde lijst die het
@@ -81,7 +91,25 @@ const KINDS = SHARE_KINDS;
 
 /** Soorten die om een URL vragen. */
 const URL_KINDS: ComposeKind[] = ["link", "video", "music"];
-const BODY_KINDS: ComposeKind[] = ["note", "idea", "fragment", "fact"];
+const BODY_KINDS: ComposeKind[] = ["note", "idea", "fragment", "fact", "quote"];
+
+/**
+ * De twaalf stalen van de kiezer.
+ *
+ * Een volledige kleurenkiezer is hier het verkeerde gereedschap: je zoekt
+ * geen precieze waarde maar een kleur die ergens bij hoort, en dan is een
+ * blad met twaalf goede kleuren sneller dan een vlak waarin je een punt
+ * moet raken. Wie tóch een exacte kleur wil, typt hem — het veld eronder
+ * neemt elke `#RRGGBB`.
+ *
+ * De reeks loopt van licht naar donker en van warm naar koel, zodat hij
+ * als staalkaart leest en niet als een zak kleuren.
+ */
+const SWATCH_PRESETS = [
+  "#F7F5F2", "#E8E2D9", "#D9CFC2", "#C4A484",
+  "#E66B3F", "#D4551F", "#A81C13", "#7A2E2E",
+  "#4FBDB0", "#2F6F6A", "#3F6FD0", "#0B0A0C",
+];
 
 export default function PostComposeScreen() {
   const router = useRouter();
@@ -166,6 +194,7 @@ export default function PostComposeScreen() {
    */
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [swatchHex, setSwatchHex] = useState("#E66B3F");
   /**
    * Waar deze vondst heen gaat.
    *
@@ -344,6 +373,7 @@ export default function PostComposeScreen() {
   }
 
   const canSubmit = !submitting && !!kind && (() => {
+    if (kind === "swatch") return /^#[0-9a-fA-F]{6}$/.test(swatchHex.trim());
     if (URL_KINDS.includes(kind)) return url.trim().length > 3;
     if (BODY_KINDS.includes(kind)) return body.trim().length > 0;
     if (kind === "image") return imageUris.length > 0 || !!videoUri;
@@ -372,6 +402,7 @@ export default function PostComposeScreen() {
         imageUris,
         videoUri,
         visibility,
+        swatchHex: kind === "swatch" ? swatchHex.trim().toUpperCase() : null,
         linkUrl: url.trim() || null,
         caption: note.trim() || null,
         bodyText: BODY_KINDS.includes(kind) ? body.trim() || null : null,
@@ -500,6 +531,11 @@ export default function PostComposeScreen() {
                   </View>
                 )}
 
+                {/* --- Een kleur --- */}
+                {kind === "swatch" && (
+                  <SwatchPicker value={swatchHex} onChange={setSwatchHex} />
+                )}
+
                 {/* --- Tekstsoorten --- */}
                 {BODY_KINDS.includes(kind) && (
                   <Field
@@ -507,6 +543,7 @@ export default function PostComposeScreen() {
                       kind === "note" ? "De notitie"
                       : kind === "idea" ? "Het idee"
                       : kind === "fragment" ? "Het fragment"
+                      : kind === "quote" ? "Het citaat"
                       : "Het weetje"
                     }
                   >
@@ -775,6 +812,87 @@ export default function PostComposeScreen() {
  * je hebt hem net zelf gekozen — maar dát er een aan hangt, en de weg om
  * hem er weer af te halen.
  */
+/**
+ * De kleurkiezer.
+ *
+ * Twaalf stalen en een veld. Geen kleurenwiel: je zoekt hier geen precieze
+ * waarde maar een kleur die ergens bij hoort, en dan is kiezen sneller dan
+ * mikken. Wie tóch een exacte kleur wil typt hem — daar is het veld voor,
+ * en dat is ook de plek waar je een kleur uit een foto in plakt.
+ *
+ * Het grote vlak bovenaan is geen versiering maar de enige eerlijke
+ * voorbeschouwing: een staal van veertig punten liegt over hoe een kleur
+ * op een bord van driehonderd overkomt.
+ */
+function SwatchPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const valid = /^#[0-9a-fA-F]{6}$/.test(value.trim());
+  return (
+    <View className="px-6 py-5">
+      <View
+        style={{
+          width: "100%",
+          aspectRatio: 2.4,
+          backgroundColor: valid ? value : feed.postFill,
+          borderWidth: FEED_BORDER,
+          borderColor: feed.ink,
+          marginBottom: space.lg,
+        }}
+      />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+        {SWATCH_PRESETS.map((hex) => {
+          const active = value.toUpperCase() === hex.toUpperCase();
+          return (
+            <Pressable
+              key={hex}
+              accessibilityRole="button"
+              accessibilityLabel={`Kies ${hex}`}
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(hex)}
+              style={{
+                width: CONTROL_H,
+                height: CONTROL_H,
+                backgroundColor: hex,
+                borderWidth: active ? 3 : FEED_BORDER,
+                borderColor: feed.ink,
+              }}
+            />
+          );
+        })}
+      </View>
+      <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginTop: space.xl, marginBottom: space.sm }]}>
+        OF TYP EEN KLEUR
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={(t) => onChange(t.startsWith("#") || t === "" ? t : `#${t}`)}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        maxLength={7}
+        accessibilityLabel="Hexkleur"
+        placeholder="#E66B3F"
+        placeholderTextColor={feed.inkDim}
+        style={[
+          feedType.body,
+          {
+            borderWidth: FEED_BORDER,
+            borderColor: valid ? feed.ink : flameDeep,
+            paddingHorizontal: space.md,
+            height: CONTROL_H,
+            color: feed.ink,
+            ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null),
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
 function ClipRow({ onRemove }: { onRemove: () => void }) {
   return (
     <View className="flex-row items-center px-6 pb-4" style={{ gap: space.sm }}>

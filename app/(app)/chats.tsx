@@ -45,6 +45,11 @@ import {
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { plural } from "@/lib/plural";
+import {
+  forgetChatPreview,
+  useChatPreviews,
+  type ChatPreview,
+} from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
 import { NL } from "@/lib/locale";
 
@@ -57,6 +62,7 @@ export default function ChatsScreen() {
   const chrome = useChromeScroll();
   const qc = useQueryClient();
   const toast = useToast();
+  const previews = useChatPreviews();
 
   const [filter, setFilter] = useState("");
   // Twee-traps menu voor chat-acties:
@@ -143,6 +149,8 @@ export default function ChatsScreen() {
     removeFromCache(chat.id);
     try {
       await leaveChat(chat.id, myUserId);
+      // De voorbeeldregel is van dit toestel; laat geen wees achter.
+      void forgetChatPreview(chat.id);
     } catch {
       rollback("Je kon de groep niet verlaten.", () => onLeave(chat));
     }
@@ -152,6 +160,7 @@ export default function ChatsScreen() {
     removeFromCache(chat.id);
     try {
       await deleteChatForEveryone(chat.id);
+      void forgetChatPreview(chat.id);
     } catch {
       rollback("Het gesprek kon niet verwijderd worden.", () =>
         onDeleteForEveryone(chat)
@@ -404,6 +413,7 @@ export default function ChatsScreen() {
               onMenuPress={() => setMenuChat(item)}
               isFirst={index === 0}
               isLast={index === filtered.length - 1}
+              previews={previews}
             />
           ))
         )}
@@ -463,6 +473,7 @@ function ChatRow({
   onMenuPress,
   isFirst,
   isLast,
+  previews,
 }: {
   chat: ChatWithMembers;
   myUserId: string;
@@ -471,15 +482,34 @@ function ChatRow({
   onMenuPress: () => void;
   isFirst: boolean;
   isLast: boolean;
+  previews: Record<string, ChatPreview>;
 }) {
   const title = chatTitle(chat, myUserId);
-  const baseSubtitle =
-    chat.type === "direct"
-      // De scheidingsstip is `·` — achttien andere plekken in de app doen
-      // dat, de zijkolom van dit exacte gesprek incluis, en deze twee regels
-      // stonden als enige op de dikke `•`.
-      ? "Direct · E2E"
-      : `Groep · ${plural(chat.members.length, "lid", "leden")}`;
+  /**
+   * Wat er als laatste gezegd is — en pas als dat er niet is, wat voor
+   * gesprek het is.
+   *
+   * De ondertitel wás altijd het tweede: "Direct · E2E" op élke rij, dus
+   * twintig regels die alle twintig hetzelfde zeggen. Juist op die regel
+   * zoek je een lijst af, en versleuteld zijn ze allemaal.
+   *
+   * De voorbeeldregel komt van dit toestel (`lib/chat-preview.ts`) en niet
+   * van de server: die ziet ciphertext en hoort dat te blijven zien. Op een
+   * gesprek dat je hier nog nooit opende is er dus niets, en dan valt hij
+   * terug op het aantal ongelezen berichten — dat weet de lijst zonder iets
+   * te ontsleutelen, en het is nog altijd meer dan een typeaanduiding.
+   */
+  const preview = previews[chat.id];
+  const baseSubtitle = preview
+    ? `${preview.fromMe ? "Jij" : preview.sender ?? title}: ${preview.text}`
+    : chat.unread_count > 0
+      ? plural(chat.unread_count, "nieuw bericht", "nieuwe berichten")
+      : chat.type === "direct"
+        // De scheidingsstip is `·` — achttien andere plekken in de app doen
+        // dat, de zijkolom van dit exacte gesprek incluis, en deze twee
+        // regels stonden als enige op de dikke `•`.
+        ? "Direct · E2E"
+        : `Groep · ${plural(chat.members.length, "lid", "leden")}`;
   const lastAt = chat.last_message_at;
   const relTime = lastAt ? relativeTime(lastAt) : null;
   const unread = chat.unread_count;

@@ -63,7 +63,11 @@ export function MoodTile({
         ...tag,
       }}
     >
-      {cover ? (
+      {post.kind === "swatch" && post.swatch_hex ? (
+        <SwatchFace hex={post.swatch_hex} name={post.caption?.trim() || null} />
+      ) : post.kind === "quote" ? (
+        <QuoteFace post={post} />
+      ) : cover ? (
         <SafeImage
           uri={cover}
           cacheKey={post.image_path ?? post.meta?.image_url ?? post.id}
@@ -99,6 +103,8 @@ export function MoodTile({
 
 /** Zit er meer achter dan wat je ziet? Zie components/PostGrid.tsx. */
 export function hasMoreThanCover(post: PostWithAuthor): boolean {
+  // Een staal en een citaat tónen zichzelf al volledig; er is niets achter.
+  if (post.kind === "swatch" || post.kind === "quote") return false;
   if (!coverUrlFor(post)) return false;
   return (
     !!post.caption?.trim() ||
@@ -212,6 +218,105 @@ function TextFace({ post }: { post: PostWithAuthor }) {
           numberOfLines={title ? 4 : 8}
         >
           {body}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+
+/**
+ * Een kleur, en verder niets.
+ *
+ * Het hele vlak is de kleur — geen kader, geen kicker, geen naam tenzij je
+ * er een gaf. Dat is de bedoeling van een staal: je kijkt ernaar en je ziet
+ * de kleur, niet een kaartje waar een kleur op staat.
+ *
+ * De naam eronderin leest in inkt of crème, afhankelijk van hoe donker het
+ * staal is. Dat is de enige plek in de app waar een tekstkleur uit een
+ * berekening komt in plaats van uit een token — en dat kan niet anders,
+ * want de ondergrond is hier door de gebruiker gekozen en niet door §2.
+ */
+function SwatchFace({ hex, name }: { hex: string; name: string | null }) {
+  const onDark = isDarkHex(hex);
+  return (
+    <View style={{ flex: 1, backgroundColor: hex, justifyContent: "flex-end" }}>
+      <View style={{ padding: space.lg }}>
+        <Text
+          style={[
+            feedType.label,
+            { color: onDark ? creamOnDark.DEFAULT : feed.ink, opacity: 0.85 },
+          ]}
+          numberOfLines={1}
+        >
+          {name ?? hex.toUpperCase()}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Hoe donker is deze kleur?
+ *
+ * De gewogen som van rood, groen en blauw zoals het oog ze ziet — groen
+ * telt zwaarder dan blauw, want een fel groen leest lichter dan een even
+ * "hoog" blauw. Onder de helft zetten we er crème op, erboven inkt.
+ *
+ * Geen `luminance`-bibliotheek voor drie vermenigvuldigingen, en geen
+ * contrastberekening op WCAG-niveau: er staat één regel label op, en de
+ * vraag is alleen of hij licht of donker moet zijn.
+ */
+export function isDarkHex(hex: string): boolean {
+  const v = hex.replace("#", "");
+  const r = parseInt(v.slice(0, 2), 16);
+  const g = parseInt(v.slice(2, 4), 16);
+  const b = parseInt(v.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55;
+}
+
+/**
+ * Een zin, groot gezet.
+ *
+ * De serif en niet de grotesk: dit is het redactionele moment waar §3 het
+ * over heeft — een citaat is precies waarvoor het affiche-systeem bestaat.
+ * Het aanhalingsteken staat er als teken en niet als leesteken in de tekst,
+ * zodat de zin zelf op de kantlijn begint.
+ */
+function QuoteFace({ post }: { post: PostWithAuthor }) {
+  const text = stripMarkdown(post.body_text) || post.caption?.trim() || "";
+  const who = post.source_author?.trim() || post.source_title?.trim() || null;
+  return (
+    <View style={{ flex: 1, padding: space.lg, justifyContent: "center" }}>
+      <Text
+        style={{
+          fontFamily: SERIF_FAMILY,
+          fontSize: 34,
+          lineHeight: 34,
+          color: flameDeep,
+          marginBottom: 2,
+        }}
+      >
+        &#8220;
+      </Text>
+      <Text
+        style={{
+          fontFamily: SERIF_FAMILY,
+          fontSize: 19,
+          lineHeight: 25,
+          letterSpacing: -0.2,
+          color: feed.text,
+        }}
+        numberOfLines={7}
+      >
+        {text}
+      </Text>
+      {who ? (
+        <Text
+          style={[feedType.label, { color: feed.textDim, marginTop: space.md }]}
+          numberOfLines={1}
+        >
+          {who}
         </Text>
       ) : null}
     </View>

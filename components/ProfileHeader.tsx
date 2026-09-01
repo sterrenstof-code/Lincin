@@ -61,7 +61,6 @@ import {
  */
 export function ProfileHeader({
   profile,
-  email,
   wide,
   heroBusy,
   avatarBusy,
@@ -70,8 +69,14 @@ export function ProfileHeader({
   onEditBio,
 }: {
   profile: Profile | null | undefined;
-  /** Alleen op je eigen profiel; die van een ander gaat je niets aan. */
-  email?: string | null;
+  /**
+   * Geen `email` meer.
+   *
+   * Die stond onder de bio, klein en grijs, op de omslag van je eigen
+   * pagina. Een omslag draagt wie je bent; je inlogadres is geen
+   * eigenschap van jou maar van je account, en dat hoort in de rubriek
+   * die daarover gaat (§03 op het profielscherm).
+   */
   wide: boolean;
   heroBusy?: boolean;
   avatarBusy?: boolean;
@@ -98,27 +103,29 @@ export function ProfileHeader({
         wide={wide}
       />
 
-      {/* De avatar hangt over de onderrand van de plaat, links op de
-          bladspiegel. Is er geen plaat, dan is er niets om overheen te
-          hangen en begint het blok gewoon bovenaan. */}
-      <View style={{ paddingHorizontal: pad, marginTop: hasHero ? -40 : space.xl }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.lg }}>
-          <Pressable
-            accessibilityRole={mine ? "button" : undefined}
-            accessibilityLabel={mine ? "Profielfoto wijzigen" : undefined}
-            onPress={onPickAvatar}
-            disabled={!mine}
-            style={{ position: "relative" }}
-          >
-          {/* Een ring in het paginavlak, zodat de avatar loskomt van de
-              foto eronder in plaats van erin te verdwijnen. */}
-          <View
-            style={{
-              padding: 4,
-              borderRadius: 999,
-              backgroundColor: feed.lav,
-            }}
-          >
+      {/*
+          De avatar hangt over de onderrand van de plaat; de tékst niet.
+
+          Dat was de fout in de vorige versie: naam en handle stonden op één
+          rij mét de avatar, dus ze schoven mee omhoog en landden half op de
+          foto. De kicker — klein en in flame — kwam daarmee op een donker
+          beeld terecht en was niet te lezen, en de naam botste op de rand
+          van de plaat in plaats van eronder te beginnen.
+
+          Alleen de avatar overlapt nu. Hij is rond en heeft een ring in het
+          paginavlak, dus hij leest als een zegel op het blad; tekst kan dat
+          niet, want tekst heeft geen eigen vlak. Alles wat gelezen moet
+          worden staat onder de plaat, op de inkt van de pagina.
+      */}
+      <View style={{ paddingHorizontal: pad, marginTop: hasHero ? -36 : space.xl }}>
+        <Pressable
+          accessibilityRole={mine ? "button" : undefined}
+          accessibilityLabel={mine ? "Profielfoto wijzigen" : undefined}
+          onPress={onPickAvatar}
+          disabled={!mine}
+          style={{ position: "relative", alignSelf: "flex-start" }}
+        >
+          <View style={{ padding: 4, borderRadius: 999, backgroundColor: feed.lav }}>
             <Avatar
               name={displayName ?? username}
               avatarUrl={profile?.avatar_url}
@@ -150,39 +157,41 @@ export function ProfileHeader({
           ) : null}
         </Pressable>
 
-          {/* De naam op de grondlijn van de avatar: twee dingen die bij
-              elkaar horen staan op één lijn, niet onder elkaar. */}
-          <View style={{ flex: 1, minWidth: 0, paddingBottom: space.sm }}>
-            <Text
-              style={[
-                feedType.kicker,
-                { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
-              ]}
-            >
-              {`@${username || "…"}`}
-            </Text>
-            {displayName ? (
-              <Text
-                style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}
-                numberOfLines={2}
-              >
-                {displayName}
-              </Text>
-            ) : null}
-          </View>
-        </View>
+        {/* De naam ónder de avatar, niet ernaast.
+            Ernaast moest hij op één grondlijn met een cirkel van tachtig
+            punten, en dan staat er een kop van vierenveertig tegen een
+            rondje aan met een gat ernaast waar niets komt. Onder elkaar
+            leest het als een pagina die begint: merk, titel, inleiding. */}
+        <Text
+          style={[
+            feedType.kicker,
+            {
+              color: flameDeep,
+              letterSpacing: 0.55,
+              marginTop: space.lg,
+              marginBottom: 4,
+            },
+          ]}
+        >
+          {`@${username || "…"}`}
+        </Text>
+        {displayName ? (
+          <Text
+            style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}
+            numberOfLines={2}
+          >
+            {displayName}
+          </Text>
+        ) : null}
 
-        {/* De bio is opmaak geworden (0054). `RichText` kiest geen letter en
-            geen kleur — die krijgt hij hier mee — dus een bio kan nooit uit
-            de toon vallen tegen het stelsel in. Zie components/RichText.tsx. */}
         {/* De bio op leesmaat en niet over de volle bladspiegel: een regel
             van twaalfhonderd punten is er één die je hoofd moet volgen in
             plaats van lezen. Zelfde redenering als `maxWidth` in PageHead. */}
         {bio ? (
-          <View style={{ marginTop: space.xl, maxWidth: 620 }}>
+          <View style={{ marginTop: space.lg, maxWidth: 620 }}>
             <RichText
               text={bio}
-              style={feedType.body}
+              style={feedType.taglineSmall}
               color={feed.ink}
               dimColor={feed.inkDim}
               ruleColor={rule.soft}
@@ -193,18 +202,17 @@ export function ProfileHeader({
             accessibilityRole="button"
             accessibilityLabel="Voeg een bio toe"
             onPress={onEditBio}
-            style={{ height: CONTROL_H, justifyContent: "center", marginTop: space.md }}
+            style={{ height: CONTROL_H, justifyContent: "center", marginTop: space.sm }}
           >
-            <Text style={[feedType.label, { color: feed.inkDim, textDecorationLine: "underline" }]}>
+            <Text
+              style={[
+                feedType.label,
+                { color: feed.inkDim, textDecorationLine: "underline" },
+              ]}
+            >
               Voeg een bio toe
             </Text>
           </Pressable>
-        ) : null}
-
-        {email ? (
-          <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.md }]}>
-            {email}
-          </Text>
         ) : null}
 
         {links.length > 0 ? <ProfileLinkList links={links} wide={wide} /> : null}

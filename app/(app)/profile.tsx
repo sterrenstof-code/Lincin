@@ -16,7 +16,15 @@ import { ProfileHeader } from "@/components/ProfileHeader";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { SectionBand } from "@/components/SectionBand";
-import { feed, gutter, space } from "@/lib/design/type";
+import {
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  gutter,
+  rule,
+  space,
+} from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -54,6 +62,21 @@ export default function ProfileScreen() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [heroUploading, setHeroUploading] = useState(false);
+  /**
+   * Je eigen bord door de ogen van een bezoeker.
+   *
+   * Sinds een vondst op `profile` kan staan is "wat staat er op mijn bord"
+   * niet meer hetzelfde als "wat zien mijn lincs" — en dat verschil kun je
+   * nergens zien. Je kunt naar je eigen profiel kijken en niet weten of dat
+   * ene ding nou wel of niet rondging.
+   *
+   * Deze stand haalt de bewerkknoppen weg en toont wat een ander ziet. Hij
+   * verbergt niets extra's: `profile`-vondsten zijn zichtbaar voor wie je
+   * bord bezoekt, dat is de hele betekenis van die waarde. Wat verdwijnt is
+   * dus alleen jouw kant van het scherm — de stipjes, de opties, de
+   * "wijzig"-knoppen.
+   */
+  const [asVisitor, setAsVisitor] = useState(false);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
@@ -262,13 +285,12 @@ export default function ProfileScreen() {
         */}
         <ProfileHeader
           profile={profile.data}
-          email={session?.user.email}
           wide={wide}
           heroBusy={heroUploading}
           avatarBusy={avatarUploading}
-          onPickHero={onPickHero}
-          onPickAvatar={onPickAvatar}
-          onEditBio={() => router.push("/profile-edit")}
+          onPickHero={asVisitor ? undefined : onPickHero}
+          onPickAvatar={asVisitor ? undefined : onPickAvatar}
+          onEditBio={asVisitor ? undefined : () => router.push("/profile-edit")}
         />
 
         {/*
@@ -284,10 +306,50 @@ export default function ProfileScreen() {
         <View style={{ marginTop: space.section }}>
           <SectionBand index={0} label="Het bord" padding={gutter(wide)} />
         </View>
+        <View
+          style={{
+            paddingHorizontal: gutter(wide),
+            paddingTop: space.md,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel="Bekijk je bord zoals een bezoeker het ziet"
+            accessibilityState={{ checked: asVisitor }}
+            onPress={() => setAsVisitor((v) => !v)}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: space.sm,
+              height: 44,
+              paddingHorizontal: space.md,
+              borderWidth: FEED_BORDER,
+              borderColor: asVisitor ? feed.ink : rule.soft,
+              backgroundColor: asVisitor ? feed.ink : "transparent",
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Ionicons
+              name={asVisitor ? "eye" : "eye-outline"}
+              size={14}
+              color={asVisitor ? creamOnDark.DEFAULT : feed.inkDim}
+            />
+            <Text
+              style={[
+                feedType.label,
+                { color: asVisitor ? creamOnDark.DEFAULT : feed.inkDim },
+              ]}
+            >
+              {asVisitor ? "Je kijkt als bezoeker" : "Bekijk als bezoeker"}
+            </Text>
+          </Pressable>
+        </View>
         <MoodBoard
           posts={myPosts.data}
           loading={myPosts.isLoading}
-          editable
+          editable={!asVisitor}
           myUserId={myUserId}
           onChanged={() => {
             void myPosts.refetch();
@@ -353,6 +415,16 @@ export default function ProfileScreen() {
           <SectionBand index={2} label="Profiel" padding={gutter(wide)} />
         </View>
         <View style={{ paddingHorizontal: gutter(wide), marginTop: space.xl }}>
+          {/* Je inlogadres hoort bij je account en niet op je omslag; het
+              stond eerder klein en grijs onder je bio. */}
+          <Text
+            style={[
+              feedType.label,
+              { color: feed.inkDim, marginBottom: space.md },
+            ]}
+          >
+            {session?.user.email}
+          </Text>
         <Pressable
           onPress={() => router.push("/profile-edit")}
           className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
@@ -363,7 +435,7 @@ export default function ProfileScreen() {
           <View className="flex-1 ml-3">
             <Text className="text-ink font-semibold">Bewerk profiel</Text>
             <Text className="text-ink-muted text-xs mt-0.5">
-              Pas je handle of weergavenaam aan
+              Pas je handle, naam, bio of links aan
             </Text>
           </View>
           <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />

@@ -96,6 +96,10 @@ import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";
 import { color } from "@/lib/design/theme";
+import {
+  rememberChatPreview,
+  shortenForPreview,
+} from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
 import { NL } from "@/lib/locale";
 
@@ -493,6 +497,46 @@ export default function ChatDetail() {
   }, [id, myUserId]);
 
   usePageTitle(chat && myUserId ? chatTitle(chat, myUserId) : null);
+
+  /**
+   * De laatste regel onthouden, zodat de chatlijst iets te zeggen heeft.
+   *
+   * Daar stond op élke rij "Direct · E2E" — een typeaanduiding, en juist die
+   * regel is waarop je een lijst afzoekt. De server kan hem niet leveren
+   * (die ziet ciphertext, en dat hoort zo), maar dit scherm heeft de tekst
+   * al ontsleuteld staan. Zie lib/chat-preview.ts voor wat er wél en niet
+   * bewaard wordt.
+   */
+  useEffect(() => {
+    if (!id || !messages || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    const text = last.content?.text?.trim();
+    const attachment = last.content?.attachment;
+    // Een bericht dat niet ontsleutelde levert geen regel op: dan liever
+    // het aantal dan een leeg streepje.
+    const line = text
+      ? shortenForPreview(text)
+      : attachment
+        ? attachment.type === "video"
+          ? "Clip"
+          : attachment.type === "audio"
+            ? "Spraakbericht"
+            : "Foto"
+        : null;
+    if (!line) return;
+    const fromMe = last.sender_id === myUserId;
+    void rememberChatPreview(id, {
+      text: line,
+      fromMe,
+      sender: fromMe
+        ? null
+        : (() => {
+            const m = chat?.members.find((x) => x.id === last.sender_id);
+            return m?.display_name ?? m?.username ?? null;
+          })(),
+      at: last.created_at,
+    });
+  }, [id, messages, myUserId, chat]);
 
   const title = useMemo(
     () => (chat && myUserId ? chatTitle(chat, myUserId) : "Chat"),

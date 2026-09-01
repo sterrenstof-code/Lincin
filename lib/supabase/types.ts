@@ -26,7 +26,7 @@
  * instantie — dus is dit handmatig afgeleid uit de 42 migraties.
  */
 
-/** `posts_kind_check` uit 0042_feed_finds. */
+/** `posts_kind_check` uit 0042_feed_finds, uitgebreid in 0056. */
 export type PostKind =
   | "note"
   | "image"
@@ -35,7 +35,9 @@ export type PostKind =
   | "music"
   | "fragment"
   | "fact"
-  | "idea";
+  | "idea"
+  | "quote"
+  | "swatch";
 
 /** `activity_kind`-enum uit 0031_feed_features. */
 export type ActivityKind =
@@ -257,6 +259,8 @@ export type Database = {
           pinned_at: string | null;
           /** 0055_moodboard — maat op het moodboard. */
           tile_span: "1x1" | "2x1" | "1x2" | "2x2";
+          /** 0056_quote_swatch — alleen bij kind = swatch. #RRGGBB. */
+          swatch_hex: string | null;
         };
         Insert: {
           id?: string;
@@ -275,6 +279,7 @@ export type Database = {
           visibility?: "feed" | "profile";
           pinned_at?: string | null;
           tile_span?: "1x1" | "2x1" | "1x2" | "2x2";
+          swatch_hex?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["posts"]["Insert"]>;
         Relationships: [];

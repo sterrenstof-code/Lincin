@@ -18,11 +18,23 @@ import type { Ionicons } from "@expo/vector-icons";
  * beide schermen tegelijk; ze kúnnen niet meer verschillen.
  *
  * De volgorde is die van het deelscherm en is niet willekeurig: eerst de
- * drie die om een URL vragen (link, video, muziek), dan de drie die om iets
- * van jezelf vragen (notitie, foto, idee).
+ * drie die om een URL vragen (link, video, muziek), dan die om iets van
+ * jezelf vragen (notitie, foto, idee), en tot slot de twee die alleen op
+ * een bord thuishoren — een citaat en een kleur. Die laatste twee staan
+ * achteraan omdat ze het zeldzaamst zijn, niet omdat ze minder tellen.
  */
 
-export type ShareKind = "link" | "video" | "music" | "note" | "image" | "idea";
+export type ShareKind =
+  | "link"
+  | "video"
+  | "music"
+  | "note"
+  | "image"
+  | "idea"
+  /** 0056 — een zin, groot gezet. */
+  | "quote"
+  /** 0056 — een kleur, en verder niets. */
+  | "swatch";
 
 export type ShareKindSpec = {
   id: ShareKind;
@@ -81,5 +93,19 @@ export const SHARE_KINDS: ShareKindSpec[] = [
     hint: "Iets om te maken of te bouwen",
     menuLabel: "Een idee",
     icon: "bulb-outline",
+  },
+  {
+    id: "quote",
+    label: "Citaat",
+    hint: "Een zin die bleef hangen",
+    menuLabel: "Een citaat",
+    icon: "chatbox-ellipses-outline",
+  },
+  {
+    id: "swatch",
+    label: "Kleur",
+    hint: "Een staal voor op je bord",
+    menuLabel: "Een kleur",
+    icon: "color-palette-outline",
   },
 ];

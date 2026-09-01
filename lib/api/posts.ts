@@ -28,7 +28,9 @@ export type FindKind =
   | "music"     // Spotify, Bandcamp, …
   | "fragment"  // citaat uit een boek/artikel
   | "fact"      // weetje
-  | "idea";     // bouw-/ontwerpidee
+  | "idea"      // bouw-/ontwerpidee
+  | "quote"     // 0056 — een zin, groot gezet
+  | "swatch";   // 0056 — een kleur, en verder niets
 
 /** Labels voor de kicker-regel boven elke vondst. */
 export const KIND_LABELS: Record<FindKind, string> = {
@@ -40,6 +42,8 @@ export const KIND_LABELS: Record<FindKind, string> = {
   fragment: "Fragment",
   fact: "Weetje",
   idea: "Idee",
+  quote: "Citaat",
+  swatch: "Kleur",
 };
 
 export type PostRow = {
@@ -68,6 +72,8 @@ export type PostRow = {
   pinned_at: string | null;
   /** 0055 — maat op het moodboard, in rastercellen. */
   tile_span: TileSpan;
+  /** 0056 — alleen bij `kind = "swatch"`. `#RRGGBB`. */
+  swatch_hex: string | null;
 };
 
 /** Waar een vondst terechtkomt. Zie `visibility` hierboven. */
@@ -145,7 +151,7 @@ const POSTS_BUCKET = "posts";
  * de pagina leeg. Precies waar de zin hierboven voor waarschuwde.
  */
 export const POST_COLUMNS =
-  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span";
+  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span, swatch_hex";
 
 /** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
 export function normalizeRow(row: any): PostRow {
@@ -161,6 +167,7 @@ export function normalizeRow(row: any): PostRow {
     visibility: row.visibility === "profile" ? "profile" : "feed",
     pinned_at: row.pinned_at ?? null,
     tile_span: TILE_SPANS.includes(row.tile_span) ? row.tile_span : "1x1",
+    swatch_hex: row.swatch_hex ?? null,
   };
 }
 
@@ -256,6 +263,8 @@ export async function createFind(args: {
   meta?: Partial<LinkPreview> | null;
   /** Standaard `feed`; `profile` zet hem alleen op je eigen bord. */
   visibility?: PostVisibility;
+  /** Alleen bij `kind = "swatch"`. `#RRGGBB`. */
+  swatchHex?: string | null;
 }): Promise<PostRow> {
   const caption = args.caption?.trim() || null;
   const linkUrl = args.linkUrl?.trim() || null;
@@ -264,7 +273,15 @@ export async function createFind(args: {
   const sourceAuthor = args.sourceAuthor?.trim() || null;
   const tags = normalizeTags(args.tags);
 
-  if (!args.imageUri && !args.imageUris?.length && !args.videoUri && !caption && !linkUrl && !bodyText) {
+  if (
+    !args.imageUri &&
+    !args.imageUris?.length &&
+    !args.videoUri &&
+    !args.swatchHex &&
+    !caption &&
+    !linkUrl &&
+    !bodyText
+  ) {
     throw new Error("Lege vondst — voeg tekst, beeld, link of een fragment toe.");
   }
 
@@ -340,6 +357,7 @@ export async function createFind(args: {
       tags,
       meta: args.meta ?? {},
       visibility: args.visibility ?? "feed",
+      swatch_hex: args.swatchHex ?? null,
     })
     .select(POST_COLUMNS)
     .single();
