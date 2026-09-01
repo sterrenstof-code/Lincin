@@ -20,7 +20,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ActionSheet } from "@/components/ActionSheet";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Avatar } from "@/components/Avatar";
-import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth/provider";
 import { listMyChats } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -42,7 +41,6 @@ import {
   feedType,
   flameDeep,
   gutter as gutterFor,
-  shell,
   sheetWidth,
   space,
 } from "@/lib/design/type";
@@ -566,11 +564,20 @@ function CompactBar({
         height: BAR_H,
         flexDirection: "row",
         alignItems: "stretch",
-        // Was `#17181B`: een eigen zwart voor het ding dat §2 letterlijk
-        // beschrijft — "`shell` · de balk · donker in béide standen". Een
-        // hexwaarde kantelt niet mee, en dit is de balk waar élk scherm in
-        // begint, dus juist hier mag hij niet van het systeem afwijken.
-        backgroundColor: shell,
+        /**
+         * Het paginavlak, niet het zwart.
+         *
+         * De balk was donker in béide standen — een van de drie paren uit
+         * §2. Dat gaf een zwarte streep boven élk scherm, en op de feed
+         * betekende het dat het eerste wat je ziet een balk is in plaats van
+         * wat je vrienden deelden. Nu draagt hij het blad zelf en is het
+         * áctieve tabblad het enige zwarte vlak: omgekeerd, en daardoor
+         * wijst het zwart naar waar je bent in plaats van naar de balk.
+         *
+         * Hij kantelt dus mee met de stand — lavendel in de donkere,
+         * gebroken wit in de lichte — en dat is precies wat `page` doet.
+         */
+        backgroundColor: feed.lav,
         borderWidth: FEED_BORDER,
         borderColor: feed.ink,
         overflow: "hidden",
@@ -606,12 +613,12 @@ function CompactBar({
           {/* De pijl als icoon en niet als teken in de tekst: zo blijft hij
               staan wanneer het label wegvalt, en houdt hij zijn maat los van
               de letterhoogte. */}
-          {/* Crème uit het systeem en geen eigen `#FAF8F5`: dit staat op
-              een vlak dat in béide standen donker blijft, en dan is
-              `creamOnDark` het antwoord (§2). */}
-          <Ionicons name="arrow-back" size={19} color={creamOnDark.DEFAULT} />
+          {/* Inkt op het paginavlak: de balk kantelt nu mee met de stand,
+              dus zijn tekst ook. `creamOnDark` hoort bij een vlak dat
+              donker blíjft, en dat is deze balk niet meer (§2). */}
+          <Ionicons name="arrow-back" size={19} color={feed.ink} />
           <Text
-            style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT, flexShrink: 1 }]}
+            style={[feedType.label, { fontSize: 12, color: feed.ink, flexShrink: 1 }]}
             numberOfLines={1}
           >
             {/* Op een smal scherm het korte woord: "Terug naar de feed" duwt
@@ -620,12 +627,12 @@ function CompactBar({
           </Text>
         </Pressable>
       ) : (
-        <TabStrip tone="dark" />
+        <TabStrip tone="paper" />
       )}
 
       {actionLabel && onAction ? (
         <>
-          <Cut tone="dark" />
+          <Cut tone="paper" />
           <Pressable
             onPress={onAction}
             style={({ pressed }) => ({
@@ -642,7 +649,7 @@ function CompactBar({
           </Pressable>
         </>
       ) : (
-        <AddCell tone="dark" />
+        <AddCell tone="paper" />
       )}
 
       <PersonalMenu />
@@ -811,102 +818,6 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
 // De grote kop
 // ---------------------------------------------------------------
 
-function Divider() {
-  return <View style={{ height: FEED_BORDER, backgroundColor: feed.ink }} />;
-}
-
-function FullHeader({
-  wide,
-  actionLabel,
-  onAction,
-}: {
-  wide: boolean;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-
-  return (
-    <View>
-      <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-        {/* De tabstrip is de bovenste rij. Hierboven stond een
-            micro-utilityregel met "Lincin" links en "Voor je vrienden."
-            rechts; die zei niets dat het woordmerk eronder niet al zegt en
-            kostte veertig pixels van een kop die toch al aan de hoge kant
-            was. */}
-        <View style={{ flexDirection: "row" }}>
-          <TabStrip tone="paper" />
-          {actionLabel && onAction ? (
-            <>
-              <Cut tone="paper" />
-              <Pressable
-                onPress={onAction}
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? announceDeep : announce,
-                  paddingHorizontal: space.lg,
-                  justifyContent: "center",
-                })}
-              >
-                <Text style={[feedType.label, { fontSize: 12, color: creamOnDark.DEFAULT }]}>
-                  {actionLabel}
-                </Text>
-              </Pressable>
-            </>
-          ) : (
-            <AddCell tone="paper" />
-          )}
-
-          {/* Jij, aan het eind van de navigatie — in beide standen van de
-              kop op dezelfde plek. De zijbalk had hetzelfde blok nog een
-              keer; zie feed.tsx voor waarom dat weg is. */}
-          <PersonalMenu tone="paper" />
-        </View>
-
-        <Divider />
-
-        {/* Rij C — de taglinekop. */}
-        <View
-          style={{
-            paddingHorizontal: 18,
-            paddingTop: 20,
-            paddingBottom: 22,
-          }}
-        >
-          <Text
-            style={[
-              wide ? feedType.tagline : feedType.taglineSmall,
-              { color: feed.ink, maxWidth: 620 },
-            ]}
-          >
-            Ontdekkingen van je vrienden — links, fragmenten, muziek en ideeën.
-          </Text>
-        </View>
-      </View>
-
-      {/* De brede woordmerk-plaat. */}
-      <View style={{ marginTop: 12 }}>
-        <LogoMark size="plate" />
-      </View>
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------
-// Alles samen
-// ---------------------------------------------------------------
-
-/**
- * De kolom waar de kopbalk in staat — op élke pagina dezelfde.
- *
- * Hij hing eerder aan wat de aanroeper toevallig meegaf, en nam daardoor
- * per scherm een andere breedte én positie aan: smal op een vondst, van
- * rand tot rand op de feed. Dat maakt van elke navigatie een sprong, en
- * dan voelt het als losse schermen in plaats van één blad waar de inhoud
- * onder de kop door schuift.
- *
- * Dezelfde maat als `Sheet`, dus de balk staat precies boven de kolom die
- * eronder begint. En geen prop meer: dit is niets waar een pagina iets
- * over te zeggen hoort te hebben.
- */
 const CHROME_COLUMN = (wide: boolean) =>
   ({
     width: "100%",
@@ -960,196 +871,55 @@ export function AppChrome({
   const chromeMorph = chromeTag(focused);
 
   /**
-   * De volle breedte, gemeten in plaats van geraden: een Animated-
-   * interpolatie kan geen "100%" naar een getal animeren — begin- en
-   * eindwaarde moeten hetzelfde type zijn.
+   * Hier stond de machinerie van de grote stand: de gemeten volle breedte
+   * voor de interpolatie, de hoogte van de stapel, en een luisteraar op
+   * `progress` die bijhield of de balk al muisklikken mocht opvangen. Alle
+   * drie hadden ze maar één afnemer — de tak die inklapte — en die bestaat
+   * niet meer.
    *
-   * Zonder max: eerder hield deze waarde de gróótste breedte vast die hij
-   * ooit gezien had. Maakte je het venster smaller, dan bleef de kop op de
-   * oude maat staan en liep de laatste tab buiten beeld.
+   * `progress` blijft in de props staan: `PageScroll` geeft hem aan élke
+   * pagina mee en de kop draagt hem door naar de morph. Hij animeert alleen
+   * niets meer hier.
    */
-  const [fullWidth, setFullWidth] = useState(0);
-  /** Hoogte van de grote stand; gemeten zodat de kruisvervaging klopt. */
-  const [stackHeight, setStackHeight] = useState(0);
-  /**
-   * Alleen als de balk er echt staat mag hij muisklikken opvangen. Hij ligt
-   * over de onderste strook van de grote stand; onzichtbaar moet hij die
-   * dus laten passeren.
-   */
-  const [barActive, setBarActive] = useState(false);
-  useEffect(() => {
-    const id = progress.addListener(({ value }) => {
-      const next = value > 0.6;
-      setBarActive((prev) => (prev === next ? prev : next));
-    });
-    return () => progress.removeListener(id);
-  }, [progress]);
 
   // In de compacte modus staat alles vast: geen interpolaties, geen
   // gemeten hoogtes die nog moeten binnenkomen.
-  if (compact) {
-    return (
-      <View
-        style={{
-          paddingHorizontal: gutterFor(wide),
-          paddingTop: space.sm,
-          paddingBottom: space.sm,
-          ...chromeMorph,
-        }}
-      >
-        <View style={CHROME_COLUMN(wide)}>
-          <CompactBar
-            backLabel={backLabel}
-            onBack={onBack}
-            actionLabel={actionLabel}
-            onAction={onAction}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  const barOpacity = progress.interpolate({
-    inputRange: [0.55, 1],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  // ---------------------------------------------------------------
-  // WEB — vaste hoogte, de balk als laag over de onderste strook
-  // ---------------------------------------------------------------
-  //
-  // De kop ligt hier ín de scroller (zie PageScroll). Dan mag zijn hoogte
-  // níet meebewegen met de inklapstand: elke pixel die hij krimpt, springt
-  // de pagina eronder omhoog, en dat duwt de scrollpositie terug — de lus
-  // waarbij de kop halverwege bleef hangen.
-  //
-  // Dus: de grote stand houdt altijd zijn eigen hoogte en scrolt gewoon weg,
-  // zoals elk ander blok op de pagina. De compacte balk ligt als laag op de
-  // onderste `CHROME_COMPACT_H` pixels en komt op tijdens het wegscrollen.
-  // Precies die strook blijft plakken — PageScroll hangt de kop op met
-  // `top: -(hoogte - CHROME_COMPACT_H)`, zodat er onderaan exact de balk
-  // overblijft. Geen animatie van hoogtes, geen sprong, niets om tegen te
-  // duwen.
-  if (Platform.OS === "web") {
-    return (
-      <View style={chromeMorph}>
-        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} wide={wide} />
-
-        <View
-          style={{
-            width: "100%",
-            paddingHorizontal: gutterFor(wide),
-            paddingTop: space.sm,
-            paddingBottom: space.sm,
-            alignItems: "flex-start",
-          }}
-        >
-          <View style={CHROME_COLUMN(wide)}>
-            <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
-          </View>
-        </View>
-
-        <Animated.View
-          pointerEvents={barActive ? "auto" : "none"}
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: CHROME_COMPACT_H,
-            paddingHorizontal: gutterFor(wide),
-            paddingTop: space.sm,
-            paddingBottom: space.sm,
-            backgroundColor: feed.lav,
-            opacity: barOpacity,
-          }}
-        >
-          <View style={CHROME_COLUMN(wide)}>
-            <CompactBar
-              backLabel={backLabel}
-              onBack={onBack}
-              actionLabel={actionLabel}
-              onAction={onAction}
-            />
-          </View>
-        </Animated.View>
-      </View>
-    );
-  }
-
-  // ---------------------------------------------------------------
-  // NATIVE — de twee standen vouwen open en dicht
-  // ---------------------------------------------------------------
-  // Hier hangt de kop buiten de scroller, met opvulling eronder die op de
-  // grootste gemeten hoogte blijft staan. Zijn hoogte raakt de bladspiegel
-  // dus niet, en kan wél animeren.
-
-  /** Waar de kop naartoe krimpt: een blok in de linkerbovenhoek. */
-  const COMPACT_W = wide ? 900 : 0;
-  const targetW = COMPACT_W > 0 && fullWidth > COMPACT_W ? COMPACT_W : fullWidth;
-  const shellWidth =
-    fullWidth > 0
-      ? progress.interpolate({ inputRange: [0, 1], outputRange: [fullWidth, targetW] })
-      : undefined;
-
-  const bannerHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [36, 0] });
-  const bannerOpacity = progress.interpolate({
-    inputRange: [0, 0.4],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-
-  const stackH = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [stackHeight || 300, 0],
-  });
-  const stackOpacity = progress.interpolate({
-    inputRange: [0, 0.55],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  const barH = progress.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H] });
-
+  /**
+   * Eén stand, en dat is de balk.
+   *
+   * Hier stond een tweede: de grote kop met de aankondigingsbalk, de
+   * micro-utilityregel, de tabstrip, de taglinekop en de woordmerk-plaat,
+   * plus de hele machinerie om die bij het scrollen naar de balk te laten
+   * inklappen — twee takken voor web en native, een opacity-animatie, en
+   * een `barOpacity` die alleen daar iets deed.
+   *
+   * Sinds élk scherm `compact` meegeeft was die tak onbereikbaar. Dat is
+   * precies het soort dode code dat blijft meelezen alsof hij nog telt:
+   * `AppChrome` waarschuwt in zijn eigen kop dat twee koppen die hetzelfde
+   * moeten zeggen altijd uiteenlopen, en een onbereikbare tweede is
+   * dezelfde val met het geluid uit.
+   *
+   * `compact` blijft als prop bestaan omdat élke aanroeper hem meegeeft en
+   * hij leest als een uitspraak over het scherm; hij heeft alleen geen
+   * tegenhanger meer.
+   */
   return (
-    <View style={chromeMorph}>
-      <Animated.View
-        style={{ height: bannerHeight, opacity: bannerOpacity, overflow: "hidden" }}
-      >
-        <AnnouncementBar message={announcement} onPress={onAnnouncementPress} wide={wide} />
-      </Animated.View>
-
-      <Animated.View
-        style={{
-          width: "100%",
-          paddingHorizontal: gutterFor(wide),
-          paddingTop: space.sm,
-          paddingBottom: space.sm,
-          alignItems: "flex-start",
-        }}
-        onLayout={(e) => setFullWidth(e.nativeEvent.layout.width - (wide ? 48 : 32))}
-      >
-        <Animated.View style={[CHROME_COLUMN(wide), { width: shellWidth ?? "100%" }]}>
-          {/* Grote stand */}
-          <Animated.View
-            style={{ height: stackH, opacity: stackOpacity, overflow: "hidden" }}
-          >
-            <View onLayout={(e) => setStackHeight(e.nativeEvent.layout.height)}>
-              <FullHeader wide={wide} actionLabel={actionLabel} onAction={onAction} />
-            </View>
-          </Animated.View>
-
-          {/* Compacte balk */}
-          <Animated.View style={{ height: barH, opacity: barOpacity, overflow: "hidden" }}>
-            <CompactBar
-              backLabel={backLabel}
-              onBack={onBack}
-              actionLabel={actionLabel}
-              onAction={onAction}
-            />
-          </Animated.View>
-        </Animated.View>
-      </Animated.View>
+    <View
+      style={{
+        paddingHorizontal: gutterFor(wide),
+        paddingTop: space.sm,
+        paddingBottom: space.sm,
+        ...chromeMorph,
+      }}
+    >
+      <View style={CHROME_COLUMN(wide)}>
+        <CompactBar
+          backLabel={backLabel}
+          onBack={onBack}
+          actionLabel={actionLabel}
+          onAction={onAction}
+        />
+      </View>
     </View>
   );
 }

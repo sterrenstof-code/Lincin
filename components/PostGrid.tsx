@@ -65,22 +65,11 @@ export function PostGrid({
   emptyTitle = "Nog niets gedeeld",
   emptyLabel,
   emptyAction,
-  bare = false,
 }: {
   posts: PostWithAuthor[] | undefined;
   loading?: boolean;
   emptyTitle?: string;
   emptyLabel: string;
-  /**
-   * Alleen beeld, met het stipje als enige markering.
-   *
-   * Op een profiel staat onder élke tegel dezelfde naam — die van degene
-   * wiens profiel je bekijkt — en dan is een naam op de tegel geen
-   * informatie maar ruis. In de feed ligt dat andersom: daar kijk je naar
-   * wat verschillende mensen deelden, en is de naam het verschil tussen
-   * bladeren en herkennen. Vandaar een schakelaar en geen keuze.
-   */
-  bare?: boolean;
   /**
    * De weg naar buiten als het raster leeg is. Optioneel, want op andermans
    * profiel is er niets dat jíj kunt doen — zie components/EmptyState.tsx.
@@ -119,11 +108,7 @@ export function PostGrid({
     <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -SEAM / 2 }}>
       {posts.map((post) => (
         <View key={post.id} style={{ width: `${100 / columns}%`, padding: SEAM / 2 }}>
-          <GridCell
-            post={post}
-            bare={bare}
-            onPress={() => router.push(`/post/${post.id}`)}
-          />
+          <GridCell post={post} onPress={() => router.push(`/post/${post.id}`)} />
         </View>
       ))}
     </View>
@@ -140,15 +125,7 @@ export function PostGrid({
  * twee elementen met dezelfde naam laat de browser de hele overgang
  * overslaan. Zie lib/hero-transition.web.ts.
  */
-function GridCell({
-  post,
-  bare,
-  onPress,
-}: {
-  post: PostWithAuthor;
-  bare: boolean;
-  onPress: () => void;
-}) {
+function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void }) {
   const tag = useHeroTag(post.id);
   return (
     <Pressable
@@ -170,7 +147,7 @@ function GridCell({
         ...tag,
       }}
     >
-      <Cell post={post} bare={bare} />
+      <Cell post={post} />
       {hasMoreThanImage(post) ? <MoreDot /> : null}
     </Pressable>
   );
@@ -260,7 +237,7 @@ export function coverUrlFor(post: PostWithAuthor): string | null {
   return post.meta?.image_url ?? post.image_url ?? null;
 }
 
-function Cell({ post, bare }: { post: PostWithAuthor; bare: boolean }) {
+function Cell({ post }: { post: PostWithAuthor }) {
   const album = post.album_urls ?? [];
   const cover = coverUrlFor(post);
 
@@ -276,14 +253,12 @@ function Cell({ post, bare }: { post: PostWithAuthor; bare: boolean }) {
           fallbackBg="bg-feed-fill"
           fallbackColor={feed.textDim}
         />
-        {/* In de feed staat erbij van wie het is en waar het over gaat:
-            daar kijk je naar wat verschillende mensen deelden, en dan is
-            een naam het verschil tussen bladeren en herkennen.
-            Op een profiel is die naam op élke tegel dezelfde, en dan is
-            hij geen informatie meer maar een sluier over de foto. Zie
-            `bare` bovenaan. */}
-        {bare ? null : (
-          <>
+        {/* Hier staat erbij van wie het is en waar het over gaat: dit
+            raster toont wat verschillénde mensen deelden, en dan is een
+            naam het verschil tussen bladeren en herkennen. Op een profiel
+            ligt dat andersom — daar is elke tegel van dezelfde persoon —
+            en dat is precies waarom het bord een eigen tegel heeft
+            (components/MoodTile.tsx) in plaats van een schakelaar hier. */}
         <Scrim height={104} strength={0.68} steps={10} />
         <View
           style={{
@@ -333,8 +308,6 @@ function Cell({ post, bare }: { post: PostWithAuthor; bare: boolean }) {
             </Text>
           ) : null}
         </View>
-          </>
-        )}
       </>
     );
   }
