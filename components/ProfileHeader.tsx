@@ -6,7 +6,6 @@ import { Avatar } from "@/components/Avatar";
 import { openUrl } from "@/components/FindBody";
 import { RichText } from "@/components/RichText";
 import { SafeImage } from "@/components/SafeImage";
-import { Scrim } from "@/components/Scrim";
 import type { Profile } from "@/lib/api/profiles";
 import {
   CONTROL_H,
@@ -321,10 +320,11 @@ export function ProfileHeroPlate({
         fallbackBg="bg-feed-fill"
         fallbackColor={feed.textDim}
       />
-      {/* De balk ligt hierover en de naam hangt over de onderrand; zonder
-          sluier vallen ze allebei weg op een lichte foto. Geen schaduw —
-          die staan niet in dit systeem — maar het verloop uit `Scrim`. */}
-      <Scrim height={140} strength={0.5} steps={12} />
+      {/* Geen sluier meer over de onderkant.
+          Hij lag er voor tekst die er niet meer staat: naam en handle zijn
+          onder de plaat gaan staan, en de avatar heeft een eigen ring in
+          het paginavlak. Wat overbleef was een verloop over een foto zonder
+          reden — en een verloop is een zachte rand, wat §4 nergens kent. */}
       {mine && (hovered || busy) ? (
         <View
           pointerEvents="none"

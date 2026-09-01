@@ -654,26 +654,6 @@ export function gutter(wide: boolean): number {
   return wide ? space.xxl : space.lg;
 }
 
-/**
- * Het donkere verloop onder een foto waar tekst over staat.
- *
- * Geen schaduw — die staan niet in dit systeem — maar een sluier: een
- * verloop van niets naar bijna-zwart, zodat de naam van de uploader leesbaar
- * is zonder dat er een balk over het beeld ligt. In stappen van 6% in plaats
- * van in drie brokken; drie brokken zag je als drie banden.
- *
- * `height` is hoe hoog de sluier wordt; de onderste stap is de donkerste.
- */
-export function scrimSteps(strength = 0.72, steps = 12): string[] {
-  const out: string[] = [];
-  for (let i = 1; i <= steps; i++) {
-    // Kwadratisch: bovenaan bijna niets, onderaan vol. Lineair leest als een
-    // grijze doos over de onderste helft van de foto.
-    const t = (i / steps) ** 2;
-    out.push(`rgba(11,10,12,${(t * strength).toFixed(3)})`);
-  }
-  return out;
-}
 
 /**
  * Native kent geen CSS-variabelen: daar staat in élke binding hierboven de

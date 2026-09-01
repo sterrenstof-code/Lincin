@@ -15,7 +15,6 @@ import { CHROME_COMPACT_H } from "@/components/AppChrome";
 import { Embed } from "@/components/Embed";
 import { PostCarousel } from "@/components/PostCarousel";
 import { SafeImage } from "@/components/SafeImage";
-import { Scrim } from "@/components/Scrim";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
 import { carbon, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, page, rule, space, type } from "@/lib/design/type";
@@ -1193,14 +1192,18 @@ function ImageCell({
         fallbackColor={feed.textDim}
       />
 
-      <Scrim height={p.title ? 130 : 78} />
-
+      {/* Een gevulde band, geen sluier.
+          Zie components/PostGrid.tsx voor de redenering: een verloop is een
+          zachte rand, en dit systeem kent er geen. */}
       <View
         style={{
           position: "absolute",
-          left: space.md,
-          right: space.md,
-          bottom: space.md,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: feed.ink,
+          paddingHorizontal: space.md,
+          paddingVertical: space.sm,
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -1704,20 +1707,18 @@ function MosaicTile({
         />
       </View>
 
-      {/* De sluier loopt door tot achter de tekst in plaats van erin over te
-          gaan: eerst twee vlakken en dan een derde met een eigen kleur zag je
-          als drie banden over de foto liggen. Zie components/Scrim.tsx. */}
-      <Scrim height={140} />
-
       {/* Eén tekstblok, altijd op dezelfde plek en met dezelfde marge —
           ongeacht of er een titel is. Zonder titel schuift de naam van de
-          uploader dus niet naar onderen. */}
+          uploader dus niet naar onderen.
+
+          Op een gevulde band en niet op een sluier; zie PostGrid. */}
       <View
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
+          backgroundColor: feed.ink,
           padding: space.md,
         }}
       >

@@ -978,6 +978,7 @@ export function PageScroll({
   onAction,
   compact = false,
   underChrome = false,
+  fullBleed = false,
   scrollRef,
 }: {
   children: React.ReactNode;
@@ -1013,6 +1014,15 @@ export function PageScroll({
    * op, want dan schuift er tekst onderdoor.
    */
   underChrome?: boolean;
+  /**
+   * Laat de inhoud tot de vensterrand lopen in plaats van tot de
+   * bladspiegel van 1250.
+   *
+   * Alleen voor een pagina die met een volvlak-beeld begint. Elders is dat
+   * maximum juist het punt: een regel tekst van tweeduizend punten is er
+   * één die je hoofd moet volgen in plaats van lezen.
+   */
+  fullBleed?: boolean;
 }) {
   const [headerHeight, setHeaderHeight] = useState(0);
   /**
@@ -1165,7 +1175,15 @@ export function PageScroll({
                * gebruiken deze scroller, en negen keer hetzelfde getal
                * overtypen is negen kansen om er één te vergeten.
                */
-              maxWidth: sheetWidth(wide),
+              /**
+               * `fullBleed` haalt dit maximum weg.
+               *
+               * Voor een pagina die met een omslag begint: die plaat hoort
+               * tot de vensterrand te lopen, en niet tot 1250 met lavendel
+               * ernaast. De tekstsecties op zo'n pagina zetten dan hun eigen
+               * marge — dat moeten ze toch al, want `gutter` staat er uit.
+               */
+              ...(fullBleed ? null : { maxWidth: sheetWidth(wide) }),
               alignSelf: "center",
               // Onder de kop door: precies zijn hoogte terug, zodat de plaat
               // aan de bovenrand van het venster begint.

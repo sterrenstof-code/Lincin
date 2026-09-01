@@ -1044,15 +1044,20 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
             fallbackBg="bg-feed-fill"
             fallbackColor={feed.textDim}
           />
-          {/* Scrim zodat de tekst leesbaar blijft op elke foto. Drie
-              gestapelde vlakken i.p.v. een gradient-dependency. */}
+          {/* Een gevulde band en geen sluier — hier stonden drie gestapelde
+              zwarte vlakken met oplopende dekking, precies het verloop dat
+              §4 nergens kent. Zie components/PostGrid.tsx. */}
           <View
             pointerEvents="none"
-            style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: feed.ink,
+              padding: 20,
+            }}
           >
-            <View style={{ height: 40, backgroundColor: "rgba(0,0,0,0.18)" }} />
-            <View style={{ height: 40, backgroundColor: "rgba(0,0,0,0.40)" }} />
-            <View style={{ backgroundColor: "rgba(0,0,0,0.66)", padding: 20 }}>
               <Text
                 style={[
                   feedType.kicker,
@@ -1067,7 +1072,6 @@ function PreviewBand({ preview }: { preview: LinkPreview }) {
                   {preview.title}
                 </Text>
               ) : null}
-            </View>
           </View>
         </View>
       ) : null}

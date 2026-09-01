@@ -274,6 +274,7 @@ export default function ProfileScreen() {
         // en het bord tot de vensterrand lopen; elke tekstsectie zet zijn
         // eigen marge, want tekst hoort niet tegen de rand.
         gutter={false}
+        fullBleed
         underChrome
         contentStyle={{ paddingBottom: 60 }}
       >

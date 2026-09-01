@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 
 import { EmptyState } from "@/components/EmptyState";
 import { SafeImage } from "@/components/SafeImage";
-import { Scrim } from "@/components/Scrim";
 import { Skeleton } from "@/components/Skeleton";
 import {
   brand,
@@ -259,13 +258,29 @@ function Cell({ post }: { post: PostWithAuthor }) {
             ligt dat andersom — daar is elke tegel van dezelfde persoon —
             en dat is precies waarom het bord een eigen tegel heeft
             (components/MoodTile.tsx) in plaats van een schakelaar hier. */}
-        <Scrim height={104} strength={0.68} steps={10} />
+        {/*
+            Een gevulde band, geen sluier.
+
+            Er lag een verloop van twaalf vlakken over de onderkant van élke
+            foto: donker onderin, oplossend naar boven. Dat is een zachte
+            rand, en dit systeem kent er geen — §4 zegt dat hiërarchie uit
+            vlak en lijn komt en niet uit diepte, en een verloop is precies
+            het derde. Op een raster van twaalf tegels lag er twaalf keer
+            een vage schaduw over het beeld waar het om begonnen was.
+
+            Wat er nu staat is wat §2 al toestond: een band in `ink` met
+            crème erop, in béide standen donker. Harde rand, rechte hoek,
+            en de foto erboven blijft de foto.
+        */}
         <View
           style={{
             position: "absolute",
-            left: space.sm,
-            right: space.sm,
-            bottom: space.sm,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: feed.ink,
+            paddingHorizontal: space.sm,
+            paddingVertical: space.xs,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>

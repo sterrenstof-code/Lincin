@@ -255,9 +255,20 @@ Daarnaast drie vaste maten:
 - `ROW_H` (60) — de hoogte van een rij in een lijst. Vast, zodat een naam
   die op twee regels valt de rij niet hoger maakt dan zijn buur.
 
-Voor tekst over een foto: `Scrim` (`components/Scrim.tsx`). Geen schaduw —
-die staan niet in dit systeem — maar een verloop in twaalf stappen. Drie
-gestapelde vlakken, zoals het eerder ging, zie je als drie banden.
+Voor tekst over een foto: **een gevulde band**, geen sluier.
+
+Hier stond `Scrim` — een verloop in twaalf stappen van donker naar niets,
+om de naam van de uploader leesbaar te houden. Dat onderdeel is weg. Een
+verloop is een zachte rand, en §4 zegt dat hiërarchie uit vlak en lijn komt
+en niet uit diepte; een sluier is precies dat derde. Op een raster van
+twaalf tegels lag er twaalf keer een vage schaduw over het beeld waar het
+om begonnen was.
+
+Wat ervoor in de plaats komt stond al in §2: een band in `bg-ink` met
+`text-cream`, in béide standen donker. Harde rand, rechte hoek, en de foto
+erboven blijft de foto. Staat er niets over de foto, dan hoort er ook geen
+band — dat was de tweede fout van de sluier: hij lag er ook waar niets
+overheen stond.
 
 ### Stilte en leegte
 
