@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
-import { PostGrid } from "@/components/PostGrid";
+import { MoodBoard } from "@/components/MoodBoard";
 import { ProfileHeroPlate, ProfileLinkList } from "@/components/ProfileHeader";
 import { RichText } from "@/components/RichText";
 import { Avatar } from "@/components/Avatar";
@@ -303,18 +303,23 @@ export default function UserProfileScreen() {
             <Text
               style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 16 }]}
             >
-              GEDEELDE VONDSTEN
+              HET BORD
             </Text>
             {/* Zelfde raster als op je eigen profiel, en dus ook dezelfde
                 beweging naar de volledige plaat. Hier stond een eigen
                 variant met afgeronde hoeken en losse kleurwaarden — twee
                 rasters voor hetzelfde ding. Zie components/PostGrid.tsx. */}
-            <PostGrid
+            {/* Hetzelfde bord als op je eigen profiel, alleen niet te
+                bewerken: de maten en de volgorde zijn de keuze van degene
+                wiens bord het is. Zie components/MoodBoard.tsx. */}
+            <MoodBoard
               posts={posts.data}
               loading={posts.isLoading}
-              // Elke tegel hier is van dezelfde persoon; zijn naam eronder
-              // zetten is dan geen informatie meer. Zie `bare` in PostGrid.
-              bare
+              myUserId={session?.user.id ?? ""}
+              onChanged={() => void posts.refetch()}
+              emptyTitle={
+                relation.kind === "self" ? "Je bord is nog leeg" : "Nog niets op dit bord"
+              }
               emptyLabel={
                 relation.kind === "self"
                   ? "Je hebt nog niks gedeeld. Plaats je eerste vondst vanaf de feed."

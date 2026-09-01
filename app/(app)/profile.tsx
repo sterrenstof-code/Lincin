@@ -7,8 +7,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { ActivityHistory } from "@/components/ActivityHistory";
-import { InteractionSummaryCard } from "@/components/InteractionSummary";
-import { PostGrid } from "@/components/PostGrid";
+import {
+  BoardVocabulary,
+  InteractionSummaryCard,
+} from "@/components/InteractionSummary";
+import { MoodBoard } from "@/components/MoodBoard";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
@@ -284,27 +287,33 @@ export default function ProfileScreen() {
                 { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
               ]}
             >
-              JOUW VONDSTEN
+              JOUW BORD
             </Text>
             {/* "Plaats je eerste vondst vanaf de feed" noemde een scherm en
                 gaf er geen ingang bij — terwijl dit de pagina over jouw werk
                 is en de composer één tik verderop ligt. */}
-            <PostGrid
+            <MoodBoard
               posts={myPosts.data}
               loading={myPosts.isLoading}
-              // Onder élke tegel hier staat dezelfde naam: die van jou. Dan
-              // is een naam op de tegel geen informatie maar een sluier
-              // over de foto. Zie `bare` in components/PostGrid.tsx.
-              bare
-              emptyTitle="Je hebt nog niets gedeeld"
-              emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto. Wat je hier deelt komt in de feed van je lincs."
+              editable
+              myUserId={myUserId}
+              onChanged={() => {
+                void myPosts.refetch();
+                void qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+              }}
+              emptyTitle="Je bord is nog leeg"
+              emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto, een clip. Alles wat je goed vindt mag hier — en niet alles hoeft de feed in."
               emptyAction={{
-                label: "Deel je eerste vondst",
+                label: "Zet er iets op",
                 onPress: () => router.push("/post-compose"),
               }}
             />
           </View>
 
+          {/* Eén colofon van twee helften: wat je deed, en waar het over
+              ging. De tweede leest uit de vondsten die er al zijn — geen
+              extra query, en eerlijker: dit gaat over wat er op je bord
+              staat. Zie components/InteractionSummary.tsx. */}
           <View style={{ width: wide ? 300 : undefined }}>
             <InteractionSummaryCard
               data={interactions.data}
@@ -312,6 +321,7 @@ export default function ProfileScreen() {
               error={interactions.isError ? interactions.error : undefined}
               onRetry={() => interactions.refetch()}
             />
+            <BoardVocabulary posts={myPosts.data} />
           </View>
         </View>
 

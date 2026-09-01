@@ -1,8 +1,9 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { QueryError } from "@/components/QueryError";
 import { Skeleton } from "@/components/Skeleton";
 import type { InteractionSummary as Summary } from "@/lib/api/interactions";
+import type { PostWithAuthor } from "@/lib/api/posts";
 import {
   feed,
   FEED_BORDER,
@@ -151,6 +152,102 @@ function Row({
         {value}
       </Text>
       <Text style={[feedType.body, { color: feed.ink, flex: 1 }]}>{label}</Text>
+    </View>
+  );
+}
+
+
+/**
+ * De woorden die je bord het vaakst gebruikt.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT NAAST DE GETALLEN STAAT
+ * ---------------------------------------------------------------
+ * De getallen erboven zeggen hoevéél je deed. Ze zeggen niets over wát het
+ * was, en dat is op een moodboard juist de helft die telt — je verzamelt
+ * niet om te tellen, je verzamelt omdat het ergens over gaat.
+ *
+ * Samen vormen ze één colofon: links het bord zelf, rechts wat het bord
+ * over zichzelf zegt. Wat je deed, en waar het over ging.
+ *
+ * De tags komen uit de vondsten die er al zijn — geen extra query. Dat is
+ * niet alleen goedkoop maar ook eerlijker: dit gaat over wat er op je bord
+ * staat, en dat is precies de lijst die het bord tekent.
+ */
+export function BoardVocabulary({
+  posts,
+  onSelect,
+}: {
+  posts: PostWithAuthor[] | undefined;
+  onSelect?: (tag: string) => void;
+}) {
+  const counted = new Map<string, number>();
+  for (const post of posts ?? []) {
+    for (const tag of post.tags ?? []) {
+      const t = tag.trim().toLowerCase();
+      if (t) counted.set(t, (counted.get(t) ?? 0) + 1);
+    }
+  }
+  const top = Array.from(counted.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    // Acht is genoeg om een vorm te zien en weinig genoeg om geen wolk te
+    // worden: een tagwolk van veertig woorden zegt net zo weinig als geen.
+    .slice(0, 8);
+
+  if (top.length === 0) return null;
+
+  return (
+    <View
+      style={{
+        borderWidth: FEED_BORDER,
+        borderColor: feed.ink,
+        borderTopWidth: 0,
+        padding: space.xl,
+      }}
+    >
+      <Text
+        style={[
+          feedType.kicker,
+          { color: flameDeep, letterSpacing: 0.55, marginBottom: space.xs },
+        ]}
+      >
+        WAAR HET OVER GAAT
+      </Text>
+      <Text style={[feedType.caption, { color: feed.inkDim, marginBottom: space.lg }]}>
+        De woorden van je bord
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+        {top.map(([tag, count]) => (
+          <Pressable
+            key={tag}
+            accessibilityRole={onSelect ? "button" : "text"}
+            accessibilityLabel={`${tag}, ${count} keer`}
+            onPress={onSelect ? () => onSelect(tag) : undefined}
+            disabled={!onSelect}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: space.xs,
+              // Vierkant, zoals alles (§4). Geen pil.
+              borderWidth: FEED_BORDER,
+              borderColor: rule.soft,
+              paddingHorizontal: space.md,
+              minHeight: 30,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text style={[feedType.label, { color: feed.ink }]}>{tag}</Text>
+            <Text
+              style={[
+                feedType.label,
+                { color: feed.inkDim, fontVariant: ["tabular-nums"] },
+              ]}
+            >
+              {count}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
