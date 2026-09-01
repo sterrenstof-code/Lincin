@@ -21,8 +21,21 @@ import { SafeImage } from "@/components/SafeImage";
 import { SmartTextInput } from "@/components/SmartTextInput";
 import { FormatBar } from "@/components/FormatBar";
 import { useAuth } from "@/lib/auth/provider";
-import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep } from "@/lib/design/type";
-import { createFind, type FindKind } from "@/lib/api/posts";
+import {
+  CONTROL_H,
+  creamOnDark,
+  feed,
+  FEED_BORDER,
+  feedType,
+  flameDeep,
+  space,
+} from "@/lib/design/type";
+import {
+  createFind,
+  isVideoUri,
+  type FindKind,
+  type PostVisibility,
+} from "@/lib/api/posts";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
@@ -152,6 +165,15 @@ export default function PostComposeScreen() {
    * de feed blader je erdoorheen. De eerste is de omslag.
    */
   const [imageUris, setImageUris] = useState<string[]>([]);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  /**
+   * Waar deze vondst heen gaat.
+   *
+   * Standaard de feed — dat is wat de app tot nu toe deed, en een
+   * standaard die stilzwijgend verandert is erger dan geen keuze. Wie
+   * alleen zijn bord wil vullen zet hem om; zie 0055.
+   */
+  const [visibility, setVisibility] = useState<PostVisibility>("feed");
 
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [unfurling, setUnfurling] = useState(false);
@@ -290,10 +312,17 @@ export default function PostComposeScreen() {
       setError(fromCamera ? "Geen camera-toegang." : "Geen toegang tot je mediabibliotheek.");
       return;
     }
+    // Bewegend beeld mag ook. De chat en de events konden dit al —
+    // `["images", "videos"]` staat daar gewoon — en juist de composer, de
+    // enige weg naar je eigen bord, hield het bij stilstaand beeld. Dan kun
+    // je een clip wél naar één iemand sturen en niet op je profiel zetten.
     const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85 })
+      ? await ImagePicker.launchCameraAsync({
+          mediaTypes: ["images", "videos"],
+          quality: 0.85,
+        })
       : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
+          mediaTypes: ["images", "videos"],
           quality: 0.85,
           allowsMultipleSelection: true,
           // Ruim genoeg voor een middag fotograferen, niet zo ruim dat één
@@ -301,14 +330,23 @@ export default function PostComposeScreen() {
           selectionLimit: 20,
         });
     if (result.canceled || result.assets.length === 0) return;
+
+    // Eén clip per vondst, en de foto's apart. Een album is iets om
+    // doorheen te bladeren; een video is het onderwerp zelf, en twee
+    // video's onder één vondst is geen vondst meer maar een map.
+    const videos = result.assets.filter((a) => a.type === "video" || isVideoUri(a.uri));
+    const images = result.assets.filter((a) => !videos.includes(a));
+    if (videos.length > 0) setVideoUri(videos[0].uri);
     // Aanvullen en niet vervangen: "Meer toevoegen" moet ook echt toevoegen.
-    setImageUris((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 20));
+    if (images.length > 0) {
+      setImageUris((prev) => [...prev, ...images.map((a) => a.uri)].slice(0, 20));
+    }
   }
 
   const canSubmit = !submitting && !!kind && (() => {
     if (URL_KINDS.includes(kind)) return url.trim().length > 3;
     if (BODY_KINDS.includes(kind)) return body.trim().length > 0;
-    if (kind === "image") return imageUris.length > 0;
+    if (kind === "image") return imageUris.length > 0 || !!videoUri;
     return note.trim().length > 0;
   })();
 
@@ -332,6 +370,8 @@ export default function PostComposeScreen() {
         userId: myUserId,
         kind: resolveKind(),
         imageUris,
+        videoUri,
+        visibility,
         linkUrl: url.trim() || null,
         caption: note.trim() || null,
         bodyText: BODY_KINDS.includes(kind) ? body.trim() || null : null,
@@ -385,6 +425,9 @@ export default function PostComposeScreen() {
               )
             ) : null}
           </View>
+          {kind ? (
+            <VisibilityRow value={visibility} onChange={setVisibility} />
+          ) : null}
           <Rule tone="feed" strong />
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 96 }}>
@@ -578,6 +621,7 @@ export default function PostComposeScreen() {
                             </Meta>
                           )}
                         </View>
+                        {videoUri ? <ClipRow onRemove={() => setVideoUri(null)} /> : null}
                         <Rule tone="feed" />
                       </View>
                     ) : (
@@ -723,6 +767,105 @@ export default function PostComposeScreen() {
 // ---------------------------------------------------------------
 
 /** Label boven, invoer eronder, haarlijn onderaan. Geen doos. */
+/**
+ * De gekozen clip, als regel onder de foto's.
+ *
+ * Geen voorbeeldbeeld: een still uit een clip halen vraagt een extra
+ * bibliotheek, en wat je hier nodig hebt is niet zien wélke video het is —
+ * je hebt hem net zelf gekozen — maar dát er een aan hangt, en de weg om
+ * hem er weer af te halen.
+ */
+function ClipRow({ onRemove }: { onRemove: () => void }) {
+  return (
+    <View className="flex-row items-center px-6 pb-4" style={{ gap: space.sm }}>
+      <Ionicons name="videocam" color={feed.ink} size={15} />
+      <Meta tone="feed" strong>Clip toegevoegd</Meta>
+      <View style={{ flex: 1 }} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Clip verwijderen"
+        onPress={onRemove}
+        style={{ height: CONTROL_H, justifyContent: "center" }}
+      >
+        <Meta tone="feed" dim>Verwijderen</Meta>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * Waar deze vondst heen gaat: naar de feed van je lincs, of alleen naar je
+ * eigen bord.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT EEN KEUZE IS EN GEEN INSTELLING
+ * ---------------------------------------------------------------
+ * Een moodboard vullen en iets delen zijn twee verschillende bewegingen.
+ * Zolang élke vondst de feed in ging, kostte veertig dingen verzamelen
+ * veertig meldingen bij je vrienden — en dan verzamel je niets meer. De
+ * vraag hoort dus bij het plaatsen zelf, niet weggestopt in je profiel.
+ *
+ * `feed` blijft de standaard. Dat is wat de app tot nu toe deed, en een
+ * standaard die stilzwijgend van betekenis verandert is erger dan geen
+ * keuze aanbieden.
+ *
+ * Dezelfde gesegmenteerde strip als de tabstrip in de kop en de
+ * modus-keuze op het inlogscherm — één vorm voor "kies er één van twee".
+ */
+function VisibilityRow({
+  value,
+  onChange,
+}: {
+  value: PostVisibility;
+  onChange: (next: PostVisibility) => void;
+}) {
+  const options: { id: PostVisibility; label: string; hint: string }[] = [
+    { id: "feed", label: "In de feed", hint: "Je lincs zien hem" },
+    { id: "profile", label: "Alleen op mijn bord", hint: "Stil, niet verborgen" },
+  ];
+  return (
+    <View className="px-6 pb-4">
+      <View
+        style={{
+          flexDirection: "row",
+          borderWidth: FEED_BORDER,
+          borderColor: feed.ink,
+        }}
+      >
+        {options.map((opt) => {
+          const active = value === opt.id;
+          return (
+            <Pressable
+              key={opt.id}
+              accessibilityRole="tab"
+              accessibilityLabel={`${opt.label}. ${opt.hint}`}
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(opt.id)}
+              style={{
+                flex: 1,
+                minHeight: CONTROL_H,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: space.sm,
+                backgroundColor: active ? feed.ink : "transparent",
+              }}
+            >
+              <Text
+                style={[
+                  feedType.label,
+                  { color: active ? creamOnDark.DEFAULT : feed.ink },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View className="px-6 pt-7">

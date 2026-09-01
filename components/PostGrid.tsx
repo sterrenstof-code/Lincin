@@ -187,7 +187,7 @@ function GridCell({
  * daar zou het stipje herhalen wat er letterlijk staat.
  */
 function hasMoreThanImage(post: PostWithAuthor): boolean {
-  if (!post.image_url) return false;
+  if (!coverUrlFor(post)) return false;
   return (
     !!post.caption?.trim() ||
     !!post.body_text?.trim() ||
@@ -238,15 +238,38 @@ function MoreDot() {
   );
 }
 
+/**
+ * Het voorblad van een tegel.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT NIET GEWOON `post.image_url` IS
+ * ---------------------------------------------------------------
+ * `image_url` wordt in `hydrate` alleen gevuld uit `image_path` — het
+ * bestand dat jíj uploadde. Een artikel, een YouTube-link of een
+ * Spotify-album heeft dat niet: daar zit het beeld in `meta.image_url`,
+ * de momentopname van de unfurl.
+ *
+ * In de feed ging dat goed, want `partsOf` in FindBody leest
+ * `meta.image_url ?? post.image_url`. Dit raster las alleen het tweede, en
+ * dus viel élke link, video en plaat hier in de tekst-tak: een grijs
+ * colofon op je profiel voor precies de dingen die in de feed hun
+ * omslagbeeld lieten zien. Op een moodboard is dat fataal — links zíjn het
+ * grootste deel van wat je verzamelt.
+ */
+export function coverUrlFor(post: PostWithAuthor): string | null {
+  return post.meta?.image_url ?? post.image_url ?? null;
+}
+
 function Cell({ post, bare }: { post: PostWithAuthor; bare: boolean }) {
   const album = post.album_urls ?? [];
+  const cover = coverUrlFor(post);
 
-  if (post.image_url) {
+  if (cover) {
     return (
       <>
         <SafeImage
-          uri={post.image_url}
-          cacheKey={post.image_path ?? post.id}
+          uri={cover}
+          cacheKey={post.image_path ?? post.meta?.image_url ?? post.id}
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
           transition={150}

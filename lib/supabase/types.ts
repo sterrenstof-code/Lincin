@@ -249,6 +249,14 @@ export type Database = {
           body_text: string | null;
           tags: string[];
           meta: Record<string, unknown>;
+          /** 0055_moodboard — geüploade clip; image_path blijft het voorblad. */
+          video_path: string | null;
+          /** 0055_moodboard — 'feed' gaat rond, 'profile' staat alleen op je bord. */
+          visibility: "feed" | "profile";
+          /** 0055_moodboard — gevuld is vastgeprikt bovenaan je bord. */
+          pinned_at: string | null;
+          /** 0055_moodboard — maat op het moodboard. */
+          tile_span: "1x1" | "2x1" | "1x2" | "2x2";
         };
         Insert: {
           id?: string;
@@ -263,6 +271,10 @@ export type Database = {
           body_text?: string | null;
           tags?: string[];
           meta?: Record<string, unknown>;
+          video_path?: string | null;
+          visibility?: "feed" | "profile";
+          pinned_at?: string | null;
+          tile_span?: "1x1" | "2x1" | "1x2" | "2x2";
         };
         Update: Partial<Database["public"]["Tables"]["posts"]["Insert"]>;
         Relationships: [];

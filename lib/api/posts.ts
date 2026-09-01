@@ -55,12 +55,52 @@ export type PostRow = {
   body_text: string | null;
   tags: string[];
   meta: Partial<LinkPreview>;
+  /** 0055 — geüploade clip. `image_path` blijft het stilstaande voorblad. */
+  video_path: string | null;
+  /**
+   * 0055 — `feed` gaat rond bij je lincs, `profile` staat alleen op je bord.
+   *
+   * Geen privé-vlag: wie je profiel bezoekt ziet hem gewoon. Het onderscheid
+   * gaat over rondsturen, niet over verbergen — zie de migratie.
+   */
+  visibility: PostVisibility;
+  /** 0055 — gevuld is vastgeprikt; de laatst vastgeprikte staat vooraan. */
+  pinned_at: string | null;
+  /** 0055 — maat op het moodboard, in rastercellen. */
+  tile_span: TileSpan;
 };
+
+/** Waar een vondst terechtkomt. Zie `visibility` hierboven. */
+export type PostVisibility = "feed" | "profile";
+
+/**
+ * De vier maten die een tegel op het moodboard kan hebben.
+ *
+ * Vier en niet meer: een bord leest als samengesteld doordat de dingen
+ * verschillen in maat, en het valt uit elkaar zodra élk ding zijn eigen
+ * maat heeft. Dezelfde afweging als de twee beeldverhoudingen van de tegel
+ * in de feed.
+ */
+export type TileSpan = "1x1" | "2x1" | "1x2" | "2x2";
+
+/** Breedte en hoogte in cellen, uit de opgeslagen tekst. */
+export function spanCells(span: TileSpan): { w: number; h: number } {
+  const [w, h] = span.split("x").map((n) => Number(n) || 1);
+  return { w, h };
+}
 
 export type PostWithAuthor = PostRow & {
   author: Profile | null;
   /** Signed image URL — only present when image_path is set. */
   image_url: string | null;
+  /**
+   * Signed URL van de clip, als er een is.
+   *
+   * Ondertekend zónder beeldbewerking: de transformatie-endpoint van
+   * Supabase geldt voor afbeeldingen, en een video daarlangs sturen levert
+   * geen kleinere video maar een fout.
+   */
+  video_url: string | null;
   /** Aantal reacties op deze post (via embedded PostgREST count). */
   comment_count: number;
   /**
@@ -105,7 +145,7 @@ const POSTS_BUCKET = "posts";
  * de pagina leeg. Precies waar de zin hierboven voor waarschuwde.
  */
 export const POST_COLUMNS =
-  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta";
+  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span";
 
 /** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
 export function normalizeRow(row: any): PostRow {
@@ -117,8 +157,15 @@ export function normalizeRow(row: any): PostRow {
     body_text: row.body_text ?? null,
     tags: Array.isArray(row.tags) ? row.tags : [],
     meta: row.meta && typeof row.meta === "object" ? row.meta : {},
+    video_path: row.video_path ?? null,
+    visibility: row.visibility === "profile" ? "profile" : "feed",
+    pinned_at: row.pinned_at ?? null,
+    tile_span: TILE_SPANS.includes(row.tile_span) ? row.tile_span : "1x1",
   };
 }
+
+/** De toegestane maten, als lijst — gelijk aan de check in 0055. */
+export const TILE_SPANS: TileSpan[] = ["1x1", "2x1", "1x2", "2x2"];
 
 function extFromUri(uri: string, fallback = "jpg"): string {
   const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
@@ -137,9 +184,24 @@ function contentTypeForExt(ext: string): string {
     case "heic":
     case "heif":
       return "image/heic";
+    case "mp4":
+    case "m4v":
+      return "video/mp4";
+    case "mov":
+      return "video/quicktime";
+    case "webm":
+      return "video/webm";
     default:
       return "image/jpeg";
   }
+}
+
+/** De extensies die de bucket sinds 0055 als bewegend beeld aanneemt. */
+const VIDEO_EXTS = new Set(["mp4", "m4v", "mov", "webm"]);
+
+export function isVideoUri(uri: string): boolean {
+  const m = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
+  return !!m && VIDEO_EXTS.has(m[1].toLowerCase());
 }
 
 /** Normaliseert tags: kleine letters, ontdubbeld, max 6. */
@@ -179,6 +241,12 @@ export async function createFind(args: {
    * ongewijzigd blijft werken.
    */
   imageUris?: string[];
+  /**
+   * Een geüploade clip. Los van `imageUris`, want hij is iets anders: die
+   * lijst is een album om doorheen te bladeren, dit is bewegend beeld. Een
+   * vondst mag allebei hebben — dan is de foto het voorblad.
+   */
+  videoUri?: string | null;
   caption?: string | null;
   linkUrl?: string | null;
   bodyText?: string | null;
@@ -186,6 +254,8 @@ export async function createFind(args: {
   sourceAuthor?: string | null;
   tags?: string[] | null;
   meta?: Partial<LinkPreview> | null;
+  /** Standaard `feed`; `profile` zet hem alleen op je eigen bord. */
+  visibility?: PostVisibility;
 }): Promise<PostRow> {
   const caption = args.caption?.trim() || null;
   const linkUrl = args.linkUrl?.trim() || null;
@@ -194,7 +264,7 @@ export async function createFind(args: {
   const sourceAuthor = args.sourceAuthor?.trim() || null;
   const tags = normalizeTags(args.tags);
 
-  if (!args.imageUri && !caption && !linkUrl && !bodyText) {
+  if (!args.imageUri && !args.imageUris?.length && !args.videoUri && !caption && !linkUrl && !bodyText) {
     throw new Error("Lege vondst — voeg tekst, beeld, link of een fragment toe.");
   }
 
@@ -228,12 +298,39 @@ export async function createFind(args: {
   }
   imagePath = uploadedPaths[0] ?? null;
 
+  /**
+   * De clip, als er een is.
+   *
+   * Ná de foto's en met dezelfde opruimregel: mislukt hij, dan gaat alles
+   * wat er al stond ook weg. Een vondst met een voorblad maar zonder de
+   * video die je bedoelde is erger dan geen vondst — die eerste ziet eruit
+   * alsof hij klopt.
+   */
+  let videoPath: string | null = null;
+  if (args.videoUri) {
+    const ext = extFromUri(args.videoUri, "mp4");
+    const path = `${args.userId}/${postId}-clip.${ext}`;
+    const contentType = contentTypeForExt(ext);
+    const bytes = await uriToBytes(args.videoUri);
+    const blob = new Blob([bytes as any], { type: contentType });
+    const { error: upErr } = await supabase.storage
+      .from(POSTS_BUCKET)
+      .upload(path, blob, { contentType, upsert: false });
+    if (upErr) {
+      await supabase.storage.from(POSTS_BUCKET).remove(uploadedPaths).catch(() => {});
+      throw upErr;
+    }
+    uploadedPaths.push(path);
+    videoPath = path;
+  }
+
   const { data, error: insErr } = await supabase
     .from("posts")
     .insert({
       id: postId,
       user_id: args.userId,
       image_path: imagePath,
+      video_path: videoPath,
       caption,
       link_url: linkUrl,
       kind,
@@ -242,6 +339,7 @@ export async function createFind(args: {
       source_author: sourceAuthor,
       tags,
       meta: args.meta ?? {},
+      visibility: args.visibility ?? "feed",
     })
     .select(POST_COLUMNS)
     .single();
@@ -306,6 +404,30 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   // onthoudt de URL ook, zodat dezelfde foto bij een tabwissel niet opnieuw
   // gedownload wordt — zie lib/media.ts.
   return signedImageUrls(POSTS_BUCKET, rows.map((r) => r.image_path), IMG.tile);
+}
+
+/**
+ * De clips, ondertekend.
+ *
+ * Apart van `attachSignedUrls` en niet ernaast gepropt, omdat het één
+ * belangrijk verschil heeft: géén `IMG.tile`. De transformatie-endpoint
+ * van Supabase schaalt afbeeldingen; een video daarlangs sturen levert
+ * geen kleinere video op maar een fout, en dan is de clip stuk terwijl het
+ * voorblad het doet — het soort fout dat je pas op de detailpagina ziet.
+ */
+async function attachSignedVideos(rows: PostRow[]): Promise<Map<string, string>> {
+  const paths = Array.from(
+    new Set(rows.map((r) => r.video_path).filter((p): p is string => !!p))
+  );
+  const out = new Map<string, string>();
+  if (paths.length === 0) return out;
+  const { data } = await supabase.storage
+    .from(POSTS_BUCKET)
+    .createSignedUrls(paths, 60 * 60);
+  for (const row of data ?? []) {
+    if (row.path && row.signedUrl) out.set(row.path, row.signedUrl);
+  }
+  return out;
 }
 
 /**
@@ -422,10 +544,11 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
    *
    * Naast elkaar is de wachttijd die van de traagste.
    */
-  const [authors, urlByPath, albums, signalCounts, commentCounts] =
+  const [authors, urlByPath, videoByPath, albums, signalCounts, commentCounts] =
     await Promise.all([
       getProfiles(authorIds),
       attachSignedUrls(rows),
+      attachSignedVideos(rows),
       attachAlbums(postIds),
       countSignals(postIds),
       countCommentsByPost(postIds),
@@ -436,6 +559,7 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
+    video_url: r.video_path ? videoByPath.get(r.video_path) ?? null : null,
     comment_count: commentCounts.get(r.id) ?? 0,
     album_urls: albums.get(r.id)?.urls,
     album_paths: albums.get(r.id)?.paths,
@@ -452,21 +576,86 @@ export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(POST_COLUMNS)
+    // Alleen wat rond hoort te gaan. Wat je op je bord zet zonder het te
+    // sturen staat op `profile` en hoort hier niet — zie 0055.
+    .eq("visibility", "feed")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return hydrate((data ?? []).map(normalizeRow));
 }
 
+/**
+ * Iemands bord.
+ *
+ * Vastgeprikt eerst, en daarbinnen de laatst vastgeprikte vooraan; de rest
+ * op tijd. `nullsFirst: false` is wat "vastgeprikt eerst" doet — zonder dat
+ * sorteert Postgres NULL bovenaan bij aflopend en staat álles wat je níet
+ * vastprikte juist bovenin.
+ *
+ * Er wordt hier niet op `visibility` gefilterd, en dat is de bedoeling: een
+ * vondst die de feed niet in ging staat wél op je bord. Dat ís het verschil
+ * tussen de twee waarden.
+ */
 export async function listUserPosts(userId: string, limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(POST_COLUMNS)
     .eq("user_id", userId)
+    .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return hydrate((data ?? []).map(normalizeRow));
+}
+
+/**
+ * De drie knoppen van het moodboard.
+ *
+ * Alle drie hetzelfde patroon: één kolom, `eq("user_id")` erbij zodat de
+ * bewerking niet alleen door RLS maar ook door de query zelf begrensd is,
+ * en de bijgewerkte rij terug zodat de aanroeper niet hoeft te raden wat
+ * er nu staat. De policy uit 0053 maakt dit überhaupt mogelijk — vóór die
+ * migratie weigerde RLS élke update op `posts` zonder een fout te geven.
+ */
+export async function setPostTileSpan(
+  postId: string,
+  userId: string,
+  span: TileSpan
+): Promise<void> {
+  const { error } = await supabase
+    .from("posts")
+    .update({ tile_span: span })
+    .eq("id", postId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+/** `null` maakt hem los; een tijdstempel prikt hem vast. */
+export async function setPostPinned(
+  postId: string,
+  userId: string,
+  pinned: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("posts")
+    .update({ pinned_at: pinned ? new Date().toISOString() : null })
+    .eq("id", postId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function setPostVisibility(
+  postId: string,
+  userId: string,
+  visibility: PostVisibility
+): Promise<void> {
+  const { error } = await supabase
+    .from("posts")
+    .update({ visibility })
+    .eq("id", postId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 /** Vondsten gefilterd op tag — voert de filterchips bovenaan de feed. */
@@ -474,6 +663,7 @@ export async function listPostsByTag(tag: string, limit = 50): Promise<PostWithA
   const { data, error } = await supabase
     .from("posts")
     .select(POST_COLUMNS)
+    .eq("visibility", "feed")
     .contains("tags", [tag.toLowerCase()])
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -619,6 +809,7 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       ...memPost,
       author,
       image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
+      video_url: null,
       comment_count: 0,
       reaction_count: 0,
       boost_count: 0,
