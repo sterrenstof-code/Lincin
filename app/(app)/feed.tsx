@@ -457,6 +457,16 @@ export default function FeedScreen() {
         progress={chrome.progress}
         onScroll={onFeedScroll}
         scrollEventThrottle={chrome.scrollEventThrottle}
+        // Ook hier de smalle balk.
+        //
+        // De grote kop was de thuispagina voorbehouden — daar is het merk
+        // het onderwerp, overal elders de pagina zelf (§5). Dat klopte
+        // zolang de feed het enige was wat je opensloeg. Wat het in de
+        // praktijk deed is drie rijen affiche boven de vondsten zetten, en
+        // dan is het eerste wat je ziet niet wat je vrienden deelden maar
+        // je eigen logo. Eén balk overal is bovendien één ding om te leren
+        // in plaats van twee die op elkaar lijken.
+        compact
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && !feed.isLoading}

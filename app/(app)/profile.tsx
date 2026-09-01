@@ -15,8 +15,8 @@ import { MoodBoard } from "@/components/MoodBoard";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
-import { RubricHead } from "@/components/PageHead";
-import { feed, feedType, flameDeep, space } from "@/lib/design/type";
+import { SectionBand } from "@/components/SectionBand";
+import { feed, gutter, space } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -221,7 +221,9 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
+    // Geen `top` in de randen: de plaat hoort tot de bovenrand van het
+    // venster te lopen, en de balk erboven draagt zijn eigen inspringing.
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["left", "right"]}>
       {/* Eén scroller voor de hele pagina; de kop plakt bovenaan. */}
       <PageScroll
         wide={wide}
@@ -243,7 +245,14 @@ export default function ProfileScreen() {
             tintColor={feed.ink}
           />
         }
-        contentStyle={{ paddingVertical: 20, paddingBottom: 60 }}
+        // De omslag begint op nul en loopt ónder de balk door: dat is wat
+        // een omslag doet — het beeld draagt de bovenrand en de navigatie
+        // ligt erop. `gutter={false}` haalt de bladmarge weg zodat de plaat
+        // en het bord tot de vensterrand lopen; elke tekstsectie zet zijn
+        // eigen marge, want tekst hoort niet tegen de rand.
+        gutter={false}
+        underChrome
+        contentStyle={{ paddingBottom: 60 }}
       >
         {/* ---- De kop: plaat, avatar, bio, links ---- */}
         {/*
@@ -254,6 +263,7 @@ export default function ProfileScreen() {
         <ProfileHeader
           profile={profile.data}
           email={session?.user.email}
+          wide={wide}
           heroBusy={heroUploading}
           avatarBusy={avatarUploading}
           onPickHero={onPickHero}
@@ -262,72 +272,87 @@ export default function ProfileScreen() {
         />
 
         {/*
-            Op een breed scherm staat het overzicht náást je vondsten en
-            niet eronder: het is een samenvatting van hetzelfde, en een
-            samenvatting die je pas ziet nadat je langs zestig tegels
-            gescrold bent vat niets meer samen. Op een telefoon is er geen
-            kolom naast, en dan gaat hij erbóven — nog steeds vóór de
-            tegels, want dat is waar hij thuishoort.
+            Het bord loopt tot de vensterrand.
+
+            Een rubriekkop met een bladmarge eromheen maakt er een sectie
+            in een pagina van; een bord dat de rand raakt ís de pagina. De
+            kop houdt zijn marge, want tekst hoort niet tegen de rand — het
+            beeld eronder wel. Dat is dezelfde scheiding als bij de omslag
+            hierboven en bij de volvlak-plaat van een vondst (§5,
+            `gutter={false}`).
         */}
+        <View style={{ marginTop: space.section }}>
+          <SectionBand index={0} label="Het bord" padding={gutter(wide)} />
+        </View>
+        <MoodBoard
+          posts={myPosts.data}
+          loading={myPosts.isLoading}
+          editable
+          myUserId={myUserId}
+          onChanged={() => {
+            void myPosts.refetch();
+            void qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+          }}
+          emptyTitle="Je bord is nog leeg"
+          emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto, een clip. Alles wat je goed vindt mag hier — en niet alles hoeft de feed in."
+          emptyAction={{
+            label: "Zet er iets op",
+            onPress: () => router.push("/post-compose"),
+          }}
+        />
+
+        {/* De woorden van het bord, meteen onder het bord: ze gaan over wat
+            eróver staat, niet over wat je deed. Die tweede helft is naar
+            "Jouw activiteit" verhuisd, waar hij hoort. */}
+        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.section }}>
+          <BoardVocabulary posts={myPosts.data} />
+        </View>
+
+        {/* ---- Jouw activiteit ---- */}
+        {/*
+            De getallen stonden náást het bord, als kolom rechts. Daar
+            hoorden ze niet: het bord gaat over wát je goed vond en de
+            getallen over hoevéél je deed, en twee onderwerpen naast elkaar
+            leest als één onderwerp in twee kolommen.
+
+            Hier staan ze bij het enige andere dat over jouw doen gaat — de
+            lijst eronder. Samen zijn ze één rubriek: de samenvatting, en
+            dan het verhaal.
+        */}
+        <View style={{ marginTop: space.section }}>
+          <SectionBand index={1} label="Jouw activiteit" padding={gutter(wide)} />
+        </View>
         <View
           style={{
-            // `column-reverse` op smal, en dat is geen truc: het overzicht
-            // staat in de opmaak ná het raster omdat het op breed rechts
-            // hoort, maar het hoort er vóór te staan als er geen kolom
-            // naast is. RN kent geen `order`, dus de richting doet het.
-            flexDirection: wide ? "row" : "column-reverse",
-            gap: space.section,
-            marginTop: space.section,
+            paddingHorizontal: gutter(wide),
+            marginTop: space.xl,
+            flexDirection: wide ? "row" : "column",
+            gap: wide ? space.section : space.xl,
+            alignItems: "flex-start",
           }}
         >
-          <View style={{ flex: wide ? 1 : undefined }}>
-            <Text
-              style={[
-                feedType.kicker,
-                { color: flameDeep, letterSpacing: 0.55, marginBottom: space.lg },
-              ]}
-            >
-              JOUW BORD
-            </Text>
-            {/* "Plaats je eerste vondst vanaf de feed" noemde een scherm en
-                gaf er geen ingang bij — terwijl dit de pagina over jouw werk
-                is en de composer één tik verderop ligt. */}
-            <MoodBoard
-              posts={myPosts.data}
-              loading={myPosts.isLoading}
-              editable
-              myUserId={myUserId}
-              onChanged={() => {
-                void myPosts.refetch();
-                void qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-              }}
-              emptyTitle="Je bord is nog leeg"
-              emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto, een clip. Alles wat je goed vindt mag hier — en niet alles hoeft de feed in."
-              emptyAction={{
-                label: "Zet er iets op",
-                onPress: () => router.push("/post-compose"),
-              }}
-            />
-          </View>
-
-          {/* Eén colofon van twee helften: wat je deed, en waar het over
-              ging. De tweede leest uit de vondsten die er al zijn — geen
-              extra query, en eerlijker: dit gaat over wat er op je bord
-              staat. Zie components/InteractionSummary.tsx. */}
-          <View style={{ width: wide ? 300 : undefined }}>
+          <View style={{ width: wide ? 320 : "100%" }}>
             <InteractionSummaryCard
               data={interactions.data}
               loading={interactions.isLoading}
               error={interactions.isError ? interactions.error : undefined}
               onRetry={() => interactions.refetch()}
             />
-            <BoardVocabulary posts={myPosts.data} />
+          </View>
+          <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : "100%" }}>
+            <ActivityHistory
+              userId={myUserId}
+              title="Wat je deed"
+              emptyLabel="Zodra je iets deelt of ergens aan meedoet, staat het hier."
+            />
           </View>
         </View>
 
-
-        {/* ---- Profile actions ---- */}
-        <RubricHead label="Profiel" style={{ marginTop: space.xxl }} />
+        {/* ---- Profiel ---- */}
+        <View style={{ marginTop: space.section }}>
+          <SectionBand index={2} label="Profiel" padding={gutter(wide)} />
+        </View>
+        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.xl }}>
         <Pressable
           onPress={() => router.push("/profile-edit")}
           className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
@@ -343,8 +368,23 @@ export default function ProfileScreen() {
           </View>
           <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />
         </Pressable>
+        </View>
 
-        {/* ---- Geavanceerd (versleuteling + notificaties) ---- */}
+        {/* ---- Geavanceerd — helemaal onderaan ---- */}
+        {/*
+            Stond middenin, tussen je bord en je activiteit. Dat is een blok
+            van honderdvijftig regels over sleutels, apparaten en
+            pushmeldingen, en het staat op de pagina die verder over jou
+            gaat — dus scrolde je er elke keer doorheen om bij het minst
+            technische deel te komen.
+
+            Het is niet minder belangrijk geworden, alleen zeldzamer. Wat je
+            zelden nodig hebt hoort onderaan, en wat je vaak bekijkt bovenaan.
+        */}
+        <View style={{ marginTop: space.section }}>
+          <SectionBand index={3} label="Geavanceerd" padding={gutter(wide)} />
+        </View>
+        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.lg }}>
         <Pressable
           onPress={() => setAdvancedOpen((v) => !v)}
           className="flex-row items-center mt-6 mb-1 px-1"
@@ -528,14 +568,9 @@ export default function ProfileScreen() {
         </View>
 
         </>}
+        </View>
 
-        {/* ---- Alles wat je gedaan hebt ---- */}
-        <ActivityHistory
-          userId={myUserId}
-          title="Jouw activiteit"
-          emptyLabel="Zodra je iets deelt of ergens aan meedoet, staat het hier."
-        />
-
+        <View style={{ paddingHorizontal: gutter(wide) }}>
         {/* ---- Sign out ---- */}
         <Pressable
           /**
@@ -560,6 +595,7 @@ export default function ProfileScreen() {
         >
           <Text className="text-ink font-semibold">Uitloggen</Text>
         </Pressable>
+        </View>
       </PageScroll>
     </SafeAreaView>
   );

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
@@ -8,11 +9,13 @@ import { SafeImage } from "@/components/SafeImage";
 import { Scrim } from "@/components/Scrim";
 import type { Profile } from "@/lib/api/profiles";
 import {
+  CONTROL_H,
   creamOnDark,
   feed,
   FEED_BORDER,
   feedType,
   flameDeep,
+  gutter as gutterFor,
   rule,
   space,
 } from "@/lib/design/type";
@@ -34,13 +37,22 @@ import {
  * dezelfde kop zonder knoppen.
  *
  * ---------------------------------------------------------------
- * DE PLAAT
+ * WAAROM DIT NIET MEER GECENTREERD STAAT
  * ---------------------------------------------------------------
- * Hij loopt tot de rand van het venster en de avatar hangt eroverheen —
- * de enige plek in de app waar twee vlakken elkaar overlappen. Dat mag
- * hier omdat de avatar zelf de uitzondering al is: hij is rond in een
- * systeem van rechte hoeken (§4), en iets ronds dat over een rand hangt
- * leest als een zegel op een blad, niet als een derde vlak.
+ * Het stond zo: plaat, avatar in het midden, naam eronder, bio eronder.
+ * Dat is de vorm van een sociaal profiel — een pasfoto met een bijschrift
+ * — en die vorm zegt "dit gaat over een account".
+ *
+ * Een moodboard is een uitgave, en een uitgave heeft een omslag. Dus loopt
+ * de plaat tot de vier randen van het venster en begint hij bóven de balk;
+ * de naam staat groot en links op de bladspiegel; en de avatar hangt over
+ * de onderrand als een zegel. Wat je eerst ziet is het beeld dat jíj koos,
+ * en je naam leest eroverheen zoals de titel van een uitgave over zijn
+ * omslag ligt.
+ *
+ * Links uitlijnen en niet centreren is dezelfde regel als `PageHead` (§5):
+ * gecentreerde tekst leest als een aankondiging, links uitgelijnde als een
+ * pagina die begint. Een moodboard begint.
  *
  * Zonder plaat is er geen leeg vak: dan begint de kop gewoon bij de
  * avatar. Een plaatshouder van tweehonderd punten hoog om te zeggen dat
@@ -50,6 +62,7 @@ import {
 export function ProfileHeader({
   profile,
   email,
+  wide,
   heroBusy,
   avatarBusy,
   onPickHero,
@@ -59,6 +72,7 @@ export function ProfileHeader({
   profile: Profile | null | undefined;
   /** Alleen op je eigen profiel; die van een ander gaat je niets aan. */
   email?: string | null;
+  wide: boolean;
   heroBusy?: boolean;
   avatarBusy?: boolean;
   onPickHero?: () => void;
@@ -71,6 +85,8 @@ export function ProfileHeader({
   const bio = profile?.bio?.trim() || "";
   const links = profile?.links ?? [];
   const mine = !!onPickAvatar;
+  const pad = gutterFor(wide);
+  const hasHero = !!profile?.hero_url;
 
   return (
     <View>
@@ -79,25 +95,21 @@ export function ProfileHeader({
         busy={heroBusy}
         onPick={onPickHero}
         userId={profile?.id}
+        wide={wide}
       />
 
-      {/* De avatar hangt over de onderrand van de plaat. Is er geen plaat,
-          dan is er niets om overheen te hangen en staat hij gewoon boven-
-          aan — vandaar de negatieve marge alleen in het eerste geval. */}
-      <View
-        style={{
-          alignItems: "center",
-          marginTop: profile?.hero_url ? -44 : space.sm,
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Profielfoto wijzigen"
-          accessibilityState={{ disabled: !mine }}
-          onPress={onPickAvatar}
-          disabled={!mine}
-          style={{ position: "relative" }}
-        >
+      {/* De avatar hangt over de onderrand van de plaat, links op de
+          bladspiegel. Is er geen plaat, dan is er niets om overheen te
+          hangen en begint het blok gewoon bovenaan. */}
+      <View style={{ paddingHorizontal: pad, marginTop: hasHero ? -40 : space.xl }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.lg }}>
+          <Pressable
+            accessibilityRole={mine ? "button" : undefined}
+            accessibilityLabel={mine ? "Profielfoto wijzigen" : undefined}
+            onPress={onPickAvatar}
+            disabled={!mine}
+            style={{ position: "relative" }}
+          >
           {/* Een ring in het paginavlak, zodat de avatar loskomt van de
               foto eronder in plaats van erin te verdwijnen. */}
           <View
@@ -138,33 +150,39 @@ export function ProfileHeader({
           ) : null}
         </Pressable>
 
-        {displayName ? (
-          <Text
-            style={[
-              feedType.tagline,
-              { color: feed.ink, marginTop: space.md, textAlign: "center" },
-            ]}
-          >
-            {displayName}
-          </Text>
-        ) : null}
-        <Text style={[feedType.body, { color: feed.inkDim, marginTop: 2 }]}>
-          @{username || "…"}
-        </Text>
-        {email ? (
-          <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.xs }]}>
-            {email}
-          </Text>
-        ) : null}
+          {/* De naam op de grondlijn van de avatar: twee dingen die bij
+              elkaar horen staan op één lijn, niet onder elkaar. */}
+          <View style={{ flex: 1, minWidth: 0, paddingBottom: space.sm }}>
+            <Text
+              style={[
+                feedType.kicker,
+                { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
+              ]}
+            >
+              {`@${username || "…"}`}
+            </Text>
+            {displayName ? (
+              <Text
+                style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}
+                numberOfLines={2}
+              >
+                {displayName}
+              </Text>
+            ) : null}
+          </View>
+        </View>
 
         {/* De bio is opmaak geworden (0054). `RichText` kiest geen letter en
             geen kleur — die krijgt hij hier mee — dus een bio kan nooit uit
             de toon vallen tegen het stelsel in. Zie components/RichText.tsx. */}
+        {/* De bio op leesmaat en niet over de volle bladspiegel: een regel
+            van twaalfhonderd punten is er één die je hoofd moet volgen in
+            plaats van lezen. Zelfde redenering als `maxWidth` in PageHead. */}
         {bio ? (
-          <View style={{ marginTop: space.lg, maxWidth: 520, width: "100%" }}>
+          <View style={{ marginTop: space.xl, maxWidth: 620 }}>
             <RichText
               text={bio}
-              style={[feedType.body, { textAlign: "center" }]}
+              style={feedType.body}
               color={feed.ink}
               dimColor={feed.inkDim}
               ruleColor={rule.soft}
@@ -175,16 +193,22 @@ export function ProfileHeader({
             accessibilityRole="button"
             accessibilityLabel="Voeg een bio toe"
             onPress={onEditBio}
-            style={{ height: 44, justifyContent: "center", marginTop: space.sm }}
+            style={{ height: CONTROL_H, justifyContent: "center", marginTop: space.md }}
           >
             <Text style={[feedType.label, { color: feed.inkDim, textDecorationLine: "underline" }]}>
               Voeg een bio toe
             </Text>
           </Pressable>
         ) : null}
-      </View>
 
-      {links.length > 0 ? <ProfileLinkList links={links} /> : null}
+        {email ? (
+          <Text style={[feedType.label, { color: feed.inkDim, marginTop: space.md }]}>
+            {email}
+          </Text>
+        ) : null}
+
+        {links.length > 0 ? <ProfileLinkList links={links} wide={wide} /> : null}
+      </View>
     </View>
   );
 }
@@ -207,13 +231,29 @@ export function ProfileHeroPlate({
   busy,
   onPick,
   userId,
+  wide = false,
 }: {
   uri?: string | null;
   busy?: boolean;
   onPick?: () => void;
   userId?: string;
+  wide?: boolean;
 }) {
   const mine = !!onPick;
+  /**
+   * Of de muis erboven hangt.
+   *
+   * De wijzigknop stond er altijd, en dat is een blijvend bedieningselement
+   * over je eigen omslag — precies het ding waar de plaat niet voor
+   * bedoeld is. Nu komt hij op bij het zweven; op een aanraakscherm, waar
+   * zweven niet bestaat, blijft de plaat zélf de knop en is er dus niets
+   * verloren.
+   *
+   * Bij een lége plaat ligt het andersom: dan ís de knop de hele inhoud, en
+   * iets dat alleen bij zweven verschijnt zou op een telefoon een leeg vak
+   * zonder uitleg zijn. Zie de `!uri`-tak hieronder.
+   */
+  const [hovered, setHovered] = useState(false);
 
   if (!uri) {
     if (!mine) return null;
@@ -224,9 +264,9 @@ export function ProfileHeroPlate({
         onPress={onPick}
         style={({ pressed }) => ({
           width: "100%",
-          aspectRatio: 4,
-          borderWidth: FEED_BORDER,
-          borderColor: rule.soft,
+          aspectRatio: wide ? 6 : 3,
+          borderBottomWidth: FEED_BORDER,
+          borderBottomColor: rule.soft,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: pressed ? feed.postFill : "transparent",
@@ -257,7 +297,13 @@ export function ProfileHeroPlate({
       accessibilityLabel={mine ? "Plaat wijzigen" : undefined}
       onPress={onPick}
       disabled={!mine}
-      style={{ width: "100%", aspectRatio: 3 }}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      // Breder op een breed scherm, hoger op een telefoon. Eén vaste
+      // verhouding zou op een van beide fout zijn: 3:1 is op een telefoon
+      // een streep van honderd punten, en 1.6:1 vult op een monitor het
+      // hele eerste scherm met alleen de omslag.
+      style={{ width: "100%", aspectRatio: wide ? 3 : 1.6 }}
     >
       <SafeImage
         uri={uri}
@@ -267,16 +313,17 @@ export function ProfileHeroPlate({
         fallbackBg="bg-feed-fill"
         fallbackColor={feed.textDim}
       />
-      {/* De avatar hangt straks over de onderrand; zonder sluier valt hij
-          weg op een lichte foto. Geen schaduw — die staan niet in dit
-          systeem — maar het verloop uit `Scrim`. */}
-      <Scrim height={96} strength={0.45} steps={10} />
-      {mine ? (
+      {/* De balk ligt hierover en de naam hangt over de onderrand; zonder
+          sluier vallen ze allebei weg op een lichte foto. Geen schaduw —
+          die staan niet in dit systeem — maar het verloop uit `Scrim`. */}
+      <Scrim height={140} strength={0.5} steps={12} />
+      {mine && (hovered || busy) ? (
         <View
+          pointerEvents="none"
           style={{
             position: "absolute",
-            top: space.md,
-            right: space.md,
+            bottom: space.lg,
+            right: space.lg,
             flexDirection: "row",
             alignItems: "center",
             gap: space.xs,
@@ -307,7 +354,13 @@ export function ProfileHeroPlate({
  * regel, het adres staat eronder in het klein — je kiest op naam, en het
  * adres is er om te zien waar je terechtkomt voordat je drukt.
  */
-export function ProfileLinkList({ links }: { links: { label: string; url: string }[] }) {
+export function ProfileLinkList({
+  links,
+  wide = false,
+}: {
+  links: { label: string; url: string }[];
+  wide?: boolean;
+}) {
   return (
     <View style={{ marginTop: space.section }}>
       <Text
@@ -316,7 +369,7 @@ export function ProfileLinkList({ links }: { links: { label: string; url: string
           { color: flameDeep, letterSpacing: 0.55, marginBottom: space.md },
         ]}
       >
-        LINKS
+        ELDERS
       </Text>
       <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
         {links.map((link, i) => (
@@ -326,33 +379,46 @@ export function ProfileLinkList({ links }: { links: { label: string; url: string
             accessibilityLabel={`${link.label}, opent ${link.url}`}
             onPress={() => void openUrl(link.url)}
             style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              gap: space.md,
+              // Etiket links, adres rechts, lijn ertussen — de opbouw van
+              // `LabelBand` uit de rasterlaag (§4c). Dat leest als een
+              // colofon en niet als een rij knoppen, en dat is wat het is:
+              // de bronnen onderaan je pagina. Op smal valt hij onder
+              // elkaar; 180 punten etiket naast een telefoon laat niets over.
+              flexDirection: wide ? "row" : "column",
+              alignItems: wide ? "center" : "flex-start",
+              gap: wide ? space.lg : 2,
               // Eén besturingshoogte als ondergrens; een rij met een lange
               // naam mag groeien maar nooit krimpen.
               minHeight: 52,
-              paddingVertical: space.sm,
+              paddingVertical: space.md,
               borderBottomWidth: FEED_BORDER,
               borderBottomColor: rule.soft,
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[feedType.body, { color: feed.ink, fontWeight: "700" }]}
-                numberOfLines={1}
-              >
-                {link.label}
-              </Text>
-              <Text
-                style={[feedType.caption, { color: feed.inkDim, marginTop: 1 }]}
-                numberOfLines={1}
-              >
-                {link.url.replace(/^https?:\/\//i, "")}
-              </Text>
-            </View>
-            <Ionicons name="arrow-forward" color={feed.inkDim} size={16} />
+            <Text
+              style={[
+                feedType.body,
+                {
+                  color: feed.ink,
+                  fontWeight: "700",
+                  ...(wide ? { width: 180 } : null),
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {link.label}
+            </Text>
+            <Text
+              style={[
+                feedType.caption,
+                { color: feed.inkDim, flex: wide ? 1 : undefined },
+              ]}
+              numberOfLines={1}
+            >
+              {link.url.replace(/^https?:\/\//i, "")}
+            </Text>
+            {wide ? <Ionicons name="arrow-forward" color={feed.inkDim} size={16} /> : null}
           </Pressable>
         ))}
       </View>

@@ -21,14 +21,31 @@ import { feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
  * eronder is meteen de scheiding met de vondsten. Zo is elke rubriek één
  * blok in plaats van een kop die boven een losse rij zweeft.
  */
-export function SectionBand({ index, label }: { index: number; label: string }) {
+export function SectionBand({
+  index,
+  label,
+  padding,
+}: {
+  index: number;
+  label: string;
+  /**
+   * De marge links en rechts. Standaard `space.lg`, wat op de feed klopt
+   * omdat de band daar in een kolom staat die zijn eigen marge al heeft.
+   *
+   * Het profiel geeft hem `gutter(wide)` mee: daar loopt de inhoud tot de
+   * vensterrand, en dan moet de band op dezelfde lijn beginnen als de
+   * tekst eronder. Stonden ze op verschillende waarden, dan begint de
+   * rubriek naast zijn eigen inhoud — precies wat §4b over `gutter` zegt.
+   */
+  padding?: number;
+}) {
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "baseline",
         gap: space.md,
-        paddingHorizontal: space.lg,
+        paddingHorizontal: padding ?? space.lg,
         paddingVertical: space.md,
         borderBottomWidth: FEED_BORDER,
         borderBottomColor: feed.ink,

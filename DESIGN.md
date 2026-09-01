@@ -364,11 +364,18 @@ Elk v3-scherm heeft dezelfde ruggengraat:
 - `useChromeScroll()` levert de scroll-props en de inklapstand.
 - `PageScroll` (uit `components/AppChrome.tsx`) is de scroller van de hele
   pagina; de kop staat eráchter, absoluut verankerd.
-- De **grote kop staat alleen op de thuispagina** (`/feed`). Daar is het merk
-  het onderwerp; overal elders is de pagina zelf het onderwerp. Elk ander
-  scherm — de andere tabbladen én de detailpagina's — geeft `compact` mee en
-  begint én blijft in de zwarte balk. Op detailpagina's vervangt een
-  terug-knop de tabstrip binnen die balk.
+- **Elk scherm draagt de compacte balk**, de feed incluis. De grote kop —
+  aankondigingsbalk, micro-utilityregel, tabstrip, taglinekop, woordmerk-plaat
+  — bestaat nog in `AppChrome` maar wordt nergens meer aangeroepen.
+
+  Hij was de thuispagina voorbehouden, met als redenering: daar is het merk
+  het onderwerp en overal elders de pagina zelf. Wat hij in de praktijk deed
+  is drie rijen affiche boven de vondsten zetten, zodat het eerste wat je op
+  je eigen feed ziet je eigen logo is in plaats van wat je vrienden deelden.
+  En twee koppen die hetzelfde moeten zeggen lopen uiteen — dat staat in
+  `AppChrome` zelf al opgeschreven over de vórige twee.
+
+  Op detailpagina's vervangt een terug-knop de tabstrip binnen die balk.
 - Onder 560px toont de compacte balk iconen in plaats van woorden: hij is de
   enige navigatie in de app, en vijf woorden passen naast het merk niet op
   een telefoon.
@@ -451,9 +458,22 @@ hun lijsten hebben geen vulling meer maar een kader met lijnen erbinnen
 (§4), en beide lijstkaders staan op `feed.ink` — twee lijsten met dezelfde
 bedoeling horen niet in gewicht te verschillen.
 
-**Profiel is bewust de uitzondering.** Dat scherm opent met een avatar in
-het midden in plaats van met een kop links; dat is een andere vorm en geen
-achterstand. Wel leest het inmiddels uit dezelfde typeschaal.
+**Profiel is een uitgave met een omslag.** Dat scherm opende met een avatar
+in het midden — de vorm van een sociaal profiel, een pasfoto met een
+bijschrift. Sinds het een moodboard draagt is het een omslag: de plaat loopt
+tot de vier vensterranden en begint óp nul (`underChrome`), met de balk
+erover; de naam staat groot en links op de bladspiegel; de avatar hangt over
+de onderrand als een zegel.
+
+Links uitlijnen en niet centreren is dezelfde regel als `PageHead`:
+gecentreerde tekst leest als een aankondiging, links uitgelijnde als een
+pagina die begint.
+
+De rubrieken eronder zijn `SectionBand` (§4b) — genummerd, in volgorde: het
+bord, jouw activiteit, profiel, geavanceerd. Dat laatste stond middenin en
+staat nu onderaan: honderdvijftig regels over sleutels en apparaten zijn niet
+minder belangrijk geworden, alleen zeldzamer, en wat je zelden nodig hebt
+hoort niet tussen wat je vaak bekijkt.
 
 Dat dit zo lang uit elkaar liep is het soort verschil waar de alinea
 hierboven over gaat: het bleef bestaan zolang het nergens één plek had.
