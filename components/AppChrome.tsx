@@ -91,8 +91,15 @@ import {
  */
 export const PAGE_MAX: number | undefined = undefined;
 
-/** Hoogte van de compacte balk. */
-const BAR_H = 58;
+/**
+ * Hoogte van de balk.
+ *
+ * Achtenvijftig was de maat van toen hij nog de kleine broer van een grote
+ * kop was en dus wat lucht mocht hebben. Nu is hij de énige kop, en dan
+ * telt elke punt die hij van de pagina afpakt — op een profiel dat met een
+ * omslag begint zit hij bovendien pal boven het beeld.
+ */
+const BAR_H = 50;
 
 /**
  * Hoeveel de kop van boven inneemt zodra hij ingeklapt is: de balk plus
@@ -146,6 +153,16 @@ const TABS = [
  * scheidingslijnen, en dat was de klacht.
  */
 const LABELS_NEED_WIDTH = 540;
+
+/**
+ * Vanaf welke balkbreedte het merk erbij past.
+ *
+ * De naamcel kost zo'n 120 punten. Onder deze grens gaan de woorden van de
+ * tabbladen er al af (`LABELS_NEED_WIDTH`), en dan is een merkcel het
+ * laatste wat je erbij wil: dan staat de naam van de app naast vijf iconen
+ * die je niet meer kunt lezen.
+ */
+const BRAND_NEEDS_WIDTH = 760;
 
 // ---------------------------------------------------------------
 // Tellers per tabblad
@@ -556,6 +573,7 @@ function CompactBar({
    */
   const [barWidth, setBarWidth] = useState(0);
   const iconOnly = barWidth === 0 || barWidth < LABELS_NEED_WIDTH;
+  const showBrand = barWidth >= BRAND_NEEDS_WIDTH;
 
   return (
     <View
@@ -584,17 +602,51 @@ function CompactBar({
       }}
     >
       {/**
-        * Geen merkcel meer.
+        * De naam van de uitgave, links.
         *
-        * Het teken linksboven ging naar de feed, en het eerste tabblad ook.
-        * Twee cellen naast elkaar die hetzelfde doen is geen keuze maar een
-        * aarzeling — je kijkt welke van de twee je moet hebben en er is geen
-        * antwoord. De tabbladen zijn de navigatie; het merk had daar niets
-        * toe te voegen behalve een cel in een balk die het krap had.
+        * Hij had hier eerder gestaan en is er toen uit gehaald, met een
+        * goede reden: het teken linksboven ging naar de feed en het eerste
+        * tabblad ook, en twee cellen die hetzelfde doen is geen keuze maar
+        * een aarzeling. Daarna verhuisde het merk naar de grote kop — en
+        * die bestaat niet meer, dus stond de naam van de app nergens.
         *
-        * Waar het merk wél hoort staat het al: groot, in het zwarte blok
-        * bovenaan de feed.
+        * Wat dat bezwaar wegneemt is dat dit géén knop is. Een masthead is
+        * geen navigatie; hij zegt waar je bent, niet waar je heen kunt. De
+        * tabbladen blijven de enige weg, en er valt dus niets meer te
+        * kiezen tussen twee cellen.
+        *
+        * Hij valt weg zodra de balk krap wordt: onder `BRAND_NEEDS_WIDTH`
+        * gaan de woorden van de tabbladen er al af, en dan is de naam van
+        * de app het laatste wat er nog bij moet.
         */}
+      {!onBack && showBrand ? (
+        <>
+          <View
+            accessibilityRole="header"
+            style={{
+              justifyContent: "center",
+              paddingHorizontal: 18,
+              backgroundColor: feed.ink,
+            }}
+          >
+            <Text
+              style={[
+                feedType.label,
+                {
+                  fontSize: 13,
+                  fontWeight: "800",
+                  letterSpacing: 1.4,
+                  color: creamOnDark.DEFAULT,
+                },
+              ]}
+            >
+              LINCIN
+            </Text>
+          </View>
+          <Cut tone="paper" />
+        </>
+      ) : null}
+
 
       {/* Op een detailpagina vervangt de terug-knop de navigatie. */}
       {onBack ? (

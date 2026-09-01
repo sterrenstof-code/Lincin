@@ -375,9 +375,17 @@ Elk v3-scherm heeft dezelfde ruggengraat:
 - `useChromeScroll()` levert de scroll-props en de inklapstand.
 - `PageScroll` (uit `components/AppChrome.tsx`) is de scroller van de hele
   pagina; de kop staat eráchter, absoluut verankerd.
-- **Elk scherm draagt de compacte balk**, de feed incluis. De grote kop —
-  aankondigingsbalk, micro-utilityregel, tabstrip, taglinekop, woordmerk-plaat
-  — bestaat nog in `AppChrome` maar wordt nergens meer aangeroepen.
+- **Elk scherm draagt dezelfde balk**, de feed incluis: LINCIN links, de
+  tabbladen erin, rechts de plus en je avatar. De grote kop —
+  aankondigingsbalk, micro-utilityregel, taglinekop, woordmerk-plaat — is
+  verwijderd, met de hele inklap-machinerie eromheen.
+
+  De naam links is **geen knop**. Dat is wat hem naast de tabbladen laat
+  bestaan: een masthead zegt waar je bent, geen waar je heen kunt, dus er
+  vallen geen twee cellen meer samen die hetzelfde doen. Onder
+  `BRAND_NEEDS_WIDTH` (760) valt hij weg — daaronder gaan de woorden van de
+  tabbladen er al af, en dan is de naam van de app het laatste wat er nog
+  bij moet.
 
   Hij was de thuispagina voorbehouden, met als redenering: daar is het merk
   het onderwerp en overal elders de pagina zelf. Wat hij in de praktijk deed
