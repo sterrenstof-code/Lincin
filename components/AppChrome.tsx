@@ -18,6 +18,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { BrandMark } from "@/components/BrandMark";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
@@ -574,6 +575,8 @@ function CompactBar({
   const [barWidth, setBarWidth] = useState(0);
   const iconOnly = barWidth === 0 || barWidth < LABELS_NEED_WIDTH;
   const showBrand = barWidth >= BRAND_NEEDS_WIDTH;
+  // Alleen op de thuispagina beweegt het raster; zie BrandMark.web.tsx.
+  const onHome = usePathname() === "/feed";
 
   return (
     <View
@@ -629,19 +632,9 @@ function CompactBar({
               backgroundColor: feed.ink,
             }}
           >
-            <Text
-              style={[
-                feedType.label,
-                {
-                  fontSize: 13,
-                  fontWeight: "800",
-                  letterSpacing: 1.4,
-                  color: creamOnDark.DEFAULT,
-                },
-              ]}
-            >
-              LINCIN
-            </Text>
+            {/* Het raster ín de letters, zoals op de oude plaat. Hij
+                beweegt alleen op de thuispagina; zie BrandMark.web.tsx. */}
+            <BrandMark animated={onHome} />
           </View>
           <Cut tone="paper" />
         </>

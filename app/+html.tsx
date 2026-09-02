@@ -189,6 +189,16 @@ html, body {
   animation: lincin-page-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+/* ---- Het raster van het woordmerk ----
+   Eén cel per acht seconden. Zo langzaam is met opzet: je ziet het niet
+   bewegen, je ziet het leven. Alleen op de thuispagina — zie
+   components/BrandMark.web.tsx. De reduced-motion-regel in global.css zet
+   hem samen met de rest stil. */
+@keyframes lincin-dots {
+  from { background-position: 0 0; }
+  to   { background-position: 2px 2px; }
+}
+
 /* ---- 2. De pagina: kruisvervagen met een stijging ---- */
 @keyframes lincin-page-out {
   from { opacity: 1; }
