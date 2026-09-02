@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 /**
- * De twee schakelaars boven de feed — weergave en "gelezen dimmen" —
+ * Hoe de thuispagina eruitziet — weergave, ordening en "gelezen dimmen" —
  * onthouden per gebruiker.
  *
  * ---------------------------------------------------------------
@@ -19,7 +19,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *
  * De hook geeft altijd meteen de standaardwaarden terug en vult ze aan
  * zodra de opslag gelezen is. Wachten zou betekenen dat de feed een tel
- * leeg blijft voor iets wat maar twee knopjes zijn.
+ * leeg blijft voor iets wat maar drie schakelaars zijn.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM EEN STORE EN GEEN STUK STATE IN DE FEED
+ * ---------------------------------------------------------------
+ * Dit was `useState` in `useFeedPrefs`, en dus woonde de waarheid in het
+ * scherm dat de schakelaars tekende. Dat kon zolang die schakelaars bóven
+ * de feed stonden. Ze staan nu in het persoonlijke venster achter je
+ * avatar — naast licht/donker, want het is dezelfde soort keuze: hoe de
+ * uitgave er voor jóu uitziet — en dat venster hangt in de kop, niet in de
+ * feed. Twee plekken, één waarheid, dus staat de waarheid ernaast.
+ *
+ * Hij is opgebouwd als `lib/design/theme.ts`: een waarde, een setje
+ * luisteraars, en `useSyncExternalStore`. Geen zustand-store voor drie
+ * booleans, en geen context die de hele boom opnieuw laat tekenen.
  */
 
 /**
@@ -87,61 +101,97 @@ function parse(raw: string | null): FeedPrefs {
   }
 }
 
-export function useFeedPrefs(userId: string): {
-  prefs: FeedPrefs;
-  setLayout: (layout: FeedLayout) => void;
-  setOrder: (order: FeedOrder) => void;
-  setDimSeen: (dimSeen: boolean) => void;
-} {
-  const [prefs, setPrefs] = useState<FeedPrefs>(DEFAULTS);
-  /**
-   * Pas schrijven ná het lezen. Zonder deze vlag zou de eerste render de
-   * standaardwaarden meteen terugschrijven en daarmee de bewaarde keuze
-   * overschrijven voordat hij binnen is.
-   */
-  const loaded = useRef(false);
+// ---------------------------------------------------------------
+// De store
+// ---------------------------------------------------------------
 
+let owner: string | null = null;
+let prefs: FeedPrefs = DEFAULTS;
+/**
+ * Pas schrijven ná het lezen. Zonder deze vlag zou een schakelaar die je
+ * omzet vóórdat de opslag binnen is de rest van je bewaarde keuze
+ * overschrijven met standaardwaarden.
+ */
+let loaded = false;
+
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const fn of listeners) fn();
+}
+
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+/** Wat er nú geldt. Ook buiten React bruikbaar. */
+export function getFeedPrefs(): FeedPrefs {
+  return prefs;
+}
+
+/**
+ * De voorkeuren van deze gebruiker binnenhalen.
+ *
+ * Idempotent: elk scherm dat de voorkeuren leest roept dit aan, en alleen
+ * de eerste (of een wissel van account) doet echt iets.
+ */
+function adopt(userId: string) {
+  if (userId === owner) return;
+  owner = userId;
+  loaded = false;
+  prefs = DEFAULTS;
+  emit();
+
+  AsyncStorage.getItem(keyFor(userId))
+    .then((raw) => {
+      // Ondertussen van account gewisseld? Dan is dit antwoord verlopen.
+      if (owner !== userId) return;
+      prefs = parse(raw);
+      loaded = true;
+      emit();
+    })
+    .catch(() => {
+      if (owner !== userId) return;
+      loaded = true;
+    });
+}
+
+function write(next: FeedPrefs) {
+  prefs = next;
+  emit();
+  if (!loaded || !owner) return;
+  AsyncStorage.setItem(keyFor(owner), JSON.stringify(next)).catch(() => {
+    // Niet kunnen bewaren is vervelend, niet fataal: deze sessie klopt.
+  });
+}
+
+export function setFeedLayout(layout: FeedLayout) {
+  if (layout === prefs.layout) return;
+  write({ ...prefs, layout });
+}
+
+export function setFeedOrder(order: FeedOrder) {
+  if (order === prefs.order) return;
+  write({ ...prefs, order });
+}
+
+export function setFeedDimSeen(dimSeen: boolean) {
+  if (dimSeen === prefs.dimSeen) return;
+  write({ ...prefs, dimSeen });
+}
+
+/**
+ * De voorkeuren van deze gebruiker, en meeluisteren op wijzigingen.
+ *
+ * Zetten doe je met de losse functies hierboven; die hebben geen component
+ * nodig en werken dus ook vanuit het venster in de kop.
+ */
+export function useFeedPrefs(userId: string): FeedPrefs {
   useEffect(() => {
-    let alive = true;
-    loaded.current = false;
-    AsyncStorage.getItem(keyFor(userId))
-      .then((raw) => {
-        if (!alive) return;
-        setPrefs(parse(raw));
-        loaded.current = true;
-      })
-      .catch(() => {
-        if (!alive) return;
-        loaded.current = true;
-      });
-    return () => {
-      alive = false;
-    };
+    adopt(userId);
   }, [userId]);
-
-  const write = useCallback(
-    (next: FeedPrefs) => {
-      setPrefs(next);
-      if (!loaded.current) return;
-      AsyncStorage.setItem(keyFor(userId), JSON.stringify(next)).catch(() => {
-        // Niet kunnen bewaren is vervelend, niet fataal: deze sessie klopt.
-      });
-    },
-    [userId]
-  );
-
-  const setLayout = useCallback(
-    (layout: FeedLayout) => write({ ...prefs, layout }),
-    [prefs, write]
-  );
-  const setOrder = useCallback(
-    (order: FeedOrder) => write({ ...prefs, order }),
-    [prefs, write]
-  );
-  const setDimSeen = useCallback(
-    (dimSeen: boolean) => write({ ...prefs, dimSeen }),
-    [prefs, write]
-  );
-
-  return { prefs, setLayout, setOrder, setDimSeen };
+  return useSyncExternalStore(subscribe, getFeedPrefs, getFeedPrefs);
 }

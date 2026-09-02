@@ -51,7 +51,6 @@ import { useAuth } from "@/lib/auth/provider";
 import {
   announce,
   announceDeep,
-  CONTROL_H,
   creamOnDark,
   feed as feedColor,
   FEED_BORDER,
@@ -300,12 +299,12 @@ export default function FeedScreen() {
    * Ordening en weergave zijn twee vragen en dus twee keuzes: chronologisch
    * kán als metselwerk, thematisch kán als raster.
    *
-   * Beide zijn een keuze van de lezer en geen instelling die de app voor
-   * je maakt — dus onthouden we ze, per gebruiker, op dit toestel. Zie
-   * lib/feed-prefs.ts voor waarom dat lokaal blijft.
+   * Alle drie zijn een keuze van de lezer — dus onthouden we ze, per
+   * gebruiker, op dit toestel. Zie lib/feed-prefs.ts voor waarom dat
+   * lokaal blijft; omzetten doe je in het persoonlijke venster achter je
+   * avatar (components/FeedSwitch.tsx), niet hier.
    */
-  const { prefs, setLayout, setOrder, setDimSeen } = useFeedPrefs(myUserId);
-  const { layout, order, dimSeen } = prefs;
+  const { layout, order, dimSeen } = useFeedPrefs(myUserId);
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
   /** Voorbij de kop gescrold? Dan krimpt de deelknop in de zijbalk. */
@@ -546,124 +545,17 @@ export default function FeedScreen() {
                       `gutter()`.
                   */}
                   <View style={{ paddingTop: space.section, paddingBottom: 80 }}>
-                    {/* Ordening + leesstatus. Twee vragen, geen
-                        instellingenscherm: dit is iets wat je terwijl je
-                        leest wil kunnen omzetten.
+                    {/* De schakelaars stonden hier: weergave, ordening en
+                        "gelezen dimmen", vijf tekeningen op een rij met
+                        eronder in woorden wat er aanstond.
 
-                        Hij plakte onder de kop zodra je hem voorbij scrolde.
-                        Dat is één plakkend ding te veel op een pagina waar
-                        de kop al blijft staan: je kiest je ordening als je
-                        begint, niet halverwege, en wat wél mee moet scrollen
-                        is de knop om zelf iets te delen. Zie de zijbalk.
-
-                        Bij een lege uitgave staan ze er niet: kiezen hoe je
-                        nul vondsten geordend wil zien is een keuze zonder
-                        gevolg, en drie schakelaars boven een lege pagina
-                        lezen als de pagina zelf. */}
-                    {!empty ? (
-                    <View style={{ marginBottom: space.xl }}>
-                      {/* Eén kader om alle drie de schakelaars.
-                          Ze stonden in twee losse doosjes die op een smal
-                          scherm onder elkaar vielen: twee kaders, twee
-                          hoogtes, en een gat ertussen. Het zijn drie
-                          standen van dezelfde vraag — hoe wil je kijken —
-                          en dus één kader met cellen erin, net als de
-                          tabstrip in de kop. */}
-                      {/*
-                          Twee vragen, twee groepjes, en eronder in woorden
-                          wat er nu aan staat.
-
-                          Vijf tekeningen op één rij lazen als één streepjes-
-                          code: je zag wel dat er iets aan of uit stond, maar
-                          niet wát. Twee dingen helpen. Ten eerste: uit
-                          elkaar zetten wat niet bij elkaar hoort — hoe het
-                          eruitziet, hoe het geordend is, en of gelezen
-                          vondsten dimmen zijn drie aparte vragen, dus drie
-                          aparte kaders. Ten tweede: de regel eronder zegt
-                          gewoon wat de stand is. Zo hoeft geen enkele
-                          tekening op zichzelf duidelijk te zijn — je leest
-                          één keer wat je gekozen hebt, en daarna herken je
-                          de vorm.
-                      */}
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          alignItems: "center",
-                          gap: space.sm,
-                        }}
-                      >
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            borderWidth: FEED_BORDER,
-                            borderColor: feedColor.ink,
-                          }}
-                        >
-                          <LayoutTab
-                            kind="mosaic"
-                            active={layout === "mosaic"}
-                            onPress={() => setLayout("mosaic")}
-                          />
-                          <LayoutTab
-                            kind="grid"
-                            active={layout === "grid"}
-                            onPress={() => setLayout("grid")}
-                            divider
-                          />
-                        </View>
-
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            borderWidth: FEED_BORDER,
-                            borderColor: feedColor.ink,
-                          }}
-                        >
-                          <LayoutTab
-                            kind="thematic"
-                            active={order === "thematic"}
-                            onPress={() => setOrder("thematic")}
-                          />
-                          <LayoutTab
-                            kind="chrono"
-                            active={order === "chrono"}
-                            onPress={() => setOrder("chrono")}
-                            divider
-                          />
-                        </View>
-
-                        <View
-                          style={{
-                            borderWidth: FEED_BORDER,
-                            borderColor: feedColor.ink,
-                          }}
-                        >
-                          <LayoutTab
-                            kind="dim"
-                            active={dimSeen}
-                            onPress={() => setDimSeen(!dimSeen)}
-                          />
-                        </View>
-                      </View>
-
-                      <Text
-                        style={[
-                          feedType.label,
-                          { color: feedColor.inkDim, marginTop: space.md },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {[
-                          layout === "mosaic" ? "Metselwerk" : "Raster",
-                          order === "thematic" ? "in rubrieken" : "nieuwste eerst",
-                          dimSeen ? "gelezen gedimd" : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </Text>
-                    </View>
-                    ) : null}
+                        Ze staan nu in het persoonlijke venster achter je
+                        avatar, naast licht/donker — zie
+                        components/FeedSwitch.tsx voor waarom het een
+                        instelling is en geen gereedschap. Wat overblijft
+                        is dat de uitgave meteen begint: bovenaan het blad
+                        staat de uitgave zelf en niet het bedieningspaneel
+                        ervoor. */}
 
                     {/* De tagstrook blíjft staan als er niets is, want een
                         lege lijst is hier meestal het gevolg van de tag die
@@ -1905,110 +1797,6 @@ function MosaicGrid({
           </View>
           );
         })}
-      </View>
-    </View>
-  );
-}
-
-/** Eén cel van de ordening-schakelaar. */
-/** Wat elke knop doet — ook voor wie de app met een schermlezer gebruikt. */
-const LAYOUT_TAB_LABELS: Record<
-  "mosaic" | "grid" | "thematic" | "chrono" | "dim",
-  string
-> = {
-  mosaic: "Metselwerk",
-  grid: "Raster",
-  thematic: "In rubrieken",
-  chrono: "Nieuwste eerst",
-  dim: "Gelezen dimmen",
-};
-
-const LAYOUT_TAB_ICONS = {
-  thematic: "albums-outline",
-  chrono: "time-outline",
-  dim: "eye-off-outline",
-} as const;
-
-/**
- * Eén knop in de weergavekeuze: een tekening, geen woord.
- *
- * De tekening ís de uitleg — twee kolommen met blokken van verschillende
- * hoogte tegenover negen gelijke vierkanten. Wie het één keer ziet, weet
- * meteen wat de knop doet, in welke taal hij de app ook leest.
- */
-function LayoutTab({
-  kind,
-  active,
-  onPress,
-  divider = false,
-}: {
-  kind: "mosaic" | "grid" | "thematic" | "chrono" | "dim";
-  active: boolean;
-  onPress: () => void;
-  divider?: boolean;
-}) {
-  const tint = active ? feedColor.lav : feedColor.ink;
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityLabel={LAYOUT_TAB_LABELS[kind]}
-      style={{
-        // Vaste breedte in plaats van `flex: 1`: deze knoppen staan nu in
-        // groepjes van één of twee, en dan hoort een knop niet mee te
-        // rekken met de breedte van het scherm.
-        width: CONTROL_H + space.md,
-        alignItems: "center",
-        justifyContent: "center",
-        height: CONTROL_H,
-        backgroundColor: active ? feedColor.ink : "transparent",
-        ...(divider
-          ? { borderLeftWidth: FEED_BORDER, borderLeftColor: feedColor.ink }
-          : null),
-      }}
-    >
-      {kind === "mosaic" || kind === "grid" ? (
-        <LayoutGlyph kind={kind} color={tint} />
-      ) : (
-        <Ionicons name={LAYOUT_TAB_ICONS[kind]} size={20} color={tint} />
-      )}
-    </Pressable>
-  );
-}
-
-/**
- * De tekening zelf, opgebouwd uit vlakjes.
- *
- * Geen icoonlettertype en geen SVG-bestand: dit zijn zes rechthoekjes, en
- * die tekenen we met dezelfde bouwstenen als de rest van het scherm. Zo
- * volgt hij vanzelf de kleur van de knop waar hij in staat.
- */
-function LayoutGlyph({ kind, color }: { kind: "mosaic" | "grid"; color: string }) {
-  const box = (w: number, h: number, key: string) => (
-    <View key={key} style={{ width: w, height: h, backgroundColor: color }} />
-  );
-
-  if (kind === "grid") {
-    return (
-      <View style={{ flexDirection: "row", gap: 2 }}>
-        {[0, 1, 2].map((c) => (
-          <View key={c} style={{ gap: 2 }}>
-            {[0, 1, 2].map((r) => box(6, 6, `${c}-${r}`))}
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  // Metselwerk: twee kolommen, blokken van verschillende hoogte.
-  return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      <View style={{ gap: 2 }}>
-        {box(9, 12, "a")}
-        {box(9, 6, "b")}
-      </View>
-      <View style={{ gap: 2 }}>
-        {box(9, 6, "c")}
-        {box(9, 12, "d")}
       </View>
     </View>
   );

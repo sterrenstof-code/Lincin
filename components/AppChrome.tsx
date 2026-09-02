@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { BrandMark } from "@/components/BrandMark";
+import { FeedSwitch } from "@/components/FeedSwitch";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
@@ -853,7 +854,19 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
             onPress: () => router.push("/profile-edit"),
           },
         ]}
-        footer={<ThemeSwitch />}
+        /*
+            Twee blokken instellingen onder de acties: hoe de app eruitziet
+            (licht/donker) en hoe de uitgave eruitziet (weergave, ordening,
+            gelezen dimmen). Ze horen bij elkaar — het is allebei "hoe zie
+            ík dit" — en ze sluiten geen van beide het venster, want je wil
+            de knop kunnen omzetten en meteen zien wat er gebeurt.
+        */
+        footer={
+          <>
+            <ThemeSwitch />
+            <FeedSwitch userId={myUserId} />
+          </>
+        }
       />
     </>
   );

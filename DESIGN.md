@@ -53,6 +53,14 @@ De stand komt van het besturingssysteem (`Auto`) tenzij je hem zelf zet.
 De schakelaar staat in het persoonlijke menu achter je avatar
 (`components/ThemeSwitch.tsx`), dus vanaf élke pagina bereikbaar.
 
+Daar staat ook de tweede keuze over hoe de app eruitziet: hoe de
+thuispagina geordend en getekend is (`components/FeedSwitch.tsx` —
+metselwerk of raster, rubrieken of nieuwste, gelezen dimmen of niet). Die
+stond als knoppenrij bóven de feed, en dat maakte van het eerste scherm
+een bedieningspaneel. Het is een instelling zoals licht/donker: één keer
+kiezen, daarna maanden niet meer. Beide blokken gebruiken dezelfde
+keuzerij (`components/Segmented.tsx`).
+
 **Hoe het schuift.** Élk token wijst naar een CSS-variabele; de klasse
 `dark` op `<html>` bepaalt welke set geldt. Op web hoeft er daardoor niets
 te hertekenen — ook een kleur die als *prop* in een style-object staat is
