@@ -78,6 +78,7 @@ import { asideTag, useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
+import { invalidatePostCaches } from "@/lib/post-cache";
 import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
@@ -328,7 +329,7 @@ export default function PostDetailScreen() {
         if (prev.some((c) => c.id === created.id)) return prev;
         return [...prev, created];
       });
-      qc.invalidateQueries({ queryKey: ["feed", myUserId] });
+      invalidatePostCaches(qc);
     } catch (e: any) {
       setCommentError(
         humanizeError(e, "post-comment", "Je reactie kon niet geplaatst worden. Probeer het opnieuw.")
@@ -403,8 +404,7 @@ export default function PostDetailScreen() {
       await updatePost(post.data.id, { caption: editCaption, body_text: editBody });
       // De pagina zelf, en overal waar deze vondst nog staat.
       await post.refetch();
-      qc.invalidateQueries({ queryKey: ["feed"] });
-      qc.invalidateQueries({ queryKey: ["posts-by-user"] });
+      invalidatePostCaches(qc);
       setEditOpen(false);
     } catch (e: any) {
       setEditError(e?.message ?? "Kon de wijziging niet bewaren.");
@@ -431,8 +431,7 @@ export default function PostDetailScreen() {
         link_url: post.data.link_url ?? null,
         created_at: post.data.created_at,
       });
-      await qc.invalidateQueries({ queryKey: ["feed"] });
-      await qc.invalidateQueries({ queryKey: ["posts-by-user"] });
+      await invalidatePostCaches(qc);
       safeBack(router, "/(app)/feed");
     } catch (e: any) {
       setDeleteError(e?.message ?? `Kon ${kindLabel.toLowerCase()} niet verwijderen.`);

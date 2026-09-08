@@ -417,7 +417,7 @@ export default function PostComposeScreen() {
       setError(
         humanizeError(e, "post-compose", "Je vondst kon niet geplaatst worden. Probeer het opnieuw.")
       );
-    } finally {
+      // Mislukt: pas hier mag de knop weer aan, en de bewaking dus ook.
       setSubmitting(false);
     }
   }

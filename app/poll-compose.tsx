@@ -96,7 +96,7 @@ export default function PollComposeScreen() {
       safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed");
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
-    } finally {
+      // Mislukt: pas hier mag de knop weer aan, en de bewaking dus ook.
       setSubmitting(false);
     }
   }

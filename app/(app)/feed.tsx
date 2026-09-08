@@ -63,6 +63,7 @@ import {
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
 import { useFeedPrefs, type FeedLayout } from "@/lib/feed-prefs";
+import { invalidatePostCaches } from "@/lib/post-cache";
 import { useSeenPosts } from "@/lib/read-state";
 import { usePageTitle } from "@/lib/page-title";
 import {
@@ -1441,6 +1442,7 @@ function usePostMenu(
   myUserId: string,
   onChanged: () => void
 ) {
+  const qc = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption ?? "");
@@ -1480,6 +1482,9 @@ function usePostMenu(
             onPress: async () => {
               setMenuOpen(false);
               await deletePost(post);
+              // Niet alleen deze lijst: de vondst staat ook op profielen
+              // en in de strook met interacties. Zie lib/post-cache.ts.
+              await invalidatePostCaches(qc);
               onChanged();
             },
           },

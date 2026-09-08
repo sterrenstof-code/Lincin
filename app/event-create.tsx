@@ -174,7 +174,7 @@ export default function EventCreateScreen() {
       router.replace(`/event/${ev.id}`);
     } catch (e: any) {
       setError(e?.message ?? "Kon event niet aanmaken.");
-    } finally {
+      // Mislukt: pas hier mag de knop weer aan, en de bewaking dus ook.
       setSubmitting(false);
     }
   }

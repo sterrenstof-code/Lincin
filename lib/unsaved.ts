@@ -37,6 +37,21 @@ import { confirm } from "@/lib/confirm";
  *
  * De twee samen dekken wat er op web kan gebeuren; op native bestaat de
  * tweede niet en doet die tak niets.
+ *
+ * ---------------------------------------------------------------
+ * EEN BEWAKING DIE AANSLOEG NÁ HET PLAATSEN
+ * ---------------------------------------------------------------
+ * De composeschermen zetten `dirty` op `!submitting && (er staat tekst)`,
+ * en `submitting` ging in een `finally` weer uit. Op web betekende dat een
+ * vraag over verlies bij een vondst die allang geplaatst wás: teruggaan is
+ * daar een `history.back()`, de browser meldt de pop een tel later, en in
+ * die tel had `finally` de bewaking alweer aangezet. Je kreeg "je vondst
+ * is nog niet geplaatst" over een scherm dat op weg was naar buiten, en
+ * de vondst stond intussen gewoon in de feed.
+ *
+ * Vandaar de regel in die schermen: `submitting` gaat alléén terug uit als
+ * het versturen mislukte. Lukt het, dan blijft hij aan tot het scherm weg
+ * is — er valt op dat moment ook niets meer te verliezen.
  */
 export function useUnsavedGuard(
   /** Staat er iets in dat verloren zou gaan? */

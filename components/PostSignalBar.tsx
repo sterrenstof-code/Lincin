@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { useAuth } from "@/lib/auth/provider";
 import { feed, FEED_BORDER, feedType } from "@/lib/design/type";
 import { getPostSignals, togglePostBoost, togglePostFollow } from "@/lib/api/post-signals";
+import { invalidatePostCaches } from "@/lib/post-cache";
 
 /**
  * Wat je met een vondst kunt doen zonder te typen.
@@ -50,7 +51,7 @@ export function PostSignalBar({
     } finally {
       qc.invalidateQueries({ queryKey: ["post-signals", postId, myUserId] });
       qc.invalidateQueries({ queryKey: ["post-people", postId, myUserId] });
-      qc.invalidateQueries({ queryKey: ["feed"] });
+      invalidatePostCaches(qc);
     }
   }
 
