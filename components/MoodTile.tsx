@@ -15,7 +15,7 @@ import {
   space,
 } from "@/lib/design/type";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
-import { stripMarkdown } from "@/lib/richtext";
+import { stripMarkdown, textOverflowsTile } from "@/lib/richtext";
 
 /**
  * Eén ding op het bord.
@@ -105,7 +105,12 @@ export function MoodTile({
 export function hasMoreThanCover(post: PostWithAuthor): boolean {
   // Een staal en een citaat tónen zichzelf al volledig; er is niets achter.
   if (post.kind === "swatch" || post.kind === "quote") return false;
-  if (!coverUrlFor(post)) return false;
+  // Geen beeld: dan hangt het ervan af of het stuk op de tegel past. Zie
+  // textOverflowsTile — TextFace hieronder toont vier regels met een titel
+  // erboven en acht zonder.
+  if (!coverUrlFor(post)) {
+    return textOverflowsTile(post, { withTitle: 4, alone: 8 });
+  }
   return (
     !!post.caption?.trim() ||
     !!post.body_text?.trim() ||

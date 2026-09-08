@@ -362,3 +362,48 @@ function clamp(n: number, max: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(n, max);
 }
+
+/**
+ * Past het stuk op de tegel, of zie je alleen het begin?
+ *
+ * ---------------------------------------------------------------
+ * WAAROM EEN TEKSTTEGEL OOK EEN STIPJE KRIJGT
+ * ---------------------------------------------------------------
+ * Het stipje betekende "er zit meer achter dan wat je ziet", en dat was
+ * lang alleen waar bij een foto: een teksttegel tóónt zijn tekst al, dus
+ * daar zou het herhalen wat er letterlijk staat.
+ *
+ * Alleen: een tegel toont vier of acht regels, en een stuk van twintig
+ * alinea's houdt daar gewoon op. Precies dan is er wél meer achter, en
+ * stond het bij de foto ernaast wel en hier niet — terwijl juist bij tekst
+ * de vraag "is dit het hele verhaal?" ertoe doet.
+ *
+ * De schatting is grof met opzet. `numberOfLines` weet hoe breed de tegel
+ * echt is en dit niet, dus we rekenen met ongeveer 45 tekens per regel en
+ * een marge: het stipje mag ontbreken bij een stuk dat er net wél in past,
+ * maar het mag nooit staan bij iets dat helemaal te lezen is.
+ */
+export function textOverflowsTile(
+  /**
+   * Alleen de velden die ertoe doen — geen `PostWithAuthor`, want dan zou
+   * dit bestand aan de API-laag hangen voor een schatting over regels.
+   */
+  post: {
+    source_title?: string | null;
+    caption?: string | null;
+    body_text?: string | null;
+    link_url?: string | null;
+  },
+  /** Hoeveel regels het tekstvlak toont — mét titel zijn dat er minder. */
+  lines: { withTitle: number; alone: number }
+): boolean {
+  const title = post.source_title?.trim() || post.caption?.trim() || null;
+  const lead = stripMarkdown(post.body_text) || post.link_url || "";
+  const body = title && lead === title ? "" : lead;
+  if (!body) return false;
+  const shown = (title ? lines.withTitle : lines.alone) * CHARS_PER_TILE_LINE;
+  return body.length > shown * 1.15;
+}
+
+/** Ruwweg wat er op één regel van een tegel past. Zie textOverflowsTile. */
+const CHARS_PER_TILE_LINE = 45;

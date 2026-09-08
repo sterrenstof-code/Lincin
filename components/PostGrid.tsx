@@ -16,7 +16,7 @@ import {
   space,
 } from "@/lib/design/type";
 import { useHeroTag, withHeroTransition } from "@/lib/hero-transition";
-import { stripMarkdown } from "@/lib/richtext";
+import { stripMarkdown, textOverflowsTile } from "@/lib/richtext";
 import { KIND_LABELS, type PostWithAuthor } from "@/lib/api/posts";
 
 /**
@@ -159,11 +159,15 @@ function GridCell({ post, onPress }: { post: PostWithAuthor; onPress: () => void
  * stuk tekst. Alle vier zijn ze een reden om erop te drukken, en geen van
  * vieren is te zien aan het beeld.
  *
- * Een tegel zónder foto valt hier buiten: die tóónt zijn tekst al, dus
- * daar zou het stipje herhalen wat er letterlijk staat.
+ * Een tegel zónder foto viel hier buiten, want die tóónt zijn tekst al.
+ * Dat klopt tot de tekst langer is dan de vijf regels die erop passen —
+ * en dan is er wél meer achter, precies zoals bij de foto ernaast. Zie
+ * textOverflowsTile in components/MoodBoard.tsx.
  */
 function hasMoreThanImage(post: PostWithAuthor): boolean {
-  if (!coverUrlFor(post)) return false;
+  if (!coverUrlFor(post)) {
+    return textOverflowsTile(post, { withTitle: 5, alone: 7 });
+  }
   return (
     !!post.caption?.trim() ||
     !!post.body_text?.trim() ||
