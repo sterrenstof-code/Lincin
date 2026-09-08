@@ -536,11 +536,40 @@ export default function PostComposeScreen() {
                   <SwatchPicker value={swatchHex} onChange={setSwatchHex} />
                 )}
 
+                {/*
+                    --- De kop van het stuk ---
+
+                    Een tekst zonder titel is op de detailpagina een stuk
+                    dat begint met zijn eerste alinea. Het veld bestond
+                    wel, maar zat verstopt in het bron-blok ónder de tekst
+                    als tweede invoerveld naast "Auteur" — dus vulde je
+                    daar de titel van een boek in, en niet de kop van wat
+                    je aan het schrijven was.
+
+                    Hij staat nu waar hij hoort: bovenaan, vóór de tekst.
+                    Dezelfde kolom (`source_title`), andere plek.
+                */}
+                {kind === "note" ? (
+                  <Field label="Titel">
+                    <TextInput
+                      value={sourceTitle}
+                      onChangeText={setSourceTitle}
+                      placeholder="Waar gaat dit over?"
+                      placeholderTextColor={feed.inkDim}
+                      style={[
+                        feedType.body,
+                        { color: feed.ink, paddingVertical: 11 },
+                        Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                      ]}
+                    />
+                  </Field>
+                ) : null}
+
                 {/* --- Tekstsoorten --- */}
                 {BODY_KINDS.includes(kind) && (
                   <Field
                     label={
-                      kind === "note" ? "De notitie"
+                      kind === "note" ? "De tekst"
                       : kind === "idea" ? "Het idee"
                       : kind === "fragment" ? "Het fragment"
                       : kind === "quote" ? "Het citaat"
@@ -677,10 +706,14 @@ export default function PostComposeScreen() {
                 {(kind === "note" || kind === "fragment" || kind === "link") && (
                   <View className="px-6 pt-7">
                     <Meta tone="feed" dim>
-                      {kind === "link" ? "Bron" : "Bron — wie schreef het, en waarin"}
+                      {kind === "link"
+                        ? "Bron"
+                        : kind === "note"
+                          ? "Bron — van wie is het, als het niet van jou is"
+                          : "Bron — wie schreef het, en waarin"}
                     </Meta>
                     <View className="flex-row mt-1">
-                      <View className="flex-1 pr-4">
+                      <View className={kind === "note" ? "flex-1" : "flex-1 pr-4"}>
                         <TextInput
                           value={sourceAuthor}
                           onChangeText={setSourceAuthor}
@@ -694,20 +727,24 @@ export default function PostComposeScreen() {
                         />
                         <Rule tone="feed" />
                       </View>
-                      <View className="flex-1">
-                        <TextInput
-                          value={sourceTitle}
-                          onChangeText={setSourceTitle}
-                          placeholder="Titel"
-                          placeholderTextColor={feed.inkDim}
-                          style={[
-                            feedType.body,
-                            { color: feed.ink, paddingVertical: 10 },
-                            Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
-                          ]}
-                        />
-                        <Rule tone="feed" />
-                      </View>
+                      {/* Bij een tekst staat de titel bovenaan, als kop van
+                          het stuk zelf. Hier zou hij een tweede titel zijn. */}
+                      {kind === "note" ? null : (
+                        <View className="flex-1">
+                          <TextInput
+                            value={sourceTitle}
+                            onChangeText={setSourceTitle}
+                            placeholder="Titel"
+                            placeholderTextColor={feed.inkDim}
+                            style={[
+                              feedType.body,
+                              { color: feed.ink, paddingVertical: 10 },
+                              Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
+                            ]}
+                          />
+                          <Rule tone="feed" />
+                        </View>
+                      )}
                     </View>
                   </View>
                 )}
@@ -725,30 +762,40 @@ export default function PostComposeScreen() {
                     ("Toelichting bewerken") heette weer anders dan de plek
                     waar je het invult.
                 */}
-                {kind !== "note" && (
-                  <Field label="Toelichting">
-                    <SmartTextInput
-                      value={note}
-                      onChangeText={onNoteChange}
-                      placeholder="Optioneel — één zin is genoeg."
-                      placeholderTextColor={feed.inkDim}
-                      multiline
-                      maxLength={500}
-                      style={{
-                        minHeight: 70,
-                        textAlignVertical: "top",
-                        ...feedType.body,
-                        // Stond op `inkDim` — dezelfde kleur als de
-                        // placeholder ernaast, dus je kon niet zien of je
-                        // al iets getypt had. Elk ander veld op dit scherm
-                        // staat op `ink`.
-                        color: feed.ink,
-                        paddingVertical: 11,
-                      }}
-                    />
-                    <CharCount value={note} max={500} />
-                  </Field>
-                )}
+                {/*
+                    Ook bij een tekst. Hij stond hier uit omdat een notitie
+                    toen zélf de toelichting wás; sinds de tekst in
+                    `body_text` staat is dit weer wat het overal is — wat
+                    de deler erbij zegt. Op de detailpagina van een tekst
+                    staat het als onderkop tussen de titel en de eerste
+                    alinea, precies waar een krant het zet.
+                */}
+                <Field label="Toelichting">
+                  <SmartTextInput
+                    value={note}
+                    onChangeText={onNoteChange}
+                    placeholder={
+                      kind === "note"
+                        ? "Optioneel — één zin onder de titel: waar gaat dit over?"
+                        : "Optioneel — één zin is genoeg."
+                    }
+                    placeholderTextColor={feed.inkDim}
+                    multiline
+                    maxLength={500}
+                    style={{
+                      minHeight: 70,
+                      textAlignVertical: "top",
+                      ...feedType.body,
+                      // Stond op `inkDim` — dezelfde kleur als de
+                      // placeholder ernaast, dus je kon niet zien of je
+                      // al iets getypt had. Elk ander veld op dit scherm
+                      // staat op `ink`.
+                      color: feed.ink,
+                      paddingVertical: 11,
+                    }}
+                  />
+                  <CharCount value={note} max={500} />
+                </Field>
 
                 {/* --- Tags --- */}
                 <Field label="Tags — gescheiden door spaties">

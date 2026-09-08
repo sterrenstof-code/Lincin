@@ -595,7 +595,7 @@ function partsOf(post: PostWithAuthor): FindParts {
     "";
 
   return {
-    kicker: KIND_LABELS[post.kind ?? "note"] ?? "Notitie",
+    kicker: KIND_LABELS[post.kind ?? "note"] ?? "Tekst",
     title,
     body: isSameText(bodyText, title ?? "") ? "" : bodyText,
     image: meta.image_url ?? post.image_url ?? null,

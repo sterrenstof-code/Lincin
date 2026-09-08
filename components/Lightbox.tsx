@@ -181,7 +181,7 @@ export function Lightbox({
                       { color: creamOnDark.DEFAULT, marginBottom: space.lg },
                     ]}
                   >
-                    {post.source_title?.trim() || caption || "Notitie"}
+                    {post.source_title?.trim() || caption || "Tekst"}
                   </Text>
                   {body ? (
                     <RichText

@@ -339,7 +339,7 @@ function Cell({ post }: { post: PostWithAuthor }) {
    *
    * Vijf regels in een tegel: geen plek voor opmaak, dus de markering eraf.
    */
-  const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Notitie";
+  const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Tekst";
   const title = post.source_title?.trim() || null;
   /**
    * De aanhef van het stuk.

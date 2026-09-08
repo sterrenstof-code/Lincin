@@ -18,10 +18,21 @@ import type { Ionicons } from "@expo/vector-icons";
  * beide schermen tegelijk; ze kúnnen niet meer verschillen.
  *
  * De volgorde is die van het deelscherm en is niet willekeurig: eerst de
- * drie die om een URL vragen (link, video, muziek), dan die om iets van
- * jezelf vragen (notitie, foto, idee), en tot slot de twee die alleen op
- * een bord thuishoren — een citaat en een kleur. Die laatste twee staan
- * achteraan omdat ze het zeldzaamst zijn, niet omdat ze minder tellen.
+ * drie die om een URL vragen (link, video, muziek), en dan die om iets van
+ * jezelf vragen (tekst, foto, idee).
+ *
+ * ---------------------------------------------------------------
+ * CITAAT EN KLEUR STAAN ER NIET MEER BIJ
+ * ---------------------------------------------------------------
+ * Ze stonden achteraan als de twee "alleen op een bord"-soorten, en dat
+ * was precies het probleem: een kiezer met acht ingangen waarvan er twee
+ * bijna nooit het antwoord zijn, maakt de zes andere trager te vinden. Een
+ * citaat is tekst met een bron eronder — dat kán al — en een kleur was een
+ * soort op zichzelf voor iets wat een eigenschap is.
+ *
+ * De soorten blíjven bestaan in `ShareKind` en in `KIND_LABELS`: er staan
+ * vondsten in de app die zo gemaakt zijn, en die horen te blijven werken.
+ * Je maakt ze alleen niet meer nieuw vanuit de plus.
  */
 
 export type ShareKind =
@@ -75,9 +86,9 @@ export const SHARE_KINDS: ShareKindSpec[] = [
   },
   {
     id: "note",
-    label: "Notitie",
+    label: "Tekst",
     hint: "Een gedachte, een passage, iets dat je las",
-    menuLabel: "Een notitie",
+    menuLabel: "Een tekst",
     icon: "create-outline",
   },
   {
@@ -93,19 +104,5 @@ export const SHARE_KINDS: ShareKindSpec[] = [
     hint: "Iets om te maken of te bouwen",
     menuLabel: "Een idee",
     icon: "bulb-outline",
-  },
-  {
-    id: "quote",
-    label: "Citaat",
-    hint: "Een zin die bleef hangen",
-    menuLabel: "Een citaat",
-    icon: "chatbox-ellipses-outline",
-  },
-  {
-    id: "swatch",
-    label: "Kleur",
-    hint: "Een staal voor op je bord",
-    menuLabel: "Een kleur",
-    icon: "color-palette-outline",
   },
 ];

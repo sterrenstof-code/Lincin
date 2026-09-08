@@ -169,7 +169,7 @@ function Badge({
  * vormen voor één ding is precies waar §8 over gaat.
  */
 function TextFace({ post }: { post: PostWithAuthor }) {
-  const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Notitie";
+  const kicker = KIND_LABELS[post.kind ?? "note"] ?? "Tekst";
   const title = post.source_title?.trim() || post.caption?.trim() || null;
   const lead = stripMarkdown(post.body_text) || post.link_url || "";
   const body = title && lead === title ? "" : lead;

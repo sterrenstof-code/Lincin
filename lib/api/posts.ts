@@ -34,7 +34,7 @@ export type FindKind =
 
 /** Labels voor de kicker-regel boven elke vondst. */
 export const KIND_LABELS: Record<FindKind, string> = {
-  note: "Notitie",
+  note: "Tekst",
   image: "Beeld",
   link: "Artikel",
   video: "Video",

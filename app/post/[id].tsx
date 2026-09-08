@@ -580,7 +580,7 @@ export default function PostDetailScreen() {
         {/* Wat de deler erbij zei, als het niet de kop is: onder zijn naam
             en op dezelfde inspringing, want het is van hem en niet van de
             vondst. */}
-        {caption && !asTitle ? (
+        {caption && !asTitle && caption !== standfirst ? (
           <MentionsText
             text={caption}
             style={[
@@ -659,6 +659,15 @@ export default function PostDetailScreen() {
    * tekst is; dat is precies waarom een foto en een artikel niet twee
    * verschillende pagina's horen te zijn.
    */
+  /**
+   * Alleen bij een tekst zonder plaat. Staat er wél beeld, dan is de
+   * plaat de kop en zet `masthead` het onderschrift al als titel — dan
+   * zou dit hetzelfde nog een keer zeggen.
+   */
+  const textTitle = !hasPlate ? post.data?.source_title?.trim() || null : null;
+  const standfirst =
+    !hasPlate && post.data?.body_text?.trim() ? post.data?.caption?.trim() || null : null;
+
   const articleBlock = post.data ? (
     <View style={{ paddingVertical: space.lg }}>
                 {/**
@@ -673,7 +682,7 @@ export default function PostDetailScreen() {
                     { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
                   ]}
                 >
-                  {(KIND_LABELS[post.data.kind ?? "note"] ?? "Notitie").toUpperCase()}
+                  {(KIND_LABELS[post.data.kind ?? "note"] ?? "Tekst").toUpperCase()}
                 </Text>
                 <View
                   style={{
@@ -682,6 +691,42 @@ export default function PostDetailScreen() {
                     marginBottom: space.md,
                   }}
                 />
+                {/**
+                  * De titel van het stuk, en daaronder in één zin waaróm
+                  * het hier staat.
+                  *
+                  * Die stonden er geen van beide. Je typte bij een tekst
+                  * een titel in ("De Vos en de kat"), en de pagina liet
+                  * hem nergens zien: er stond alleen VONDST · TEKST en dan
+                  * meteen de eerste alinea. Een stuk zonder kop is een
+                  * stuk waarvan je pas na drie regels weet wat het is.
+                  *
+                  * De titel staat in `source_title` en de uitleg in
+                  * `caption` — dezelfde twee kolommen die een fragment al
+                  * gebruikt (0042). Bij een tekst díe je zelf schrijft is
+                  * "waarin het stond" nu eenmaal de titel, en de
+                  * toelichting van de deler is precies de onderkop die een
+                  * krant boven een stuk zet.
+                  */}
+                {textTitle ? (
+                  <Text
+                    style={[
+                      wide ? feedType.heroSmall : feedType.tagline,
+                      { color: feed.ink, marginBottom: standfirst ? space.sm : space.md },
+                    ]}
+                  >
+                    {textTitle}
+                  </Text>
+                ) : null}
+                {standfirst ? (
+                  <MentionsText
+                    text={standfirst}
+                    style={[
+                      feedType.pullSmall,
+                      { color: feed.inkDim, marginBottom: space.md },
+                    ]}
+                  />
+                ) : null}
                 {/**
                   * De tekst van een notitie, een idee of een fragment.
                   *
