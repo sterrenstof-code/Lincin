@@ -27,7 +27,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { useIsFocused } from "@react-navigation/native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -42,7 +41,6 @@ import { QueryError } from "@/components/QueryError";
 import { plural } from "@/lib/plural";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import { chromeTag } from "@/lib/hero-transition";
 import { safeBack } from "@/lib/nav";
 import { useToast } from "@/lib/toast";
 import {
@@ -190,7 +188,6 @@ export default function ChatDetail() {
   // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
   // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
   const chrome = useChromeScroll();
-  const screenFocused = useIsFocused();
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();
@@ -1043,12 +1040,11 @@ export default function ChatDetail() {
           weg terug naar de feed, events of je profiel. Zie DESIGN.md §5 —
           elk scherm draagt dezelfde kop.
 
-          `chromeTag` alleen wanneer dit scherm de focus heeft: twee koppen
-          met dezelfde naam tegelijk in de DOM laat de browser de hele
-          overgang overslaan. Zie lib/hero-transition.web.ts. */}
-      <View style={chromeTag(screenFocused)}>
-        <AppChrome wide={wide} progress={chrome.progress} compact />
-      </View>
+          De kop draagt zijn eigen `chromeTag`, en alleen als hij de focus
+          heeft. Hier stond er nóg een omheen: twee elementen met dezelfde
+          naam tegelijk, waarop de browser de overgang afbreekt met
+          "Unexpected duplicate view-transition-name". Zie AppChrome. */}
+      <AppChrome wide={wide} progress={chrome.progress} compact />
 
       {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon

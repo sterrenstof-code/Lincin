@@ -52,6 +52,17 @@ const RULES: Rule[] = [
     say: "Dit onderdeel is nog niet klaar op de server. Er is niets kapot aan wat je typte — probeer het straks opnieuw.",
   },
   {
+    /**
+     * Een check-constraint die de rij tegenhoudt. `posts_has_content` is
+     * de enige die een gewone gebruiker kan raken: de app rekende een clip
+     * of een kleur als inhoud en de database nog niet (0057). Zolang die
+     * migratie ergens niet gedraaid is, hoort daar een zin te staan en
+     * geen Postgres-code.
+     */
+    match: /violates check constraint|23514/i,
+    say: "Deze vondst is nog te leeg voor de server. Zet er een woord of een onderschrift bij en probeer opnieuw.",
+  },
+  {
     match: /row-level security|permission denied|not authorized/i,
     say: "Je hebt hier geen toegang (meer) toe. Misschien ben je uit de groep of het event gehaald.",
   },

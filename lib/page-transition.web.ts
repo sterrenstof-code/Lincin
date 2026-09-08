@@ -42,6 +42,13 @@ import { router } from "expo-router";
 type DocumentWithVT = Document & {
   startViewTransition?: (cb: () => void | Promise<void>) => {
     finished: Promise<void>;
+    /**
+     * Verwerpt zodra de browser de overgang overslaat — bijvoorbeeld als
+     * twee elementen dezelfde `view-transition-name` dragen. Zie hieronder
+     * waarom we hem opvangen ook al doen we er niets mee.
+     */
+    ready?: Promise<void>;
+    updateCallbackDone?: Promise<void>;
   };
 };
 
@@ -130,6 +137,18 @@ export function withPageTransition(
       else navigate();
       await settled();
     });
+    /**
+     * Alle drie de beloftes opvangen, niet alleen `finished`.
+     *
+     * Slaat de browser de overgang over, dan verwérpt `ready` — en omdat
+     * niemand eraan hing kwam dat in de console terecht als
+     * "Uncaught (in promise) InvalidStateError: Transition was aborted
+     * because of invalid state", drie regels onder de echte oorzaak.
+     * Zo'n regel is erger dan geen regel: hij ziet eruit als een fout in
+     * de navigatie terwijl er alleen een animatie niet doorging.
+     */
+    transition.ready?.catch(() => {});
+    transition.updateCallbackDone?.catch(() => {});
     transition.finished
       .catch(() => {})
       .finally(() => {

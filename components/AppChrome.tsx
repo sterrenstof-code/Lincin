@@ -1192,7 +1192,18 @@ export function PageScroll({
                 top: -Math.max(0, webHeaderHeight - CHROME_COMPACT_H),
                 zIndex: 20,
               } as any),
-              ...chromeTag(focused),
+              /*
+                  Géén `chromeTag` hier.
+
+                  Hij stond op deze doos én op de kop erbinnen (zie
+                  `chromeMorph` in AppChrome), en dat zijn twee elementen
+                  met dezelfde naam op hetzelfde moment. De browser slaat
+                  dan niet alleen de overgang over — hij meldt het ook:
+                  "Unexpected duplicate view-transition-name: lincin-chrome",
+                  gevolgd door een afgebroken transitie. De kop draagt de
+                  naam zelf, op élk scherm; wie hem inpakt hoeft niets te
+                  doen.
+              */
             }}
           >
             {chrome}
@@ -1262,7 +1273,7 @@ export function PageScroll({
             left: 0,
             right: 0,
             backgroundColor: underChrome ? "transparent" : feed.lav,
-            ...chromeTag(focused),
+            // Zie de stickytak hierboven: de naam staat op de kop zelf.
           }}
           onLayout={(e) => {
             const h = e.nativeEvent.layout.height;
