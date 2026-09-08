@@ -76,7 +76,6 @@ import { confirm } from "@/lib/confirm";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { asideTag, useHeroTag } from "@/lib/hero-transition";
 import { markSeen } from "@/lib/read-state";
-import { BODY_MAX } from "@/lib/richtext";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { invalidatePostCaches } from "@/lib/post-cache";
@@ -1294,9 +1293,9 @@ export default function PostDetailScreen() {
           placeholder="Leeg laten mag — dan draagt de toelichting de vondst."
           placeholderTextColor={feed.inkDim}
           multiline
-          // Dezelfde grens als bij het schrijven: stond hier 2000, dan
-          // knipte één keer bewerken een lang stuk alsnog af.
-          maxLength={BODY_MAX}
+          // Geen grens, net als bij het schrijven — zie post-compose. Stond
+          // hier een limiet, dan knipte één keer bewerken een lang stuk
+          // alsnog af.
           style={[
             feedType.body,
             {

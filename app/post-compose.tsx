@@ -39,7 +39,7 @@ import {
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
-import { BODY_MAX, continueList, type EditResult, type Selection } from "@/lib/richtext";
+import { continueList, type EditResult, type Selection } from "@/lib/richtext";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { CharCount } from "@/components/CharCount";
@@ -601,14 +601,23 @@ export default function PostComposeScreen() {
                       placeholderTextColor={feed.inkDim}
                       multiline
                       autoFocus
-                      maxLength={BODY_MAX}
+                      /*
+                          Geen `maxLength`.
+
+                          Hij stond op 2000 — ongeveer één A4 — en knipte
+                          bij het plakken de rest er stilletjes af: je merkt
+                          het pas op de detailpagina, waar het stuk midden in
+                          een woord ophoudt. Een grens die je niet ziet
+                          aankomen en die je werk weggooit is erger dan geen
+                          grens: de kolom in de database is `text` en kent er
+                          ook geen.
+                      */
                       style={[
                         feedType.pullSmall,
                         { color: feed.ink, paddingVertical: 12, minHeight: 150, textAlignVertical: "top" },
                         Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {},
                       ]}
                     />
-                    <CharCount value={body} max={BODY_MAX} />
                     {/* Eén regel uitleg is genoeg: de knoppen zeggen wat ze
                         doen, maar niet dat je het ook zelf kunt typen — en
                         wie plakt uit een andere app heeft de sterretjes vaak

@@ -29,26 +29,6 @@
  * fragment ís al een blok binnen een pagina die zijn eigen koppen heeft.
  */
 
-/**
- * Hoe lang de tekst van een vondst mag zijn.
- *
- * Stond als los getal op twee plekken — 2000 in de composer en 2000 in het
- * bewerkvenster — en dat is ongeveer één A4. Wie een verhaal overtikt of
- * plakt loopt daar zonder waarschuwing tegenaan: `maxLength` op een
- * TextInput knipt de rest er stilletjes af, en je merkt het pas op de
- * detailpagina waar het stuk midden in een woord ophoudt.
- *
- * De kolom in de database is `text` en kent geen grens; deze staat er dus
- * alleen om te voorkomen dat iemand per ongeluk een heel boek plakt.
- * Twintigduizend tekens is ruwweg dertig bladzijden — ver voorbij wat
- * iemand hier deelt, en nog steeds een grens.
- *
- * Hij staat hier omdat schrijven en bewerken dezelfde grens móéten hebben:
- * was de bewerkgrens lager gebleven, dan had één keer "toelichting
- * bewerken" een lang stuk alsnog afgeknipt.
- */
-export const BODY_MAX = 20000;
-
 export type InlineSpan = {
   text: string;
   bold?: boolean;
