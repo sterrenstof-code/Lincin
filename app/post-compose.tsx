@@ -40,6 +40,7 @@ import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { SHARE_KINDS } from "@/lib/share-kinds";
 import { continueList, type EditResult, type Selection } from "@/lib/richtext";
+import { invalidatePostCaches } from "@/lib/post-cache";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { CharCount } from "@/components/CharCount";
 import {
@@ -411,7 +412,9 @@ export default function PostComposeScreen() {
         tags: tagsRaw.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean),
         meta: preview ?? null,
       });
-      await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+      // Niet alleen de lijst: ook je profiel en de tellingen in de band
+      // bovenaan de feed. Zie lib/post-cache.ts.
+      await invalidatePostCaches(qc);
       safeBack(router, "/(app)/feed");
     } catch (e: any) {
       setError(

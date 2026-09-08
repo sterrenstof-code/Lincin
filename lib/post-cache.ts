@@ -30,5 +30,7 @@ export function invalidatePostCaches(qc: QueryClient): Promise<unknown> {
     qc.invalidateQueries({ queryKey: ["posts-by-user"] }),
     // De strook "wat er over jou gebeurd is".
     qc.invalidateQueries({ queryKey: ["interaction-summary"] }),
+    // En de telling van wat jíj deed, in diezelfde band.
+    qc.invalidateQueries({ queryKey: ["my-activity"] }),
   ]);
 }

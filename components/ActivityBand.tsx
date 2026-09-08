@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
+import { getMyActivity, type MyActivity } from "@/lib/api/my-activity";
 import {
   listNotifications,
   markNotificationRead,
@@ -59,10 +60,27 @@ export function ActivityBand({
     refetchOnWindowFocus: true,
   });
 
+  /**
+   * En wat jíj deed. Zie lib/api/my-activity.ts: de band ging tot nu toe
+   * alleen over wat anderen met jouw spullen deden, en dat is de helft.
+   */
+  const mine = useQuery({
+    queryKey: ["my-activity", myUserId],
+    queryFn: () => getMyActivity(myUserId),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+  });
+
   const rows = (notifications.data ?? []).slice(0, MAX_ROWS);
   const sharers = recentSharers(items, myUserId);
+  const mineWorth =
+    !!mine.data &&
+    (mine.data.posts > 0 ||
+      mine.data.comments > 0 ||
+      mine.data.boosts > 0 ||
+      mine.data.streak > 0);
 
-  if (rows.length === 0 && sharers.length === 0) return null;
+  if (rows.length === 0 && sharers.length === 0 && !mineWorth) return null;
 
   async function open(item: NotificationWithDetails) {
     if (!item.read) markNotificationRead(item.id).catch(() => {});
@@ -109,6 +127,8 @@ export function ActivityBand({
         </Text>
       </Pressable>
 
+      {mineWorth ? <MyWeekRow mine={mine.data!} /> : null}
+
       {sharers.length > 0 ? <SharersRow sharers={sharers} /> : null}
 
       {rows.map((item, i) => (
@@ -119,6 +139,70 @@ export function ActivityBand({
           isLast={i === rows.length - 1}
         />
       ))}
+    </View>
+  );
+}
+
+/**
+ * Jouw week: wat je deed, en hoeveel dagen op rij.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM DIT GEEN PUNTEN ZIJN
+ * ---------------------------------------------------------------
+ * Een score en een ranglijst zouden hier het verkeerde spel spelen: dit
+ * is een kring van een handvol mensen, en de vraag is niet wie er wint
+ * maar of je er nog bent. Vandaar drie tellingen in gewone woorden en een
+ * rij van zeven vakjes — één per dag, gevuld als je iets deed.
+ *
+ * Die vakjes zijn hetzelfde raster als de rest van dit ontwerp: vierkant,
+ * één lijndikte, geen ronding, geen kleurverloop. De reeks krijgt als
+ * enige de oranje, want dat is in deze app de kleur van "jij" (de plus,
+ * je avatarcel in de balk) en niet van "goed gedaan".
+ */
+function MyWeekRow({ mine }: { mine: MyActivity }) {
+  const parts = [
+    mine.posts > 0 ? `${mine.posts} gedeeld` : null,
+    mine.comments > 0 ? `${mine.comments} ${mine.comments === 1 ? "reactie" : "reacties"}` : null,
+    mine.boosts > 0 ? `${mine.boosts} omhoog` : null,
+  ].filter(Boolean);
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
+        borderBottomWidth: FEED_BORDER,
+        borderBottomColor: rule.soft,
+      }}
+    >
+      {/* De zeven dagen. Vandaag staat rechts. */}
+      <View style={{ flexDirection: "row", gap: 3 }}>
+        {mine.week.map((did, i) => (
+          <View
+            key={i}
+            style={{
+              width: 8,
+              height: 14,
+              borderWidth: FEED_BORDER,
+              borderColor: did ? feed.ink : rule.soft,
+              backgroundColor: did ? feed.ink : "transparent",
+            }}
+          />
+        ))}
+      </View>
+
+      <Text style={[feedType.label, { color: feed.ink, flex: 1 }]} numberOfLines={1}>
+        {parts.length > 0 ? `Jij deze week: ${parts.join(" · ")}` : "Jij deze week: nog niets"}
+      </Text>
+
+      {mine.streak > 1 ? (
+        <Text style={[feedType.kicker, { color: announce, letterSpacing: 0.55 }]}>
+          {`${mine.streak} DAGEN OP RIJ`}
+        </Text>
+      ) : null}
     </View>
   );
 }
