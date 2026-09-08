@@ -375,6 +375,27 @@ export async function createFind(args: {
       uploadedPaths.map((path, position) => ({ post_id: postId, image_path: path, position }))
     );
   }
+  /**
+   * Je volgt je eigen vondst.
+   *
+   * De knop stond op "Volgen" onder een stuk dat je zelf net geplaatst
+   * had, alsof je erbuiten stond. Dat klopt ook niet met wat er gebeurt:
+   * de eigenaar krijgt sowieso bericht van elke reactie (`post_audience`
+   * in 0048), dus hij vólgt hem al — alleen zei de app van niet.
+   *
+   * Eén rij erbij verandert daar niets aan behalve de stand van de knop,
+   * en hij is nog steeds af te zetten: uitvinken haalt de rij weg. De
+   * meldingen blijven ook dan komen, want die hangen aan het eigenaarschap
+   * en niet aan deze tabel.
+   *
+   * Fire-and-forget, net als het activiteitsmoment eronder: een vondst die
+   * geplaatst is mag niet alsnog stukgaan op een knopstand.
+   */
+  supabase
+    .from("post_follows")
+    .insert({ post_id: postId, user_id: args.userId })
+    .then(undefined, () => {});
+
   // Activiteitsmoment registreren — fire-and-forget
   createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as any).id }).catch(() => {});
   return normalizeRow(data);

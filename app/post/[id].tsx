@@ -79,6 +79,7 @@ import { markSeen } from "@/lib/read-state";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { invalidatePostCaches } from "@/lib/post-cache";
+import { togglePanel, usePanelPrefs } from "@/lib/panel-prefs";
 import { useMentions } from "@/lib/useMentions";
 import { IMG, signedImageUrl } from "@/lib/media";
 import { supabase } from "@/lib/supabase/client";
@@ -138,6 +139,11 @@ export default function PostDetailScreen() {
   const asideStyle = asideTag(useIsFocused());
   const { session } = useAuth();
   const myUserId = session?.user.id;
+  /**
+   * Wat je de vorige keer dichtklapte, staat nu weer dicht. Zie
+   * lib/panel-prefs.ts — drie panelen, één voorkeur per stuk.
+   */
+  const panels = usePanelPrefs(myUserId);
 
   // Zodra je een vondst opent telt hij als gezien; de feed dimt hem daarna.
   // Lokaal opgeslagen — zie lib/read-state.ts voor waarom niet op de server.
@@ -665,6 +671,13 @@ export default function PostDetailScreen() {
    * zou dit hetzelfde nog een keer zeggen.
    */
   const textTitle = !hasPlate ? post.data?.source_title?.trim() || null : null;
+  /**
+   * Wanneer een tekst lang genoeg is om eerst zijn begin te laten zien.
+   * De grens ligt hoog met opzet: een notitie van tien regels hoort niet
+   * afgekapt te worden om er een knop onder te kunnen zetten.
+   */
+  const isLongBody = (post.data?.body_text?.trim().length ?? 0) > LONG_TEXT_CHARS;
+  const clipBody = isLongBody && panels.longText;
   const standfirst =
     !hasPlate && post.data?.body_text?.trim() ? post.data?.caption?.trim() || null : null;
 
@@ -751,6 +764,27 @@ export default function PostDetailScreen() {
                    * het raster, zodat het stuk overal hetzelfde klinkt.
                    */
                   <View style={{ marginTop: space.md }}>
+                    {/**
+                      * Een lang stuk begint met zijn begin.
+                      *
+                      * Twaalfhonderd woorden onder elkaar is op zichzelf
+                      * geen probleem — daar is een detailpagina voor — maar
+                      * je ziet er niet meer aan wat het is, en de reacties
+                      * eronder liggen tien schermen verderop. Boven de
+                      * grens tonen we daarom het begin, met de rest achter
+                      * één tik.
+                      *
+                      * Wat je kiest blijft staan: wie zegt dat hij lange
+                      * teksten meteen helemaal wil, hoeft dat niet bij
+                      * elke vondst opnieuw te zeggen (lib/panel-prefs.ts).
+                      */}
+                    <View
+                      style={
+                        clipBody
+                          ? { maxHeight: LONG_TEXT_PREVIEW_H, overflow: "hidden" }
+                          : undefined
+                      }
+                    >
                     <RichText
                       text={post.data.body_text}
                       /**
@@ -770,6 +804,37 @@ export default function PostDetailScreen() {
                       dimColor={feed.inkDim}
                       ruleColor={rule.soft}
                     />
+                    </View>
+                    {isLongBody ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={clipBody ? "Lees verder" : "Toon minder"}
+                        onPress={() => togglePanel("longText")}
+                        style={{
+                          marginTop: space.md,
+                          paddingTop: space.md,
+                          borderTopWidth: FEED_BORDER,
+                          borderTopColor: feed.ink,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: space.sm,
+                        }}
+                      >
+                        <Ionicons
+                          name={clipBody ? "chevron-down" : "chevron-up"}
+                          size={16}
+                          color={flameDeep}
+                        />
+                        <Text
+                          style={[
+                            feedType.kicker,
+                            { color: flameDeep, letterSpacing: 0.55 },
+                          ]}
+                        >
+                          {clipBody ? "LEES VERDER" : "TOON MINDER"}
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 ) : null}
     </View>
@@ -819,27 +884,52 @@ export default function PostDetailScreen() {
   /** Reacties — de lijst zelf, zonder omhulsel. */
   const commentsBlock = (
     <>
-      <Text
-        style={[
-          feedType.kicker,
-          {
-            color: feed.inkDim,
-            letterSpacing: 0.6,
-            paddingTop: space.lg,
-            paddingBottom: space.md,
-            borderTopWidth: FEED_BORDER,
-            borderTopColor: feed.ink,
-          },
-        ]}
+      {/**
+        * De kop van de lijst is tegelijk de knop die hem dichtklapt.
+        *
+        * Een gesprek dat je al gelezen hebt hoeft de kolom niet te vullen,
+        * en bij een lang gesprek staat het veld om zelf iets te zeggen
+        * anders onder twintig reacties. Dichtklappen laat de kop, het
+        * aantal en het invoerveld staan — precies wat je nodig hebt om te
+        * zien dát er gepraat is en om mee te doen.
+        *
+        * De stand blijft staan voor de volgende vondst (panel-prefs).
+        */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: !panels.comments }}
+        accessibilityLabel={panels.comments ? "Reacties tonen" : "Reacties verbergen"}
+        onPress={() => togglePanel("comments")}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.sm,
+          paddingTop: space.lg,
+          paddingBottom: space.md,
+          borderTopWidth: FEED_BORDER,
+          borderTopColor: feed.ink,
+        }}
       >
-        {`REACTIES${comments && comments.length > 0 ? ` (${comments.length})` : ""}`}
-      </Text>
+        <Text
+          style={[
+            feedType.kicker,
+            { color: feed.inkDim, letterSpacing: 0.6, flex: 1 },
+          ]}
+        >
+          {`REACTIES${comments && comments.length > 0 ? ` (${comments.length})` : ""}`}
+        </Text>
+        <Ionicons
+          name={panels.comments ? "chevron-down" : "chevron-up"}
+          size={16}
+          color={feed.inkDim}
+        />
+      </Pressable>
 
       {/* Geen paneel eromheen. Een reactie is geen kaartje: wie het zei
           staat vooraan, wat er staat springt in tot onder die naam, en een
           lijn op diezelfde inspringing scheidt de een van de ander. Vlak,
           uitlijning en ruimte doen het werk dat een achtergrondkleur deed. */}
-      {comments === null ? (
+      {panels.comments ? null : comments === null ? (
         <View style={{ gap: space.md, paddingVertical: space.md }}>
           <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
           <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
@@ -1379,6 +1469,41 @@ export default function PostDetailScreen() {
             )}
           </View>
 
+          {/**
+            * De kolom met reacties kan weg.
+            *
+            * Bij een lang stuk is de vraag niet "wat vindt men ervan" maar
+            * "kan ik dit lezen": een kolom van 320 tot 620 punten naast de
+            * tekst maakt de regels korter dan ze hoeven te zijn. Dicht
+            * blijft er een strook over met het aantal erin — je ziet dat er
+            * een gesprek is, je leest alleen even niet mee.
+            *
+            * Hij komt op dezelfde manier terug, en de stand blijft staan
+            * voor de volgende vondst (lib/panel-prefs.ts).
+            */}
+          {panels.aside ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reacties tonen"
+              onPress={() => togglePanel("aside")}
+              style={{
+                width: ASIDE_STRIP_W,
+                alignItems: "center",
+                gap: space.md,
+                paddingTop: space.lg,
+                borderLeftWidth: FEED_BORDER,
+                borderLeftColor: feed.ink,
+              }}
+            >
+              <Ionicons name="chevron-back" size={18} color={feed.ink} />
+              <Ionicons name="chatbubble-outline" size={18} color={feed.ink} />
+              {comments && comments.length > 0 ? (
+                <Text style={[feedType.kicker, { color: feed.ink }]}>
+                  {comments.length}
+                </Text>
+              ) : null}
+            </Pressable>
+          ) : (
           <View
             style={{
               width: conversationWidth,
@@ -1388,6 +1513,26 @@ export default function PostDetailScreen() {
               ...asideStyle,
             }}
           >
+            {/* De weg terug: dezelfde knop, andere kant op. Hij staat
+                bóven de kolom en niet erin, want hij gaat over de kolom
+                zelf en niet over de vondst. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reacties verbergen"
+              onPress={() => togglePanel("aside")}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: space.xs,
+                paddingVertical: space.sm,
+              }}
+            >
+              <Text style={[feedType.kicker, { color: feed.inkDim, letterSpacing: 0.6 }]}>
+                VERBERGEN
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={feed.inkDim} />
+            </Pressable>
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: 12 }}
@@ -1432,6 +1577,7 @@ export default function PostDetailScreen() {
             </ScrollView>
             {composerBlock}
           </View>
+          )}
         </View>
       </View>
     );
@@ -1654,6 +1800,17 @@ function CommentRow({
   );
 }
 
+
+/**
+ * Vanaf hoeveel tekens een stuk eerst zijn begin laat zien, en hoe hoog
+ * dat begin is. Ongeveer duizend woorden staat er dan; genoeg om te weten
+ * wat je leest en te besluiten of je verder gaat.
+ */
+const LONG_TEXT_CHARS = 1800;
+const LONG_TEXT_PREVIEW_H = 560;
+
+/** De breedte van de strook die overblijft als de kolom dicht staat. */
+const ASIDE_STRIP_W = 48;
 
 const POST_EMOJIS = [
   "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",
