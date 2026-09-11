@@ -20,6 +20,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
@@ -2245,6 +2246,42 @@ function SwipeWrap({
   return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
+/** Icoonmaat in de actiebalk onder een bubbel; de emoji staat er optisch op gelijke hoogte mee. */
+const TOOLBAR_ICON = 17;
+const TOOLBAR_EMOJI = { fontSize: 16, lineHeight: 20 } as const;
+
+/**
+ * Eén knop in de actiebalk onder een bubbel: de hoogte van élk
+ * besturingselement (CONTROL_H), een vaste breedte zodat een icoon en een
+ * emoji hetzelfde hokje krijgen, en bij indrukken alleen wat lichter.
+ */
+function ToolbarButton({
+  label,
+  onPress,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: CONTROL_H - space.xs,
+        height: CONTROL_H,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.45 : 1,
+      })}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 function MessageBubble({
   msg,
   isMine,
@@ -2406,34 +2443,29 @@ function MessageBubble({
         // @ts-ignore — onContextMenu is een web-only prop voor rechtermuisknop
         onContextMenu={Platform.OS === "web" ? (e: any) => { e.preventDefault(); onSelect?.(); } : undefined}
         /**
-          * Vol of leeg — meer verschil is er niet, en meer is er ook niet
-          * nodig.
+          * Donker blad is "van mij", licht blad is "van iemand anders".
           *
-          * Beide kanten waren eerst een gevuld vlak: het mijne zwart, dat
-          * van de ander een bijna-wit blad. Twee dozen op een pagina die
-          * volgens §4 juist géén dozen kent, en in de lichte stand was dat
-          * witte blad bovendien nauwelijks van het paginavlak te
-          * onderscheiden.
+          * Het bericht van de ander heeft een tijd lang een zwart kader
+          * van anderhalve pixel gedragen. Dat kader is in de feed het
+          * raster; om één zin heen leest het als een doos, en het vecht
+          * met de actiebalk die er bij selectie onder komt en wél een
+          * kader hoort te hebben (een popover is een kader).
           *
-          * Toen kreeg het bericht van de ander één kantlijn links. Dat was
-          * de verkeerde vorm: een kantlijn is in deze app precies het
-          * teken van een aanhaling — het antwoord-blok hieronder gebruikt
-          * hem — dus een gewoon bericht las als een citaat van iets anders.
-          *
-          * Nu is het een kader zonder vulling. Een gevulde cel is "van
-          * mij", een lege cel met een kader is "van iemand anders" —
-          * dezelfde tweedeling als bij de reactiepil en de knoppenrij, en
-          * dezelfde vorm: allebei een cel, alleen de vulling verschilt.
+          * Nu is het een licht blad (`page-alt`: wit in de lichte stand,
+          * bijna-wit lavendel in de donkere) met een haarlijn eromheen.
+          * De haarlijn is er alleen omdat het blad in de lichte stand
+          * anders bijna in het paginavlak verdwijnt — hij moet niet
+          * opvallen, en `rule.soft` valt niet op.
           */
         style={{
           opacity: pending ? 0.65 : 1,
           ...(isMine || failed
             ? {}
-            : { borderWidth: FEED_BORDER, borderColor: feed.ink }),
+            : { borderWidth: StyleSheet.hairlineWidth, borderColor: rule.soft }),
         }}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
-        } ${failed ? "bg-flame" : isMine ? "bg-ink" : ""}`}
+        } ${failed ? "bg-flame" : isMine ? "bg-ink" : "bg-page-alt"}`}
       >
         {content === null ? (
           msg.pendingRekey ? (
@@ -2532,7 +2564,7 @@ function MessageBubble({
               </View>
             )}
             <View
-              className={`flex-row items-center ${
+              className={`flex-row items-center justify-end ${
                 hasAttachment ? "px-3 pb-2" : content?.reply ? "px-4 mt-0.5 pb-0.5" : "mt-1"
               }`}
             >
@@ -2570,61 +2602,71 @@ function MessageBubble({
         )}
       </Pressable>
         </View>
-        {/* Inline actie-iconen — verschijnen bij tik/selectie */}
-        {selected && (
-          <View
-            className={`flex-row items-center gap-0.5 px-1.5 py-1 ${isMine ? "mr-1" : "ml-1"}`}
-            style={{ borderWidth: FEED_BORDER, borderColor: rule.soft }}
-          >
-            {onReply && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Antwoorden op dit bericht"
-                onPress={onReply} hitSlop={6} className="w-8 h-8 items-center justify-center">
-                <Ionicons name="return-down-back-outline" color={flameDeep} size={16} />
-              </Pressable>
-            )}
-            <Pressable onPress={() => onToggleReaction("❤️")} hitSlop={6} className="w-8 h-8 items-center justify-center">
-              <Text style={{ fontSize: 15 }}>❤️</Text>
-            </Pressable>
-            <Pressable onPress={() => onToggleReaction("👍")} hitSlop={6} className="w-8 h-8 items-center justify-center">
-              <Text style={{ fontSize: 15 }}>👍</Text>
-            </Pressable>
-            {onCopy && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Bericht kopiëren"
-                onPress={onCopy} className="items-center justify-center"
-                style={{ minWidth: 36, height: CONTROL_H }}>
-                <Ionicons name="copy-outline" color={feed.inkDim} size={15} />
-              </Pressable>
-            )}
-            {/* De enige ingang naar het bewerken — zie renderItem voor
-                waarom die er tot nu toe niet was. Náást verwijderen, want
-                de twee horen bij elkaar: het zijn allebei dingen die je
-                alleen met je eigen bericht kunt. */}
-            {onEdit && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Bericht bewerken"
-                onPress={onEdit} className="items-center justify-center"
-                style={{ minWidth: 36, height: CONTROL_H }}>
-                <Ionicons name="pencil-outline" color={feed.inkDim} size={15} />
-              </Pressable>
-            )}
-            {onDelete && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Bericht verwijderen"
-                onPress={onDelete} className="items-center justify-center"
-                style={{ minWidth: 36, height: CONTROL_H }}>
-                <Ionicons name="trash-outline" color={flameDeep} size={15} />
-              </Pressable>
-            )}
-          </View>
-        )}
       </Animated.View>
       </SwipeWrap>
+
+      {/*
+          De actiebalk — verschijnt bij tik (web) of lang drukken (native).
+
+          Hij stond in de rij naast de bubbel, en dat ging twee keer mis:
+          bij een lang bericht kneep hij de bubbel smaller, en zijn knoppen
+          hadden drie verschillende maten (32, 36 en 44), zodat de rij nooit
+          op één lijn stond. Nu staat hij ónder de bubbel, tegen dezelfde
+          kant uitgelijnd, als één popover: licht blad, het kader van het
+          feed-raster, en élke knop op dezelfde maat. Een haarlijn scheidt
+          "reageren" van "doen met dit bericht". Alleen verwijderen is rood.
+      */}
+      {selected && (
+        <View
+          className={`flex-row items-center mt-1 bg-page-alt ${isMine ? "self-end" : "self-start"}`}
+          style={{
+            marginLeft: showAvatarSlot ? 44 : 0,
+            borderWidth: FEED_BORDER,
+            borderColor: feed.ink,
+          }}
+        >
+          {onReply && (
+            <ToolbarButton label="Antwoorden op dit bericht" onPress={onReply}>
+              <Ionicons name="return-down-back-outline" color={feed.ink} size={TOOLBAR_ICON} />
+            </ToolbarButton>
+          )}
+          <ToolbarButton label="Reageren met een hartje" onPress={() => onToggleReaction("❤️")}>
+            <Text style={TOOLBAR_EMOJI}>❤️</Text>
+          </ToolbarButton>
+          <ToolbarButton label="Reageren met een duim" onPress={() => onToggleReaction("👍")}>
+            <Text style={TOOLBAR_EMOJI}>👍</Text>
+          </ToolbarButton>
+          {(onCopy || onEdit || onDelete) && (
+            <View
+              style={{
+                width: StyleSheet.hairlineWidth,
+                alignSelf: "stretch",
+                marginVertical: space.sm,
+                backgroundColor: rule.card,
+              }}
+            />
+          )}
+          {onCopy && (
+            <ToolbarButton label="Bericht kopiëren" onPress={onCopy}>
+              <Ionicons name="copy-outline" color={feed.ink} size={TOOLBAR_ICON} />
+            </ToolbarButton>
+          )}
+          {/* De enige ingang naar het bewerken — zie renderItem voor
+              waarom die er tot nu toe niet was. Náást verwijderen, want
+              de twee horen bij elkaar: het zijn allebei dingen die je
+              alleen met je eigen bericht kunt. */}
+          {onEdit && (
+            <ToolbarButton label="Bericht bewerken" onPress={onEdit}>
+              <Ionicons name="pencil-outline" color={feed.ink} size={TOOLBAR_ICON} />
+            </ToolbarButton>
+          )}
+          {onDelete && (
+            <ToolbarButton label="Bericht verwijderen" onPress={onDelete}>
+              <Ionicons name="trash-outline" color={flameDeep} size={TOOLBAR_ICON} />
+            </ToolbarButton>
+          )}
+        </View>
+      )}
 
       {reactions.length > 0 && (
         <View
