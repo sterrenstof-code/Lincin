@@ -1,4 +1,4 @@
-import type { Ionicons } from "@expo/vector-icons";
+import type Ionicons from "@expo/vector-icons/Ionicons";
 
 /**
  * Wat je kunt delen — één lijst, op één plek.

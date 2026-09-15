@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
 import { getCallPlanWithDetails, inviteToCallPlan, subscribeToCallPlanVotes, voteCallPlanSlot, type CallPlanWithDetails } from "@/lib/api/call-plans";
@@ -21,7 +20,6 @@ export function CallPlanCard({
 }) {
   const { session } = useAuth();
   const myUserId = session!.user.id;
-  const router = useRouter();
   const [localPlan, setLocalPlan] = useState(plan);
   const [saving, setSaving] = useState<string | null>(null);
 

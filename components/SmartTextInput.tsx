@@ -2,7 +2,7 @@
  * SmartTextInput — TextInput met @mention + emoji autocomplete.
  * Zelfde gedrag als de chat-input, herbruikbaar in alle compose-schermen.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,

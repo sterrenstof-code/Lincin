@@ -21,7 +21,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "io.beyondesign.lincin",
-    buildNumber: "1",
     infoPlist: {
       UIBackgroundModes: ["remote-notification", "fetch"],
       NSCameraUsageDescription:
@@ -57,7 +56,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: "io.beyondesign.lincin",
-    versionCode: 1,
     adaptiveIcon: {
       backgroundColor: "#0A0A0B",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -66,12 +64,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
+    /**
+     * Alleen wat de app zelf vraagt. Foto's kiezen loopt via de Android
+     * Photo Picker (expo-image-picker), dus READ_MEDIA_IMAGES/VIDEO zijn
+     * niet nodig — en Google Play eist een aparte verklaring zodra ze in
+     * het manifest staan. Wat bibliotheken zelf nodig hebben (meldingen,
+     * boot) voegen hun eigen manifesten toe.
+     */
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
-      "android.permission.READ_MEDIA_IMAGES",
-      "android.permission.READ_MEDIA_VIDEO",
-      "android.permission.RECEIVE_BOOT_COMPLETED",
       "android.permission.VIBRATE",
     ],
   },
@@ -109,7 +111,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-notifications",
       {
-        icon: "./assets/images/icon.png",
+        // Android tekent dit als wit silhouet in de statusbalk; een
+        // gekleurd icoon wordt daar een wit vierkant. Vandaar de
+        // monochrome variant, niet het app-icoon.
+        icon: "./assets/images/android-icon-monochrome.png",
         color: "#0A0A0B",
         sounds: [],
       },
@@ -124,8 +129,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: { backgroundColor: "#0A0A0B" },
       },
     ],
-    // expo-updates wordt toegevoegd via `npx expo install expo-updates`
-    // en daarna via `eas update:configure`
+    [
+      "expo-build-properties",
+      {
+        android: {
+          // R8: ongebruikte klassen en resources uit de release-build.
+          // Standaard staat dit uit in de Expo-template; het scheelt
+          // doorgaans een derde van de AAB. Test een preview-build
+          // vóór een store-inzending, want dit werkt alleen op release.
+          enableProguardInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
+      },
+    ],
   ],
 
   updates: {

@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "./Avatar";
 import type { ActivityEventWithActor } from "@/lib/api/activity-events";
 import { feed } from "@/lib/design/type";

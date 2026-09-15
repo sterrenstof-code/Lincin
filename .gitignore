@@ -44,3 +44,10 @@ app-example
 
 # service-rolsleutel voor scripts/pull-bugs.mjs — nooit committen
 .env.bugs
+
+# Supabase CLI: lokale koppelstatus, geen broncode
+supabase/.temp/
+
+# store-inzending: nooit committen
+google-service-account.json
+*.keystore

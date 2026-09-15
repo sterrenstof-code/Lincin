@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, type StyleProp, type ViewStyle } from "react-native";
 
 import { CONTROL_H, feed } from "@/lib/design/type";

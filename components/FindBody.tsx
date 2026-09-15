@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { useState, type ReactNode } from "react";
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type ViewStyle,
 } from "react-native";
 
 import { CHROME_COMPACT_H } from "@/components/AppChrome";

@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "./Avatar";
 import { CommentsSection } from "./CommentsSection";
 import type { SharedListWithDetails } from "@/lib/api/shared-lists";

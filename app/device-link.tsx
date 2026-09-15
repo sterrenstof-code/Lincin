@@ -3,7 +3,7 @@
  * Geopend via Profiel → "Nieuw apparaat koppelen".
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {

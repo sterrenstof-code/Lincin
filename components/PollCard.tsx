@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "./Avatar";
 import { ActionSheet } from "./ActionSheet";
 import { CommentsSection } from "./CommentsSection";

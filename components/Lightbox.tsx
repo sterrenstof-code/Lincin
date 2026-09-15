@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { ResizeMode, Video } from "expo-av";
 import { useEffect } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -9,7 +9,7 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { rememberPendingInvite } from "@/lib/pending-invite";
 import { joinEventByCode } from "@/lib/api/events";
-import { creamOnDark, feed, flame } from "@/lib/design/type";
+import { creamOnDark, feed } from "@/lib/design/type";
 
 /**
  * Landing voor /e/{join_code}: roept de join_event RPC aan.

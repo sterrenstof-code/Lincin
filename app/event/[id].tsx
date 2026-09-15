@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ResizeMode, Video } from "expo-av";
 import { Image } from "expo-image";
@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
-  ScrollView,
   Text,
   useWindowDimensions,
   View,
@@ -43,7 +42,7 @@ import { useHeroTag } from "@/lib/hero-transition";
 import { humanizeError } from "@/lib/errors";
 import { plural } from "@/lib/plural";
 import { safeBack } from "@/lib/nav";
-import { copyToClipboard, shareText } from "@/lib/share";
+import { copyToClipboard } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
@@ -305,19 +304,6 @@ export default function EventDetailScreen() {
     if (cancelledRef.current) return;
     setUploadProgress(null);
     setUploading(false);
-  }
-
-  async function onShareInvite() {
-    if (!event.data) return;
-    const url = buildEventJoinUrl(event.data.join_code);
-    const result = await shareText({
-      title: `Join "${event.data.name}" op Lincin`,
-      message: `Je bent uitgenodigd voor "${event.data.name}" op Lincin: ${url}`,
-    });
-    if (result === "copied") {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    }
   }
 
   async function onCopyInvite() {
@@ -997,21 +983,6 @@ function ContributionTile({
       <Text className="text-ink-muted text-[11px] mt-1 px-1" numberOfLines={1}>
         {c.author?.display_name ?? c.author?.username ?? "Onbekend"}
       </Text>
-    </View>
-  );
-}
-
-function StatRow({
-  icon,
-  label,
-}: {
-  icon: keyof typeof import("@expo/vector-icons").Ionicons.glyphMap;
-  label: string;
-}) {
-  return (
-    <View className="flex-row items-center">
-      <Ionicons name={icon} color={feed.inkDim} size={14} />
-      <Text className="text-ink-soft text-sm ml-2">{label}</Text>
     </View>
   );
 }

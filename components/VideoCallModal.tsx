@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import WebView from "react-native-webview";
 import { Camera } from "expo-camera";
 
@@ -63,7 +63,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         } catch(e) {}
         true;
       `);
-    } catch (_) {}
+    } catch {}
     setTimeout(() => {
       setClosing(false);
       onClose();

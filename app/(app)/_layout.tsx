@@ -1,6 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
@@ -20,7 +19,6 @@ import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
-  const router = useRouter();
   const [bootstrapping, setBootstrapping] = useState(true);
   const qc = useQueryClient();
 

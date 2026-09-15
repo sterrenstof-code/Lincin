@@ -1,5 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import { EMOJI_SHORTCODES, emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Audio, Video, ResizeMode } from "expo-av";
@@ -90,7 +90,7 @@ import {
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
-import { openJitsiCall, buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";

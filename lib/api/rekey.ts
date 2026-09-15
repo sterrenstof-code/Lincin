@@ -60,8 +60,7 @@ export async function rekeyMessagesForNewMember(
     }
 
     const priorityRows = (priorityData ?? []) as MessageRow[];
-    const rekeyed = await rekeyBatch(priorityRows, newUserId, myUserId, newMemberPubKey, identity.secretKey);
-    console.log(`[rekey] Prioriteitsbatch: ${rekeyed}/${priorityRows.length} berichten verwerkt.`);
+    await rekeyBatch(priorityRows, newUserId, myUserId, newMemberPubKey, identity.secretKey);
 
     // Geen oudere berichten? Klaar.
     if (priorityRows.length < PRIORITY_BATCH) return;
@@ -87,7 +86,6 @@ async function rekeyOlderBackground(
   before: string
 ): Promise<void> {
   let cursor = before;
-  let totalRekeyed = 0;
 
   while (true) {
     const { data, error } = await supabase
@@ -106,13 +104,12 @@ async function rekeyOlderBackground(
     const rows = (data ?? []) as MessageRow[];
     if (rows.length === 0) break;
 
-    totalRekeyed += await rekeyBatch(rows, newUserId, myUserId, newMemberPubKey, mySecretKey);
+    await rekeyBatch(rows, newUserId, myUserId, newMemberPubKey, mySecretKey);
     cursor = rows[rows.length - 1].created_at;
 
     if (rows.length < BACKGROUND_BATCH) break;
   }
 
-  console.log(`[rekey] Achtergrond klaar: ${totalRekeyed} extra berichten verwerkt.`);
 }
 
 /**
