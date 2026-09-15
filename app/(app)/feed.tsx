@@ -32,12 +32,7 @@ import { EmptyState as SharedEmptyState } from "@/components/EmptyState";
 import { EventCard } from "@/components/EventCard";
 import { ActivityBand } from "@/components/ActivityBand";
 import { ShareButton } from "@/components/FeedChrome";
-import {
-  FindHero,
-  FindTile,
-  tileShapeFor,
-  type TileVariant,
-} from "@/components/FindBody";
+import { FindHero, FindTile, type TileVariant } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
 import { PostReactions } from "@/components/PostReactions";
@@ -60,7 +55,6 @@ import {
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
-import { useFeedPrefs } from "@/lib/feed-prefs";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useSeenPosts } from "@/lib/read-state";
 import { usePageTitle } from "@/lib/page-title";
@@ -70,7 +64,6 @@ import {
   listUnifiedFeed,
   updatePostCaption,
   type FeedItem,
-  type FindKind,
   type PostWithAuthor,
 } from "@/lib/api/posts";
 
@@ -134,144 +127,8 @@ import {
  * verschil dat dit ontwerp wil bewaren.
  */
 
-/** Hoe een rubriek zijn vondsten kiest. */
-type SectionRule = "discussed" | "recent" | "visual" | "words" | "album";
-
-/** Hoe een rubriek zijn vondsten toont. */
-type SectionLayout = "cover" | "tiles" | "mosaic" | "words";
-
-type SectionDef = {
-  key: string;
-  label: string;
-  rule: SectionRule;
-  layout: SectionLayout;
-  /** Hoeveel vondsten deze rubriek hoogstens opneemt. */
-  limit: number;
-};
-
-/**
- * De rubrieken van de thematische stand — vast, in deze volgorde.
- *
- * Vast, want een uitgave met elke keer andere kopjes is geen uitgave: je
- * leert waar je moet kijken doordat het er altijd staat. Een rubriek die
- * niets te tonen heeft valt weg, maar hij verhuist nooit.
- *
- * Boven deze rij staat nog "Nu aan de gang" (lopende events); die komt niet
- * uit de vondsten en heeft daarom geen regel hier.
- */
-const SECTIONS: SectionDef[] = [
-  // De uitgelichte vondst: die waar het meest mee gedaan is, op de volle
-  // plaat met de redactionele opmaak.
-  { key: "featured",   label: "Uitgelicht",        rule: "discussed", layout: "cover",  limit: 1 },
-  // Een reeks foto's krijgt óók de grote plaat: daar valt doorheen te
-  // bladeren, en dat is precies wat een tegel van een halve kolom
-  // onmogelijk maakt.
-  { key: "album",      label: "Een reeks",         rule: "album",     layout: "cover",  limit: 1 },
-  { key: "interacted", label: "Meeste interactie", rule: "discussed", layout: "tiles",  limit: 4 },
-  { key: "newest",     label: "Nieuwste",          rule: "recent",    layout: "tiles",  limit: 4 },
-  { key: "visual",     label: "Beeld",             rule: "visual",    layout: "mosaic", limit: 5 },
-  { key: "words",      label: "In woorden",        rule: "words",     layout: "words",  limit: 3 },
-];
-
-/** Soorten die in de beeldrubriek thuishoren. */
-const VISUAL_KINDS: FindKind[] = ["image", "video", "music"];
-/** Soorten die in de woordenrubriek thuishoren. */
-const WORD_KINDS: FindKind[] = ["fragment", "fact", "idea", "note"];
-
+/** Eén kaart in het raster. */
 type Slot = { variant: TileVariant; item: FeedItem; index: number };
-type Section = { key: string; label: string; layout: SectionLayout; slots: Slot[] };
-
-/**
- * De vorm van een tegel volgt niet meer zijn plaats in de rij maar zijn
- * inhoud — zie `tileShapeFor` in components/FindBody.tsx, met daar de
- * uitleg waarom een vaste beurtrol lege tegels opleverde.
- */
-
-/**
- * Bouwt de rubrieken. Elke vondst komt hoogstens één keer voor: een rubriek
- * neemt wat hij nodig heeft en laat de rest over aan de volgende.
- */
-function buildSections(items: FeedItem[]): { sections: Section[]; leftovers: Slot[] } {
-  const posts = items.filter(
-    (i): i is Extract<FeedItem, { type: "post" }> => i.type === "post"
-  );
-  const others = items.filter((i) => i.type !== "post");
-  const used = new Set<string>();
-  let counter = 0;
-
-  const available = () => posts.filter((p) => !used.has(p.id));
-
-  function select(rule: SectionRule, limit: number): typeof posts {
-    let pool = available();
-    if (rule === "visual") {
-      pool = pool.filter(
-        (p) => VISUAL_KINDS.includes(p.data.kind ?? "note") || !!p.data.image_url
-      );
-    } else if (rule === "words") {
-      pool = pool.filter((p) => WORD_KINDS.includes(p.data.kind ?? "note"));
-    }
-    if (rule === "album") {
-      // Alleen wat écht een reeks is; één foto is geen album.
-      pool = pool.filter((p) => (p.data.album_urls?.length ?? 0) > 1);
-    }
-    if (rule === "discussed") {
-      /**
-       * Meest bespróken is niet hetzelfde als meeste reacties eronder: een
-       * vondst met tien duimpjes en nul woorden is even goed waar het over
-       * gaat. Daarom telt alles mee wat iemand met de vondst gedaan heeft —
-       * reacties, emoji en duwen samen, elk met hun eigen gewicht. Zie
-       * `INTERACTION_WEIGHTS` in lib/api/posts.ts: een duw weegt het
-       * zwaarst, want dat is als enige een oordeel over wie het nóg moet
-       * zien — precies de vraag die deze rubriek stelt.
-       *
-       * Bij gelijke stand wint de nieuwste, zodat een oude vondst met twee
-       * reacties niet eeuwig bovenaan blijft staan.
-       */
-      pool = [...pool].sort((a, b) => {
-        const d = (b.data.interaction_count ?? 0) - (a.data.interaction_count ?? 0);
-        if (d !== 0) return d;
-        return (
-          new Date(b.data.created_at).getTime() -
-          new Date(a.data.created_at).getTime()
-        );
-      });
-      // Zonder dat iemand iets gedaan heeft, valt er niets uit te lichten.
-      pool = pool.filter((p) => (p.data.interaction_count ?? 0) > 0);
-    }
-    return pool.slice(0, limit);
-  }
-
-  const sections: Section[] = [];
-  for (const def of SECTIONS) {
-    const chosen = select(def.rule, def.limit);
-    if (chosen.length === 0) continue;
-    const slots: Slot[] = chosen.map((item, i) => {
-      used.add(item.id);
-      counter += 1;
-      const variant: TileVariant =
-        def.layout === "cover" ? "cover"
-        : def.layout === "mosaic" ? "mosaic"
-        : def.layout === "words" ? (i === 0 ? "quote" : "text")
-        : tileShapeFor(item.data, i);
-      return { variant, item, index: counter };
-    });
-    sections.push({ key: def.key, label: def.label, layout: def.layout, slots });
-  }
-
-  // Wat geen rubriek heeft gevonden, plus alle niet-posts, sluit chronologisch
-  // aan. Zo verdwijnt er nooit iets uit de feed doordat het nergens paste.
-  const leftovers: Slot[] = [];
-  for (const item of items) {
-    if (item.type === "post" && used.has(item.id)) continue;
-    if (item.type !== "post" && !others.includes(item)) continue;
-    counter += 1;
-    const variant: TileVariant =
-      item.type !== "post" ? "text" : tileShapeFor(item.data, leftovers.length);
-    leftovers.push({ variant, item, index: counter });
-  }
-
-  return { sections, leftovers };
-}
 
 export default function FeedScreen() {
   usePageTitle("Feed");
@@ -286,13 +143,6 @@ export default function FeedScreen() {
   /** Voor de "naar boven"-knop; PageScroll geeft zijn scroller hierin door. */
   const scrollRef = useRef<ScrollView>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  /**
-   * De ene leesvoorkeur: `thematic` groepeert in rubrieken (zie SECTIONS),
-   * `chrono` gooit alles op één hoop, nieuwste eerst. Onthouden per
-   * gebruiker op dit toestel; omzetten doe je in het persoonlijke venster
-   * achter je avatar (components/FeedSwitch.tsx), niet hier.
-   */
-  const { order } = useFeedPrefs(myUserId);
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
   /** Voorbij de kop gescrold? Dan krimpt de deelknop in de zijbalk. */
@@ -362,15 +212,20 @@ export default function FeedScreen() {
   const tags = useMemo(() => collectTags(feed.data ?? []).slice(0, 12), [feed.data]);
 
   /**
-   * De hero is de meest recente échte vondst. Niet-posts (herinneringen,
-   * polls, calls, lijsten, activiteit) slaan we over: die zijn niet gemaakt
-   * om op affiche-formaat te staan, en een herinnering staat bovendien altijd
-   * bovenaan de lijst, dus die zou de hero permanent bezetten.
+   * Eén raster, nieuwste eerst — en daarboven één uitgelichte vondst.
    *
-   * Geen ranking: `listUnifiedFeed` sorteert al aflopend op `created_at` en
-   * wij nemen daar simpelweg de eerste post uit.
+   * De rubrieken zijn weg. Ze deelden dezelfde vondsten in zes bakjes met
+   * elk een eigen tegelmaat, en dat was elke keer opnieuw leren lezen. Nu
+   * is er één vorm: gelijke kaarten op volgorde.
+   *
+   * De uitgelichte vondst is waar je vrienden déze week over praten: de
+   * meeste interactie van de laatste zeven dagen (`recent_interaction_count`,
+   * zie lib/api/posts.ts), niet ooit — op het totaal blijft één oude vondst
+   * maanden staan. Bij gelijke stand wint de nieuwste; de lijst is al zo
+   * gesorteerd, dus de eerste met de hoogste stand is die. Is er deze week
+   * niets gebeurd, dan is er niets uit te lichten en begint het raster.
    */
-  const { hero, sections, leftovers } = useMemo(() => {
+  const { featured, slots } = useMemo(() => {
     let items = feed.data ?? [];
     if (activeTag) {
       items = items.filter(
@@ -379,34 +234,19 @@ export default function FeedScreen() {
           (i.data.tags ?? []).includes(activeTag)
       );
     }
-    const heroIndex = items.findIndex((i) => i.type === "post");
-    const rest = heroIndex === -1 ? items : items.filter((_, i) => i !== heroIndex);
-    const hero =
-      heroIndex === -1
-        ? null
-        : (items[heroIndex] as Extract<FeedItem, { type: "post" }>);
-
-    /**
-     * Chronologisch: geen rubrieken, geen uitgelichte vondst, geen
-     * wisselende tegelmaten. Eén raster van gelijke kaarten, nieuwste
-     * eerst.
-     *
-     * De uitgelichte vondst hoort bij de thematische stand — daar kiest de
-     * indeling wat groot mag. Hier is de volgorde het enige wat telt, en
-     * dan is een kop van 88vh boven de lijst een tweede verhaal over
-     * dezelfde inhoud. Zie GridTile voor waarom ook de maat gelijk is.
-     */
-    if (order === "chrono") {
-      const flat: Slot[] = items.map((item, i) => ({
-        variant: "grid",
-        item,
-        index: i + 1,
-      }));
-      return { hero: null, sections: [] as Section[], leftovers: flat };
+    let featured: Extract<FeedItem, { type: "post" }> | null = null;
+    for (const item of items) {
+      if (item.type !== "post") continue;
+      const score = item.data.recent_interaction_count ?? 0;
+      if (score > 0 && score > (featured?.data.recent_interaction_count ?? 0)) {
+        featured = item;
+      }
     }
-
-    return { hero, ...buildSections(rest) };
-  }, [feed.data, activeTag, order]);
+    const slots: Slot[] = items
+      .filter((item) => item !== featured)
+      .map((item, i) => ({ variant: "grid", item, index: i + 1 }));
+    return { featured, slots };
+  }, [feed.data, activeTag]);
 
   const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -416,13 +256,15 @@ export default function FeedScreen() {
     qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
   }, [qc, myUserId]);
 
-  const empty = !hero && sections.length === 0 && leftovers.length === 0;
+  const empty = !featured && slots.length === 0;
   /**
    * Staan er lopende events bovenaan, dan is dat rubriek 01 en schuift de
    * rest een plaats op. De nummering telt wat je ziet, niet wat er in de
    * lijst met definities staat.
    */
   const liveSectionOffset = (liveEvents.data?.length ?? 0) > 0 ? 1 : 0;
+  const featuredIndex = liveSectionOffset;
+  const gridIndex = liveSectionOffset + (featured ? 1 : 0);
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
@@ -503,15 +345,6 @@ export default function FeedScreen() {
                 </View>
               ) : (
                 <>
-                  {!empty && hero ? (
-                    <HeroBlock
-                      post={hero.data}
-                      myUserId={myUserId}
-                      wide={wide}
-                      onChanged={invalidate}
-                    />
-                  ) : null}
-
                   {/*
                       Geen tweede marge.
 
@@ -570,8 +403,7 @@ export default function FeedScreen() {
                         lopend event verstoppen omdat je "nieuwste eerst"
                         aanstaan hebt is geen ordening maar verlies.
                     */}
-                    {(order === "thematic" || empty) &&
-                    (liveEvents.data?.length ?? 0) > 0 ? (
+                    {(liveEvents.data?.length ?? 0) > 0 ? (
                       <SectionFrame index={0} label="Nu aan de gang">
                         <View style={{ padding: space.lg, gap: space.lg }}>
                           {liveEvents.data!.slice(0, 2).map((event, i) => (
@@ -589,32 +421,21 @@ export default function FeedScreen() {
                       />
                     ) : null}
 
-                    {sections.map((section, sectionIndex) => (
-                      <SectionFrame
-                        key={section.key}
-                        index={liveSectionOffset + sectionIndex}
-                        label={section.label}
-                      >
-                        {section.layout === "mosaic" ? (
-                          <MosaicGrid
-                            slots={section.slots}
-                            wide={wide}
-                            myUserId={myUserId}
-                            onChanged={invalidate}
-                            dimmed={seen}
-                          />
-                        ) : (
-                          <CompactSection
-                            slots={section.slots}
-                            wide={wide}
-                            columns={gridColumns}
-                            myUserId={myUserId}
-                            onChanged={invalidate}
-                            dimmed={seen}
-                          />
-                        )}
-                      </SectionFrame>
-                    ))}
+                    {/* Waar je vrienden deze week over praten — zie de
+                        toelichting bij `featured` hierboven. Geen kader
+                        eromheen: de plaat draagt zichzelf, net als eerst
+                        bovenaan de pagina. */}
+                    {featured ? (
+                      <View style={{ marginBottom: space.section }}>
+                        <SectionBand index={featuredIndex} label="Deze week het meest besproken" />
+                        <HeroBlock
+                          post={featured.data}
+                          myUserId={myUserId}
+                          wide={wide}
+                          onChanged={invalidate}
+                        />
+                      </View>
+                    ) : null}
 
                     {/*
                         Het strakke raster: gelijke vierkanten, nieuwste
@@ -627,41 +448,11 @@ export default function FeedScreen() {
                         voluit. Dit raster is voor het overzicht: wat is er
                         gedeeld, en hoe ziet het eruit.
                     */}
-                    {order === "chrono" && leftovers.length > 0 ? (
-                      <SectionFrame index={0} label="Alles, nieuwste eerst">
+                    {slots.length > 0 ? (
+                      <SectionFrame index={gridIndex} label="Nieuwste eerst">
                         <View style={{ padding: space.sm }}>
                           <FeedBody
-                            slots={leftovers}
-                            columns={gridColumns}
-                            myUserId={myUserId}
-                            onChanged={invalidate}
-                            dimmed={seen}
-                          />
-                        </View>
-                      </SectionFrame>
-                    ) : null}
-
-                    {/*
-                        Wat geen rubriek gevonden heeft, in hetzelfde raster
-                        als het chronologische overzicht.
-
-                        Het stond in rijen, en daar werd een enkel item de
-                        volle breedte van de kolom: een korte liggende foto
-                        die een halve pagina besloeg, met een call-kaart
-                        eronder van dezelfde breedte. Dit is de staart van
-                        de uitgave — van alles wat elders niet paste — en
-                        dan is een raster eerlijker dan een reeks banden
-                        die elk om evenveel aandacht vragen als de
-                        uitgelichte vondst bovenaan.
-                    */}
-                    {order === "thematic" && leftovers.length > 0 ? (
-                      <SectionFrame
-                        index={liveSectionOffset + sections.length}
-                        label="Verder deze week"
-                      >
-                        <View style={{ padding: space.sm }}>
-                          <FeedBody
-                            slots={leftovers}
+                            slots={slots}
                             columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
@@ -939,151 +730,6 @@ function SectionFrame({
     >
       <SectionBand index={index} label={label} />
       {children}
-    </View>
-  );
-}
-
-function CompactSection({
-  slots,
-  wide,
-  columns,
-  myUserId,
-  onChanged,
-  dimmed,
-}: {
-  slots: Slot[];
-  wide: boolean;
-  /** Uit `columnsFor(width)`; bepaalt of er vier tegels naast elkaar passen. */
-  columns: number;
-  myUserId: string;
-  onChanged: () => void;
-  /** Al geziene id's; `null` als dimmen uitstaat. */
-  dimmed?: Set<string> | null;
-}) {
-  const rows = useMemo(() => {
-    const out: Slot[][] = [];
-    let buffer: Slot[] = [];
-    /**
-     * Vier naast elkaar pas als er vier naast elkaar pássen.
-     *
-     * Dit stond op `wide ? 4 : 2`, en `wide` is `FEED_BREAKPOINT` — 800. De
-     * rij eromheen heeft `flexWrap: "nowrap"`, dus op precies 800 punten
-     * werden het vier tegels van ongeveer 187 breed, terwijl `columnsFor`
-     * twintig regels verderop uitlegt dat een kaart onder de 260 te smal is
-     * voor een kop van twee regels naast een beeld van 4:3. Dat is de
-     * iPad-in-staande-stand: net breed genoeg om `wide` te heten en veel te
-     * smal voor vier kolommen.
-     *
-     * De grens ligt nu op 1100 — dezelfde waarde waarop `columnsFor` naar
-     * drie kolommen gaat, en dus het punt waarop er echt ruimte bijkomt.
-     */
-    const perRow = columns >= 3 ? 4 : 2;
-    for (const s of slots) {
-      const isBand =
-        s.item.type !== "post" || s.variant === "cover" || s.variant === "quote";
-      if (isBand) {
-        if (buffer.length) out.push(buffer);
-        buffer = [];
-        out.push([s]);
-      } else {
-        buffer.push(s);
-        if (buffer.length === perRow) {
-          out.push(buffer);
-          buffer = [];
-        }
-      }
-    }
-    if (buffer.length) out.push(buffer);
-    return out;
-  }, [slots, columns]);
-
-  return (
-    <View>
-      {rows.map((row, ri) => {
-        const band = row.length === 1 && (
-          row[0].item.type !== "post" ||
-          row[0].variant === "cover" ||
-          row[0].variant === "quote"
-        );
-
-        if (band) {
-          return (
-            <View
-              key={`band-${ri}`}
-              style={
-                ri === 0
-                  ? null
-                  : { borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }
-              }
-            >
-              <CompactItem
-                slot={row[0]}
-                wide={wide}
-                myUserId={myUserId}
-                onChanged={onChanged}
-                dimmed={dimmed}
-              />
-            </View>
-          );
-        }
-
-        /** Zit er een foto in deze rij? Dan geeft de rij de hoogte. */
-        const rowHasImage = row.some(
-          (s) => s.variant === "tall" || s.variant === "caption"
-        );
-
-        // De tegelrij: scheidingslijnen ertussen, kader van de rubriek.
-        return (
-          <View
-            key={`row-${ri}`}
-            style={{
-              flexDirection: "row",
-              // Zelfde grens als `perRow` hierboven: alleen als er vier
-              // passen mag de rij weigeren om te breken.
-              flexWrap: columns >= 3 ? "nowrap" : "wrap",
-              // Geen eigen kader en geen eigen marge meer: de rubriek is het
-              // kader, en de rijen erbinnen worden gescheiden door een lijn.
-              // Twee kaders om elkaar heen leest als twee dingen.
-              ...(ri === 0
-                ? null
-                : { borderTopWidth: FEED_BORDER, borderTopColor: feedColor.ink }),
-            }}
-          >
-            {row.map((s, ci) => (
-              <View
-                key={s.item.id}
-                style={{
-                  /**
-                   * De hoogte staat op de cel en niet op de tegel: dan is
-                   * elke tegel in de rij even hoog en vult de foto hem
-                   * helemaal (zie ImageCell).
-                   *
-                   * Máár alleen als er een foto in de rij zit. Een rij met
-                   * enkel notities kreeg dezelfde 380 pixels, en dan staat
-                   * het woord "test" bovenaan een vlak van een halve
-                   * pagina. Zonder beeld bepaalt de tekst de hoogte.
-                   */
-                  ...(rowHasImage ? { height: wide ? 380 : 260 } : null),
-                  ...(columns >= 3
-                    ? { flex: 1 }
-                    : { width: "50%" as const }),
-                  ...(ci < row.length - 1
-                    ? { borderRightWidth: FEED_BORDER, borderRightColor: feedColor.ink }
-                    : null),
-                }}
-              >
-                <CompactItem
-                  slot={s}
-                  wide={wide}
-                  myUserId={myUserId}
-                  onChanged={onChanged}
-                  dimmed={dimmed}
-                />
-              </View>
-            ))}
-          </View>
-        );
-      })}
     </View>
   );
 }
@@ -1589,79 +1235,3 @@ function Colophon() {
   );
 }
 
-/**
- * Het mozaïek: beelden tegen elkaar aan, met alleen de kaderlijn ertussen.
- *
- * De eerste tegel is dubbel zo hoog als de rest — dat geeft het blok een
- * ankerpunt in plaats van een egaal raster. De hoogtes staan vast in plaats
- * van uit het beeld te komen, want anders bepaalt de beeldverhouding van een
- * willekeurige foto de hele compositie.
- */
-function MosaicGrid({
-  slots,
-  wide,
-  myUserId,
-  onChanged,
-  dimmed,
-}: {
-  slots: Slot[];
-  wide: boolean;
-  myUserId: string;
-  onChanged: () => void;
-  dimmed?: Set<string> | null;
-}) {
-  if (slots.length === 0) return null;
-  const [lead, ...rest] = slots;
-  const cellH = wide ? 190 : 150;
-
-  return (
-    <View
-      style={{
-        flexDirection: wide ? "row" : "column",
-        // De kier tussen twee cellen ís de lijn: de cellen liggen op dit
-        // vlak en laten er 1.5px van zien. Nu een kaart geen eigen vulling
-        // meer heeft, moet dat vlak de lijnkleur zijn en niet een vlakkleur.
-        backgroundColor: rule.soft,
-      }}
-    >
-      {/* De grote cel links. */}
-      <View
-        style={{
-          height: cellH * 2,
-          ...(wide
-            ? { flex: 1.2, borderRightWidth: FEED_BORDER, borderRightColor: feedColor.ink }
-            : { borderBottomWidth: FEED_BORDER, borderBottomColor: feedColor.ink }),
-        }}
-      >
-        <CompactItem slot={lead} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
-      </View>
-
-      {/* De kleinere cellen rechts, twee per rij.
-
-          De onderlijn stond op `i < 2`: dat klopt precies zolang de rubriek
-          vijf tegels heeft — de beeldrubriek heeft `limit: 5` — en nergens
-          anders. Bij zes stonden de laatste twee zonder scheidingslijn onder
-          elkaar, bij drie kreeg de laatste rij er een die nergens naartoe
-          liep. Nu uit de telling zelf: alles behalve de laatste rij. */}
-      <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap" }}>
-        {rest.map((slot, i) => {
-          const lastRowStart = Math.floor((rest.length - 1) / 2) * 2;
-          return (
-          <View
-            key={slot.item.id}
-            style={{
-              width: "50%",
-              height: cellH,
-              borderBottomWidth: i < lastRowStart ? FEED_BORDER : 0,
-              borderRightWidth: i % 2 === 0 ? FEED_BORDER : 0,
-              borderColor: feedColor.ink,
-            }}
-          >
-            <CompactItem slot={slot} wide={wide} myUserId={myUserId} onChanged={onChanged} dimmed={dimmed} />
-          </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}

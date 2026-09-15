@@ -23,6 +23,7 @@ import {
   feedType,
   gutter,
   rule,
+  sheetWidth,
   space,
 } from "@/lib/design/type";
 import { useAuth } from "@/lib/auth/provider";
@@ -294,8 +295,13 @@ export default function ProfileScreen() {
           onEditBio={asVisitor ? undefined : () => router.push("/profile-edit")}
         />
 
+        {/* Alles onder de omslag houdt zich aan de bladbreedte. De plaat
+            mag tot de vensterrand lopen — dat is wat een omslag doet — maar
+            een bord van tweeduizend pixels breed leest niemand. */}
+        <View style={{ width: "100%", maxWidth: sheetWidth(wide), alignSelf: "center" }}>
+
         {/*
-            Het bord loopt tot de vensterrand.
+            Het bord loopt tot de bladrand.
 
             Een rubriekkop met een bladmarge eromheen maakt er een sectie
             in een pagina van; een bord dat de rand raakt ís de pagina. De
@@ -670,6 +676,7 @@ export default function ProfileScreen() {
         >
           <Text className="text-ink font-semibold">Uitloggen</Text>
         </Pressable>
+        </View>
         </View>
       </PageScroll>
     </SafeAreaView>

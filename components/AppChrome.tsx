@@ -19,7 +19,6 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { BrandMark } from "@/components/BrandMark";
-import { FeedSwitch } from "@/components/FeedSwitch";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth/provider";
@@ -862,12 +861,7 @@ function PersonalMenu({ tone = "dark" }: { tone?: "dark" | "paper" }) {
             ík dit" — en ze sluiten geen van beide het venster, want je wil
             de knop kunnen omzetten en meteen zien wat er gebeurt.
         */
-        footer={
-          <>
-            <ThemeSwitch />
-            <FeedSwitch userId={myUserId} />
-          </>
-        }
+        footer={<ThemeSwitch />}
       />
     </>
   );

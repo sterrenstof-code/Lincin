@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
@@ -13,6 +14,7 @@ import type { FeedItem } from "@/lib/api/posts";
 import type { Profile } from "@/lib/api/profiles";
 import { announce, feed, FEED_BORDER, feedType, rule, space } from "@/lib/design/type";
 import { NL } from "@/lib/locale";
+import { togglePanel, usePanelPrefs } from "@/lib/panel-prefs";
 
 /**
  * Wat er sinds je laatste bezoek over jóu gebeurd is, bovenaan de feed.
@@ -52,6 +54,9 @@ export function ActivityBand({
   items: FeedItem[] | undefined;
 }) {
   const router = useRouter();
+  // Dichtklappen mag, en dat blijft staan (lib/panel-prefs.ts): wie de
+  // band één keer wegvouwt wil hem niet elke ochtend opnieuw wegvouwen.
+  const collapsed = usePanelPrefs(myUserId).forYou;
 
   const notifications = useQuery({
     queryKey: ["notifications", myUserId],
@@ -100,33 +105,58 @@ export function ActivityBand({
       }}
     >
       {/* De kop. Geen nummer, want dit is geen rubriek van de uitgave —
-          het gaat over jou, en dat staat buiten de inhoudsopgave. */}
-      <Pressable
-        onPress={() => router.push("/notifications")}
+          het gaat over jou, en dat staat buiten de inhoudsopgave. Links
+          klapt hij open en dicht; rechts ga je naar alle meldingen. */}
+      <View
         style={{
           flexDirection: "row",
-          alignItems: "baseline",
-          gap: space.md,
-          paddingHorizontal: space.lg,
-          paddingVertical: space.md,
-          borderBottomWidth: FEED_BORDER,
+          alignItems: "center",
+          borderBottomWidth: collapsed ? 0 : FEED_BORDER,
           borderBottomColor: feed.ink,
         }}
       >
-        <Text
-          style={[
-            feedType.label,
-            { fontSize: 13, fontWeight: "800", letterSpacing: 0.6, color: feed.ink, flex: 1 },
-          ]}
-          numberOfLines={1}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={collapsed ? "Voor jou openklappen" : "Voor jou dichtklappen"}
+          accessibilityState={{ expanded: !collapsed }}
+          onPress={() => togglePanel("forYou")}
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: space.sm,
+            paddingHorizontal: space.lg,
+            paddingVertical: space.md,
+          }}
         >
-          VOOR JOU
-        </Text>
-        <Text style={[feedType.label, { fontSize: 12, color: feed.inkDim }]}>
-          Alles bekijken →
-        </Text>
-      </Pressable>
-
+          <Text
+            style={[
+              feedType.label,
+              { fontSize: 13, fontWeight: "800", letterSpacing: 0.6, color: feed.ink },
+            ]}
+            numberOfLines={1}
+          >
+            VOOR JOU
+          </Text>
+          <Ionicons
+            name={collapsed ? "chevron-down" : "chevron-up"}
+            size={14}
+            color={feed.inkDim}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Alle meldingen bekijken"
+          onPress={() => router.push("/notifications")}
+          style={{ paddingHorizontal: space.lg, paddingVertical: space.md }}
+        >
+          <Text style={[feedType.label, { fontSize: 12, color: feed.inkDim }]}>
+            Alles bekijken →
+          </Text>
+        </Pressable>
+      </View>
+      {collapsed ? null : (
+        <>
       {mineWorth ? <MyWeekRow mine={mine.data!} /> : null}
 
       {sharers.length > 0 ? <SharersRow sharers={sharers} /> : null}
@@ -139,6 +169,8 @@ export function ActivityBand({
           isLast={i === rows.length - 1}
         />
       ))}
+        </>
+      )}
     </View>
   );
 }

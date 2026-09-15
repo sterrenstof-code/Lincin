@@ -12,7 +12,7 @@ import { useEffect, useSyncExternalStore } from "react";
  * panelen op de detailpagina — de reactiekolom, de reactielijst en een
  * lange tekst — kun je hier dus één keer zetten en dan staan ze zo.
  *
- * De vorm is die van `lib/feed-prefs.ts`: een waarde, een setje
+ * De vorm is die van een externe store met `useSyncExternalStore`: een waarde, een setje
  * luisteraars, `useSyncExternalStore`. Ook de reden om het per gebruiker
  * te bewaren is dezelfde — één toestel kan meerdere accounts zien, en dan
  * erft de volgende jouw dichtgeklapte kolom zonder te weten waarom.
@@ -28,14 +28,16 @@ export type PanelKey =
   /** De lijst met reacties zelf. */
   | "comments"
   /** Een lange tekst: in zijn geheel, of eerst het begin. */
-  | "longText";
+  | "longText"
+  /** "Voor jou" bovenaan de feed. */
+  | "forYou";
 
 /** Dicht is `true`. De standaard is dus: alles staat open. */
 export type PanelPrefs = Record<PanelKey, boolean>;
 
-const DEFAULTS: PanelPrefs = { aside: false, comments: false, longText: true };
+const DEFAULTS: PanelPrefs = { aside: false, comments: false, longText: true, forYou: false };
 
-const KEYS: PanelKey[] = ["aside", "comments", "longText"];
+const KEYS: PanelKey[] = ["aside", "comments", "longText", "forYou"];
 
 function keyFor(userId: string) {
   return `lincin.panel-prefs.v1.${userId}`;

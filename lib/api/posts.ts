@@ -138,7 +138,16 @@ export type PostWithAuthor = PostRow & {
    * Een duw weegt zwaarder dan de rest — zie `INTERACTION_WEIGHTS`.
    */
   interaction_count: number;
+  /**
+   * Hetzelfde, maar alleen wat er de laatste zeven dagen mee gedaan is.
+   * De feed licht hiermee uit waar je vrienden nú over praten: op het
+   * totaal blijft één oude vondst maanden bovenaan staan.
+   */
+  recent_interaction_count: number;
 };
+
+/** De week van `recent_interaction_count`. */
+const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const POSTS_BUCKET = "posts";
 
@@ -422,17 +431,21 @@ export async function createPost(args: {
  */
 async function countCommentsByPost(
   postIds: string[]
-): Promise<Map<string, number>> {
-  const counts = new Map<string, number>();
+): Promise<Map<string, { total: number; recent: number }>> {
+  const counts = new Map<string, { total: number; recent: number }>();
   if (postIds.length === 0) return counts;
   const { data, error } = await supabase
     .from("entity_comments")
-    .select("entity_id")
+    .select("entity_id, created_at")
     .eq("entity_type", "post")
     .in("entity_id", postIds);
   if (error) throw error;
-  for (const row of (data ?? []) as { entity_id: string }[]) {
-    counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1);
+  const since = Date.now() - RECENT_WINDOW_MS;
+  for (const row of (data ?? []) as { entity_id: string; created_at: string }[]) {
+    const entry = counts.get(row.entity_id) ?? { total: 0, recent: 0 };
+    entry.total += 1;
+    if (new Date(row.created_at).getTime() >= since) entry.recent += 1;
+    counts.set(row.entity_id, entry);
   }
   return counts;
 }
@@ -545,26 +558,45 @@ export async function getAlbumUrls(
  */
 const INTERACTION_WEIGHTS = { comment: 2, reaction: 1, boost: 3 } as const;
 
-/** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
-async function countSignals(
-  postIds: string[]
-): Promise<Map<string, { reactions: number; boosts: number }>> {
-  const counts = new Map<string, { reactions: number; boosts: number }>();
-  if (postIds.length === 0) return counts;
+type SignalCounts = {
+  reactions: number;
+  boosts: number;
+  recentReactions: number;
+  recentBoosts: number;
+};
 
-  const bump = (postId: string, key: "reactions" | "boosts") => {
-    const entry = counts.get(postId) ?? { reactions: 0, boosts: 0 };
+/** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
+async function countSignals(postIds: string[]): Promise<Map<string, SignalCounts>> {
+  const counts = new Map<string, SignalCounts>();
+  if (postIds.length === 0) return counts;
+  const since = Date.now() - RECENT_WINDOW_MS;
+
+  const bump = (postId: string, key: "reactions" | "boosts", createdAt: string) => {
+    const entry =
+      counts.get(postId) ?? { reactions: 0, boosts: 0, recentReactions: 0, recentBoosts: 0 };
     entry[key] += 1;
+    if (new Date(createdAt).getTime() >= since) {
+      entry[key === "reactions" ? "recentReactions" : "recentBoosts"] += 1;
+    }
     counts.set(postId, entry);
   };
 
   const [reactions, boosts] = await Promise.all([
-    supabase.from("post_reactions").select("post_id").in("post_id", postIds),
-    supabase.from("post_boosts").select("post_id").in("post_id", postIds),
+    supabase.from("post_reactions").select("post_id, created_at").in("post_id", postIds),
+    supabase.from("post_boosts").select("post_id, created_at").in("post_id", postIds),
   ]);
-  for (const row of reactions.data ?? []) bump(row.post_id, "reactions");
-  for (const row of boosts.data ?? []) bump(row.post_id, "boosts");
+  for (const row of reactions.data ?? []) bump(row.post_id, "reactions", row.created_at);
+  for (const row of boosts.data ?? []) bump(row.post_id, "boosts", row.created_at);
   return counts;
+}
+
+/** Reacties, emoji en duwen gewogen bij elkaar — zie `INTERACTION_WEIGHTS`. */
+function weigh(comments = 0, reactions = 0, boosts = 0): number {
+  return (
+    comments * INTERACTION_WEIGHTS.comment +
+    reactions * INTERACTION_WEIGHTS.reaction +
+    boosts * INTERACTION_WEIGHTS.boost
+  );
 }
 
 async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
@@ -599,15 +631,21 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
     video_url: r.video_path ? videoByPath.get(r.video_path) ?? null : null,
-    comment_count: commentCounts.get(r.id) ?? 0,
+    comment_count: commentCounts.get(r.id)?.total ?? 0,
     album_urls: albums.get(r.id)?.urls,
     album_paths: albums.get(r.id)?.paths,
     reaction_count: signalCounts.get(r.id)?.reactions ?? 0,
     boost_count: signalCounts.get(r.id)?.boosts ?? 0,
-    interaction_count:
-      (commentCounts.get(r.id) ?? 0) * INTERACTION_WEIGHTS.comment +
-      (signalCounts.get(r.id)?.reactions ?? 0) * INTERACTION_WEIGHTS.reaction +
-      (signalCounts.get(r.id)?.boosts ?? 0) * INTERACTION_WEIGHTS.boost,
+    interaction_count: weigh(
+      commentCounts.get(r.id)?.total,
+      signalCounts.get(r.id)?.reactions,
+      signalCounts.get(r.id)?.boosts
+    ),
+    recent_interaction_count: weigh(
+      commentCounts.get(r.id)?.recent,
+      signalCounts.get(r.id)?.recentReactions,
+      signalCounts.get(r.id)?.recentBoosts
+    ),
   }));
 }
 
@@ -853,6 +891,7 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       reaction_count: 0,
       boost_count: 0,
       interaction_count: 0,
+      recent_interaction_count: 0,
     };
     items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });
   }
