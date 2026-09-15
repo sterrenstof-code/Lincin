@@ -23,6 +23,38 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "io.beyondesign.lincin",
+    /**
+     * Privacy manifest. Apple wil van élke app horen waarom hij een paar
+     * "required reason"-API's aanraakt; zonder verklaring komt er een
+     * waarschuwing (ITMS-91053) of afwijzing bij het inleveren. Dit zijn
+     * de vier die React Native en de Expo-modules zelf gebruiken — voor
+     * AsyncStorage, bestandscache, tijdmeting en vrije ruimte — met de
+     * redencodes die Apple daarvoor voorschrijft. De app verzamelt geen
+     * trackinggegevens; vandaar de lege lijsten.
+     */
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: [],
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
+          NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+          NSPrivacyAccessedAPITypeReasons: ["C617.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime",
+          NSPrivacyAccessedAPITypeReasons: ["35F9.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace",
+          NSPrivacyAccessedAPITypeReasons: ["E174.1"],
+        },
+      ],
+    },
     infoPlist: {
       UIBackgroundModes: ["remote-notification", "fetch"],
       NSCameraUsageDescription:
@@ -155,7 +187,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           // Standaard staat dit uit in de Expo-template; het scheelt
           // doorgaans een derde van de AAB. Test een preview-build
           // vóór een store-inzending, want dit werkt alleen op release.
-          enableProguardInReleaseBuilds: true,
+          enableMinifyInReleaseBuilds: true,
           enableShrinkResourcesInReleaseBuilds: true,
         },
       },

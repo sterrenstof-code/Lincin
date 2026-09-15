@@ -949,10 +949,16 @@ export default function ChatDetail() {
       if (!send) return;
       const uri = recorder.uri;
       if (!uri) return;
-      // HIGH_QUALITY schrijft op iOS én Android AAC in een .m4a; alleen de
-      // browser maakt er webm van.
-      const mimeType = Platform.OS === "web" ? "audio/webm" : "audio/m4a";
-      const ext = Platform.OS === "web" ? "webm" : "m4a";
+      // HIGH_QUALITY schrijft op iOS én Android AAC in een .m4a. De browser
+      // kiest zelf: Chrome webm, Safari mp4 — dus daar vragen we het de
+      // blob, anders krijgt een Safari-opname het verkeerde etiket.
+      let mimeType = "audio/m4a";
+      let ext = "m4a";
+      if (Platform.OS === "web") {
+        const blobType = (await (await fetch(uri)).blob()).type;
+        mimeType = blobType.startsWith("audio/") ? blobType.split(";")[0] : "audio/webm";
+        ext = mimeType === "audio/mp4" ? "m4a" : mimeType.slice("audio/".length);
+      }
       await onSendAttachment({
         uri,
         mimeType,
