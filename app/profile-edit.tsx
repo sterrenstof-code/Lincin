@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -14,15 +15,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import * as ImagePicker from "expo-image-picker";
-
-import { RequireSession } from "@/components/RequireSession";
 import { Avatar } from "@/components/Avatar";
 import { CharCount } from "@/components/CharCount";
+import { Arrow, BoxButton, Meta, Rule, Sheet, useWide } from "@/components/Editorial";
+import { FieldError, FormError } from "@/components/FormError";
 import { FormatBar } from "@/components/FormatBar";
 import { IconButton } from "@/components/IconButton";
-import { FieldError, FormError } from "@/components/FormError";
-import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -34,13 +32,25 @@ import {
   type ProfileLink,
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { feed, feedType, flameDeep } from "@/lib/design/type";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 
-function ProfileEditScreenBody() {
+/**
+ * Je profiel bewerken — op het blad, niet op het werkblad.
+ *
+ * Dit was een §8-scherm (DESIGN.md): zwart werkblad, een gevuld lavendel
+ * paneel, velden met een eigen vulling, de avatar gecentreerd als een
+ * pasfoto. Nu dezelfde opbouw als het deelscherm: een lavendel blad, een
+ * kop met kruisje en één gevulde knop, kickers in flame-deep, en velden
+ * die niet meer zijn dan een regel met een lijn eronder (§4). De
+ * profielfoto staat links, want links uitgelijnd leest als een pagina die
+ * begint en gecentreerd als een aankondiging (§8).
+ */
+export default function ProfileEditScreen() {
   const router = useRouter();
   const qc = useQueryClient();
+  const wide = useWide();
   const { session, setPassword } = useAuth();
   const myUserId = session!.user.id;
 
@@ -61,6 +71,7 @@ function ProfileEditScreenBody() {
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
   const displayNameRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+
   const [loading, setLoading] = useState(true);
   /** Waarom het formulier er niet is; zie de laadhaak hieronder. */
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -77,22 +88,11 @@ function ProfileEditScreenBody() {
   /**
    * Je profiel ophalen — en waarom een mislukking hier gevaarlijk is.
    *
-   * ---------------------------------------------------------------
-   * TWEE DINGEN GINGEN MIS
-   * ---------------------------------------------------------------
-   * De IIFE had geen `catch`. Viel `getProfile` om, dan werd `setLoading`
-   * nooit bereikt en bleef er een schijfje draaien tot je de app afsloot.
-   *
-   * En het stille geval was erger. Kwam er `null` terug — een rij die de
-   * RLS niet teruggeeft, een net aangemaakt account — dan sloeg de `if`
-   * over, `loading` ging op `false`, en het formulier verscheen met lege
-   * velden. Die velden zíjn de invoer: op "Bewaren" drukken had dan je
-   * echte gebruikersnaam, weergavenaam en bio overschreven met niets, en
-   * `updateMyProfile` weet niet dat het formulier nooit iets ingelezen had.
-   * Eén hapering in het netwerk en je profiel is leeg.
-   *
-   * Vandaar drie standen in plaats van twee, en "Bewaren" bestaat alleen in
-   * de derde.
+   * Kwam er `null` terug (een rij die de RLS niet teruggeeft, een net
+   * aangemaakt account), dan verscheen het formulier eerder met lege
+   * velden. Die velden zíjn de invoer: op "Bewaren" drukken overschreef
+   * dan je echte gegevens met niets. Vandaar drie standen in plaats van
+   * twee, en "Bewaren" bestaat alleen in de derde.
    */
   useEffect(() => {
     let cancelled = false;
@@ -114,11 +114,7 @@ function ProfileEditScreenBody() {
       } catch (e: unknown) {
         if (cancelled) return;
         setLoadError(
-          humanizeError(
-            e,
-            "profile-edit",
-            "Je profiel kon niet geladen worden. Probeer het opnieuw."
-          )
+          humanizeError(e, "profile-edit", "Je profiel kon niet geladen worden. Probeer het opnieuw.")
         );
       } finally {
         if (!cancelled) setLoading(false);
@@ -140,7 +136,7 @@ function ProfileEditScreenBody() {
     const asset = result.assets[0];
     const mime = asset.mimeType ?? "image/jpeg";
     setPendingAvatar({ uri: asset.uri, mimeType: mime });
-    setAvatarUrl(asset.uri); // toon lokale preview meteen
+    setAvatarUrl(asset.uri); // lokale voorvertoning meteen
   }
 
   const usernameError =
@@ -191,351 +187,322 @@ function ProfileEditScreenBody() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-      <View className="flex-row items-center px-4 py-3">
-        <Pressable
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Sluiten"
-          onPress={() => safeBack(router, "/(app)/profile")}
-          className="w-9 h-9 bg-paper-soft items-center justify-center"
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      <Sheet flex>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <Ionicons name="close" color={feed.ink} size={20} />
-        </Pressable>
-        <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-          Profiel bewerken
-        </Text>
-        <Pressable
-          onPress={onSave}
-          disabled={!canSave}
-          className={` px-4 py-2 ${
-            canSave ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
-          }`}
-        >
-          <Text className={`font-semibold ${canSave ? "text-desk" : "text-desk-muted"}`}>
-            {saving ? "Bezig…" : "Bewaren"}
-          </Text>
-        </Pressable>
-      </View>
-
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color={desk.ink} />
-          </View>
-        ) : loadError ? (
-          /* Geen leeg formulier tonen dat je profiel kan wissen zodra je op
-             Bewaren drukt — zie de laadhaak. */
-          <View className="flex-1 items-center justify-center px-6">
-            <FormError tone="desk">{loadError}</FormError>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
-
-            {/* ── Avatar-picker ── */}
-            <View className="items-center mb-5">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Profielfoto wijzigen"
-                onPress={onPickAvatar} className="relative">
-                <Avatar
-                  name={displayName || username}
-                  avatarUrl={avatarUrl}
-                  size="hero"
-                />
-                <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-shell items-center justify-center">
-                  <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
-                </View>
-              </Pressable>
-              <Text className="text-desk-muted text-xs mt-2">
-                Tik om foto te wijzigen
-              </Text>
+          {/* Kop — dezelfde als op het deelscherm: kruisje, titel, één knop. */}
+          <View className="flex-row items-center px-6 py-4">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sluiten"
+              onPress={() => safeBack(router, "/(app)/profile")}
+              hitSlop={10}
+            >
+              <Ionicons name="close" color={feed.ink} size={22} />
+            </Pressable>
+            <View className="flex-1 ml-4">
+              <Meta tone="feed" strong>Profiel bewerken</Meta>
             </View>
+            {saving ? (
+              <ActivityIndicator size="small" color={feed.inkDim} />
+            ) : loading || loadError ? null : (
+              <BoxButton tone="feed" label="Bewaren" filled disabled={!canSave} onPress={onSave} />
+            )}
+          </View>
+          <Rule tone="feed" strong />
 
-            <View className="bg-paper p-6">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Gebruikersnaam
-              </Text>
-              <View className="flex-row items-center bg-paper-light px-4 border border-line-paper">
-                <Text className="text-ink-muted text-base">@</Text>
-                <TextInput
-                  value={username}
-                  onChangeText={(t) => setUsername(t.toLowerCase())}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="kies een handle"
-                  placeholderTextColor={feed.inkDim}
-                  className="flex-1 text-ink text-base py-3 pl-1"
-                  maxLength={32}
-                  /* Vijf velden op dit scherm en geen enkele reageerde op
-                     Enter; met een toetsenbord moest je na elk veld naar de
-                     muis. Een enkelregelig veld hoort door te geven aan het
-                     volgende, en het laatste hoort te bewaren. */
-                  returnKeyType="next"
-                  submitBehavior="submit"
-                  onSubmitEditing={() => displayNameRef.current?.focus()}
-                />
-              </View>
-              {usernameError ? (
-                <FieldError tone="desk">{usernameError}</FieldError>
-              ) : (
-                <Text className="text-ink-muted text-xs mt-2">
-                  3–32 tekens. Kleine letters, cijfers, punt of underscore.
-                </Text>
-              )}
-
-              <View className="h-6" />
-
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Weergavenaam (optioneel)
-              </Text>
-              <TextInput
-                ref={displayNameRef}
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="bv. Tom"
-                placeholderTextColor={feed.inkDim}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                maxLength={48}
-                returnKeyType="done"
-                onSubmitEditing={() => {
-                  if (canSave) void onSave();
-                }}
-              />
-              <Text className="text-ink-muted text-xs mt-2">
-                Dit zien je vrienden in chats en op je posts.
-              </Text>
-
-              <View className="h-6" />
-
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Bio (optioneel)
-              </Text>
-              {/*
-                  De bio draagt opmaak sinds 0054, en dus staat hier
-                  dezelfde balk als boven de toelichting van een vondst.
-                  Niet omdat het kan: een bio is het enige stuk tekst op je
-                  profiel dat je zelf schrijft, en een opsomming van drie
-                  dingen waar je mee bezig bent leest als een opsomming
-                  zodra je er een lijstje van mag maken.
-
-                  Er is niets voor gemigreerd en dat hoefde niet — platte
-                  tekst is geldige markdown, dus bestaande bio's lezen
-                  ongewijzigd door.
-              */}
-              <FormatBar
-                value={bio}
-                selection={bioSelection}
-                onChange={(next) => {
-                  setBio(next.text);
-                  setForcedBioSelection(next.selection);
-                }}
-              />
-              <TextInput
-                value={bio}
-                onChangeText={setBio}
-                onSelectionChange={(e) => {
-                  setBioSelection(e.nativeEvent.selection);
-                  // Eén render aan. Laat je hem staan, dan springt de cursor
-                  // terug bij elke toetsaanslag.
-                  if (forcedBioSelection) setForcedBioSelection(null);
-                }}
-                selection={forcedBioSelection ?? undefined}
-                placeholder="Waar ben je mee bezig?"
-                placeholderTextColor={feed.inkDim}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                multiline
-                numberOfLines={3}
-                maxLength={280}
-                style={{ minHeight: 88, textAlignVertical: "top" }}
-              />
-              <CharCount value={bio} max={280} />
-              <Text className="text-ink-muted text-xs mt-2">
-                Een paar regels over jezelf, bovenaan je profiel. Selecteer
-                tekst en tik B of I, of typ **vet** en *cursief*.
-              </Text>
-
-              <View className="h-6" />
-
-              {/* ---- Je links ---- */}
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Links (optioneel)
-              </Text>
-              <Text className="text-ink-muted text-xs mb-3">
-                Waar je heen wijst — hoogstens {MAX_PROFILE_LINKS}. Zonder
-                naam gebruiken we het adres.
-              </Text>
-              {links.map((link, i) => (
-                <View
-                  key={i}
-                  className="flex-row items-start gap-2 mb-2"
-                >
-                  <View className="flex-1 gap-2">
-                    <TextInput
-                      value={link.label}
-                      onChangeText={(t) =>
-                        setLinks((prev) =>
-                          prev.map((l, j) => (j === i ? { ...l, label: t } : l))
-                        )
-                      }
-                      placeholder="Naam"
-                      placeholderTextColor={feed.inkDim}
-                      className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                      maxLength={48}
-                      accessibilityLabel={`Naam van link ${i + 1}`}
-                    />
-                    <TextInput
-                      value={link.url}
-                      onChangeText={(t) =>
-                        setLinks((prev) =>
-                          prev.map((l, j) => (j === i ? { ...l, url: t } : l))
-                        )
-                      }
-                      placeholder="voorbeeld.be"
-                      placeholderTextColor={feed.inkDim}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="url"
-                      className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                      maxLength={200}
-                      accessibilityLabel={`Adres van link ${i + 1}`}
-                    />
-                  </View>
-                  <IconButton
-                    name="close"
-                    label={`Link ${i + 1} verwijderen`}
-                    onPress={() =>
-                      setLinks((prev) => prev.filter((_, j) => j !== i))
-                    }
-                    size={16}
-                    color={feed.inkDim}
-                  />
-                </View>
-              ))}
-              {links.length < MAX_PROFILE_LINKS ? (
+          {loading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color={feed.inkDim} />
+            </View>
+          ) : loadError ? (
+            /* Geen leeg formulier tonen dat je profiel kan wissen zodra je op
+               Bewaren drukt — zie de laadhaak. */
+            <View className="px-6 pt-7">
+              <FormError>{loadError}</FormError>
+            </View>
+          ) : (
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 96 }}>
+              <View style={wide ? { maxWidth: 720 } : undefined}>
+                {/* De profielfoto: links, als een rij die je aantikt. */}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Link toevoegen"
-                  onPress={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
-                  className="flex-row items-center justify-center border border-line-paper"
-                  style={{ height: 44 }}
+                  accessibilityLabel="Profielfoto wijzigen"
+                  onPress={onPickAvatar}
+                  className="flex-row items-center px-6 py-5 active:bg-feed-panel"
                 >
-                  <Ionicons name="add" color={feed.ink} size={16} />
-                  <Text className="text-ink text-sm font-semibold ml-1">
-                    Link toevoegen
-                  </Text>
+                  <Avatar name={displayName || username} avatarUrl={avatarUrl} size="hero" />
+                  <View className="flex-1 ml-5">
+                    <Text style={[feedType.tile, { color: feed.ink }]}>Profielfoto</Text>
+                    <View className="mt-0.5">
+                      <Meta tone="feed" dim>Tik om te wijzigen</Meta>
+                    </View>
+                  </View>
+                  <Arrow tone="feed" dim />
                 </Pressable>
-              ) : null}
-            </View>
+                <Rule tone="feed" />
 
-            {error && (
-              <FormError tone="desk">{error}</FormError>
-            )}
+                <Field label="Gebruikersnaam">
+                  <View className="flex-row items-center">
+                    <Text style={[feedType.tile, { color: feed.inkDim, paddingVertical: 11 }]}>@</Text>
+                    <TextInput
+                      value={username}
+                      onChangeText={(t) => setUsername(t.toLowerCase())}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="kies een handle"
+                      placeholderTextColor={feed.inkDim}
+                      maxLength={32}
+                      returnKeyType="next"
+                      submitBehavior="submit"
+                      onSubmitEditing={() => displayNameRef.current?.focus()}
+                      style={[INPUT, feedType.tile, { flex: 1, paddingLeft: 4 }]}
+                    />
+                  </View>
+                </Field>
+                <Hint error={usernameError}>3–32 tekens. Kleine letters, cijfers, punt of underscore.</Hint>
 
-            {/* Wachtwoord instellen / wijzigen */}
-            <View className="bg-paper p-6 mt-4">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-                Beveiliging
-              </Text>
-              <Text className="text-2xl font-bold tracking-tight text-ink mb-1">
-                Wachtwoord instellen
-              </Text>
-              <Text className="text-ink-soft text-sm leading-5 mb-4">
-                Voeg een wachtwoord toe zodat je niet telkens een magic link
-                moet gebruiken. Bestaande sessies blijven actief.
-              </Text>
+                <Field label="Weergavenaam — optioneel">
+                  <TextInput
+                    ref={displayNameRef}
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    placeholder="bv. Tom"
+                    placeholderTextColor={feed.inkDim}
+                    maxLength={48}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      if (canSave) void onSave();
+                    }}
+                    style={[INPUT, feedType.body]}
+                  />
+                </Field>
+                <Hint>Dit zien je vrienden in chats en op je vondsten.</Hint>
 
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Nieuw wachtwoord
-              </Text>
-              <TextInput
-                value={password}
-                onChangeText={setPwd}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="min. 8 tekens"
-                placeholderTextColor={feed.inkDim}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                returnKeyType="next"
-                submitBehavior="submit"
-                onSubmitEditing={() => confirmRef.current?.focus()}
-              />
+                {/* De bio draagt opmaak sinds 0054: dezelfde balk als boven
+                    de tekst van een vondst. Platte tekst is geldige
+                    markdown, dus bestaande bio's lezen ongewijzigd door. */}
+                <Field label="Bio — optioneel">
+                  <FormatBar
+                    value={bio}
+                    selection={bioSelection}
+                    onChange={(next) => {
+                      setBio(next.text);
+                      setForcedBioSelection(next.selection);
+                    }}
+                  />
+                  <TextInput
+                    value={bio}
+                    onChangeText={setBio}
+                    onSelectionChange={(e) => {
+                      setBioSelection(e.nativeEvent.selection);
+                      if (forcedBioSelection) setForcedBioSelection(null);
+                    }}
+                    selection={forcedBioSelection ?? undefined}
+                    placeholder="Waar ben je mee bezig?"
+                    placeholderTextColor={feed.inkDim}
+                    multiline
+                    maxLength={280}
+                    style={[INPUT, feedType.body, { minHeight: 88, textAlignVertical: "top" }]}
+                  />
+                  <CharCount value={bio} max={280} />
+                </Field>
+                <Hint>
+                  Een paar regels over jezelf, bovenaan je profiel. Selecteer tekst en tik B of I,
+                  of typ **vet** en *cursief*.
+                </Hint>
 
-              <View className="h-4" />
+                {/* ---- Links ---- */}
+                <View className="px-6 pt-7">
+                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+                    LINKS — OPTIONEEL
+                  </Text>
+                  <View className="mt-1">
+                    <Meta tone="feed" dim>
+                      {`Waar je heen wijst — hoogstens ${MAX_PROFILE_LINKS}. Zonder naam gebruiken we het adres.`}
+                    </Meta>
+                  </View>
+                </View>
+                {links.map((link, i) => (
+                  <View key={i} className="flex-row items-start px-6 pt-4">
+                    <View className="flex-1">
+                      <TextInput
+                        value={link.label}
+                        onChangeText={(t) =>
+                          setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, label: t } : l)))
+                        }
+                        placeholder="Naam"
+                        placeholderTextColor={feed.inkDim}
+                        maxLength={48}
+                        accessibilityLabel={`Naam van link ${i + 1}`}
+                        style={[INPUT, feedType.body]}
+                      />
+                      <Rule tone="feed" />
+                      <TextInput
+                        value={link.url}
+                        onChangeText={(t) =>
+                          setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, url: t } : l)))
+                        }
+                        placeholder="voorbeeld.be"
+                        placeholderTextColor={feed.inkDim}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="url"
+                        maxLength={200}
+                        accessibilityLabel={`Adres van link ${i + 1}`}
+                        style={[INPUT, feedType.body]}
+                      />
+                      <Rule tone="feed" />
+                    </View>
+                    <View className="ml-2 mt-2">
+                      <IconButton
+                        name="close"
+                        label={`Link ${i + 1} verwijderen`}
+                        onPress={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+                        size={16}
+                        color={feed.inkDim}
+                      />
+                    </View>
+                  </View>
+                ))}
+                {links.length < MAX_PROFILE_LINKS ? (
+                  <View className="mt-3">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Link toevoegen"
+                      onPress={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
+                      className="flex-row items-center px-6 py-5 active:bg-feed-panel"
+                    >
+                      <Text style={[feedType.tile, { color: feed.ink, flex: 1 }]}>Link toevoegen</Text>
+                      <Arrow tone="feed" dim />
+                    </Pressable>
+                    <Rule tone="feed" />
+                  </View>
+                ) : null}
 
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Bevestig
-              </Text>
-              <TextInput
-                value={passwordConfirm}
-                onChangeText={setPwdConfirm}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                ref={confirmRef}
-                placeholder="herhaal je wachtwoord"
-                placeholderTextColor={feed.inkDim}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                returnKeyType="done"
-                onSubmitEditing={() => {
-                  if (passwordValid) void onSavePassword();
-                }}
-              />
+                {error ? (
+                  <View className="mx-6 mt-7 px-4 py-3" style={{ borderLeftWidth: 2, borderLeftColor: feed.ink }}>
+                    <Text style={[feedType.body, { color: feed.ink }]}>{error}</Text>
+                  </View>
+                ) : null}
 
-              {password.length > 0 && password.length < 8 && (
-                <FieldError tone="desk">Minstens 8 tekens.</FieldError>
-              )}
-              {passwordConfirm.length > 0 && password !== passwordConfirm && (
-                <FieldError tone="desk">Bevestiging matcht niet.</FieldError>
-              )}
-
-              <Pressable
-                onPress={onSavePassword}
-                disabled={!passwordValid}
-                className={`mt-5 py-3 items-center ${
-                  passwordValid ? "bg-ink active:bg-ink-soft" : "bg-paper-warm"
-                }`}
-              >
-                <Text
-                  className={`font-semibold ${
-                    passwordValid ? "text-cream" : "text-ink-muted"
-                  }`}
-                >
-                  {pwdSaving ? "Bezig…" : "Wachtwoord opslaan"}
-                </Text>
-              </Pressable>
-
-              {pwdResult?.ok === true && (
-                <Text className="text-ink text-sm mt-3 text-center">
-                  ✓ Wachtwoord ingesteld. Volgende keer kan je inloggen met je e-mail en wachtwoord.
-                </Text>
-              )}
-              {pwdResult && pwdResult.ok === false && (
-                <FormError tone="desk">{pwdResult.message}</FormError>
-              )}
-            </View>
-          </ScrollView>
-        )}
-      </KeyboardAvoidingView>
-      </ScreenContainer>
+                {/* ---- Wachtwoord ---- */}
+                <View className="px-6 pt-10">
+                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+                    BEVEILIGING
+                  </Text>
+                  <Text style={[feedType.tile, { color: feed.ink, marginTop: 6 }]}>Wachtwoord</Text>
+                  <View className="mt-1">
+                    <Meta tone="feed" dim>
+                      Waarmee je inlogt. Na &quot;Wachtwoord vergeten&quot; kies je hier een nieuw; je blijft
+                      overal ingelogd.
+                    </Meta>
+                  </View>
+                </View>
+                <Field label="Nieuw wachtwoord">
+                  <TextInput
+                    value={password}
+                    onChangeText={setPwd}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    placeholder="min. 8 tekens"
+                    placeholderTextColor={feed.inkDim}
+                    returnKeyType="next"
+                    submitBehavior="submit"
+                    onSubmitEditing={() => confirmRef.current?.focus()}
+                    style={[INPUT, feedType.body]}
+                  />
+                </Field>
+                <Field label="Bevestig">
+                  <TextInput
+                    ref={confirmRef}
+                    value={passwordConfirm}
+                    onChangeText={setPwdConfirm}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    placeholder="herhaal je wachtwoord"
+                    placeholderTextColor={feed.inkDim}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      if (passwordValid) void onSavePassword();
+                    }}
+                    style={[INPUT, feedType.body]}
+                  />
+                </Field>
+                {password.length > 0 && password.length < 8 ? (
+                  <Hint error="Minstens 8 tekens." />
+                ) : passwordConfirm.length > 0 && password !== passwordConfirm ? (
+                  <Hint error="De bevestiging is niet hetzelfde." />
+                ) : null}
+                <View className="px-6 pt-6">
+                  <BoxButton
+                    tone="feed"
+                    label={pwdSaving ? "Bezig…" : "Wachtwoord opslaan"}
+                    disabled={!passwordValid}
+                    onPress={onSavePassword}
+                  />
+                </View>
+                {pwdResult?.ok === true ? (
+                  <View className="px-6 pt-4">
+                    <Meta tone="feed" strong>Wachtwoord ingesteld.</Meta>
+                  </View>
+                ) : null}
+                {pwdResult && pwdResult.ok === false ? (
+                  <View className="px-6 pt-4">
+                    <FormError>{pwdResult.message}</FormError>
+                  </View>
+                ) : null}
+              </View>
+            </ScrollView>
+          )}
+        </KeyboardAvoidingView>
+      </Sheet>
     </SafeAreaView>
   );
 }
 
-/**
- * Dit scherm leest `session!.user.id` en staat in de wortelstack, die niets
- * bewaakt — zie components/RequireSession.tsx voor waarom dat een wit scherm
- * opleverde in plaats van een inlogpagina.
- */
-export default function ProfileEditScreen() {
+/** Eén invoerveld: geen vulling, geen kader — de lijn eronder komt van `Field`. */
+const INPUT = {
+  color: feed.ink,
+  paddingVertical: 11,
+  ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : {}),
+} as const;
+
+/** Een veld: kicker, invoer, lijn — dezelfde als op het deelscherm. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <RequireSession>
-      <ProfileEditScreenBody />
-    </RequireSession>
+    <View className="px-6 pt-7">
+      <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
+        {label.toUpperCase()}
+      </Text>
+      {children}
+      <Rule tone="feed" />
+    </View>
+  );
+}
+
+/** De regel onder een veld: uitleg, of de fout die de uitleg vervangt. */
+function Hint({ children, error }: { children?: string; error?: string | null }) {
+  if (error) {
+    return (
+      <View className="px-6">
+        <FieldError>{error}</FieldError>
+      </View>
+    );
+  }
+  if (!children) return null;
+  return (
+    <View className="px-6 pt-2">
+      <Meta tone="feed" dim>{children}</Meta>
+    </View>
   );
 }
