@@ -49,7 +49,6 @@ import { useEffect, useSyncExternalStore } from "react";
  * of alles in één keer overzien. De oude namen worden nog gelezen zodat
  * niemand zijn bewaarde keuze kwijtraakt.
  */
-export type FeedLayout = "mosaic" | "grid";
 
 /**
  * Hoe de feed geordend is.
@@ -66,12 +65,10 @@ export type FeedLayout = "mosaic" | "grid";
 export type FeedOrder = "thematic" | "chrono";
 
 export type FeedPrefs = {
-  layout: FeedLayout;
   order: FeedOrder;
-  dimSeen: boolean;
 };
 
-const DEFAULTS: FeedPrefs = { layout: "mosaic", order: "thematic", dimSeen: true };
+const DEFAULTS: FeedPrefs = { order: "thematic" };
 
 function keyFor(userId: string) {
   return `lincin.feed-prefs.v1.${userId}`;
@@ -81,19 +78,10 @@ function parse(raw: string | null): FeedPrefs {
   if (!raw) return DEFAULTS;
   try {
     const parsed = JSON.parse(raw) as Partial<FeedPrefs> & { sort?: string };
-    /**
-     * `sort` is de oude naam, uit de tijd dat ordening en weergave één
-     * schakelaar waren. Wie hem nog opgeslagen heeft, houdt zijn keuze:
-     * "chrono" was alles op één hoop in een raster, "thematic" de uitgave.
-     */
     const legacyOrder =
       parsed.sort === "chrono" ? "chrono" : parsed.sort === "thematic" ? "thematic" : undefined;
-    const legacyLayout = parsed.sort === "chrono" ? "grid" : undefined;
-
     return {
-      layout: (parsed.layout ?? legacyLayout) === "grid" ? "grid" : "mosaic",
       order: (parsed.order ?? legacyOrder) === "chrono" ? "chrono" : "thematic",
-      dimSeen: typeof parsed.dimSeen === "boolean" ? parsed.dimSeen : DEFAULTS.dimSeen,
     };
   } catch {
     // Kapotte opslag mag de feed nooit tegenhouden.
@@ -168,19 +156,9 @@ function write(next: FeedPrefs) {
   });
 }
 
-export function setFeedLayout(layout: FeedLayout) {
-  if (layout === prefs.layout) return;
-  write({ ...prefs, layout });
-}
-
 export function setFeedOrder(order: FeedOrder) {
   if (order === prefs.order) return;
   write({ ...prefs, order });
-}
-
-export function setFeedDimSeen(dimSeen: boolean) {
-  if (dimSeen === prefs.dimSeen) return;
-  write({ ...prefs, dimSeen });
 }
 
 /**

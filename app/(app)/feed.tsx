@@ -19,7 +19,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { SHARE_KINDS } from "@/lib/share-kinds";
 import { ModalShell } from "@/components/ModalShell";
 import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
@@ -41,7 +40,6 @@ import {
 } from "@/components/FindBody";
 import { MemoryCard } from "@/components/MemoryCard";
 import { PollCard } from "@/components/PollCard";
-import { PostGrid } from "@/components/PostGrid";
 import { PostReactions } from "@/components/PostReactions";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonPostCard } from "@/components/Skeleton";
@@ -62,7 +60,7 @@ import {
   space,
 } from "@/lib/design/type";
 import { withHeroTransition } from "@/lib/hero-transition";
-import { useFeedPrefs, type FeedLayout } from "@/lib/feed-prefs";
+import { useFeedPrefs } from "@/lib/feed-prefs";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useSeenPosts } from "@/lib/read-state";
 import { usePageTitle } from "@/lib/page-title";
@@ -285,27 +283,16 @@ export default function FeedScreen() {
   const wide = width >= FEED_BREAKPOINT;
   // Kolommen van het chronologische overzicht — zie columnsFor.
   const gridColumns = columnsFor(width);
-  const [shareOpen, setShareOpen] = useState(false);
   /** Voor de "naar boven"-knop; PageScroll geeft zijn scroller hierin door. */
   const scrollRef = useRef<ScrollView>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /**
-   * De twee leesvoorkeuren:
-   *   `order`    `thematic` groepeert in rubrieken (zie SECTIONS),
-   *              `chrono` gooit alles op één hoop, nieuwste eerst.
-   *   `layout`   `mosaic` laat elke vondst zijn eigen maat houden,
-   *              `grid` legt ze in gelijke vierkanten.
-   *   `dimSeen`  al bekeken vondsten worden uitgegrijsd.
-   *
-   * Ordening en weergave zijn twee vragen en dus twee keuzes: chronologisch
-   * kán als metselwerk, thematisch kán als raster.
-   *
-   * Alle drie zijn een keuze van de lezer — dus onthouden we ze, per
-   * gebruiker, op dit toestel. Zie lib/feed-prefs.ts voor waarom dat
-   * lokaal blijft; omzetten doe je in het persoonlijke venster achter je
-   * avatar (components/FeedSwitch.tsx), niet hier.
+   * De ene leesvoorkeur: `thematic` groepeert in rubrieken (zie SECTIONS),
+   * `chrono` gooit alles op één hoop, nieuwste eerst. Onthouden per
+   * gebruiker op dit toestel; omzetten doe je in het persoonlijke venster
+   * achter je avatar (components/FeedSwitch.tsx), niet hier.
    */
-  const { layout, order, dimSeen } = useFeedPrefs(myUserId);
+  const { order } = useFeedPrefs(myUserId);
   const { seen } = useSeenPosts();
   /** Wát je deelt kies je na de plus — zie de zijbalk. */
   /** Voorbij de kop gescrold? Dan krimpt de deelknop in de zijbalk. */
@@ -418,18 +405,8 @@ export default function FeedScreen() {
       return { hero: null, sections: [] as Section[], leftovers: flat };
     }
 
-    /**
-     * In rastervorm is er geen uitgelichte plaat: een affiche van bijna een
-     * scherm hoog boven een raster is een tweede verhaal over dezelfde
-     * inhoud. De vondst die anders de plaat kreeg, doet dan gewoon mee in
-     * de rubrieken — anders zou hij van de pagina verdwijnen.
-     */
-    if (layout === "grid") {
-      return { hero: null, ...buildSections(items) };
-    }
-
     return { hero, ...buildSections(rest) };
-  }, [feed.data, activeTag, order, layout]);
+  }, [feed.data, activeTag, order]);
 
   const onRefresh = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
@@ -618,31 +595,13 @@ export default function FeedScreen() {
                         index={liveSectionOffset + sectionIndex}
                         label={section.label}
                       >
-                        {/*
-                            In rastervorm krijgt élke rubriek hetzelfde
-                            vierkante raster. Anders veranderde er bij het
-                            omzetten alleen iets in het laatste blok
-                            onderaan, en dan lijkt de knop stuk: je klikt en
-                            er gebeurt niets in wat je ziet.
-                        */}
-                        {layout === "grid" ? (
-                          <View style={{ padding: space.sm }}>
-                            <FeedBody
-                              layout="grid"
-                              slots={section.slots}
-                              columns={gridColumns}
-                              myUserId={myUserId}
-                              onChanged={invalidate}
-                              dimmed={dimSeen ? seen : null}
-                            />
-                          </View>
-                        ) : section.layout === "mosaic" ? (
+                        {section.layout === "mosaic" ? (
                           <MosaicGrid
                             slots={section.slots}
                             wide={wide}
                             myUserId={myUserId}
                             onChanged={invalidate}
-                            dimmed={dimSeen ? seen : null}
+                            dimmed={seen}
                           />
                         ) : (
                           <CompactSection
@@ -651,7 +610,7 @@ export default function FeedScreen() {
                             columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
-                            dimmed={dimSeen ? seen : null}
+                            dimmed={seen}
                           />
                         )}
                       </SectionFrame>
@@ -672,12 +631,11 @@ export default function FeedScreen() {
                       <SectionFrame index={0} label="Alles, nieuwste eerst">
                         <View style={{ padding: space.sm }}>
                           <FeedBody
-                            layout={layout}
                             slots={leftovers}
                             columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
-                            dimmed={dimSeen ? seen : null}
+                            dimmed={seen}
                           />
                         </View>
                       </SectionFrame>
@@ -703,12 +661,11 @@ export default function FeedScreen() {
                       >
                         <View style={{ padding: space.sm }}>
                           <FeedBody
-                            layout={layout}
                             slots={leftovers}
                             columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
-                            dimmed={dimSeen ? seen : null}
+                            dimmed={seen}
                           />
                         </View>
                       </SectionFrame>
@@ -733,29 +690,11 @@ export default function FeedScreen() {
           los over de pagina — op elk schermformaat, want het argument is
           op een breed scherm niet anders. */}
       <FloatingShare
-        onPress={() => setShareOpen(true)}
+        onPress={() => router.push("/post-compose")}
         onToTop={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
         lifted={scrolled}
       />
 
-      {/**
-        * Hetzelfde lijstje als stap één van het deelscherm, want het ís
-        * dezelfde lijst: `SHARE_KINDS`. Hier stonden vier handgeschreven
-        * ingangen waarvan er één naar `kind=fragment` wees — een soort die
-        * uit de kiezer verdwenen was. Je kreeg dus een ander antwoord op
-        * dezelfde vraag, afhankelijk van welke plus je toevallig aantikte.
-        * Nu kan dat niet meer uiteenlopen.
-        */}
-      <ActionSheet
-        visible={shareOpen}
-        onClose={() => setShareOpen(false)}
-        title="Wat wil je delen?"
-        actions={SHARE_KINDS.map((k) => ({
-          label: k.menuLabel,
-          icon: k.icon,
-          onPress: () => router.push(`/post-compose?kind=${k.id}`),
-        }))}
-      />
     </SafeAreaView>
   );
 }
@@ -1177,76 +1116,19 @@ function columnsFor(width: number): number {
  * op react-native-web anders dan op native, en dit is één regel meer voor
  * een indeling die overal hetzelfde uitpakt.
  */
-/**
- * De stapel vondsten, in de gekozen weergave.
- *
- * Hier ging het mis: de weergaveknop zette wel `layout`, maar de pagina
- * keek er nergens naar — de ordening bepaalde óók de vorm. Dan lijkt een
- * knop stuk terwijl hij precies doet wat hem gevraagd is. Deze plek is het
- * enige punt waar die keuze uitkomt.
- */
 function FeedBody({
-  layout,
   slots,
   columns,
   myUserId,
   onChanged,
   dimmed,
 }: {
-  layout: FeedLayout;
   slots: Slot[];
   columns: number;
   myUserId: string;
   onChanged: () => void;
   dimmed?: Set<string> | null;
 }) {
-  if (layout === "grid") {
-    /**
-     * Het vierkante raster is alleen voor vondsten — een stemming of een
-     * call is tekst met knoppen erin en die in een vierkant persen levert
-     * een afgeknipte kaart op. Dat was de bedoeling en die klopt.
-     *
-     * Wat er niet bij hoorde: ze verdwénen. `PostGrid` kreeg de lijst met
-     * alleen posts erin en de rest viel er zonder één woord uit — stemmingen,
-     * calls, lijsten en activiteit, weg zodra je op "Raster" tikte. En stond
-     * er in een rubriek níéts anders dan zulke kaarten, dan zei het lege
-     * raster "Nog niets gedeeld." middenin een feed die vol stond.
-     *
-     * Nu splitst de rubriek: de vondsten in het vierkante raster, en wat er
-     * niet in past eronder in de vorm die het al had. Een weergaveknop mag
-     * bepalen hoe iets eruitziet, niet óf het er is.
-     */
-    const gridPosts = slots
-      .map((slot) =>
-        slot.item.type === "post" || slot.item.type === "memory"
-          ? slot.item.data
-          : null
-      )
-      .filter((post): post is PostWithAuthor => !!post);
-    const rest = slots.filter(
-      (slot) => slot.item.type !== "post" && slot.item.type !== "memory"
-    );
-
-    return (
-      <>
-        {gridPosts.length > 0 ? (
-          <PostGrid posts={gridPosts} emptyLabel="Nog niets gedeeld." />
-        ) : null}
-        {rest.length > 0 ? (
-          <View style={{ marginTop: gridPosts.length > 0 ? space.md : 0 }}>
-            <ChronoGrid
-              slots={rest}
-              columns={columns}
-              myUserId={myUserId}
-              onChanged={onChanged}
-              dimmed={dimmed}
-            />
-          </View>
-        ) : null}
-      </>
-    );
-  }
-
   return (
     <ChronoGrid
       slots={slots}
@@ -1258,29 +1140,6 @@ function FeedBody({
   );
 }
 
-/**
- * Het chronologische overzicht: een rooster.
- *
- * ---------------------------------------------------------------
- * WAAROM DIT GEEN METSELWERK MEER IS
- * ---------------------------------------------------------------
- * Hier stond metselwerk: elke tegel hield zijn eigen hoogte en de kolommen
- * werden onafhankelijk van elkaar gevuld. Dat vult mooi uit, maar het kost
- * het enige wat dit overzicht te bieden heeft — de volgorde. Op web deed
- * `column-count` het werk, en die vult kolom voor kolom: de nieuwste vier
- * vondsten stonden ónder elkaar in de linkerkolom in plaats van naast
- * elkaar op de eerste rij. Je las de lijst dus van boven naar beneden en
- * dan pas weer naar rechts, terwijl er "nieuwste eerst" boven staat.
- *
- * Een rooster leest wél zoals je kijkt: van links naar rechts, rij voor
- * rij. Dat het onderin niet meer strak uitvult is de prijs, en die is hier
- * laag — een korte laatste rij houdt zijn lege cellen, dus de lijnen lopen
- * gewoon door.
- *
- * Het rooster is `IndexGrid` uit de rasterlaag (DESIGN.md §4c): cellen
- * zonder kaders, gescheiden door haarlijnen. Die laag lag klaar maar werd
- * nergens gebruikt — zie §8. Nu wel.
- */
 function ChronoGrid({
   slots,
   columns,
@@ -1688,7 +1547,7 @@ function EmptyState({
   return (
     <SharedEmptyState
       title="Nog niets gedeeld"
-      body="Plak een link, of tik een zin over uit wat je aan het lezen bent. De plus rechtsonder is waar dat begint."
+      body="Een vondst is alles wat je hier neerzet: een link, een foto, een paar zinnen. De plus rechtsonder is waar dat begint."
     />
   );
 }

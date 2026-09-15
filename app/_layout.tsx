@@ -174,14 +174,6 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
-              name="bugs"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
               name="profile-edit"
               options={{
                 headerShown: false,

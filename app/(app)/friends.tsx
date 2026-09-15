@@ -435,7 +435,7 @@ export default function FriendsScreen() {
             ) : friendships.isLoading ? (
               <SkeletonListCard rows={3} />
             ) : accepted.length === 0 ? (
-              <PaperHint text="Nog geen lincs. Scan een QR-code of deel jouw linc." />
+              <PaperHint text="Nog geen lincs. Lincs zijn de mensen die je feed en je chats vullen — scan iemands QR-code, of deel jouw linc." />
             ) : (
               <View style={LIST_BLOCK}>
                 {accepted.map((f, i) => (

@@ -426,6 +426,23 @@ export default function ProfileScreen() {
           >
             {session?.user.email}
           </Text>
+        {/* Vrienden waren een eigen tabblad. Vier plekken in de kop is
+            genoeg; wie je kent hoort bij wie je bent. */}
+        <Pressable
+          onPress={() => router.push("/(app)/friends")}
+          className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
+        >
+          <View className="w-9 h-9 bg-paper-warm items-center justify-center">
+            <Ionicons name="people-outline" color={feed.ink} size={18} />
+          </View>
+          <View className="flex-1 ml-3">
+            <Text className="text-ink font-semibold">Vrienden</Text>
+            <Text className="text-ink-muted text-xs mt-0.5">
+              Je lincs, verzoeken en uitnodigingen
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />
+        </Pressable>
         <Pressable
           onPress={() => router.push("/profile-edit")}
           className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
@@ -521,21 +538,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
           )}
-
-          {/* Bugbord — één gedeelde lijst in plaats van los geklaag */}
-          <Pressable
-            onPress={() => router.push("/bugs")}
-            className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-3 mt-3"
-          >
-            <Ionicons name="bug-outline" color={feed.ink} size={18} />
-            <View className="flex-1 ml-3">
-              <Text className="text-ink font-semibold text-sm">Iets werkt niet</Text>
-              <Text className="text-ink-muted text-xs mt-0.5">
-                Meld het, of kijk of iemand je voor was
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" color={feed.inkDim} size={16} />
-          </Pressable>
 
           {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
           <Pressable

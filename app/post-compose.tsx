@@ -37,7 +37,6 @@ import {
 } from "@/lib/api/posts";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
-import { SHARE_KINDS } from "@/lib/share-kinds";
 import { continueList, type EditResult, type Selection } from "@/lib/richtext";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useUnsavedGuard } from "@/lib/unsaved";
@@ -65,51 +64,16 @@ import {
  * iets in te vullen. Al het overige is optioneel.
  */
 
-type ComposeKind =
-  | "link"
-  | "video"
-  | "music"
-  | "fragment"
-  | "fact"
-  | "idea"
-  | "image"
-  | "note"
-  | "quote"
-  | "swatch";
-
 /**
- * De soorten komen uit `lib/share-kinds.ts` — dezelfde lijst die het
- * snelmenu onder de zwevende plusknop vult. Twee lijsten die hetzelfde
- * moeten zeggen lopen altijd een keer uiteen; daar staat het waarom.
+ * Wat je deelt bepaalt wat het is.
  *
- * `fragment` en `fact` bestaan nog wél in de database en worden nog gewoon
- * getoond; ze zijn alleen niet meer te kiezen. Wat ze konden, kan de
- * notitie nu ook: opmaak, en een bron eronder. Een lange notitie met een
- * bron ís een fragment.
+ * Er stond een keuzelijst vóór het formulier: "Wat breng je mee?" met zes
+ * soorten. Die vraag is weg. Je typt, plakt of kiest een foto, en het
+ * soort volgt daaruit: een adres is een link (de unfurl weet of het
+ * video of muziek is), beeld is een foto, en de rest is een tekst.
  */
-const KINDS = SHARE_KINDS;
+type ComposeKind = "link" | "video" | "music" | "note" | "image";
 
-/** Soorten die om een URL vragen. */
-const URL_KINDS: ComposeKind[] = ["link", "video", "music"];
-const BODY_KINDS: ComposeKind[] = ["note", "idea", "fragment", "fact", "quote"];
-
-/**
- * De twaalf stalen van de kiezer.
- *
- * Een volledige kleurenkiezer is hier het verkeerde gereedschap: je zoekt
- * geen precieze waarde maar een kleur die ergens bij hoort, en dan is een
- * blad met twaalf goede kleuren sneller dan een vlak waarin je een punt
- * moet raken. Wie tóch een exacte kleur wil, typt hem — het veld eronder
- * neemt elke `#RRGGBB`.
- *
- * De reeks loopt van licht naar donker en van warm naar koel, zodat hij
- * als staalkaart leest en niet als een zak kleuren.
- */
-const SWATCH_PRESETS = [
-  "#F7F5F2", "#E8E2D9", "#D9CFC2", "#C4A484",
-  "#E66B3F", "#D4551F", "#A81C13", "#7A2E2E",
-  "#4FBDB0", "#2F6F6A", "#3F6FD0", "#0B0A0C",
-];
 
 export default function PostComposeScreen() {
   const router = useRouter();
@@ -118,12 +82,6 @@ export default function PostComposeScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
 
-  /** null = stap 1 (soort kiezen). */
-  /**
-   * Heeft de aanroeper het soort al meegegeven, dan slaan we de keuzelijst
-   * over: twee keer dezelfde vraag stellen is één keer te veel.
-   */
-  const [kind, setKind] = useState<ComposeKind | null>(null);
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
 
@@ -151,8 +109,7 @@ export default function PostComposeScreen() {
   function onBodyChange(next: string) {
     // Plakken moet genoeg zijn: een kale URL in een notitie was bedoeld als
     // link. Stond eerder op het losse notitie-veld, dat er niet meer is.
-    if (kind === "note" && !body && isBareUrl(next) && !url) {
-      setKind("link");
+    if (!body && isBareUrl(next) && !url) {
       setUrl(next.trim());
       return;
     }
@@ -194,7 +151,12 @@ export default function PostComposeScreen() {
    */
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
-  const [swatchHex, setSwatchHex] = useState("#E66B3F");
+  /** Afgeleid, niet gekozen — zie de kop van dit bestand. */
+  const kind: ComposeKind = url.trim()
+    ? "link"
+    : imageUris.length > 0 || videoUri
+      ? "image"
+      : "note";
   /**
    * Waar deze vondst heen gaat.
    *
@@ -243,19 +205,8 @@ export default function PostComposeScreen() {
     title?: string;
     text?: string;
     url?: string;
-    /** Vooraf gekozen soort — de plus in de zijbalk vraagt het al. */
-    kind?: string;
   }>();
   const sharedHandled = useRef(false);
-
-  /** Het soort dat de aanroeper al koos. */
-  useEffect(() => {
-    const preset = typeof shared.kind === "string" ? shared.kind : null;
-    if (!preset) return;
-    if (KINDS.some((k) => k.id === preset)) setKind(preset as ComposeKind);
-    // Eén keer: daarna mag de gebruiker gewoon terug naar de keuzelijst.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (sharedHandled.current) return;
@@ -268,22 +219,15 @@ export default function PostComposeScreen() {
     const detected = rawUrl || findUrl(rawText) || "";
 
     if (detected) {
-      setKind("link");
       setUrl(detected);
       const rest = rawText.replace(detected, "").trim();
       if (rest) setNote(rest);
       else if (rawTitle && rawTitle !== detected) setSourceTitle(rawTitle);
       return;
     }
-    if (rawText.length > 280) {
-      setKind("fragment");
+    if (rawText) {
       setBody(rawText);
       if (rawTitle) setSourceTitle(rawTitle);
-      return;
-    }
-    if (rawText) {
-      setKind("note");
-      setNote(rawText);
     }
   }, [shared.text, shared.url, shared.title]);
 
@@ -323,7 +267,6 @@ export default function PostComposeScreen() {
   const onNoteChange = useCallback(
     (value: string) => {
       if (isBareUrl(value) && !url) {
-        setKind("link");
         setUrl(value.trim());
         return;
       }
@@ -370,29 +313,32 @@ export default function PostComposeScreen() {
     if (images.length > 0) {
       setImageUris((prev) => [...prev, ...images.map((a) => a.uri)].slice(0, 20));
     }
+    // Bij beeld is er geen tekstveld; wat je al typte wordt de toelichting
+    // in plaats van stilletjes te verdwijnen.
+    if (body.trim() && !note.trim()) {
+      setNote(body.trim());
+      setBody("");
+    }
   }
 
-  const canSubmit = !submitting && !!kind && (() => {
-    if (kind === "swatch") return /^#[0-9a-fA-F]{6}$/.test(swatchHex.trim());
-    if (URL_KINDS.includes(kind)) return url.trim().length > 3;
-    if (BODY_KINDS.includes(kind)) return body.trim().length > 0;
-    if (kind === "image") return imageUris.length > 0 || !!videoUri;
-    return note.trim().length > 0;
-  })();
+  const canSubmit =
+    !submitting &&
+    (kind === "link"
+      ? url.trim().length > 3
+      : kind === "image"
+        ? imageUris.length > 0 || !!videoUri
+        : body.trim().length > 0);
 
   /** De unfurl weet beter dan de gebruiker of iets video of muziek is. */
   function resolveKind(): FindKind {
-    if (!kind) return "note";
-    if (URL_KINDS.includes(kind)) {
-      if (preview?.kind === "video") return "video";
-      if (preview?.kind === "music") return "music";
-      return kind === "link" ? "link" : (kind as FindKind);
-    }
-    return kind as FindKind;
+    if (kind !== "link") return kind;
+    if (preview?.kind === "video") return "video";
+    if (preview?.kind === "music") return "music";
+    return "link";
   }
 
   async function onSubmit() {
-    if (!canSubmit || !kind) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -402,10 +348,10 @@ export default function PostComposeScreen() {
         imageUris,
         videoUri,
         visibility,
-        swatchHex: kind === "swatch" ? swatchHex.trim().toUpperCase() : null,
+        swatchHex: null,
         linkUrl: url.trim() || null,
         caption: note.trim() || null,
-        bodyText: BODY_KINDS.includes(kind) ? body.trim() || null : null,
+        bodyText: kind === "note" ? body.trim() || null : null,
         sourceTitle: sourceTitle.trim() || null,
         sourceAuthor: sourceAuthor.trim() || null,
         tags: tagsRaw.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean),
@@ -424,7 +370,6 @@ export default function PostComposeScreen() {
     }
   }
 
-  const activeKind = KINDS.find((k) => k.id === kind);
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
@@ -437,70 +382,28 @@ export default function PostComposeScreen() {
           <View className="flex-row items-center px-6 py-4">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={kind ? "Terug" : "Sluiten"}
-              onPress={() => (kind ? resetToTypePicker() : safeBack(router, "/(app)/feed"))}
+              accessibilityLabel="Sluiten"
+              onPress={() => safeBack(router, "/(app)/feed")}
               hitSlop={10}
             >
-              <Ionicons
-                name={kind ? "arrow-back" : "close"}
-                color={feed.ink}
-                size={22}
-              />
+              <Ionicons name="close" color={feed.ink} size={22} />
             </Pressable>
             <View className="flex-1 ml-4">
-              <Meta tone="feed" strong>{activeKind ? activeKind.label : "Iets delen"}</Meta>
+              <Meta tone="feed" strong>Iets delen</Meta>
             </View>
-            {kind ? (
-              submitting ? (
-                <ActivityIndicator size="small" color={feed.inkDim} />
-              ) : (
-                <BoxButton tone="feed" label="Plaatsen" filled disabled={!canSubmit} onPress={onSubmit} />
-              )
-            ) : null}
+            {submitting ? (
+              <ActivityIndicator size="small" color={feed.inkDim} />
+            ) : (
+              <BoxButton tone="feed" label="Plaatsen" filled disabled={!canSubmit} onPress={onSubmit} />
+            )}
           </View>
-          {kind ? (
-            <VisibilityRow value={visibility} onChange={setVisibility} />
-          ) : null}
+          <VisibilityRow value={visibility} onChange={setVisibility} />
           <Rule tone="feed" strong />
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 96 }}>
-            {/* =============== STAP 1 — soort kiezen =============== */}
-            {!kind && (
-              <View>
-                <View className="px-6 pt-8 pb-6">
-                  <Text style={[feedType.tagline, { color: feed.ink, maxWidth: 460 }]}>
-                    Wat breng je mee?
-                  </Text>
-                </View>
-                <Rule tone="feed" />
-                {KINDS.map((k) => (
-                  <Pressable
-                    key={k.id}
-                    onPress={() => { setKind(k.id); setError(null); }}
-                    className="active:bg-feed-panel"
-                  >
-                    <View className="flex-row items-center px-6 py-5">
-                      <View className="flex-1 pr-5">
-                        <Text style={[feedType.tile, { color: feed.ink }]}>
-                          {k.label}
-                        </Text>
-                        <View className="mt-0.5">
-                          <Meta tone="feed" dim>{k.hint}</Meta>
-                        </View>
-                      </View>
-                      <Arrow tone="feed" dim />
-                    </View>
-                    <Rule tone="feed" />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* =============== STAP 2 — de passende velden =============== */}
-            {kind && (
-              <View style={wide ? { maxWidth: 720 } : undefined}>
+            <View style={wide ? { maxWidth: 720 } : undefined}>
                 {/* --- URL-soorten --- */}
-                {URL_KINDS.includes(kind) && (
+                {kind === "link" && (
                   <View>
                     <Field label="Adres">
                       <TextInput
@@ -533,11 +436,6 @@ export default function PostComposeScreen() {
                   </View>
                 )}
 
-                {/* --- Een kleur --- */}
-                {kind === "swatch" && (
-                  <SwatchPicker value={swatchHex} onChange={setSwatchHex} />
-                )}
-
                 {/*
                     --- De kop van het stuk ---
 
@@ -568,15 +466,9 @@ export default function PostComposeScreen() {
                 ) : null}
 
                 {/* --- Tekstsoorten --- */}
-                {BODY_KINDS.includes(kind) && (
+                {kind === "note" && (
                   <Field
-                    label={
-                      kind === "note" ? "De tekst"
-                      : kind === "idea" ? "Het idee"
-                      : kind === "fragment" ? "Het fragment"
-                      : kind === "quote" ? "Het citaat"
-                      : "Het weetje"
-                    }
+                    label="De tekst"
                   >
                     <FormatBar
                       value={body}
@@ -591,12 +483,7 @@ export default function PostComposeScreen() {
                         setSelection(e.nativeEvent.selection)
                       }
                       selection={forcedSelection ?? undefined}
-                      placeholder={
-                        kind === "note" ? "Schrijf iets, of tik over wat je las…"
-                        : kind === "idea" ? "Wat zou je willen maken?"
-                        : kind === "fragment" ? "Tik over of plak wat je las…"
-                        : "Wat wist je nog niet?"
-                      }
+                      placeholder="Schrijf iets, plak een link, of tik over wat je las…"
                       placeholderTextColor={feed.inkDim}
                       multiline
                       autoFocus
@@ -629,18 +516,22 @@ export default function PostComposeScreen() {
                   </Field>
                 )}
 
-                {/* --- Foto --- */}
-                {kind === "image" && (
+                {/* --- Foto: het album zodra er beeld is, anders de twee
+                    knoppen onder de tekst — zonder eerst te moeten zeggen
+                    dat je een foto komt brengen. --- */}
+                {kind !== "link" && (
                   <View>
-                    {imageUris.length > 0 ? (
+                    {kind === "image" ? (
                       <View>
-                        <SafeImage
-                          uri={imageUris[0]}
-                          style={{ width: "100%", aspectRatio: 1 }}
-                          contentFit="cover"
-                          fallbackBg="bg-feed-fill"
-                          fallbackColor={feed.inkDim}
-                        />
+                        {imageUris.length > 0 ? (
+                          <SafeImage
+                            uri={imageUris[0]}
+                            style={{ width: "100%", aspectRatio: 1 }}
+                            contentFit="cover"
+                            fallbackBg="bg-feed-fill"
+                            fallbackColor={feed.inkDim}
+                          />
+                        ) : null}
 
                         {/* De rest van het album als strook eronder. */}
                         {imageUris.length > 1 && (
@@ -703,7 +594,7 @@ export default function PostComposeScreen() {
                       </View>
                     ) : (
                       <View>
-                        <PickRow label="Kies uit je bibliotheek" onPress={() => pickImage(false)} />
+                        <PickRow label="Foto's of video toevoegen" onPress={() => pickImage(false)} />
                         {Platform.OS !== "web" && (
                           <PickRow label="Maak een foto" onPress={() => pickImage(true)} />
                         )}
@@ -714,14 +605,10 @@ export default function PostComposeScreen() {
 
                 {/* --- Notitie --- */}
                 {/* --- Bron: alleen waar het zin heeft --- */}
-                {(kind === "note" || kind === "fragment" || kind === "link") && (
+                {(kind === "note" || kind === "link") && (
                   <View className="px-6 pt-7">
                     <Meta tone="feed" dim>
-                      {kind === "link"
-                        ? "Bron"
-                        : kind === "note"
-                          ? "Bron — van wie is het, als het niet van jou is"
-                          : "Bron — wie schreef het, en waarin"}
+                      {kind === "link" ? "Bron" : "Bron — van wie is het, als het niet van jou is"}
                     </Meta>
                     <View className="flex-row mt-1">
                       <View className={kind === "note" ? "flex-1" : "flex-1 pr-4"}>
@@ -833,28 +720,13 @@ export default function PostComposeScreen() {
                     <Text style={[feedType.body, { color: feed.ink }]}>{error}</Text>
                   </View>
                 )}
-              </View>
-            )}
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </Sheet>
     </SafeAreaView>
   );
 
-  /** Terug naar stap 1 en alles leegmaken — anders lekt een half ingevuld
-   *  formulier door naar het volgende soort. */
-  function resetToTypePicker() {
-    setKind(null);
-    setUrl("");
-    setBody("");
-    setNote("");
-    setSourceAuthor("");
-    setSourceTitle("");
-    setImageUris([]);
-    setPreview(null);
-    setError(null);
-    lastUnfurled.current = "";
-  }
 }
 
 // ---------------------------------------------------------------
@@ -870,87 +742,6 @@ export default function PostComposeScreen() {
  * je hebt hem net zelf gekozen — maar dát er een aan hangt, en de weg om
  * hem er weer af te halen.
  */
-/**
- * De kleurkiezer.
- *
- * Twaalf stalen en een veld. Geen kleurenwiel: je zoekt hier geen precieze
- * waarde maar een kleur die ergens bij hoort, en dan is kiezen sneller dan
- * mikken. Wie tóch een exacte kleur wil typt hem — daar is het veld voor,
- * en dat is ook de plek waar je een kleur uit een foto in plakt.
- *
- * Het grote vlak bovenaan is geen versiering maar de enige eerlijke
- * voorbeschouwing: een staal van veertig punten liegt over hoe een kleur
- * op een bord van driehonderd overkomt.
- */
-function SwatchPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  const valid = /^#[0-9a-fA-F]{6}$/.test(value.trim());
-  return (
-    <View className="px-6 py-5">
-      <View
-        style={{
-          width: "100%",
-          aspectRatio: 2.4,
-          backgroundColor: valid ? value : feed.postFill,
-          borderWidth: FEED_BORDER,
-          borderColor: feed.ink,
-          marginBottom: space.lg,
-        }}
-      />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
-        {SWATCH_PRESETS.map((hex) => {
-          const active = value.toUpperCase() === hex.toUpperCase();
-          return (
-            <Pressable
-              key={hex}
-              accessibilityRole="button"
-              accessibilityLabel={`Kies ${hex}`}
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(hex)}
-              style={{
-                width: CONTROL_H,
-                height: CONTROL_H,
-                backgroundColor: hex,
-                borderWidth: active ? 3 : FEED_BORDER,
-                borderColor: feed.ink,
-              }}
-            />
-          );
-        })}
-      </View>
-      <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginTop: space.xl, marginBottom: space.sm }]}>
-        OF TYP EEN KLEUR
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={(t) => onChange(t.startsWith("#") || t === "" ? t : `#${t}`)}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={7}
-        accessibilityLabel="Hexkleur"
-        placeholder="#E66B3F"
-        placeholderTextColor={feed.inkDim}
-        style={[
-          feedType.body,
-          {
-            borderWidth: FEED_BORDER,
-            borderColor: valid ? feed.ink : flameDeep,
-            paddingHorizontal: space.md,
-            height: CONTROL_H,
-            color: feed.ink,
-            ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null),
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
 function ClipRow({ onRemove }: { onRemove: () => void }) {
   return (
     <View className="flex-row items-center px-6 pb-4" style={{ gap: space.sm }}>

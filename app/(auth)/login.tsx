@@ -20,26 +20,36 @@ import {
   flameDeep,
 } from "@/lib/design/type";
 
-type Mode = "signin" | "signup";
+/**
+ * Eén weg naar binnen.
+ *
+ * Er stonden drie: inloggen met wachtwoord, een account aanmaken (een
+ * tabje ernaast), en een magic link eronder. Drie deuren op de eerste
+ * pagina is drie keer kiezen voordat je iets gedaan hebt.
+ *
+ * Nu is het: e-mail, wachtwoord, Doorgaan. Kent de server het adres
+ * niet, dan zegt de pagina dat en biedt hij aan om met precies deze
+ * gegevens een account te maken — dat is het moment waarop die vraag
+ * hoort, niet ervoor. "Wachtwoord vergeten" stuurt een link; daarna kies
+ * je een nieuw wachtwoord bij Instellingen.
+ *
+ * Wachtwoordmanagers: `autoComplete` en `textContentType` staan op het
+ * bestaande wachtwoord, zodat ze invullen. Bij het aanmaken via de
+ * aanbieding wordt hetzelfde veld gebruikt; iOS en Chrome bewaren het
+ * daarna gewoon.
+ */
 type Status =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "magic-sent" }
+  /** Adres onbekend of wachtwoord fout — bied aan om een account te maken. */
+  | { kind: "no-account" }
   | { kind: "confirm-sent" }
   | { kind: "reset-sent" }
-  | { kind: "already-exists" }
   | { kind: "error"; message: string };
 
 export default function LoginScreen() {
-  const {
-    signInWithEmail,
-    signInWithPassword,
-    signUp,
-    sendPasswordReset,
-    resendConfirmation,
-  } = useAuth();
+  const { signInWithPassword, signUp, sendPasswordReset, resendConfirmation } = useAuth();
 
-  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,104 +57,72 @@ export default function LoginScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   const submitting = status.kind === "submitting";
+  const clean = () => email.trim().toLowerCase();
+
+  function emailError(): string | null {
+    return email.includes("@") ? null : "Geef een geldig e-mailadres.";
+  }
 
   /**
-   * De acht-tekens-eis geldt bij aanmelden, niet bij inloggen.
-   *
-   * `validate(true)` stond op allebei, en dat is een deur die alleen naar
-   * binnen opengaat: wie een account heeft van vóór die regel — of een
-   * wachtwoord van zeven tekens uit een wachtwoordmanager — kwam er nooit
-   * meer in. Het scherm zei "wachtwoord moet minstens 8 tekens hebben" over
-   * een wachtwoord dat gewoon klopt, en er is geen enkele manier om dat
-   * vanaf de inlogkant op te lossen.
-   *
-   * Een regel over hoe sterk een wachtwoord móet zijn hoort thuis op het
-   * moment dat je er een kiest. Bij het controleren telt alleen of hij
-   * klopt, en dat weet de server.
+   * Inloggen. Klopt het niet, dan weet de server niet (en zegt hij niet)
+   * of het adres onbekend is of het wachtwoord fout — dus bieden we
+   * allebei aan: opnieuw proberen, of een account maken.
    */
-  function validate(mode: "email" | "signin" | "signup"): string | null {
-    if (!email.includes("@")) return "Geef een geldig e-mailadres.";
-    if (mode === "signin" && password.length === 0)
-      return "Vul je wachtwoord in.";
-    if (mode === "signup" && password.length < 8)
-      return "Kies een wachtwoord van minstens 8 tekens.";
-    return null;
-  }
-
-  async function onPasswordSubmit() {
-    const err = validate(mode === "signin" ? "signin" : "signup");
+  async function onContinue() {
+    const err = emailError() ?? (password.length === 0 ? "Vul je wachtwoord in." : null);
     if (err) {
       setStatus({ kind: "error", message: err });
       return;
     }
     setStatus({ kind: "submitting" });
-    const clean = email.trim().toLowerCase();
-    if (mode === "signin") {
-      const { error } = await signInWithPassword(clean, password);
-      if (error) {
-        setStatus({
-          kind: "error",
-          message:
-            error.message === "Invalid login credentials"
-              ? "Onbekende e-mail of fout wachtwoord."
-              : error.message,
-        });
-      } else {
-        setStatus({ kind: "idle" });
-      }
+    const { error } = await signInWithPassword(clean(), password);
+    if (!error) {
+      setStatus({ kind: "idle" });
+      return;
+    }
+    if (error.message === "Invalid login credentials") {
+      setStatus({ kind: "no-account" });
+      return;
+    }
+    setStatus({ kind: "error", message: error.message });
+  }
+
+  /** De acht-tekens-eis geldt alleen hier: bij het kiezen, niet bij het controleren. */
+  async function onCreate() {
+    if (password.length < 8) {
+      setStatus({ kind: "error", message: "Kies een wachtwoord van minstens 8 tekens." });
+      return;
+    }
+    setStatus({ kind: "submitting" });
+    const { error, needsConfirmation, alreadyExists } = await signUp(clean(), password);
+    if (error) {
+      setStatus({
+        kind: "error",
+        message: error.message.includes("registered")
+          ? "Er is al een account voor dit adres. Klopt je wachtwoord niet meer? Gebruik dan 'Wachtwoord vergeten'."
+          : error.message,
+      });
+    } else if (alreadyExists) {
+      setStatus({
+        kind: "error",
+        message:
+          "Er is al een account voor dit adres. Klopt je wachtwoord niet meer? Gebruik dan 'Wachtwoord vergeten'.",
+      });
+    } else if (needsConfirmation) {
+      setStatus({ kind: "confirm-sent" });
     } else {
-      const { error, needsConfirmation, alreadyExists } = await signUp(
-        clean,
-        password
-      );
-      if (error) {
-        setStatus({
-          kind: "error",
-          message:
-            error.message.includes("registered")
-              ? "Dit e-mailadres heeft al een account. Probeer Inloggen."
-              : error.message,
-        });
-      } else if (alreadyExists) {
-        // Supabase swallowed the duplicate; show explicit guidance.
-        setStatus({ kind: "already-exists" });
-      } else if (needsConfirmation) {
-        setStatus({ kind: "confirm-sent" });
-      } else {
-        // Session arrived directly via signUp (email confirmation uit).
-        setStatus({ kind: "idle" });
-      }
+      setStatus({ kind: "idle" });
     }
-  }
-
-  async function onMagicLink() {
-    const err = validate("email");
-    if (err) {
-      setStatus({ kind: "error", message: err });
-      return;
-    }
-    setStatus({ kind: "submitting" });
-    const { error } = await signInWithEmail(email.trim().toLowerCase());
-    if (error) setStatus({ kind: "error", message: error.message });
-    else setStatus({ kind: "magic-sent" });
   }
 
   async function onResendConfirmation() {
-    const err = validate("email");
-    if (err) {
-      setStatus({ kind: "error", message: err });
-      return;
-    }
     setStatus({ kind: "submitting" });
-    const { error } = await resendConfirmation(email.trim().toLowerCase());
+    const { error } = await resendConfirmation(clean());
     if (error) {
       setStatus({
         kind: "error",
         message: /rate limit|too many/i.test(error.message)
-          ? // Stond hier als "…of zet Resend SMTP op in Supabase" — een
-          // opdracht aan de beheerder, in het scherm van iemand die niet
-          // meer kan doen dan wachten.
-          "Te veel pogingen op dit adres. Probeer het over een uurtje opnieuw."
+          ? "Te veel pogingen op dit adres. Probeer het over een uurtje opnieuw."
           : error.message,
       });
     } else {
@@ -153,16 +131,26 @@ export default function LoginScreen() {
   }
 
   async function onForgotPassword() {
-    const err = validate("email");
+    const err = emailError();
     if (err) {
       setStatus({ kind: "error", message: err });
       return;
     }
     setStatus({ kind: "submitting" });
-    const { error } = await sendPasswordReset(email.trim().toLowerCase());
+    const { error } = await sendPasswordReset(clean());
     if (error) setStatus({ kind: "error", message: error.message });
     else setStatus({ kind: "reset-sent" });
   }
+
+  const fieldStyle = {
+    borderWidth: FEED_BORDER,
+    borderColor: feedColor.ink,
+    backgroundColor: feedColor.panel,
+    paddingHorizontal: 16,
+    color: feedColor.ink,
+    fontFamily: feedType.body.fontFamily,
+    fontSize: 15,
+  } as const;
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav">
@@ -176,9 +164,8 @@ export default function LoginScreen() {
             paddingVertical: 40,
           }}
         >
-          {/* De woordmerkplaat draagt hier het merk — geen app-icoon in een
-              afgerond vierkant. Dit is de eerste pagina die iemand ziet, dus
-              hij gebruikt dezelfde plaat als de rest van de app. */}
+          {/* De woordmerkplaat draagt hier het merk — dezelfde plaat als de
+              rest van de app, geen app-icoon in een afgerond vierkant. */}
           <LogoMark size="plate" />
 
           <View
@@ -192,65 +179,34 @@ export default function LoginScreen() {
             <Text
               style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 10 }]}
             >
-              {mode === "signup" ? "NIEUW HIER" : "WELKOM TERUG"}
+              WELKOM
             </Text>
             <Text style={[feedType.taglineSmall, { color: feedColor.ink, marginBottom: 24 }]}>
               Link up. Versleuteld, voor je vrienden.
             </Text>
 
-            {/* Modus-keuze — dezelfde gesegmenteerde strip als de tabstrip
-                in de kop van de app. */}
-            <View
-              style={{
-                flexDirection: "row",
-                borderWidth: FEED_BORDER,
-                borderColor: feedColor.ink,
-                marginBottom: 24,
-              }}
-            >
-              <ModeTab
-                label="Inloggen"
-                active={mode === "signin"}
-                onPress={() => {
-                  setMode("signin");
-                  setStatus({ kind: "idle" });
-                }}
-              />
-              <ModeTab
-                label="Account aanmaken"
-                active={mode === "signup"}
-                onPress={() => {
-                  setMode("signup");
-                  setStatus({ kind: "idle" });
-                }}
-              />
-            </View>
-
-            {/* Email */}
             <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
               E-MAILADRES
             </Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (status.kind !== "idle" && status.kind !== "submitting") setStatus({ kind: "idle" });
+              }}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
-              // Zonder deze drie zwijgt elke wachtwoordmanager op het
-              // inlogscherm: Keychain, 1Password en Chrome herkennen een
-              // veld aan zijn `autoComplete`/`textContentType`, niet aan
-              // zijn label. Ze stonden nergens in de app.
               autoComplete="email"
               textContentType="emailAddress"
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
               placeholder="jij@voorbeeld.be"
               placeholderTextColor={feedColor.inkDim}
-              style={{ borderWidth: FEED_BORDER, borderColor: feedColor.ink, backgroundColor: feedColor.panel, paddingHorizontal: 16, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
+              style={[fieldStyle, { paddingVertical: 13 }]}
               editable={!submitting}
             />
 
-            {/* Password */}
             <Text
               style={[
                 feedType.kicker,
@@ -259,32 +215,34 @@ export default function LoginScreen() {
             >
               WACHTWOORD
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", borderWidth: FEED_BORDER, borderColor: feedColor.ink, backgroundColor: feedColor.panel, paddingHorizontal: 16 }}>
+            <View style={[fieldStyle, { flexDirection: "row", alignItems: "center" }]}>
               <TextInput
+                ref={passwordRef}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (status.kind === "error") setStatus({ kind: "idle" });
+                }}
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry={!showPassword}
-                ref={passwordRef}
-                // "new-password" laat iOS/Chrome een sterk wachtwoord
-                // vóórstellen bij registreren; "current-password" laat ze
-                // het opgeslagen wachtwoord invullen bij inloggen. Eén
-                // waarde voor allebei doet geen van beide goed.
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                textContentType={mode === "signup" ? "newPassword" : "password"}
-                returnKeyType={mode === "signup" ? "done" : "go"}
-                placeholder={mode === "signup" ? "min. 8 tekens" : "•••••••••"}
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="go"
+                placeholder="•••••••••"
                 placeholderTextColor={feedColor.inkDim}
-                style={{ flex: 1, paddingVertical: 13, color: feedColor.ink, fontFamily: feedType.body.fontFamily, fontSize: 15 }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 13,
+                  color: feedColor.ink,
+                  fontFamily: feedType.body.fontFamily,
+                  fontSize: 15,
+                }}
                 editable={!submitting}
-                onSubmitEditing={onPasswordSubmit}
+                onSubmitEditing={onContinue}
               />
-              {/* Een eigen doos van CONTROL_H, geen `hitSlop`: die doet
-                  niets op web (§7) en dit is een oogje van twintig punten
-                  in een veld waar je met je duim naast tikt. De doos
-                  duwt bovendien in plaats van over de tekst heen te
-                  liggen, dus hij pakt je cursor niet af. */}
+              {/* Een eigen doos van CONTROL_H, geen `hitSlop`: die doet niets
+                  op web (§7) en dit is een oogje van twintig punten. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
@@ -306,154 +264,108 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            {/* Status banners */}
             {status.kind === "error" && (
               <FieldError style={{ marginTop: 12 }}>{status.message}</FieldError>
             )}
-            {status.kind === "magic-sent" && (
-              <Banner
-                title="Check je inbox"
-                body={`We hebben een magic link gestuurd naar ${email}. Klik erop om in te loggen.`}
-              />
+
+            {status.kind === "no-account" && (
+              <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
+                <Text className="text-ink font-semibold text-base mb-1">
+                  Dat klopt niet
+                </Text>
+                <Text className="text-ink-soft text-sm leading-5 mb-3">
+                  We kennen {email.trim()} niet, of het wachtwoord is fout. Nieuw hier? Dan
+                  maken we met dit adres en dit wachtwoord een account.
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Account aanmaken met dit adres"
+                    onPress={onCreate}
+                    disabled={submitting}
+                    className="bg-ink active:bg-ink-soft px-3 py-1.5"
+                  >
+                    <Text className="text-cream text-xs font-semibold">
+                      Account aanmaken
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Wachtwoord vergeten"
+                    onPress={onForgotPassword}
+                    disabled={submitting}
+                    className="border border-ink/30 px-3 py-1.5"
+                  >
+                    <Text className="text-ink text-xs font-semibold">
+                      Wachtwoord vergeten
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
             )}
+
             {status.kind === "confirm-sent" && (
               <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
                 <Text className="text-ink font-semibold text-base mb-1">
                   Bevestig je e-mail
                 </Text>
                 <Text className="text-ink-soft text-sm leading-5 mb-3">
-                  We stuurden een bevestigingslink naar {email}. Klik erop, dan kan je inloggen met je wachtwoord.
+                  We stuurden een bevestigingslink naar {email.trim()}. Klik erop, en kom dan
+                  hier terug om in te loggen.
                 </Text>
-                <Text className="text-ink-muted text-xs leading-4 mb-3">
-                  Niet ontvangen? Check je spam-map of probeer een van deze:
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  <Pressable
-                    onPress={onResendConfirmation}
-                    disabled={submitting}
-                    className="border border-ink/30 px-3 py-1.5"
-                  >
-                    <Text className="text-ink text-xs font-semibold">
-                      Stuur opnieuw
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={onMagicLink}
-                    disabled={submitting}
-                    className="border border-ink/30 px-3 py-1.5"
-                  >
-                    <Text className="text-ink text-xs font-semibold">
-                      Inloggen via magic link
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-            {status.kind === "reset-sent" && (
-              <Banner
-                title="Reset-link verstuurd"
-                body={`Check ${email} voor een link om in te loggen. Wijzig je wachtwoord daarna in je profiel.`}
-              />
-            )}
-            {status.kind === "already-exists" && (
-              <View className="mt-4 bg-paper-light border border-line-paper px-5 py-4">
-                <Text className="text-ink font-semibold text-base mb-1">
-                  Dit account bestaat al
-                </Text>
-                <Text className="text-ink-soft text-sm leading-5 mb-3">
-                  Er is al een account voor {email}. Log in met je magic-link en stel
-                  je wachtwoord in vanuit je Profiel-tab. Daarna kan je gewoon
-                  inloggen met email + wachtwoord.
-                </Text>
-                <View className="flex-row gap-2">
-                  <Pressable
-                    onPress={() => {
-                      setMode("signin");
-                      setStatus({ kind: "idle" });
-                    }}
-                    className="border border-ink/30 px-3 py-1.5"
-                  >
-                    <Text className="text-ink text-xs font-semibold">
-                      Naar Inloggen
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={onMagicLink}
-                    disabled={submitting}
-                    className="bg-ink active:bg-ink-soft px-3 py-1.5"
-                  >
-                    <Text className="text-cream text-xs font-semibold">
-                      Stuur magic link
-                    </Text>
-                  </Pressable>
-                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Bevestigingslink opnieuw sturen"
+                  onPress={onResendConfirmation}
+                  disabled={submitting}
+                  className="self-start border border-ink/30 px-3 py-1.5"
+                >
+                  <Text className="text-ink text-xs font-semibold">Niet ontvangen? Stuur opnieuw</Text>
+                </Pressable>
               </View>
             )}
 
-            {/* Primary button */}
+            {status.kind === "reset-sent" && (
+              <Banner
+                title="Check je inbox"
+                body={`We stuurden een link naar ${email.trim()}. Klik erop om in te loggen; daarna kies je bij Instellingen een nieuw wachtwoord.`}
+              />
+            )}
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={
-                mode === "signin" ? "Inloggen" : "Account aanmaken"
-              }
+              accessibilityLabel="Doorgaan"
               accessibilityState={{ disabled: submitting, busy: submitting }}
-              onPress={onPasswordSubmit}
+              onPress={onContinue}
               disabled={submitting}
-              className="mt-5 bg-ink active:bg-ink-soft items-center justify-center"
+              className="bg-ink active:bg-ink-soft items-center justify-center"
               style={{ height: CONTROL_H, marginTop: 20 }}
             >
               <Text className="text-cream font-semibold text-base">
-                {submitting
-                  ? "Bezig…"
-                  : mode === "signin"
-                    ? "Inloggen"
-                    : "Account aanmaken"}
+                {submitting ? "Bezig…" : "Doorgaan"}
               </Text>
             </Pressable>
 
-            {/* Secondary actions */}
-            {/* Twee tekstlinks van veertien en twaalf punten hoog. Met
-                `hitSlop={6}` waren ze op een telefoon net te raken en op
-                web precies zo groot als hun letters — §7, de slop valt
-                daar weg. Ze krijgen nu allebei een rij van CONTROL_H. */}
-            <View className="mt-5 items-center">
+            {/* Eén tekstlink, een rij van CONTROL_H hoog (§7: op web valt
+                de hitSlop weg, dus de rij zelf moet raakbaar zijn). */}
+            {status.kind !== "no-account" && (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Of stuur een magic link"
+                accessibilityLabel="Wachtwoord vergeten"
                 accessibilityState={{ disabled: submitting }}
-                onPress={onMagicLink}
+                onPress={onForgotPassword}
                 disabled={submitting}
                 style={{
+                  marginTop: 12,
                   height: CONTROL_H,
                   alignSelf: "stretch",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text className="text-ink-soft text-sm underline">
-                  Of stuur een magic link
-                </Text>
+                <Text className="text-ink-muted text-xs">Wachtwoord vergeten?</Text>
               </Pressable>
-              {mode === "signin" && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Wachtwoord vergeten"
-                  accessibilityState={{ disabled: submitting }}
-                  onPress={onForgotPassword}
-                  disabled={submitting}
-                  style={{
-                    height: CONTROL_H,
-                    alignSelf: "stretch",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text className="text-ink-muted text-xs">
-                    Wachtwoord vergeten?
-                  </Text>
-                </Pressable>
-              )}
-            </View>
+            )}
           </View>
 
           <Text className="text-xs text-ink-muted mt-8 text-center">
@@ -462,42 +374,6 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function ModeTab({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        // Eén besturingshoogte, net als elk ander bedieningselement (§4b).
-        height: CONTROL_H,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: active ? feedColor.ink : "transparent",
-      }}
-    >
-      <Text
-        style={[
-          feedType.label,
-          { fontSize: 12, color: active ? feedColor.lav : feedColor.ink },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

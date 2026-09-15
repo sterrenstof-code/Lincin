@@ -13,7 +13,6 @@ npm start           # QR-code voor Expo Go op je iPhone
 npm run typecheck   # TS check zonder bouwen
 npm run lint
 npm run test:crypto # roundtrip-test van de e2e-versleuteling
-npm run bugs        # bugbord lezen/afhandelen (vereist .env.bugs)
 ```
 
 ## Folders

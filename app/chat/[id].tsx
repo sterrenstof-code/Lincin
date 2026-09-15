@@ -1862,16 +1862,13 @@ export default function ChatDetail() {
                   />
                 </Pressable>
               ) : (
-                // Draft empty → mic button (hold on native, tap on web)
+                // Draft empty → mic. Tikken start; de rode knop verstuurt en
+                // de prullenbak gooit weg — op elk platform hetzelfde, want
+                // een opname die verdwijnt zodra je vinger glijdt verrast.
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Spraakbericht opnemen"
-                  onPressIn={Platform.OS !== "web" ? startRecording : undefined}
-                  onPressOut={Platform.OS !== "web" ? () => stopRecording(true) : undefined}
-                  onPress={Platform.OS === "web" ? () => {
-                    if (recording) stopRecording(true);
-                    else startRecording();
-                  } : undefined}
+                  onPress={startRecording}
                   disabled={sending}
                   // Net als de twee knoppen links: het icoon draagt zichzelf
                   // op de balk. Zodra er iets te versturen valt neemt de
@@ -2494,7 +2491,7 @@ function MessageBubble({
             <Text
               className={`italic px-1 text-xs ${isMine ? "text-cream-muted" : "text-ink-muted"}`}
             >
-              🔒 versleuteld
+              🔒 Niet leesbaar op dit toestel — nieuw toestel? Koppel het via je profiel.
             </Text>
           )
         ) : (

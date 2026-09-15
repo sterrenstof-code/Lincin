@@ -124,7 +124,8 @@ const TABS = [
   { href: "/feed", label: "Feed", icon: "newspaper-outline" },
   { href: "/events", label: "Events", icon: "sparkles-outline" },
   { href: "/chats", label: "Chats", icon: "chatbubble-outline" },
-  { href: "/friends", label: "Vrienden", icon: "people-outline" },
+  // Vrienden staan onder Profiel: vier plekken is waar je ophoudt met
+  // nadenken over waar iets woont.
   { href: "/profile", label: "Profiel", icon: "person-outline" },
 ] as const satisfies readonly {
   href: Href;

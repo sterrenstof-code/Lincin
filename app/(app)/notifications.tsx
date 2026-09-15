@@ -163,7 +163,6 @@ export default function NotificationsScreen() {
  * bijkomt.
  */
 function destinationFor(item: NotificationWithDetails): string | null {
-  if (item.bug_report_id) return "/bugs";
   if (item.event_id) return `/event/${item.event_id}`;
   if (item.post_id) return `/post/${item.post_id}`;
   return null;

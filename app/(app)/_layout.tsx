@@ -176,10 +176,6 @@ export default function AppLayout() {
         import("expo-router").then(({ router }) => {
           router.push(`/event/${data.event_id}`);
         });
-      } else if (data?.bug_report_id) {
-        import("expo-router").then(({ router }) => {
-          router.push("/bugs");
-        });
       }
     });
   }, []);
