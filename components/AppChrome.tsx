@@ -717,12 +717,15 @@ function CompactBar({
  */
 function AddCell({ tone }: { tone: "dark" | "paper" }) {
   const router = useRouter();
+  // Op de eventpagina maakt de plus een event. Eén knop die weet waar hij
+  // staat, in plaats van een tweede knop op de pagina zelf.
+  const onEvents = usePathname() === "/events";
   return (
     <>
       <Cut tone={tone} />
       <Pressable
-        onPress={() => router.push("/post-compose")}
-        accessibilityLabel="Iets delen"
+        onPress={() => router.push(onEvents ? "/event-create" : "/post-compose")}
+        accessibilityLabel={onEvents ? "Nieuw event" : "Iets delen"}
         style={({ pressed }) => ({
           justifyContent: "center",
           alignItems: "center",

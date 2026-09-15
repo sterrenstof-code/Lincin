@@ -5,10 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import "react-native-reanimated";
 
-import { AuthProvider } from "@/lib/auth/provider";
+import { AuthProvider, useAuth } from "@/lib/auth/provider";
 import { WebAnalytics } from "@/components/WebAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineNotice } from "@/components/OfflineNotice";
@@ -18,6 +18,7 @@ import { installPageTransitions } from "@/lib/page-transition";
 import { ConfirmProvider } from "@/lib/confirm";
 import { ToastProvider } from "@/lib/toast";
 import { loadStoredPreference, useScheme } from "@/lib/design/theme";
+import { desk } from "@/lib/design/type";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
@@ -33,8 +34,14 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Eén modaal blad: van onder, zonder kop. */
+const MODAL = {
+  headerShown: false,
+  presentation: "modal",
+  animation: "slide_from_bottom",
+} as const;
+
 export default function RootLayout() {
-  const router = useRouter();
   const scheme = useScheme();
 
   useEffect(() => {
@@ -49,6 +56,62 @@ export default function RootLayout() {
     setupNotificationChannels().catch(() => {});
     setupNotificationCategories().catch(() => {});
   }, []);
+
+  return (
+    // Op native staat de kleur van een prop als échte waarde in de boom (zie
+    // lib/design/type.ts), dus een wissel moet hertekenen. De `key` doet dat.
+    // Op web zit de kleur in een CSS-variabele en hoeft er niets te gebeuren —
+    // vandaar dat de key daar constant blijft.
+    <ErrorBoundary key={Platform.OS === "web" ? "app" : scheme}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider value={scheme === "light" ? DefaultTheme : DarkTheme}>
+          {/* De strook onderaan die zegt wat er zojuist misging. Staat hier
+              en niet per scherm: hij ligt óp de navigatie, dus een melding
+              overleeft de pagina die hem opriep. Zie lib/toast.tsx. */}
+          <ToastProvider>
+          {/* De vraag "weet je het zeker" hoorde op web bij de browser, en
+              die gooit het label weg dat zegt wát er gaat gebeuren — ook bij
+              het resetten van je toestelsleutels, de enige onomkeerbare
+              handeling in deze app. Zie lib/confirm.tsx. */}
+          <ConfirmProvider>
+            <RootStack />
+            {/* Blijft staan zolang de toestand duurt — anders dan de toast,
+                die een gebeurtenis meldt en weer weggaat. Zie het onderdeel. */}
+            <OfflineNotice />
+          </ConfirmProvider>
+          </ToastProvider>
+          {/* De balk bovenaan is in béide standen zwart, dus de
+              systeemklok erboven blijft licht. */}
+          <StatusBar style="light" />
+          <WebAnalytics />
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
+
+/**
+ * De navigator, pas zodra bekend is wie er is.
+ *
+ * Bijna elk scherm leest `session!.user` alsof die er altijd is. Vanuit de
+ * app klopt dat — je komt er via een tab of een tik, en dan is de sessie
+ * al geladen. Maar een adres kun je ook rechtstreeks openen: verversen,
+ * een pushmelding, de deelknop van de browser die op /post-compose landt.
+ * Dan stond het scherm er vóór de sessie, en viel de app om op het eerste
+ * `.user`. Vier schermen hadden daar elk een eigen wacht voor; de rest
+ * niet.
+ *
+ * Nu wacht de hele stack één keer, hier. En wie er niet is, komt niet op
+ * een scherm dat een sessie nodig heeft: `Stack.Protected` stuurt je naar
+ * de eerste vrije route (index), en die naar het inlogscherm. Wat buiten
+ * de wacht staat is precies wat zonder sessie moet werken: inloggen, een
+ * event-uitnodiging, iemands deellink.
+ */
+function RootStack() {
+  const { session, loading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     // Wanneer de PWA heropend wordt vanuit de achtergrond, onthoudt iOS de
@@ -78,228 +141,81 @@ export default function RootLayout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // enkel op mount — niet bij elke navigatie
 
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-desk">
+        <ActivityIndicator color={desk.ink} />
+      </View>
+    );
+  }
+
   return (
-    // Op native staat de kleur van een prop als échte waarde in de boom (zie
-    // lib/design/type.ts), dus een wissel moet hertekenen. De `key` doet dat.
-    // Op web zit de kleur in een CSS-variabele en hoeft er niets te gebeuren —
-    // vandaar dat de key daar constant blijft.
-    <ErrorBoundary key={Platform.OS === "web" ? "app" : scheme}>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider value={scheme === "light" ? DefaultTheme : DarkTheme}>
-          {/* De strook onderaan die zegt wat er zojuist misging. Staat hier
-              en niet per scherm: hij ligt óp de navigatie, dus een melding
-              overleeft de pagina die hem opriep. Zie lib/toast.tsx. */}
-          <ToastProvider>
-          {/* De vraag "weet je het zeker" hoorde op web bij de browser, en
-              die gooit het label weg dat zegt wát er gaat gebeuren — ook bij
-              het resetten van je toestelsleutels, de enige onomkeerbare
-              handeling in deze app. Zie lib/confirm.tsx. */}
-          <ConfirmProvider>
-          {/* `animation: fade_from_bottom` is de native evenknie van de
-              web-overgang: vervagen met een lichte stijging, dezelfde
-              320ms. Hij geldt als default voor élk scherm hieronder; de
-              modals zetten hem bewust om naar slide_from_bottom, want een
-              modaal blad hoort van onder te komen en niet te vervagen.
+    /* `animation: fade_from_bottom` is de native evenknie van de
+       web-overgang: vervagen met een lichte stijging, dezelfde 320ms. Hij
+       geldt als default voor élk scherm hieronder; de modals zetten hem om
+       naar slide_from_bottom, want een modaal blad hoort van onder te
+       komen en niet te vervagen.
 
-              `animationDuration` werkt alleen op iOS (Android houdt zijn
-              eigen systeemduur aan); zonder deze regel duurt hij daar 500ms.
+       `animationDuration` werkt alleen op iOS (Android houdt zijn eigen
+       systeemduur aan); zonder deze regel duurt hij daar 500ms.
 
-              `screenLayout` vult het gat voor browsers zonder View
-              Transitions — zie components/PageTransition.tsx. */}
-          <Stack
-            screenLayout={stackScreenLayout}
-            screenOptions={{
-              headerShown: false,
-              animation: "fade_from_bottom",
-              animationDuration: 320,
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(app)" />
-            <Stack.Screen
-              name="chat/[id]"
-              options={{
-                headerShown: false,
-                /**
-                 * Terugvegen.
-                 *
-                 * Dit vraagt om een schuivende overgang: een veeg pakt de
-                 * pagina vast en sleept hem opzij, en bij `fade_from_bottom`
-                 * — wat deze schermen erfden — is er niets om vast te pakken.
-                 * De ingebouwde gebarenherkenner staat daar dan ook uit.
-                 *
-                 * Randgebaar en niet over het hele scherm: in een gesprek
-                 * ligt op elke bubbel al een horizontale veeg om te
-                 * antwoorden, en twee herkenners die dezelfde beweging
-                 * claimen laten er één verliezen. Vanaf de rand is bovendien
-                 * wat iOS en Android allebei doen, dus het hoeft niet
-                 * geleerd te worden.
-                 */
-                animation: "slide_from_right",
-                gestureEnabled: true,
-              }}
-            />
-            <Stack.Screen
-              name="add/[username]"
-              options={{ headerShown: false, animation: "slide_from_bottom" }}
-            />
-            <Stack.Screen
-              name="user/[username]"
-              // Erft `fade_from_bottom` uit de screenOptions hierboven.
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="post/[id]"
-              options={{
-                headerShown: false,
-                /**
-                 * Terugvegen.
-                 *
-                 * Dit vraagt om een schuivende overgang: een veeg pakt de
-                 * pagina vast en sleept hem opzij, en bij `fade_from_bottom`
-                 * — wat deze schermen erfden — is er niets om vast te pakken.
-                 * De ingebouwde gebarenherkenner staat daar dan ook uit.
-                 *
-                 * Randgebaar en niet over het hele scherm: in een gesprek
-                 * ligt op elke bubbel al een horizontale veeg om te
-                 * antwoorden, en twee herkenners die dezelfde beweging
-                 * claimen laten er één verliezen. Vanaf de rand is bovendien
-                 * wat iOS en Android allebei doen, dus het hoeft niet
-                 * geleerd te worden.
-                 */
-                animation: "slide_from_right",
-                gestureEnabled: true,
-              }}
-            />
-            <Stack.Screen
-              name="profile-edit"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="post-compose"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="group-create"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="qr-code"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="group/[id]"
-              // Erft `fade_from_bottom` uit de screenOptions hierboven.
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="group-add/[id]"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="invite-email"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="set-password"
-              options={{ headerShown: false, animation: "fade" }}
-            />
-            <Stack.Screen
-              name="event-create"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="event/[id]"
-              // Erft `fade_from_bottom` uit de screenOptions hierboven.
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="e/[code]"
-              options={{ headerShown: false, animation: "fade" }}
-            />
-            <Stack.Screen
-              name="event-camera/[id]"
-              options={{
-                headerShown: false,
-                presentation: "fullScreenModal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="event-qr/[id]"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="event-link/[id]"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="device-link"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-            <Stack.Screen
-              name="device-receive"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-          </Stack>
-          {/* Blijft staan zolang de toestand duurt — anders dan de toast,
-              die een gebeurtenis meldt en weer weggaat. Zie het onderdeel. */}
-          <OfflineNotice />
-          </ConfirmProvider>
-          </ToastProvider>
-          {/* De balk bovenaan is in béide standen zwart, dus de
-              systeemklok erboven blijft licht. */}
-          <StatusBar style="light" />
-          <WebAnalytics />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-    </ErrorBoundary>
+       `screenLayout` vult het gat voor browsers zonder View Transitions —
+       zie components/PageTransition.tsx. */
+    <Stack
+      screenLayout={stackScreenLayout}
+      screenOptions={{
+        headerShown: false,
+        animation: "fade_from_bottom",
+        animationDuration: 320,
+      }}
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="e/[code]" options={{ animation: "fade" }} />
+      <Stack.Screen name="add/[username]" options={{ animation: "slide_from_bottom" }} />
+
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="set-password" options={{ animation: "fade" }} />
+        {/*
+          Terugvegen op een gesprek en een vondst.
+
+          Dit vraagt om een schuivende overgang: een veeg pakt de pagina vast
+          en sleept hem opzij, en bij `fade_from_bottom` is er niets om vast
+          te pakken. Randgebaar en niet over het hele scherm: in een gesprek
+          ligt op elke bubbel al een horizontale veeg om te antwoorden, en
+          twee herkenners die dezelfde beweging claimen laten er één
+          verliezen.
+        */}
+        <Stack.Screen name="chat/[id]" options={{ animation: "slide_from_right", gestureEnabled: true }} />
+        <Stack.Screen name="post/[id]" options={{ animation: "slide_from_right", gestureEnabled: true }} />
+        <Stack.Screen name="user/[username]" />
+        <Stack.Screen name="group/[id]" />
+        <Stack.Screen name="event/[id]" />
+        <Stack.Screen name="list/[id]" />
+        <Stack.Screen name="profile-edit" options={MODAL} />
+        <Stack.Screen name="post-compose" options={MODAL} />
+        <Stack.Screen name="poll-compose" options={MODAL} />
+        <Stack.Screen name="list-compose" options={MODAL} />
+        <Stack.Screen name="call-plan-compose" options={MODAL} />
+        <Stack.Screen name="group-create" options={MODAL} />
+        <Stack.Screen name="group-add/[id]" options={MODAL} />
+        <Stack.Screen name="invite-email" options={MODAL} />
+        <Stack.Screen name="event-create" options={MODAL} />
+        <Stack.Screen name="event-qr/[id]" options={MODAL} />
+        <Stack.Screen name="event-link/[id]" options={MODAL} />
+        <Stack.Screen name="qr-code" options={MODAL} />
+        <Stack.Screen name="device-link" options={MODAL} />
+        <Stack.Screen name="device-receive" options={MODAL} />
+        <Stack.Screen
+          name="event-camera/[id]"
+          options={{ headerShown: false, presentation: "fullScreenModal", animation: "slide_from_bottom" }}
+        />
+        <Stack.Screen
+          name="qr-scan"
+          options={{ headerShown: false, presentation: "fullScreenModal", animation: "slide_from_bottom" }}
+        />
+      </Stack.Protected>
+    </Stack>
   );
 }

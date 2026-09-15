@@ -16,7 +16,7 @@ import { PostCarousel } from "@/components/PostCarousel";
 import { SafeImage } from "@/components/SafeImage";
 import { SpreadBlock, StickySpread } from "@/components/StickySpread";
 import { Arrow, Meta, Rule, TagRow, useWide } from "@/components/Editorial";
-import { carbon, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, page, rule, space, type } from "@/lib/design/type";
+import { brand, carbon, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, page, rule, space, type } from "@/lib/design/type";
 import {
   formatDuration,
   formatReadingTime,
@@ -1032,6 +1032,7 @@ export function FindTile({
   variant,
   index,
   wide,
+  fresh,
   onPress,
 }: {
   post: PostWithAuthor;
@@ -1039,6 +1040,8 @@ export function FindTile({
   /** Volgnummer binnen de uitgave — puur redactioneel, geen ranking. */
   index: number;
   wide: boolean;
+  /** Nog niet gezien door de lezer — het raster zet er dan een stip op. */
+  fresh?: boolean;
   onPress?: () => void;
 }) {
   const p = partsOf(post);
@@ -1059,7 +1062,7 @@ export function FindTile({
     case "mosaic":
       return <MosaicTile p={p} post={post} onPress={onPress} />;
     case "grid":
-      return <GridTile p={p} post={post} onPress={onPress} />;
+      return <GridTile p={p} post={post} fresh={fresh} onPress={onPress} />;
     default:
       return <TextTile p={p} post={post} onPress={onPress} />;
   }
@@ -1522,10 +1525,12 @@ function QuoteBand({
 function GridTile({
   p,
   post,
+  fresh,
   onPress,
 }: {
   p: FindParts;
   post: PostWithAuthor;
+  fresh?: boolean;
   onPress?: () => void;
 }) {
   const heroStyle = useHeroTag(post.id);
@@ -1630,7 +1635,33 @@ function GridTile({
           {talk ? <TalkLine text={talk} /> : null}
         </View>
       ) : null}
+
+      {fresh ? <FreshDot /> : null}
     </Pressable>
+  );
+}
+
+/**
+ * Het stipje voor wat je nog niet zag. Rechtsboven, want linksboven staat
+ * op een tekstkaart de kicker. Dezelfde stip als op het bord (PostGrid),
+ * met een ring in crème zodat hij op elke foto landt.
+ */
+function FreshDot() {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: space.sm,
+        right: space.sm,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: brand,
+        borderWidth: 1.5,
+        borderColor: creamOnDark.DEFAULT,
+      }}
+    />
   );
 }
 

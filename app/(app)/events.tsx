@@ -1,7 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
 import {
-  Pressable,
   RefreshControl,
   Text,
   View,
@@ -10,12 +8,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventCard } from "@/components/EventCard";
 import { SectionMark } from "@/components/IndexGrid";
-import { PageHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import {
-  CONTROL_H,
-  creamOnDark,
   feed as feedColor,
   FEED_BORDER,
   feedType,
@@ -29,7 +24,6 @@ import { usePageTitle } from "@/lib/page-title";
 
 export default function EventsScreen() {
   usePageTitle("Events");
-  const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
   const qc = useQueryClient();
@@ -156,38 +150,9 @@ export default function EventsScreen() {
         }
       >
         <View style={{ paddingVertical: 28, paddingBottom: 80 }}>
-          {/* Was hier uitgeschreven terwijl `PageHead` er al was — dan
-              draagt het onderdeel niet alles en staat de opbouw alsnog op
-              twee plekken. De knop gaat mee als `action`. */}
-          <PageHead
-            kicker="Samen vastgelegd"
-            title="Events"
-            intro="Maak momenten samen. Foto's worden onthuld op het juiste moment."
-            wide={wide}
-            action={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Nieuw event maken"
-                onPress={() => router.push("/event-create")}
-                style={({ pressed }) => ({
-                  height: CONTROL_H,
-                  paddingHorizontal: space.lg,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: pressed ? feedColor.inkDim : feedColor.ink,
-                })}
-              >
-                <Text
-                  style={[
-                    feedType.label,
-                    { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
-                  ]}
-                >
-                  Nieuw event
-                </Text>
-              </Pressable>
-            }
-          />
+          {/* Geen kop en geen eigen knop: de tab zegt waar je bent, en de
+              plus in de balk maakt hier een event (zie AddCell in
+              components/AppChrome.tsx). */}
           {renderBody()}
         </View>
       </PageScroll>

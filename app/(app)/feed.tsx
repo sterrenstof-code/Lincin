@@ -460,7 +460,7 @@ export default function FeedScreen() {
                             columns={gridColumns}
                             myUserId={myUserId}
                             onChanged={invalidate}
-                            dimmed={seen}
+                            seen={seen}
                           />
                         </View>
                       </SectionFrame>
@@ -771,13 +771,13 @@ function FeedBody({
   columns,
   myUserId,
   onChanged,
-  dimmed,
+  seen,
 }: {
   slots: Slot[];
   columns: number;
   myUserId: string;
   onChanged: () => void;
-  dimmed?: Set<string> | null;
+  seen?: Set<string> | null;
 }) {
   return (
     <ChronoGrid
@@ -785,7 +785,7 @@ function FeedBody({
       columns={columns}
       myUserId={myUserId}
       onChanged={onChanged}
-      dimmed={dimmed}
+      seen={seen}
     />
   );
 }
@@ -795,13 +795,13 @@ function ChronoGrid({
   columns,
   myUserId,
   onChanged,
-  dimmed,
+  seen,
 }: {
   slots: Slot[];
   columns: number;
   myUserId: string;
   onChanged: () => void;
-  dimmed?: Set<string> | null;
+  seen?: Set<string> | null;
 }) {
   /**
    * Elke vondst krijgt de rastervorm: beeld op zijn eigen verhouding, tekst
@@ -821,7 +821,7 @@ function ChronoGrid({
           wide={columns > 1}
           myUserId={myUserId}
           onChanged={onChanged}
-          dimmed={dimmed}
+          seen={seen}
         />
       ))}
     </IndexGrid>
@@ -833,26 +833,29 @@ const CompactItem = memo(function CompactItem({
   wide,
   myUserId,
   onChanged,
-  dimmed,
+  seen,
 }: {
   slot: Slot;
   wide: boolean;
   myUserId: string;
   onChanged: () => void;
-  dimmed?: Set<string> | null;
+  seen?: Set<string> | null;
 }) {
   const router = useRouter();
   const { item, variant, index } = slot;
   // Gedimd = al bekeken. Geen aparte kleur maar minder dekking: de tegel
   // blijft leesbaar, hij vraagt alleen geen aandacht meer.
-  const isDim = !!dimmed?.has(item.id);
-  const dimStyle = isDim ? { opacity: 0.42 } : null;
+  // Nieuw voor jou? Dan een stip; gezien is gewoon gezien. Dimmen deed het
+  // omgekeerde: het maakte wat je al kende onleesbaar in plaats van wat je
+  // nog niet kende zichtbaar.
+  const fresh = item.type === "post" && !seen?.has(item.id);
 
   if (item.type === "post") {
     return (
-      <View style={[{ flex: 1 }, dimStyle]}>
+      <View style={{ flex: 1 }}>
       <PostTile
         post={item.data}
+        fresh={fresh}
         variant={variant}
         index={index}
         wide={wide}
@@ -884,7 +887,6 @@ const CompactItem = memo(function CompactItem({
         flex: 1,
         backgroundColor: feedColor.panel,
         padding: space.md,
-        ...(dimStyle ?? {}),
       }}
     >
       <View style={{ marginBottom: space.sm }}>
@@ -905,6 +907,7 @@ function PostTile({
   variant,
   index,
   wide,
+  fresh,
   myUserId,
   onChanged,
   onPress,
@@ -913,6 +916,7 @@ function PostTile({
   variant: TileVariant;
   index: number;
   wide: boolean;
+  fresh?: boolean;
   myUserId: string;
   onChanged: () => void;
   onPress: () => void;
@@ -933,6 +937,7 @@ function PostTile({
           variant={variant}
           index={index}
           wide={wide}
+          fresh={fresh}
           onPress={onPress}
         />
       </Pressable>

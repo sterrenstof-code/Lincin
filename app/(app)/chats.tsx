@@ -18,7 +18,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHead, RubricHead } from "@/components/PageHead";
+import { RubricHead } from "@/components/PageHead";
 import { QueryError } from "@/components/QueryError";
 import { SkeletonListCard } from "@/components/Skeleton";
 import { useToast } from "@/lib/toast";
@@ -231,14 +231,9 @@ export default function ChatsScreen() {
         contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
       >
         <View>
-          <PageHead
-            kicker="Onder vier ogen"
-            title="Chats"
-            intro="Volledig end-to-end versleuteld — ook wij lezen niet mee."
-            wide={wide}
-            gap={space.xxl}
-          />
-
+          {/* Geen kop. De tab zegt al waar je bent, en de feed begint ook
+              meteen; een titel van drie regels was een derde van het
+              eerste scherm. */}
           {/* Filterveld en de knop ernaast als één rij van 44 hoog
               (CONTROL_H). Het veld had een eigen vulling; op een blad
               waar verder niets gevuld is leest dat als een doos in
@@ -508,7 +503,7 @@ function ChatRow({
         // De scheidingsstip is `·` — achttien andere plekken in de app doen
         // dat, de zijkolom van dit exacte gesprek incluis, en deze twee
         // regels stonden als enige op de dikke `•`.
-        ? "Direct · E2E"
+        ? "Nog geen berichten"
         : `Groep · ${plural(chat.members.length, "lid", "leden")}`;
   const lastAt = chat.last_message_at;
   const relTime = lastAt ? relativeTime(lastAt) : null;

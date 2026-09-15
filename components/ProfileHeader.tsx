@@ -16,6 +16,7 @@ import {
   flameDeep,
   gutter as gutterFor,
   rule,
+  sheetWidth,
   space,
 } from "@/lib/design/type";
 
@@ -116,6 +117,10 @@ export function ProfileHeader({
           niet, want tekst heeft geen eigen vlak. Alles wat gelezen moet
           worden staat onder de plaat, op de inkt van de pagina.
       */}
+      {/* De plaat loopt tot de vensterrand; wat gelezen wordt houdt zich
+          aan de bladbreedte, net als alles eronder op de pagina. Anders
+          staat de naam tegen de rand terwijl de rubrieken gecentreerd staan. */}
+      <View style={{ width: "100%", maxWidth: sheetWidth(wide), alignSelf: "center" }}>
       <View style={{ paddingHorizontal: pad, marginTop: hasHero ? -36 : space.xl }}>
         <Pressable
           accessibilityRole={mine ? "button" : undefined}
@@ -215,6 +220,7 @@ export function ProfileHeader({
         ) : null}
 
         {links.length > 0 ? <ProfileLinkList links={links} wide={wide} /> : null}
+      </View>
       </View>
     </View>
   );
