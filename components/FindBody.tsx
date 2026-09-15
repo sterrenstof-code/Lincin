@@ -613,6 +613,31 @@ function partsOf(post: PostWithAuthor): FindParts {
  * tellen niet mee: "Zonnengloed" en "zonnengloed " zijn één regel, geen
  * twee.
  */
+/** Hoeveel regels de plaat van een tekst laat zien voor "Lees verder". */
+const HERO_BODY_LINES = 6;
+const HERO_BODY_CHARS = 520;
+
+/**
+ * De eerste alinea, ingekort tot een handvol regels.
+ *
+ * Een alinea eindigt bij de eerste lege regel; een opsomming zonder lege
+ * regels telt als één alinea en wordt dus op regels afgekapt. Eén lange
+ * lap zonder regeleinden kapt op tekens, op een woordgrens.
+ */
+function previewOf(body: string): { text: string; truncated: boolean } {
+  const full = body.trim();
+  if (!full) return { text: "", truncated: false };
+  const lines = full.split("\n");
+  let end = lines.findIndex((line, i) => i > 0 && line.trim() === "");
+  if (end === -1) end = lines.length;
+  end = Math.min(end, HERO_BODY_LINES);
+  let text = lines.slice(0, end).join("\n").trim();
+  if (text.length > HERO_BODY_CHARS) {
+    text = `${text.slice(0, HERO_BODY_CHARS).replace(/\s+\S*$/, "")}…`;
+  }
+  return { text, truncated: text.length < full.length };
+}
+
 function isSameText(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
@@ -720,6 +745,7 @@ export function FindHero({
   footer?: ReactNode;
 }) {
   const p = partsOf(post);
+  const preview = previewOf(p.body);
 
   const album = post.album_urls ?? [];
   const heroTagForPost = useHeroTag(post.id);
@@ -808,7 +834,7 @@ export function FindHero({
               { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: space.sm },
             ]}
           >
-            {`VONDST · ${p.kicker.toUpperCase()}`}
+            {p.kicker.toUpperCase()}
           </Text>
 
           {p.title ? (
@@ -899,14 +925,31 @@ export function FindHero({
             {/* Door `RichText` en niet als kale tekst: anders staan de
                 streepjes en sterretjes van een opsomming letterlijk op het
                 scherm. Elders in de app werd de opmaak al gelezen; deze plek
-                was over het hoofd gezien. */}
+                was over het hoofd gezien.
+
+                Alleen de eerste alinea, hoogstens zes regels. De plaat is
+                een uitnodiging, geen leesomgeving: een lijst van veertig
+                punten duwde het hele raster twee schermen naar beneden. De
+                rest staat één tik verder. */}
             <RichText
-              text={p.body}
+              text={preview.text}
               style={feedType.pullSmall}
               color={feed.text}
               dimColor={feed.textDim}
               ruleColor={rule.soft}
             />
+            {preview.truncated ? (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Lees de hele vondst"
+                onPress={onPress}
+                style={{ marginTop: space.md, alignSelf: "flex-start" }}
+              >
+                <Text style={[feedType.label, { color: flameDeep, fontWeight: "700" }]}>
+                  Lees verder →
+                </Text>
+              </Pressable>
+            ) : null}
           </SpreadBlock>
         ) : null}
 
@@ -1021,13 +1064,6 @@ export function FindTile({
       return <TextTile p={p} post={post} onPress={onPress} />;
   }
 }
-
-/**
- * De twee maten die een beeldtegel kan hebben. Zie GridTile voor waarom er
- * maar twee zijn.
- */
-const TILE_PORTRAIT = 4 / 5;
-const TILE_LANDSCAPE = 3 / 2;
 
 /** Binnenwerk van een tegel in de vierkolomsrij. */
 const TILE_PAD = 16;
@@ -1493,86 +1529,29 @@ function GridTile({
   onPress?: () => void;
 }) {
   const heroStyle = useHeroTag(post.id);
-  /**
-   * Staand of liggend — meer maten zijn er niet.
-   *
-   * Elke tegel op 4:3 zetten maakte van het metselwerk een tabel: alle
-   * rijen even hoog, elke staande foto bijgesneden tot liggend. Elke foto
-   * zijn eígen verhouding geven is het andere uiterste: dan heeft geen
-   * enkele tegel dezelfde maat als een andere en valt het raster uit
-   * elkaar. Twee maten is het midden — hoog genoeg verschil om ritme te
-   * geven, weinig genoeg om een raster te blijven.
-   */
-  const [ratio, setRatio] = useState<number | undefined>(undefined);
-  const shape = ratio === undefined ? TILE_LANDSCAPE : ratio < 1 ? TILE_PORTRAIT : TILE_LANDSCAPE;
-
-  /**
-   * Heeft deze kaart een kop? Zo niet — een foto zonder onderschrift — dan
-   * gaan de twee tekstbanden in elkaar op; zie hieronder.
-   */
   const hasHead = !!p.title || (!p.image && !!p.body);
+  const talk = talkLine(post);
 
   return (
     // Geen eigen kader: in het raster staan de tegels tegen elkaar en is de
     // kier ertussen de lijn (het raster heeft inkt als ondergrond). Twee
     // kaders tegen elkaar aan geven een dubbele lijn.
+    //
+    // Eén hoogte voor de hele rij. De cel rekt mee met de hoogste buur
+    // (`flex: 1` in IndexGrid) en heeft een ondergrens, zodat een rij met
+    // alleen korte kaarten niet ineens half zo hoog is als de rij erboven.
+    // Het beeld vult wat er boven de tekstbanden overblijft; een tekst
+    // begint bovenaan en krijgt de regels die er zijn.
     <Pressable
       onPress={onPress}
       style={{
         backgroundColor: feed.post,
-        /**
-         * De tegel vult zijn cel.
-         *
-         * Hij was zo hoog als zijn inhoud, en in een rooster is dat een
-         * probleem dat je pas ziet als er een lange buur naast staat: de
-         * rij is zo hoog als de hoogste cel, dus onder een liggende foto
-         * viel een half scherm leeg lavendel. En omdat elke kop meteen
-         * onder zijn eigen beeld hing, stond geen enkele kop op dezelfde
-         * hoogte als die ernaast — drie kaarten, drie hoogtes, geen lijn
-         * om langs te lezen.
-         *
-         * Nu vult hij de cel en zakt de tekst naar de onderrand (zie de
-         * `marginTop: "auto"` verderop). Daarmee ligt élke kop in een rij
-         * op één lijn, en dát is wat een kaart een kaart maakt: hij
-         * eindigt ergens. Dezelfde redenering als §4 — de opbouw komt uit
-         * lijn en inspringing, en een gedeelde grondlijn is de sterkste
-         * lijn die er is.
-         */
         flex: 1,
-        /**
-         * Geen afsluitlijn meer.
-         *
-         * Die stond hier omdat deze tegels in metselwerk ónder elkaar
-         * hingen met alleen witruimte ertussen: zonder lijn liep de laatste
-         * regel van de ene over in de kicker van de volgende. Sinds het
-         * overzicht een rooster is (`IndexGrid`) trekt de cel eromheen die
-         * lijn zelf, en twee lijnen tegen elkaar aan lezen als een dubbele
-         * rand — precies wat DESIGN.md §4 met "de binnenlijn moet de
-         * zwakste zijn" bedoelt.
-         */
+        minHeight: GRID_TILE_MIN_H,
       }}
     >
       {p.image ? (
-        <View
-          style={{
-            width: "100%",
-            aspectRatio: shape,
-            /**
-             * De verhouding is de ondergrens, niet de maat.
-             *
-             * Blijft er in de cel hoogte over — omdat de buur langer is —
-             * dan neemt het beeld die op in plaats van hem als gat onder
-             * de kaart te laten staan. `contentFit="cover"` snijdt daarbij
-             * hooguit een randje weg, en dat is minder erg dan een leeg
-             * vlak van driehonderd punten.
-             *
-             * De twee vormen uit `shape` blijven bestaan: die bepalen nog
-             * steeds waar een tegel begínt, en dus het ritme van de rij.
-             */
-            flexGrow: 1,
-            ...heroStyle,
-          }}
-        >
+        <View style={{ width: "100%", flex: 1, minHeight: 150, ...heroStyle }}>
           <SafeImage
             uri={p.image}
             cacheKey={p.imageKey}
@@ -1581,35 +1560,20 @@ function GridTile({
             transition={150}
             fallbackBg="bg-feed-fill"
             fallbackColor={feed.textDim}
-            onLoad={(e) => {
-              const { width, height } = (e as any).source ?? {};
-              if (width && height) setRatio(width / height);
-            }}
           />
         </View>
       ) : null}
 
-      {/* Drie banden in plaats van één blok tekst.
-          Het kader om de kaart is lichter geworden (zie `rule.soft` in de
-          rubriek eromheen), en dan valt de kaart uit elkaar als er
-          binnenin niets is dat hem bij elkaar houdt. De lijnen doen dat
-          werk nu: beeld, kop, herkomst — je ziet de opbouw voordat je
-          leest. Ze staan op `feed.postRule` en niet op de kaderlijn: een
-          lijn bínnen een vlak hoort zachter te zijn dan de lijn eromheen,
-          anders leest de kaart als drie losse kaarten. */}
-      {/* Heeft de kaart een kop, dan staan er twee banden onder het beeld:
-          de kop, en daaronder van wie hij is. Heeft hij er géén — een foto
-          zonder onderschrift — dan zou dat een band met alleen "Beeld"
-          opleveren en daarboven een lijn naar niets. Dan is het één band. */}
+      {/* Banden in plaats van één blok tekst: beeld, kop, herkomst — je
+          ziet de opbouw voordat je leest. De lijnen staan op `feed.postRule`
+          en niet op de kaderlijn: een lijn bínnen een vlak hoort zachter te
+          zijn dan de lijn eromheen. */}
       <View
         style={{
           padding: space.lg,
-          // Naar de onderrand. Zie de uitleg bij `flex: 1` hierboven: dit
-          // is wat de koppen van een rij op één lijn zet.
-          marginTop: "auto",
           ...(p.image
             ? { borderTopWidth: FEED_BORDER, borderTopColor: feed.postRule }
-            : null),
+            : { flex: 1 }),
         }}
       >
         <FeedKicker text={p.kicker} kind={post.kind} />
@@ -1629,7 +1593,7 @@ function GridTile({
                   feedType.body,
                   { fontSize: 13, lineHeight: 19, color: feed.textDim, marginTop: space.sm },
                 ]}
-                numberOfLines={6}
+                numberOfLines={8}
               >
                 {p.body}
               </Text>
@@ -1643,16 +1607,16 @@ function GridTile({
             {`${p.sharer} · ${p.time}`}
           </Text>
         )}
+        {!hasHead && talk ? <TalkLine text={talk} /> : null}
       </View>
 
       {hasHead ? (
-        // Een stap naar binnen. De kaart heeft geen eigen vlak meer, dus de
-        // opbouw moet uit lijn en inspringing komen (DESIGN.md §4): de kop
-        // staat op de marge, wie hem deelde staat eronder én inwaarts, en
-        // dan zie je aan de vorm al dat het tweede bij het eerste hoort in
-        // plaats van ernaast.
+        // Een stap naar binnen: de kop staat op de marge, wie hem deelde
+        // staat eronder én inwaarts (DESIGN.md §4). Onderaan de kaart, wat
+        // er ook boven staat.
         <View
           style={{
+            marginTop: "auto",
             paddingLeft: space.xxxl,
             paddingRight: space.lg,
             paddingVertical: space.md,
@@ -1663,21 +1627,44 @@ function GridTile({
           <Text style={[feedType.label, { color: feed.textDim }]} numberOfLines={1}>
             {`${p.sharer} · ${p.time}`}
           </Text>
+          {talk ? <TalkLine text={talk} /> : null}
         </View>
       ) : null}
     </Pressable>
   );
 }
 
+/** Ondergrens van een rasterkaart; zie GridTile. */
+const GRID_TILE_MIN_H = 280;
+
 /**
- * Een cel in een mozaïek: beeld tot de rand, tekst eroverheen.
- *
- * Anders dan de andere tegels heeft deze géén eigen binnenmarge — het
- * mozaïek dankt zijn ritme aan beelden die tegen elkaar aan liggen, met
- * alleen de kaderlijn ertussen. De hoogte komt van de cel waar hij in zit,
- * niet van de tegel zelf, zodat rijen van verschillende hoogte kunnen
- * bestaan zonder dat de inhoud gaat zwemmen.
+ * Waar het gesprek zit — "2 reacties · 3 emoji · 1× omhoog". De plaat liet
+ * dat al zien, de kaarten niet, en dan is er op een kaart geen reden om te
+ * tikken behalve nieuwsgierigheid. Leeg als er niets gebeurd is: "0 reacties"
+ * onder elke verse vondst is ruis.
  */
+function talkLine(post: PostWithAuthor): string | null {
+  const parts = [
+    post.comment_count > 0
+      ? `${post.comment_count} ${post.comment_count === 1 ? "reactie" : "reacties"}`
+      : null,
+    post.reaction_count > 0 ? `${post.reaction_count} emoji` : null,
+    post.boost_count > 0 ? `${post.boost_count}× omhoog` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function TalkLine({ text }: { text: string }) {
+  return (
+    <Text
+      style={[feedType.label, { color: flameDeep, fontWeight: "700", marginTop: space.xs }]}
+      numberOfLines={1}
+    >
+      {text}
+    </Text>
+  );
+}
+
 function MosaicTile({
   p,
   post,

@@ -20,7 +20,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { ModalShell } from "@/components/ModalShell";
-import { ActivityCard } from "@/components/ActivityCard";
 import { CallPlanCard } from "@/components/CallPlanCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { IndexGrid } from "@/components/IndexGrid";
@@ -226,7 +225,9 @@ export default function FeedScreen() {
    * niets gebeurd, dan is er niets uit te lichten en begint het raster.
    */
   const { featured, slots } = useMemo(() => {
-    let items = feed.data ?? [];
+    // Activiteit ("X plaatste een foto") staat in "Voor jou", niet in het
+    // raster: naast de foto zelf zegt zo'n kaart hetzelfde nog een keer.
+    let items = (feed.data ?? []).filter((i) => i.type !== "activity");
     if (activeTag) {
       items = items.filter(
         (i) =>
@@ -368,19 +369,6 @@ export default function FeedScreen() {
                         staat de uitgave zelf en niet het bedieningspaneel
                         ervoor. */}
 
-                    {/* De tagstrook blíjft staan als er niets is, want een
-                        lege lijst is hier meestal het gevolg van de tag die
-                        aanstaat — en dan is dit de enige knop waarmee je hem
-                        weer uitzet. Hem verbergen zou je opsluiten in je
-                        eigen filter. */}
-                    {tags.length > 0 ? (
-                      <TagStrip
-                        tags={tags}
-                        active={activeTag}
-                        onPick={(t) => setActiveTag(t === activeTag ? null : t)}
-                      />
-                    ) : null}
-
                     {/* Wat er over jóu gebeurd is, vóór de uitgave zelf.
                         Zie components/ActivityBand.tsx voor waarom dit hier
                         staat en niet alleen op /notifications. */}
@@ -448,6 +436,22 @@ export default function FeedScreen() {
                         voluit. Dit raster is voor het overzicht: wat is er
                         gedeeld, en hoe ziet het eruit.
                     */}
+                    {/* Vlak boven het raster, want dáár werkt hij op — niet
+                        bovenaan de pagina boven "Voor jou" en de plaat.
+
+                        De tagstrook blíjft staan als er niets is, want een
+                        lege lijst is hier meestal het gevolg van de tag die
+                        aanstaat — en dan is dit de enige knop waarmee je hem
+                        weer uitzet. Hem verbergen zou je opsluiten in je
+                        eigen filter. */}
+                    {tags.length > 0 ? (
+                      <TagStrip
+                        tags={tags}
+                        active={activeTag}
+                        onPick={(t) => setActiveTag(t === activeTag ? null : t)}
+                      />
+                    ) : null}
+
                     {slots.length > 0 ? (
                       <SectionFrame index={gridIndex} label="Nieuwste eerst">
                         <View style={{ padding: space.sm }}>
@@ -866,8 +870,7 @@ const CompactItem = memo(function CompactItem({
     item.type === "poll" ? "Poll"
     : item.type === "call_plan" ? "Call"
     : item.type === "shared_list" ? "Lijst"
-    : item.type === "memory" ? "Op deze dag"
-    : "Activiteit";
+    : "Op deze dag";
 
   // Deze kaarten draaien nog op het warme shell/paper-palet en zijn nog niet
   // herstijld — ze staan daarom in een licht paneel met een etiket erboven,
@@ -878,6 +881,7 @@ const CompactItem = memo(function CompactItem({
   return (
     <View
       style={{
+        flex: 1,
         backgroundColor: feedColor.panel,
         padding: space.md,
         ...(dimStyle ?? {}),
@@ -891,7 +895,6 @@ const CompactItem = memo(function CompactItem({
       {item.type === "poll" && <PollCard poll={item.data} onDeleted={onChanged} />}
       {item.type === "call_plan" && <CallPlanCard plan={item.data} />}
       {item.type === "shared_list" && <SharedListCard list={item.data} />}
-      {item.type === "activity" && <ActivityCard event={item.data} />}
       {item.type === "memory" && <MemoryCard post={item.data} />}
     </View>
   );
