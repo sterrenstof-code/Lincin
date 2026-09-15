@@ -2,7 +2,7 @@
 
 Expo-app (iOS, Android, web) voor Lincin. Backend: Supabase.
 
-Voor de eerste opzet zie [`../SETUP.md`](../SETUP.md).
+Voor de eerste opzet zie [`docs/SETUP.md`](docs/SETUP.md); de overige gidsen (deploy, push, testen) staan ook in `docs/`.
 
 ## Scripts
 

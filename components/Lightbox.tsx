@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -75,6 +75,13 @@ export function Lightbox({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, index, posts.length, onIndexChange]);
+
+  // De speler bestaat alleen voor een video; bij een beeld is de bron leeg.
+  // Doorbladeren maakt hem opnieuw aan, want de hook sleutelt op de bron.
+  const player = useVideoPlayer(post?.video_url ?? null, (p) => {
+    p.loop = true;
+    p.play();
+  });
 
   if (!open || !post) return null;
 
@@ -152,13 +159,12 @@ export function Lightbox({
             />
             <View style={{ flex: 1, height: "100%" }} pointerEvents="box-none">
               {post.video_url ? (
-                <Video
-                  source={{ uri: post.video_url }}
+                <VideoView
+                  player={player}
                   style={{ width: "100%", height: "100%" }}
-                  resizeMode={ResizeMode.CONTAIN}
-                  useNativeControls
-                  isLooping
-                  shouldPlay
+                  contentFit="contain"
+                  nativeControls
+                  allowsFullscreen
                 />
               ) : cover ? (
                 <SafeImage

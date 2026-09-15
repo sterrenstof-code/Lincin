@@ -15,7 +15,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "lincin",
-  userInterfaceStyle: "dark",
+  // De app volgt het toestel; wie liever kiest, doet dat in de app zelf
+  // (lib/design/theme.ts). Op Android werkt dit via expo-system-ui.
+  userInterfaceStyle: "automatic",
   newArchEnabled: true,
 
   ios: {
@@ -49,7 +51,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         "UIInterfaceOrientationLandscapeLeft",
         "UIInterfaceOrientationLandscapeRight",
       ],
-      ITSAppUsesNonExemptEncryption: false,
+      /**
+       * Exportregels (VS, categorie 5 deel 2).
+       *
+       * `false` betekent: alleen vrijgestelde versleuteling (HTTPS, wat het
+       * OS zelf doet). Dat klopt hier niet — de app versleutelt berichten
+       * en bestanden zelf met XChaCha20-Poly1305 uit @stablelib, buiten
+       * het OS om. Standaardalgoritmen, geen eigen vinding, dus het valt
+       * onder de mass-market-vrijstelling 740.17(b)(1): geen CCATS nodig,
+       * wel een jaarlijkse zelfclassificatie bij BIS.
+       *
+       * Eén keer in App Store Connect (App Encryption Documentation)
+       * invullen: gebruikt standaardalgoritmen, geen eigen algoritmen,
+       * mass market. Apple geeft dan een code terug; zet die hier als
+       * `ITSEncryptionExportComplianceCode` zodat elke build hem meeneemt
+       * en de vraag niet meer terugkomt.
+       */
+      ITSAppUsesNonExemptEncryption: true,
       UIViewControllerBasedStatusBarAppearance: false,
     },
   },

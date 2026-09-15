@@ -2,7 +2,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { Audio, Video, ResizeMode } from "expo-av";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+} from "expo-audio";
+import { useVideoPlayer, VideoView } from "expo-video";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -257,9 +265,12 @@ export default function ChatDetail() {
   const [batchProgress, setBatchProgress] = useState<
     { done: number; total: number } | null
   >(null);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0); // seconds
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  // Loslaten vuurt ook als er nooit een opname begon (geweigerde
+  // microfoon); de ref houdt bij of er echt iets te stoppen valt.
+  const recordingRef = useRef(false);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const listRef = useRef<FlatList<DecryptedMessage>>(null);
   const typingSendRef = useRef<((name: string) => void) | null>(null);
@@ -902,14 +913,13 @@ export default function ChatDetail() {
 
   async function startRecording() {
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
+      const { granted } = await requestRecordingPermissionsAsync();
       if (!granted) return;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording: rec } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      recordingRef.current = rec;
-      setRecording(rec);
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recordingRef.current = true;
+      setRecording(true);
       setRecordingDuration(0);
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -925,30 +935,24 @@ export default function ChatDetail() {
   }
 
   async function stopRecording(send: boolean) {
-    const rec = recordingRef.current;
-    if (!rec) return;
+    if (!recordingRef.current) return;
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
-    recordingRef.current = null;
-    setRecording(null);
+    recordingRef.current = false;
+    setRecording(false);
     setRecordingDuration(0);
     try {
-      await rec.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
       if (!send) return;
-      const uri = rec.getURI();
+      const uri = recorder.uri;
       if (!uri) return;
-      // Determine MIME type by platform
-      const mimeType =
-        Platform.OS === "ios" ? "audio/m4a" :
-        Platform.OS === "android" ? "audio/3gpp" :
-        "audio/webm";
-      const ext =
-        Platform.OS === "ios" ? "m4a" :
-        Platform.OS === "android" ? "3gpp" :
-        "webm";
+      // HIGH_QUALITY schrijft op iOS én Android AAC in een .m4a; alleen de
+      // browser maakt er webm van.
+      const mimeType = Platform.OS === "web" ? "audio/webm" : "audio/m4a";
+      const ext = Platform.OS === "web" ? "webm" : "m4a";
       await onSendAttachment({
         uri,
         mimeType,
@@ -2953,7 +2957,7 @@ function fmtMs(ms: number): string {
 
 /**
  * Inline voice message player: play/pause knop + voortgangsbalk + tijd.
- * Gebruikt expo-av Audio.Sound voor native én web.
+ * expo-audio voor native én web; de hook ruimt de speler zelf op.
  */
 function VoiceMessageBubble({
   uri,
@@ -2964,51 +2968,29 @@ function VoiceMessageBubble({
   loading: boolean;
   isMine: boolean;
 }) {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  // Ruim het sound object op bij unmount
-  useEffect(() => {
-    return () => {
-      sound?.unloadAsync().catch(() => {});
-    };
-  }, [sound]);
+  // Zolang het bestand nog ontsleuteld wordt is de bron leeg; zodra de uri
+  // er is maakt de hook een nieuwe speler (hij sleutelt op de bron).
+  const player = useAudioPlayer(uri ? { uri } : null);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = status.playing;
+  // expo-audio rekent in seconden; de opmaak hieronder in milliseconden.
+  const position = status.currentTime * 1000;
+  const duration = Number.isFinite(status.duration) && status.duration > 0 ? status.duration * 1000 : 0;
 
   async function togglePlay() {
     if (!uri) return;
     try {
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
-      if (!sound) {
-        const { sound: s } = await Audio.Sound.createAsync(
-          { uri },
-          { shouldPlay: true },
-          (status) => {
-            if (!status.isLoaded) return;
-            setIsPlaying(status.isPlaying);
-            setPosition(status.positionMillis ?? 0);
-            if (status.durationMillis) setDuration(status.durationMillis);
-            if (status.didJustFinish) {
-              setIsPlaying(false);
-              setPosition(0);
-            }
-          }
-        );
-        setSound(s);
-      } else {
-        const status = await sound.getStatusAsync();
-        if (!status.isLoaded) return;
-        if (status.isPlaying) {
-          await sound.pauseAsync();
-        } else {
-          // Herstart als klaar
-          if (status.didJustFinish || status.positionMillis >= (status.durationMillis ?? 1) - 50) {
-            await sound.setPositionAsync(0);
-          }
-          await sound.playAsync();
-        }
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      if (status.playing) {
+        player.pause();
+        return;
       }
+      // Herstart als klaar
+      const atEnd =
+        status.didJustFinish ||
+        (status.duration > 0 && status.currentTime >= status.duration - 0.05);
+      if (atEnd) await player.seekTo(0);
+      player.play();
     } catch (e: any) {
       console.warn("VoiceMessageBubble togglePlay", e?.message ?? e);
     }
@@ -3065,11 +3047,16 @@ function VoiceMessageBubble({
 
 /**
  * Inline video player: toont een thumbnail-achtige preview met play-knop.
- * Tap opent een fullscreen modal met expo-av Video (native + web).
+ * Tap opent een fullscreen modal met expo-video (native + web).
  */
 function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolean }) {
   const [open, setOpen] = useState(false);
   const { width: screenW, height: screenH } = useWindowDimensions();
+  // Het stilstaande eerste beeld als poster. Afspelen gebeurt in het
+  // modaal, met een eigen speler die pas bestaat zodra het open is.
+  const poster = useVideoPlayer(uri, (p) => {
+    p.muted = true;
+  });
 
   return (
     <>
@@ -3087,15 +3074,12 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
             <ActivityIndicator color={feed.inkDim} />
           ) : uri ? (
             <>
-              {/* Probeer een stills-preview te tonen als poster */}
-              <Video
-                source={{ uri }}
+              {/* Het eerste beeld als poster */}
+              <VideoView
+                player={poster}
                 style={{ width: 240, height: 240, position: "absolute" }}
-                resizeMode={ResizeMode.COVER}
-                isMuted
-                shouldPlay={false}
-                useNativeControls={false}
-                isLooping={false}
+                contentFit="cover"
+                nativeControls={false}
               />
               <View
                 style={{
@@ -3149,19 +3133,28 @@ function VideoWithPlayer({ uri, loading }: { uri: string | null; loading: boolea
           </SafeAreaView>
 
           {/* Video player */}
-          {uri ? (
-            <Video
-              source={{ uri }}
-              style={{ width: screenW, height: screenH }}
-              resizeMode={ResizeMode.CONTAIN}
-              useNativeControls
-              shouldPlay
-              isLooping={false}
-            />
+          {uri && open ? (
+            <FullscreenVideo uri={uri} width={screenW} height={screenH} />
           ) : null}
         </View>
       </Modal>
     </>
+  );
+}
+
+/** De speler in het modaal: start meteen, en verdwijnt mét het modaal. */
+function FullscreenVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ width, height }}
+      contentFit="contain"
+      nativeControls
+      allowsFullscreen
+    />
   );
 }
 

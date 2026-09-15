@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -939,13 +939,7 @@ function ContributionTile({
       >
         {c.media_type === "video" && c.image_url ? (
           <>
-            <Video
-              source={{ uri: c.image_url }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode={ResizeMode.COVER}
-              useNativeControls
-              isMuted
-            />
+            <VideoTile uri={c.image_url} />
             <View
               pointerEvents="none"
               className="absolute top-2 left-2 bg-shell/70 px-2 py-0.5 flex-row items-center"
@@ -1060,5 +1054,20 @@ function ActionCell({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/** Een video op een tegel: stil, met de systeembediening om hem te starten. */
+function VideoTile({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.muted = true;
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ width: "100%", height: "100%" }}
+      contentFit="cover"
+      nativeControls
+    />
   );
 }
