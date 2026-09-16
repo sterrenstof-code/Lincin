@@ -157,8 +157,8 @@ function buildLincinType() {
   /** Titel van een event. */
   eventTitle: { ...serif(), fontSize: 24, lineHeight: 26, letterSpacing: -0.24 } as TextStyle,
   /** De paginatitel: "Wat je vrienden maken". */
-  pageTitle: { ...serif(), fontSize: 30, lineHeight: 31, letterSpacing: -0.3 } as TextStyle,
-  pageTitleItalic: { ...serif(true), fontSize: 30, lineHeight: 31, letterSpacing: -0.3 } as TextStyle,
+  pageTitle: { ...serif(), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
+  pageTitleItalic: { ...serif(true), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
   pageTitleLarge: { ...serif(), fontSize: 32, lineHeight: 33, letterSpacing: -0.32 } as TextStyle,
   /** Je eigen naam op "Jij". */
   ownName: { ...serif(), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,

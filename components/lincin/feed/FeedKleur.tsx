@@ -348,10 +348,10 @@ function Band({
         {fresh > 0 ? <Chip label={`${fresh} ${t.new}`} tone="red" /> : null}
       </Pressable>
       <View style={{ alignItems: "flex-end", opacity: 0.8 }}>
-        <Mono variant="micro" color={bandInk} style={{ textTransform: "none" }}>
+        <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
           {n} {n === 1 ? t.post1 : t.posts}
         </Mono>
-        <Mono variant="micro" color={bandInk} style={{ textTransform: "none" }}>
+        <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
           {timeLabel(g.latest, t, lang)}
         </Mono>
       </View>

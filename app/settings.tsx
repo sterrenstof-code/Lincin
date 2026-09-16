@@ -59,6 +59,7 @@ export default function SettingsScreen() {
   return (
     <LincinScreen
       tab="you"
+      counter={t.settings}
       header={
         <TopRow
           left={<BackChip label={`← ${t.you}`} onPress={() => safeBack(router, "/profile")} />}

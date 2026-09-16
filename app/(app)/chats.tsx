@@ -4,14 +4,14 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Box, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
+import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme, type Hue } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { displayName, timeLabel } from "@/lib/lincin/model";
+import { displayName, shortAgo } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -79,7 +79,7 @@ export default function ChatsScreen() {
     const pv = previews[c.id];
     let preview = "Nog geen berichten";
     if (pv) preview = pv.fromMe ? `${t.me}: ${pv.text}` : isGroup && pv.sender ? `${pv.sender}: ${pv.text}` : pv.text;
-    const time = c.last_message_at ? timeLabel(c.last_message_at, t, lang) : "";
+    const time = c.last_message_at ? shortAgo(c.last_message_at, t, lang) : "";
     return (
       <Row
         key={c.id}
@@ -104,7 +104,12 @@ export default function ChatsScreen() {
           {unread} {t.unread}
         </Mono>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
+      {/* Eén kader dat tot de onderrand loopt (prototype §04: het scrollvlak
+          zelf draagt het kader, zonder onderlijn); de rijen erin. */}
+      <ScrollView
+        style={{ flex: 1, marginTop: 14, marginHorizontal: GUTTER, borderWidth: BORDER, borderBottomWidth: 0, borderColor: line(), backgroundColor: color("paper") }}
+        showsVerticalScrollIndicator={false}
+      >
         {chats.isLoading ? (
           <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
             {t.loading}
@@ -114,9 +119,9 @@ export default function ChatsScreen() {
             {t.failed}
           </Mono>
         ) : list.length + withoutChat.length === 0 ? (
-          <DashedCard onPress={() => router.push("/friends")}>{t.noFriendsYet} →</DashedCard>
+          <DashedCard style={{ margin: 12 }} onPress={() => router.push("/friends")}>{t.noFriendsYet} →</DashedCard>
         ) : (
-          <Box>
+          <>
             {list.map(rowFor)}
             {withoutChat.map((f) => {
               const fc = friendColor(hueFor(f.other.id), scheme);
@@ -135,9 +140,9 @@ export default function ChatsScreen() {
                 />
               );
             })}
-          </Box>
+          </>
         )}
-        <DashedCard onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
+        <DashedCard style={{ margin: 12 }} onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
       </ScrollView>
     </LincinScreen>
   );
@@ -205,9 +210,9 @@ function Row({
             </Mono>
           ) : null}
         </View>
-        <Mono variant="micro" tone="dim" numberOfLines={1} style={{ textTransform: "none", fontSize: 12, letterSpacing: 0 }}>
+        <Body small tone="dim" numberOfLines={1} style={{ lineHeight: 17 }}>
           {preview}
-        </Mono>
+        </Body>
       </View>
       {unread > 0 ? (
         <View style={{ alignSelf: "center", marginRight: 12, minWidth: 22, height: 22, paddingHorizontal: 6, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>

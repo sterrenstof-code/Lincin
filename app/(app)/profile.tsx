@@ -10,6 +10,7 @@ import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { lincinType } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
@@ -143,11 +144,27 @@ function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={card.title} onPress={onPress} style={{ width: 150, height: 190, borderWidth: BORDER, borderColor: line(), flexDirection: "row" }}>
       <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}>
-        <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: "ArchivoCond-Black", fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
+        <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: lincinType.numeralTiny.fontFamily, fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
       </View>
       <View style={{ flex: 1, backgroundColor: color("paper2") }}>
         {post.image_url ? (
           <SafeImage uri={post.image_url} cacheKey={post.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        ) : card.media.kind === "tekst" && card.media.text ? (
+          // Een tekstbijdrage toont de tekst zelf, niet het woord "tekst".
+          <View style={{ flex: 1, padding: 10, justifyContent: "center" }}>
+            <Serif variant="caption" numberOfLines={7} style={{ fontSize: 14, lineHeight: 17 }}>
+              {card.media.text}
+            </Serif>
+          </View>
+        ) : card.media.kind === "muziek" || card.media.kind === "link" ? (
+          <View style={{ flex: 1, padding: 10, justifyContent: "flex-end", gap: 4 }}>
+            <Serif variant="caption" numberOfLines={3} style={{ fontSize: 14, lineHeight: 17 }}>
+              {card.media.kind === "muziek" ? card.media.track : card.media.title}
+            </Serif>
+            <Mono variant="tiny" tone="dim">
+              {card.media.kind === "muziek" ? card.media.artist : card.media.site}
+            </Mono>
+          </View>
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 8 }}>
             <Mono variant="tiny" tone="dim">

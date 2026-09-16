@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +8,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { BackChip, BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
-import { createFind, type FindKind } from "@/lib/api/posts";
+import { createFind, listUserPosts, type FindKind } from "@/lib/api/posts";
 import { findUrl, unfurl, type LinkPreview } from "@/lib/api/unfurl";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, HUES, hueFor, useScheme, type Hue } from "@/lib/design/theme";
@@ -48,6 +48,9 @@ export default function ComposeScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const draftKey = `lincin.draft.${myUserId}`;
+  // "№ 24": de bijdrage die dit wordt — één meer dan je er al hebt.
+  const mine = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 200), staleTime: 60_000 });
+  const number = String((mine.data?.length ?? 0) + 1).padStart(2, "0");
 
   const [kind, setKind] = useState<Kind>("foto");
   const [title, setTitle] = useState("");
@@ -188,12 +191,13 @@ export default function ComposeScreen() {
     <LincinScreen
       tab="feed"
       tint={fc.fill}
+      counter={t.newPost}
       header={
         <TopRow
           left={<BackChip label={`× ${t.cancel}`} onPress={() => safeBack(router, "/feed")} />}
           right={
             <Mono variant="micro" tone="dim">
-              {t.newPost} · {kind}
+              {t.newPost} · № {number}
             </Mono>
           }
         />
@@ -214,8 +218,8 @@ export default function ComposeScreen() {
                 color={fc.ink}
                 style={{ fontFamily: lincinType.cardTitle.fontFamily, fontSize: 26, lineHeight: 14, textTransform: "uppercase", textAlign: "center" }}
               />
-              <Mono variant="micro" color={fc.ink} style={{ position: "absolute", top: 10, left: 10 }}>
-                {t.post}
+              <Mono variant="micro" color={fc.ink} style={{ position: "absolute", top: 10, left: 10, textTransform: "none", letterSpacing: 0 }}>
+                {number}
               </Mono>
             </View>
             <Pressable

@@ -1,7 +1,7 @@
 import type { FeedItem, PostWithAuthor } from "@/lib/api/posts";
 import type { PollWithDetails } from "@/lib/api/polls";
 import { hueFor, type Hue } from "@/lib/design/theme";
-import type { Dict, Lang } from "@/lib/i18n";
+import { getLang, type Dict, type Lang } from "@/lib/i18n";
 
 /**
  * Van wat de backend geeft naar wat een kaart nodig heeft.
@@ -34,6 +34,12 @@ export type CardPost = {
   avatarUrl: string | null;
   createdAt: string;
   title: string;
+  /**
+   * De bijdrage had zelf geen titel of tekst; `title` is dan een terugval
+   * (de datum voor beeld, de soort voor de rest). Wie het beeld al toont
+   * — een tegel, een inhoudsopgave — laat zo'n titel beter weg.
+   */
+  untitled: boolean;
   caption: string;
   /** De lopende tekst onder het bijschrift (bladzijde, magazine-hero). */
   body: string;
@@ -69,14 +75,19 @@ const TITLE_MAX = 56;
  * Bronvermelding wint. Anders is de titel de eerste zin (of regel) van het
  * bijschrift, afgekapt op een woordgrens, en is de rest het bijschrift.
  */
-export function splitTitle(p: PostWithAuthor): { title: string; caption: string } {
+export function splitTitle(p: PostWithAuthor): { title: string; caption: string; untitled?: boolean } {
   const caption = (p.caption ?? "").trim();
   const body = (p.body_text ?? "").trim();
   if (p.source_title) {
     return { title: p.source_title.trim(), caption: caption || firstLine(body) };
   }
   const base = caption || body;
-  if (!base) return { title: KIND_LABEL[p.kind] ?? "", caption: "" };
+  // Zonder tekst: een foto krijgt zijn datum als kop ("27 aug"), de rest
+  // zijn soort. Een strook met "FOTO" boven een foto zegt niets.
+  if (!base) {
+    const image = !!p.image_url && (p.kind === "image" || p.kind === "video");
+    return { title: image ? shortDate(p.created_at, getLang()) : KIND_LABEL[p.kind] ?? "", caption: "", untitled: true };
+  }
   const m = base.match(/^(.+?[.!?…])(\s+|$)/s);
   const nl = base.indexOf("\n");
   let head = m ? m[1] : nl > 0 ? base.slice(0, nl) : base;
@@ -139,7 +150,7 @@ function postMedia(p: PostWithAuthor): CardMedia {
 }
 
 export function fromPost(p: PostWithAuthor): CardPost {
-  const { title, caption } = splitTitle(p);
+  const { title, caption, untitled } = splitTitle(p);
   const media = postMedia(p);
   const name = displayName(p.author);
   return {
@@ -153,6 +164,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     avatarUrl: p.author?.avatar_url ?? null,
     createdAt: p.created_at,
     title,
+    untitled: !!untitled,
     // Een tekstkaart toont de tekst zelf al als medium; dan niet nog eens
     // als bijschrift eronder.
     caption: media.kind === "tekst" && caption === media.text ? "" : caption,
@@ -176,6 +188,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     avatarUrl: p.author?.avatar_url ?? null,
     createdAt: p.created_at,
     title: p.question,
+    untitled: false,
     caption: `${p.total_votes} ${t.votes}`,
     body: "",
     media: { kind: "poll", poll: p },
@@ -306,6 +319,31 @@ export function groupByTime(cards: CardPost[], t: Dict, lang: Lang): TimeGroup[]
   push("week", t.thisWeek, buckets.week, (o, n) => `${shortDate(o.createdAt, lang)} – ${shortDate(n.createdAt, lang)}`);
   push("earlier", t.earlier, buckets.earlier, (o, n) => `${shortDate(o.createdAt, lang)} – ${shortDate(n.createdAt, lang)}`);
   return out;
+}
+
+/**
+ * Het nummer van elke bijdrage: "01" is de oudste in de feed, zoals het
+ * prototype telt. De feeds én de bladzijde lezen dezelfde tabel, zodat
+ * "№ 07" op de bladzijde is wat de inhoudsopgave ook zei.
+ */
+export function numberMap(cards: CardPost[]): Map<string, string> {
+  const asc = [...cards].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  const m = new Map<string, string>();
+  asc.forEach((c, i) => m.set(c.id, String(i + 1).padStart(2, "0")));
+  return m;
+}
+
+/** "2m", "38m", "3u", "gisteren", "4d", "12 sep" — de tijd in een lijst. */
+export function shortAgo(iso: string, t: Dict, lang: Lang): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return t.now;
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}u`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return t.yesterday.toLowerCase();
+  if (days < 7) return `${days}d`;
+  return shortDate(iso, lang);
 }
 
 /** "01" */

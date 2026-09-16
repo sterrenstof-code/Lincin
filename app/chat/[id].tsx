@@ -1052,7 +1052,10 @@ export default function ChatDetail() {
     return Array.from(seen.values());
   }, [messages]);
   /** De knoppen in de balk onderaan: 44 in het vierkant, met kader. */
-  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderColor: line() } as const;
+  // Eén doorlopende rij van 44 (prototype §05): de knoppen links zonder
+  // rechterrand, zodat ze aan het invoerveld vastzitten en er geen dubbele
+  // kaders ontstaan.
+  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() } as const;
 
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
@@ -1065,7 +1068,7 @@ export default function ChatDetail() {
   }, [chat, myUserId, id, router]);
 
   return (
-    <LincinScreen tab="chats" header="none" tint={partnerFill} full>
+    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full>
       {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
           balk was de chat een doodlopende straat: op desktop verbergt de
           gesprekkenlijst links de terug-knop, en dan was er geen enkele
@@ -1811,7 +1814,7 @@ export default function ChatDetail() {
                   // het hele scherm, en dus het luidste. `shell-soft` is
                   // waar §2 een vlak bínnen de balk heen stuurt.
                   className="flex-1 max-h-32 justify-center"
-                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderColor: line() }}
+                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() }}
                 >
                   <TextInput
                     ref={inputRef}
@@ -1828,7 +1831,8 @@ export default function ChatDetail() {
                     className="text-ink text-base"
                     style={{
                       minHeight: 24,
-                      paddingVertical: 10,
+                      paddingVertical: 0,
+                      lineHeight: 20,
                       /**
                        * `outlineWidth: 0` alleen was niet genoeg: Chrome
                        * tekent zijn eigen focusring via `:focus-visible`, en
@@ -1878,7 +1882,7 @@ export default function ChatDetail() {
                       ? "bg-paper2"
                       : "bg-ink"
                   }
-                  style={aux}
+                  style={{ ...aux, borderRightWidth: BORDER }}
                 >
                   <Ionicons
                     name="arrow-up"
@@ -1898,7 +1902,7 @@ export default function ChatDetail() {
                   // Net als de twee knoppen links: het icoon draagt zichzelf
                   // op de balk. Zodra er iets te versturen valt neemt de
                   // oranje knop deze plek over — dán is er een vlak.
-                  style={({ pressed }) => [aux, pressed && AUX_PRESSED]}
+                  style={({ pressed }) => [aux, { borderRightWidth: BORDER }, pressed && AUX_PRESSED]}
                 >
                   <Ionicons name="mic" color={color("ink")} size={21} />
                 </Pressable>

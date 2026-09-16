@@ -8,7 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { useLang, useT } from "@/lib/i18n";
-import { groupByFriend, groupByTime, toCardPost, type CardPost } from "@/lib/lincin/model";
+import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
 
@@ -89,9 +89,7 @@ export function useFeed() {
    * prototype zijn bijdragen telt. Magazine zet het in de inhoudsopgave.
    */
   const numberOf = useMemo(() => {
-    const asc = [...cards].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
-    const m = new Map<string, string>();
-    asc.forEach((c, i) => m.set(c.id, String(i + 1).padStart(2, "0")));
+    const m = numberMap(cards);
     return (id: string) => m.get(id) ?? "—";
   }, [cards]);
 

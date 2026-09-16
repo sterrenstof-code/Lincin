@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
-import { shortDate } from "@/lib/lincin/model";
+import { shortAgo } from "@/lib/lincin/model";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
@@ -66,6 +66,7 @@ export default function NotificationsScreen() {
   return (
     <LincinScreen
       tab="you"
+      counter={t.notifications}
       header={
         <TopRow
           left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/profile")} />}
@@ -137,7 +138,7 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
           {item.type === "bug_resolved" ? text : ` ${text}`}
         </Text>
         <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
-          {relative(item.created_at, t.yesterday, lang)}
+          {shortAgo(item.created_at, t, lang)}
         </Mono>
       </View>
     </Pressable>
@@ -181,16 +182,4 @@ function describe(item: NotificationWithDetails): { text: string } {
     case "followed_post_comment": return { text: "reageerde op een bijdrage die je volgt" };
     default: return { text: "deed iets" };
   }
-}
-
-function relative(iso: string, yesterday: string, lang: "nl" | "en" | "de"): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "nu";
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}u`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return yesterday.toLowerCase();
-  if (days < 7) return `${days}d`;
-  return shortDate(iso, lang);
 }

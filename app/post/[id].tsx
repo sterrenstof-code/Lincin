@@ -15,13 +15,13 @@ import {
   subscribeToEntityComments,
   type EntityComment,
 } from "@/lib/api/entity-comments";
-import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
+import { deletePost, getPost, type FeedItem, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
-import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
+import { displayName, fromPost, hhmm, numberMap, timeLabel, toCardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
@@ -79,6 +79,12 @@ export default function PostScreen() {
 
   const p = post.data ?? null;
   const card = useMemo(() => (p ? fromPost(p) : null), [p]);
+  /** "№ 07": hetzelfde nummer als in de feed, als de bijdrage daarin staat. */
+  const number = useMemo(() => {
+    const items = qc.getQueryData<FeedItem[]>(["unified-feed", myUserId]) ?? [];
+    const cards = items.map((i) => toCardPost(i, t)).filter((c): c is NonNullable<typeof c> => !!c && c.authorId !== myUserId);
+    return numberMap(cards).get(id) ?? null;
+  }, [qc, myUserId, t, id]);
   usePageTitle(card?.title ?? null);
   const hue = hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
@@ -133,6 +139,7 @@ export default function PostScreen() {
     <LincinScreen
       tab="feed"
       tint={p ? fc.fill : null}
+      counter={t.post}
       header={
         <TopRow
           left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
@@ -140,7 +147,7 @@ export default function PostScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Mono variant="micro" tone="dim">
                 {t.post}
-                {card ? ` · ${card.kind}` : ""}
+                {number ? ` № ${number}` : card ? ` · ${card.kind}` : ""}
               </Mono>
               {own ? (
                 <Pressable accessibilityRole="button" onPress={remove} hitSlop={6}>
@@ -214,19 +221,11 @@ export default function PostScreen() {
                     </Mono>
                   </Pressable>
                 </View>
-                {/* actierij */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderTopWidth: BORDER,
-                    borderTopColor: line(),
-                    paddingHorizontal: 8,
-                    paddingVertical: 6,
-                    gap: 4,
-                    flexWrap: "wrap",
-                  }}
-                >
+              </Box>
+
+              {/* De actierij staat lós onder de kaart (prototype §02): reacties
+                  van 34 zonder kader, dan ◷ EVENT en PRIVAAT BERICHT. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                   {grouped.map((g) => (
                     <Pressable
                       key={g.emoji}
@@ -243,8 +242,8 @@ export default function PostScreen() {
                         backgroundColor: g.mine ? color("ink") : "transparent",
                       }}
                     >
-                      <Text style={{ fontSize: 15, lineHeight: 18, color: g.mine ? color("paper") : color("ink") }}>{g.emoji}</Text>
-                      <Text style={[lincinType.action, { letterSpacing: 0, color: g.mine ? color("paper") : color("ink") }]}>{g.count}</Text>
+                      <Text style={{ fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }}>{g.emoji}</Text>
+                      <Text style={[lincinType.monoBody, { fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }]}>{g.count}</Text>
                     </Pressable>
                   ))}
                   <View style={{ flex: 1 }} />
@@ -253,9 +252,9 @@ export default function PostScreen() {
                       accessibilityRole="button"
                       onPress={() => router.push("/event-create")}
                       style={{
-                        height: 30,
-                        paddingHorizontal: 8,
-                        borderWidth: BORDER,
+                        height: 34,
+                        paddingHorizontal: 10,
+                        borderWidth: 1.5,
                         borderStyle: "dashed",
                         borderColor: line(),
                         alignItems: "center",
@@ -277,15 +276,14 @@ export default function PostScreen() {
                           postTitle: card.title,
                         })
                       }
-                      style={{ height: 34, paddingHorizontal: 10, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}
+                      style={{ height: 34, paddingHorizontal: 11, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}
                     >
-                      <Mono variant="action" tone="paper">
+                      <Mono variant="monoBody" tone="paper">
                         {t.privateMsg}
                       </Mono>
                     </Pressable>
                   ) : null}
-                </View>
-              </Box>
+              </View>
 
               {/* comments */}
               <Mono variant="micro" tone="dim" style={{ marginTop: 6 }}>

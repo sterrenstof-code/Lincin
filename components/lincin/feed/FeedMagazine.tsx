@@ -236,9 +236,16 @@ export function FeedMagazine() {
             <Mono variant="tiny" tone="dim" numberOfLines={1} style={{ fontSize: 8, lineHeight: 11, letterSpacing: 0.96 }}>
               {p.authorName} · {p.kind} · {timeLabel(p.createdAt, t, lang)}
             </Mono>
-            <Serif variant="row" numberOfLines={2} style={{ lineHeight: 20, marginTop: 3 }}>
-              {p.title}
-            </Serif>
+            {p.untitled && p.media.kind === "foto" ? (
+              // Geen titel: dan de foto zelf, klein, in plaats van het woord "foto".
+              <View style={{ marginTop: 5, width: 72, height: 44, borderWidth: 1, borderColor: color("ink", "postRule"), backgroundColor: color("paper2"), overflow: "hidden" }}>
+                <SafeImage uri={p.media.uri} cacheKey={p.media.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
+              </View>
+            ) : (
+              <Serif variant="row" numberOfLines={2} style={{ lineHeight: 20, marginTop: 3 }}>
+                {p.title}
+              </Serif>
+            )}
           </View>
           <View style={{ alignItems: "flex-end", justifyContent: "space-between" }}>
             <Mono variant="tiny" style={{ textTransform: "none", letterSpacing: 0 }}>

@@ -6,7 +6,7 @@ import { ScrollView, View } from "react-native";
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
-import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif, line } from "@/components/lincin/ui";
+import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
 import {
@@ -132,7 +132,7 @@ export default function UserProfileScreen() {
         return (
           <>
             <Btn label={`${t.privateChat} →`} fill flex={1} onPress={openChat} disabled={busy} />
-            <Btn label={t.planTogether} flex={1} onPress={() => router.push("/event-create")} />
+            <Btn label={t.planTogether} flex={1} bg="transparent" fg={fc.ink} style={{ borderColor: fc.ink }} onPress={() => router.push("/event-create")} />
           </>
         );
       case "self":
@@ -178,6 +178,7 @@ export default function UserProfileScreen() {
     <LincinScreen
       tab="feed"
       tint={p ? fc.fill : null}
+      counter={t.scrProfile}
       header={
         <TopRow
           left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
@@ -204,23 +205,21 @@ export default function UserProfileScreen() {
                     height: 56,
                     borderRadius: 28,
                     overflow: "hidden",
-                    borderWidth: 1.5,
-                    borderColor: line(),
                     backgroundColor: color("paper"),
                   }}
                 >
                   <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                 </View>
               ) : (
-                <Initial letter={initial} size={56} bg={color("paper")} fg={color("ink")} fontSize={22} />
+                <Initial letter={initial} size={56} bg={color("paper")} fg={color("ink")} fontSize={28} border={false} style={{ borderRadius: 28 }} />
               )}
               <View style={{ alignItems: "flex-end" }}>
                 {relation.kind === "friend" && relation.since ? (
-                  <Mono variant="micro" color={fc.ink} style={{ textTransform: "none" }}>
+                  <Mono variant="micro" color={fc.ink} style={{ opacity: 0.85, letterSpacing: 0 }}>
                     {t.lincSince} {shortDate(relation.since, lang)}
                   </Mono>
                 ) : null}
-                <Mono variant="micro" color={fc.ink} style={{ textTransform: "none" }}>
+                <Mono variant="micro" color={fc.ink} style={{ opacity: 0.85, letterSpacing: 0 }}>
                   {cards.length} {cards.length === 1 ? t.post1 : t.posts}
                 </Mono>
               </View>

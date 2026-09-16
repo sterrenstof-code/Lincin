@@ -112,7 +112,7 @@ export const PostCard = memo(function PostCard({
       </View>
 
       {/* actiebalk */}
-      <View style={{ flexDirection: "row", height: BAR_H, borderTopWidth: BORDER, borderTopColor: edge }}>
+      <View style={{ flexDirection: "row", height: BAR_H + BORDER, borderTopWidth: BORDER, borderTopColor: edge }}>
         <View
           style={{
             flex: 1,

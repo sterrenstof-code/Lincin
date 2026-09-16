@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
+import { Body, BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { friendColor, hueFor, useScheme } from "@/lib/design/theme";
@@ -142,11 +142,11 @@ function EventCard({ event: e, live = false, past = false }: { event: EventWithM
         <Serif variant="eventTitle" numberOfLines={2}>
           {e.name}
         </Serif>
-        <Mono variant="micro" tone="dim" numberOfLines={1} style={{ textTransform: "none", fontSize: 12.5, letterSpacing: 0 }}>
+        <Body small tone="dim" numberOfLines={1} style={{ fontSize: 12.5, lineHeight: 17 }}>
           {e.description ? `${e.description.split("\n")[0]} · ` : ""}
           {who}
           {e.contributions_count ? ` · ${e.contributions_count} foto's` : ""}
-        </Mono>
+        </Body>
         <View style={{ flexDirection: "row", gap: 6, marginTop: "auto" }}>
           <Btn label="Open →" fill height={30} onPress={() => router.push(`/event/${e.id}` as never)} />
           {e.is_host && !past ? (

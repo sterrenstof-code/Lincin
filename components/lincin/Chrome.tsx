@@ -9,7 +9,7 @@ import { listMyChats } from "@/lib/api/chats";
 import { countUnreadNotifications } from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth/provider";
 import { color, MODERN_GRADIENT, pageTint, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { lincinType, mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { scrollActiveToTop } from "@/lib/scroll-top";
 
@@ -89,6 +89,12 @@ export function LincinScreen({
   tint?: string | null;
   /** Rechts in de kop, mono en gedempt: `01 / 05` of de schermnaam. */
   counter?: string;
+  /**
+   * De kop "Lincin · teller · ◉ · +" staat op élk scherm (prototype:
+   * `showHeader` is alleen uit voor de magazine-feed). Een scherm met een
+   * eigen bovenrij (`← Terug`, een titel) geeft die hier mee; hij komt
+   * ónder de kop. `none` laat de kop weg.
+   */
   header?: "default" | "none" | ReactNode;
   /** De inhoud loopt onder de statusbalk door (het magazine-hero). */
   bleed?: boolean;
@@ -119,7 +125,8 @@ export function LincinScreen({
           alignSelf: "center",
         }}
       >
-        {header === "default" ? <Header counter={counter} /> : header === "none" ? null : header}
+        {header === "none" ? null : <Header counter={counter} />}
+        {header === "default" || header === "none" ? null : header}
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
         <FooterTabs active={tab} bottomInset={Math.max(insets.bottom, 16)} />
       </View>
@@ -193,7 +200,7 @@ export function Header({ counter }: { counter?: string }) {
       }}
     >
       <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} hitSlop={8}>
-        <Text style={[lincinType.meta, { fontFamily: lincinType.action.fontFamily, color: color("ink") }]}>Lincin</Text>
+        <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>Lincin</Text>
       </Pressable>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         {counter ? (

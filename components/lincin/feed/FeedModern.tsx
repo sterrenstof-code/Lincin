@@ -10,8 +10,9 @@ import { chatTitle, listMyChats, otherMember } from "@/lib/api/chats";
 import { votePoll } from "@/lib/api/polls";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, GLASS, hueFor, useScheme, type FriendColor, type Hue } from "@/lib/design/theme";
+import { useLang, useT } from "@/lib/i18n";
 import { lincinType } from "@/lib/design/type";
-import { two, waveform, type CardPost } from "@/lib/lincin/model";
+import { timeLabel, two, waveform, type CardPost } from "@/lib/lincin/model";
 
 import { EmptyFeed } from "./FeedKleur";
 import { useFeed } from "./useFeed";
@@ -185,7 +186,11 @@ function Tile({
   onPrivate: () => void;
 }) {
   const m = p.media;
+  const t = useT();
+  const lang = useLang();
   const isImg = m.kind === "foto" || (m.kind === "link" && !!m.image);
+  // Referentie #2b: "Noor · Het licht om 22:19". Zonder titel: de naam en de tijd.
+  const line1 = `${p.authorName} · ${p.untitled ? timeLabel(p.createdAt, t, lang) : p.title}`;
   const bg = isImg ? "rgba(0,0,0,.2)" : m.kind === "muziek" ? MUSIC : m.kind === "kleur" ? m.hex : GLASS.fill;
   return (
     // Bewust géén `accessibilityRole="button"`: op web wordt dat een
@@ -257,7 +262,7 @@ function Tile({
       >
         {Platform.OS !== "web" ? <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 34, backgroundColor: "rgba(20,12,8,.55)" }} /> : null}
         <Mono variant="tiny" color={INK} numberOfLines={1} style={{ flex: 1, letterSpacing: 0.9 }}>
-          {p.title}
+          {line1}
         </Mono>
         <Pressable accessibilityRole="button" accessibilityLabel="Privaat bericht" onPress={onPrivate} hitSlop={8}>
           <Text style={{ color: INK, fontSize: 12, lineHeight: 14, opacity: 0.8 }}>✉</Text>
