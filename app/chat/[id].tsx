@@ -41,7 +41,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Head, Mono, Serif, line } from "@/components/lincin/ui";
+import { BORDER, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
@@ -181,7 +181,9 @@ function ComposerInset({
           width: "100%",
           maxWidth: THREAD_WIDTH,
           alignSelf: "center",
-          paddingHorizontal: space.md,
+          // Dezelfde kantlijn als de kop en de bladzijden (prototype
+          // THREAD: `padding: 8px 18px 10px`); 12 stond hier los van de rest.
+          paddingHorizontal: GUTTER,
         },
         style,
       ]}
@@ -2427,13 +2429,14 @@ function MessageBubble({
   return (
     <View
       className={isMine ? "items-end" : "items-start"}
-      // Een bubbel mag nooit zo breed worden dat de regel niet meer te
-      // volgen is. Op een telefoon doet de percentage-maat hieronder het
-      // werk; op een breed scherm is 90% van de kolom al gauw 900px, en
-      // dan leest één plakregel — of een lange URL — als een liniaal.
-      // Zestig tekens is de bovengrens van een leesbare regel; bij
-      // 16px-tekst is dat ongeveer deze maat.
-      style={{ maxWidth: BUBBLE_MAX_W, alignSelf: isMine ? "flex-end" : "flex-start" }}
+      // Een bubbel mag nooit breder worden dan 78% van de kolom (prototype
+      // THREAD: `max-width: 78%`), en op een breed scherm nooit breder dan
+      // BUBBLE_MAX_W — dat tweede staat op de laag hieronder. Het percentage
+      // stond hier eerst niet: de wikkel had alleen de vaste maat, en één
+      // onbreekbaar woord (een lange URL) duwde de bubbel dan de kolom uit.
+      // `minWidth: 0` laat de wikkel krimpen onder zijn inhoud; de tekst
+      // zelf breekt op web met `overflowWrap` (zie MentionsText hieronder).
+      style={{ maxWidth: "78%", minWidth: 0, flexShrink: 1, alignSelf: isMine ? "flex-end" : "flex-start" }}
     >
       {/* Swipe-to-reply indicator */}
       {Platform.OS !== "web" && (
@@ -2509,12 +2512,15 @@ function MessageBubble({
       <Animated.View
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         style={{
-          maxWidth: showAvatarSlot ? "82%" : "90%",
+          // De leesmaat: ~60 tekens op 16px. Het percentage zit op de
+          // wikkel hierboven; hier alleen de harde bovengrens.
+          maxWidth: BUBBLE_MAX_W,
+          minWidth: 0,
           marginLeft: showAvatarSlot ? 44 : 0,
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
       >
-        <View className={isMine ? "items-end flex-1" : "items-start flex-1"}>
+        <View style={{ minWidth: 0 }} className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
         onPress={failed && onRetry ? onRetry : (Platform.OS === "web" ? onSelect : undefined)}
@@ -2639,6 +2645,10 @@ function MessageBubble({
                 <MentionsText
                   text={content.text!}
                   isMine={isMine}
+                  // Een URL zonder spaties is één woord; zonder deze regel
+                  // bepaalt zijn lengte de minimumbreedte van de bubbel en
+                  // loopt die de kolom uit. `anywhere` breekt hem waar nodig.
+                  style={Platform.OS === "web" ? ({ overflowWrap: "anywhere", wordBreak: "break-word" } as object) : undefined}
                   className={`${
                     /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text!)
                       ? "text-[34px] leading-[40px]"

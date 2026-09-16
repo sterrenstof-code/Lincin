@@ -1,15 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
 
 import ChatDetail from "@/app/chat/[id]";
 import PostScreen from "@/app/post/[id]";
 import UserProfileScreen from "@/app/user/[username]";
+import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { chatTitle, listMyChats, otherMember } from "@/lib/api/chats";
+import { getPost } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { mono, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
-import { closePanel, openProfile, openThread, usePanel } from "@/lib/lincin/desktop";
+import { closePanel, openProfile, openThread, pickThread, usePanel } from "@/lib/lincin/desktop";
+import { displayName } from "@/lib/lincin/model";
 
 /**
  * Het paneel rechts (Lincin Desktop.dc.html, "RIGHT PANEL"): in rust het
@@ -24,15 +27,12 @@ export function Panel() {
   const panel = usePanel();
   const t = useT();
   const ink = color("ink");
-  const dim = color("ink", "inkDim");
 
   if (panel.kind === "post" || panel.kind === "profile") {
     return (
       <View style={{ flex: 1, minHeight: 0 }}>
         <View style={{ height: 60, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: ink }}>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, textTransform: "uppercase", color: dim }]}>
-            {panel.kind === "post" ? t.post : t.scrProfile}
-          </Text>
+          {panel.kind === "post" ? <PostLabel id={panel.id} /> : <Text style={labelStyle()}>{t.scrProfile}</Text>}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t.cancel}
@@ -55,6 +55,24 @@ export function Panel() {
   return <ThreadPanel chatId={panel.chatId} />;
 }
 
+/** De kop van het paneel in mono 10, gedempt — bij het bouwen gelezen, want de kleur wisselt mee met het thema. */
+const labelStyle = (): TextStyle => ({ ...mono(500), fontSize: 10, lineHeight: 13, letterSpacing: 0.6, textTransform: "uppercase", color: color("ink", "inkDim") });
+
+/** "BIJDRAGE № 07 · Naam" — nummer uit de feed, naam uit de feed of anders uit de bijdrage zelf. */
+function PostLabel({ id }: { id: string }) {
+  const t = useT();
+  const { card, number } = useFeedCard(id);
+  const post = useQuery({ queryKey: ["post", id], queryFn: () => getPost(id), enabled: !card, staleTime: 30_000 });
+  const by = card?.authorName ?? (post.data ? displayName(post.data.author) : null);
+  return (
+    <Text numberOfLines={1} style={[labelStyle(), { flexShrink: 1 }]}>
+      {t.post}
+      {number ? ` № ${number}` : ""}
+      {by ? ` · ${by}` : ""}
+    </Text>
+  );
+}
+
 function ThreadPanel({ chatId }: { chatId: string | null }) {
   const t = useT();
   const scheme = useScheme();
@@ -62,8 +80,7 @@ function ThreadPanel({ chatId }: { chatId: string | null }) {
   const myUserId = session?.user.id ?? "anon";
   const chats = useQuery({ queryKey: ["chats", myUserId], queryFn: () => listMyChats(myUserId), enabled: !!session, staleTime: 30_000 });
   const list = [...(chats.data ?? [])].sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at));
-  // Zonder keuze: het laatste ongelezen gesprek, anders het laatste.
-  const current = chatId ?? list.find((c) => (c.unread_count ?? 0) > 0)?.id ?? list[0]?.id ?? null;
+  const current = pickThread(chatId, list);
   const ink = color("ink");
   const dim = color("ink", "inkDim");
 

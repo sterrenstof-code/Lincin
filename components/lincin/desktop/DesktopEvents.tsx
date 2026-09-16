@@ -5,7 +5,7 @@ import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-na
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { PANEL_W, RAIL_W } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
@@ -105,7 +105,7 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
         <Text numberOfLines={2} style={[serif(), { fontSize: 28, lineHeight: 28.5, letterSpacing: -0.42, color: ink }]}>
           {e.name}
         </Text>
-        <Text numberOfLines={1} style={{ fontSize: 14, lineHeight: 20, color: dim }}>
+        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 20, color: dim }]}>
           {e.description ? `${e.description.split("\n")[0]} · ` : ""}
           {who}
         </Text>

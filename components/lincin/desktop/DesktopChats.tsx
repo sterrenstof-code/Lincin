@@ -8,9 +8,9 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
-import { openThread, usePanel } from "@/lib/lincin/desktop";
+import { openThread, pickThread, usePanel } from "@/lib/lincin/desktop";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
@@ -34,7 +34,6 @@ export function DesktopChats() {
   const toast = useToast();
   const previews = useChatPreviews();
   const panel = usePanel();
-  const current = panel.kind === "thread" ? panel.chatId : null;
 
   const chats = useQuery({ queryKey: ["chats", myUserId], queryFn: () => listMyChats(myUserId), refetchOnWindowFocus: true });
   const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId) });
@@ -43,6 +42,9 @@ export function DesktopChats() {
     all.sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at));
     return all;
   }, [chats.data]);
+  // Dezelfde keuze als het paneel: in rust staat daar al het laatste
+  // ongelezen (of laatste) gesprek open, dus die rij hoort gemarkeerd.
+  const current = panel.kind === "thread" ? pickThread(panel.chatId, list) : null;
   const inChats = useMemo(() => new Set(list.filter((c) => c.type === "direct").flatMap((c) => c.members.map((m) => m.id))), [list]);
   const withoutChat = (friendships.data ?? []).filter((f) => f.status === "accepted" && !inChats.has(f.other.id));
   const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
@@ -77,7 +79,7 @@ export function DesktopChats() {
           </Text>
           {time ? <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, color: n ? color("red") : dim }]}>{time}</Text> : null}
         </View>
-        <Text numberOfLines={1} style={{ fontSize: 14, lineHeight: 18, color: dim }}>
+        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }]}>
           {preview}
         </Text>
       </View>

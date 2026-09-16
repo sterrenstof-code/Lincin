@@ -1,10 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { color, friendColor, useScheme } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { PANEL_W, RAIL_W, usePanel } from "@/lib/lincin/desktop";
 import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
@@ -193,8 +193,6 @@ function Card({
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
-  const hue = useMemo(() => ({ fill }), [fill]);
-  void hue;
   return (
     <Pressable
       accessibilityLabel={`${p.title}, ${p.authorName}`}
@@ -221,7 +219,7 @@ function Card({
         <Text numberOfLines={2} style={[serif(), { fontSize: 28, lineHeight: 28.5, letterSpacing: -0.42, color: ink, minHeight: 57 }]}>
           {p.title}
         </Text>
-        <Text numberOfLines={2} style={{ fontSize: 14, lineHeight: 20, color: dim, height: 40 }}>
+        <Text numberOfLines={2} style={[sans(), { fontSize: 14, lineHeight: 20, color: dim, height: 40 }]}>
           {p.caption || p.body}
         </Text>
       </View>

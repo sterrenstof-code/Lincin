@@ -161,3 +161,27 @@ export function useFeed() {
 }
 
 export type Feed = ReturnType<typeof useFeed>;
+
+/**
+ * Eén bijdrage uit dezelfde feed als de rasters: het nummer ("07") en de
+ * kaart (naam van de auteur, soort). De bladzijde en de paneelkop lezen
+ * dit; ze keken eerst alleen in de cache, en bij een rechtstreekse URL is
+ * die leeg — dan stond er "BIJDRAGE · FOTO" zonder nummer. Dezelfde
+ * sleutel als `useFeed`, dus de feed wordt hooguit één keer opgehaald.
+ */
+export function useFeedCard(id: string | undefined) {
+  const { session } = useAuth();
+  const myUserId = session?.user.id ?? "";
+  const t = useT();
+  const feed = useQuery({
+    queryKey: ["unified-feed", myUserId],
+    queryFn: () => listUnifiedFeed(myUserId),
+    enabled: !!myUserId,
+    staleTime: 30_000,
+  });
+  return useMemo(() => {
+    const cards = (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c): c is CardPost => !!c && c.authorId !== myUserId);
+    const card = id ? cards.find((c) => c.id === id) ?? null : null;
+    return { card, number: id ? numberMap(cards).get(id) ?? null : null };
+  }, [feed.data, t, myUserId, id]);
+}

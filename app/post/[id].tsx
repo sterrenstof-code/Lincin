@@ -7,6 +7,7 @@ import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
+import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { BackChip, BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import {
@@ -15,13 +16,13 @@ import {
   subscribeToEntityComments,
   type EntityComment,
 } from "@/lib/api/entity-comments";
-import { deletePost, getPost, type FeedItem, type PostWithAuthor } from "@/lib/api/posts";
+import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
-import { displayName, fromPost, hhmm, numberMap, timeLabel, toCardPost } from "@/lib/lincin/model";
+import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
@@ -90,12 +91,8 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
 
   const p = post.data ?? null;
   const card = useMemo(() => (p ? fromPost(p) : null), [p]);
-  /** "№ 07": hetzelfde nummer als in de feed, als de bijdrage daarin staat. */
-  const number = useMemo(() => {
-    const items = qc.getQueryData<FeedItem[]>(["unified-feed", myUserId]) ?? [];
-    const cards = items.map((i) => toCardPost(i, t)).filter((c): c is NonNullable<typeof c> => !!c && c.authorId !== myUserId);
-    return numberMap(cards).get(id) ?? null;
-  }, [qc, myUserId, t, id]);
+  /** "№ 07": hetzelfde nummer als in de feed, ook bij een rechtstreekse URL. */
+  const { number } = useFeedCard(id);
   usePageTitle(card?.title ?? null);
   const hue = hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);

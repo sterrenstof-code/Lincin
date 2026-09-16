@@ -5,6 +5,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
+import { VerticalLabel } from "@/components/lincin/ui";
 import { useQuery } from "@tanstack/react-query";
 import { chatTitle, listMyChats } from "@/lib/api/chats";
 import { useAuth } from "@/lib/auth/provider";
@@ -65,7 +66,7 @@ export function DesktopMagazine() {
       {/* het hero */}
       <View style={{ flex: 1, minWidth: 0, borderRightWidth: 1.5, borderRightColor: ink, overflow: "hidden", backgroundColor: heroColor.fill }}>
         {heroImg ? <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" /> : null}
-        <Svg pointerEvents="none" width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0 }}>
+        <Svg width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
           <Defs>
             <LinearGradient id="lincin-mag-d" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor={heroColor.fill} stopOpacity={0.15} />
@@ -88,7 +89,7 @@ export function DesktopMagazine() {
             ))}
           </View>
         </View>
-        <Text pointerEvents="none" numberOfLines={1} style={[lincinType.masthead, { position: "absolute", top: 44, left: 28, fontSize: 250, lineHeight: 205, letterSpacing: -10, color: heroColor.fill }]}>
+        <Text numberOfLines={1} style={[lincinType.masthead, { pointerEvents: "none", position: "absolute", top: 44, left: 28, fontSize: 250, lineHeight: 205, letterSpacing: -10, color: heroColor.fill }]}>
           Lincin
         </Text>
         {hero ? (
@@ -119,10 +120,13 @@ export function DesktopMagazine() {
               </View>
             </View>
             <View style={[{ position: "absolute", left: 32, right: 32, bottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }, BLEND]}>
-              <View style={{ height: 150, width: 14, overflow: "hidden", justifyContent: "flex-end" }}>
-                <Text numberOfLines={1} style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE, width: 150, transform: [{ rotate: "-90deg" }, { translateX: 68 }, { translateY: 68 }] }]}>
-                  {t.noAlgo} · {friendCount} lincs
-                </Text>
+              {/* Prototype #1b: `writing-mode: vertical-rl; rotate(180deg);
+                  height: 150px` — te lezen van onder naar boven. Een gedraaide
+                  Text van 150 breed in een doosje van 14 mat 13 × 14; de
+                  VerticalLabel van de bladzijde doet het wél goed: een doos
+                  van 134 breed, 90° gedraaid en absoluut in zijn vak gezet. */}
+              <View style={{ height: 150, width: 14, overflow: "hidden" }}>
+                <VerticalLabel text={`${t.noAlgo} · ${friendCount} lincs`} width={14} height={150} color={ON_IMAGE} style={{ letterSpacing: 1.4 }} />
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {grouped.map((r) => (

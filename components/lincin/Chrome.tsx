@@ -146,7 +146,7 @@ export function LincinScreen({
 export function ModernBackdrop({ width, height }: { width: number; height: number }) {
   const g = MODERN_GRADIENT;
   return (
-    <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" }}>
+    <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" }}>
       <Svg width={width} height={height}>
         <Defs>
           <RadialGradient id="lincin-modern" cx={width * g.cx} cy={height * g.cy} rx={g.rx} ry={g.ry} gradientUnits="userSpaceOnUse">

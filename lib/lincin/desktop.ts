@@ -85,6 +85,16 @@ export function openProfile(username: string) {
   else router.push(`/user/${username}` as never);
 }
 
+/**
+ * Welk gesprek het paneel in rust toont: de gekozen, anders het laatste
+ * ongelezen, anders het laatste. De lijst is nieuwste-eerst gesorteerd.
+ * Paneel én gesprekkenlijst rekenen hiermee, zodat de rij die de lijst
+ * markeert ook echt de rij is die rechts openstaat.
+ */
+export function pickThread(chatId: string | null, sorted: { id: string; unread_count?: number | null }[]): string | null {
+  return chatId ?? sorted.find((c) => (c.unread_count ?? 0) > 0)?.id ?? sorted[0]?.id ?? null;
+}
+
 export function openThread(chatId: string) {
   lastChatId = chatId;
   if (desktopNow) setPanel({ kind: "thread", chatId });

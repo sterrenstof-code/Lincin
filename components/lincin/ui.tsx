@@ -554,8 +554,8 @@ export function VerticalLabel({
   const w = Math.max(0, height - 16);
   return (
     <View
-      pointerEvents="none"
       style={{
+        pointerEvents: "none",
         position: "absolute",
         width: w,
         height: 14,

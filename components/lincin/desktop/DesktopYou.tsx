@@ -10,7 +10,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { color, setPreference, THEMES, usePreference, useScheme, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
@@ -169,8 +169,8 @@ export function DesktopYou() {
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontSize: 15, lineHeight: 19, color: ink }}>{label}</Text>
-          {sub ? <Text style={{ fontSize: 12, lineHeight: 16, color: dim }}>{sub}</Text> : null}
+          <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
+          {sub ? <Text style={[sans(), { fontSize: 12, lineHeight: 16, color: dim }]}>{sub}</Text> : null}
         </View>
         {children}
       </Pressable>

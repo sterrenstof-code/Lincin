@@ -88,7 +88,7 @@ export function FeedMagazine() {
           <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         ) : null}
         {/* de sluier: 25% inkt boven, niets in het midden, 15% onder */}
-        <Svg pointerEvents="none" width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0 }}>
+        <Svg width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
           <Defs>
             <LinearGradient id="lincin-mag" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#141414" stopOpacity={0.25} />
@@ -116,7 +116,7 @@ export function FeedMagazine() {
         </View>
 
         {/* het masthead */}
-        <Text pointerEvents="none" numberOfLines={1} style={[lincinType.masthead, { position: "absolute", top: top + 16, left: 8, right: 0, color: heroColor.fill }]}>
+        <Text numberOfLines={1} style={[lincinType.masthead, { pointerEvents: "none", position: "absolute", top: top + 16, left: 8, right: 0, color: heroColor.fill }]}>
           Lincin
         </Text>
 

@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-na
 import { SafeImage } from "@/components/SafeImage";
 import type { Compose } from "@/app/post-compose";
 import { color, friendColor, HUES, useScheme } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { safeBack } from "@/lib/nav";
 
@@ -87,7 +87,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
             onChangeText={c.setCaption}
             placeholder={t.captionPh}
             placeholderTextColor={dim}
-            style={[{ fontSize: 16, lineHeight: 20, height: 44, borderBottomWidth: 1, borderBottomColor: rule, color: ink }, web as object]}
+            style={[sans(), { fontSize: 16, lineHeight: 20, height: 44, borderBottomWidth: 1, borderBottomColor: rule, color: ink }, web as object]}
           />
           {c.kind === "link" || c.kind === "muziek" ? (
             <TextInput
