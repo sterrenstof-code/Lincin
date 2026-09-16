@@ -37,8 +37,25 @@ export type ReplyInfo = {
   previewText: string;
 };
 
+/**
+ * v2 — een bijdrage waar een bericht óver gaat.
+ *
+ * Het privé-blad (components/lincin/PrivateSheet.tsx) stuurt hem mee als
+ * je "Vermeld" aan laat; het gesprek toont hem als "over «…»" boven het
+ * bericht en in de strook met vermelde bijdragen. Oudere clients kennen
+ * het veld niet en laten het gewoon staan.
+ */
+export type PostRef = {
+  id: string;
+  title: string;
+  /** Het bijschrift, voor de regel "over «…»". */
+  quote: string;
+};
+
 export type MessageContent = {
   text?: string;
+  /** Aanwezig wanneer dit bericht over een bijdrage gaat. */
+  postRef?: PostRef;
   attachment?: AttachmentInfo;
   /** Aanwezig wanneer dit bericht een videogesprek-uitnodiging is. */
   call?: { started: true };
@@ -209,6 +226,7 @@ export async function sendMessage(args: {
   call_plan_id?: string;
   poll_id?: string;
   reply?: ReplyInfo;
+  postRef?: PostRef;
   system?: { event: "group_avatar_updated"; actorName: string };
 }): Promise<{ id: string; created_at: string }> {
   if (!args.text && !args.attachment && !args.call && !args.system && !args.call_plan_id && !args.poll_id) {
@@ -239,6 +257,7 @@ export async function sendMessage(args: {
   if (args.call_plan_id) content.call_plan_id = args.call_plan_id;
   if (args.poll_id) content.poll_id = args.poll_id;
   if (args.reply) content.reply = args.reply;
+  if (args.postRef) content.postRef = args.postRef;
   if (args.system) content.system = args.system;
 
   const payloads = encryptForRecipients(

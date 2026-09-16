@@ -28,7 +28,7 @@ export default function Root({ children }: PropsWithChildren) {
             is de donkere stand; `applyWeb` in lib/design/theme.ts zet hem om
             zodra de lichte stand geldt, en het script hieronder doet dat al
             vóór het eerste beeld. */}
-        <meta name="theme-color" content="#CDBEE3" />
+        <meta name="theme-color" content="#F2EFE8" />
 
         {/* ---------------------------------------------------------------
             De stand, vóór het eerste beeld.
@@ -47,14 +47,14 @@ export default function Root({ children }: PropsWithChildren) {
             __html: `(function(){try{
   var p = localStorage.getItem('lincin.theme');
   if (p !== 'light' && p !== 'dark') {
-    p = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', p === 'dark' ? '#CDBEE3' : '#EFEFEC');
-}catch(e){document.documentElement.classList.add('dark');}})();`,
+  if (m) m.setAttribute('content', p === 'dark' ? '#1A1917' : '#F2EFE8');
+}catch(e){}})();`,
           }}
         />
         <meta name="description" content="Privé chats, foto-events en feed voor je inner circle. End-to-end versleuteld." />
@@ -76,21 +76,40 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="apple-touch-icon" href="/assets/images/icon.png" />
 
         {/* ---------------------------------------------------------------
-            De display-serifs.
-            Op iOS gebruiken we het ingebouwde Didot en laden we niets; op
-            web bestaat dat font niet, dus halen we hier de twee snitten op.
-            Bodoni Moda voor affiche-maten, Playfair Display voor leesmaten.
-            `display=swap` zodat tekst meteen zichtbaar is in de fallback.
-            Inter erbij draagt het feed-v3-systeem (lib/design/type.ts →
-            INTER_FAMILY). Op iOS/Android valt dat terug op de ingebouwde
-            grotesk, dus enkel web haalt de échte snitten op — 400 t/m 900,
-            want de logo-plaat staat op 900 en de kickers op 700.
+            De drie letters van v2 (zie lib/design/type.ts).
+
+            Archivo, Instrument Serif en IBM Plex Mono komen bij Google
+            vandaan: snel, gecachet, en met alle gewichten die de oude
+            schalen nog vragen. Alleen de smalle Archivo (900, 75% breed)
+            komt uit `public/fonts/`: bij Google is dat een as van het
+            variabele bestand, en react-native-web zet geen font-stretch.
+            Onder een eigen familienaam hoeft dat ook niet.
             --------------------------------------------------------------- */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        />
+        <link
+          rel="preload"
+          href="/fonts/ArchivoCond-Black.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+@font-face {
+  font-family: 'ArchivoCond-Black';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url(/fonts/ArchivoCond-Black.ttf) format('truetype');
+}
+`,
+          }}
         />
 
         {/* ---------------------------------------------------------------

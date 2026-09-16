@@ -51,6 +51,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // ---- v2: papier, inkt, zuur, rood ----
+        // Zie lib/design/theme.ts. `paper2` is het tweede vlak (media,
+        // metakolom), `acid` de oproep-kaart, `red` ongelezen/nieuw.
+        paper2: solid("--c-paper-2"),
+        acid: solid("--c-acid"),
+        red: solid("--c-red"),
+
         // ---- Vlakken ----
         page: {
           DEFAULT: solid("--c-page"), // het paginavlak

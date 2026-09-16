@@ -3,92 +3,186 @@ import { Platform, type TextStyle } from "react-native";
 import { color, subscribeScheme } from "./theme";
 
 /**
- * Typografisch systeem — editorial / Zwitsers.
+ * ===============================================================
+ * LINCIN v2 — drie letters
+ * ===============================================================
  *
- * Naar de affiche-site van Fondation Phi (Yoko Ono, *Liberté Conquérante*):
- * gebroken wit vlak, zwarte inkt, haarlijnen van rand tot rand, en een
- * groot schaalverschil tussen een hoog-contrast display-serif en een
- * neutrale grotesk op labelformaat.
+ * Uit `design_handoff_lincin_mobile/README.md`:
  *
- * Twee dingen die het rustiger en moderner maken dan de vorige versie:
- * de labels staan in **zinsvorm**, niet in kapitalen (de referentie doet
- * dat ook — "Events", "Featured Content"), en ze zijn 11px in plaats van
- * 9px. Kapitalen bestaan nog, maar als uitzondering: `<Meta caps>`.
+ *   ARCHIVO           koppen: 900, 75% breed, kapitaal, regelhoogte .9–1.
+ *                     Lopende tekst 15px/1.35, knoplabels 700 10px kapitaal.
+ *   INSTRUMENT SERIF  bijschriften, paginatitels, citaten in een blad.
+ *   IBM PLEX MONO     meta, labels, knoppen — kapitaal, .04–.1em spatie.
  *
  * ---------------------------------------------------------------
- * FONTS — er wordt bewust géén fontbestand meegeleverd.
+ * HOE DE LETTERS BINNENKOMEN
  * ---------------------------------------------------------------
- * iOS      Didot. Ingebouwd, een échte Didone, nul bytes in de bundle.
- * Web      Bodoni Moda (display) + Playfair Display (tekst), opgehaald
- *          door de browser via de stylesheet in `app/+html.tsx`.
- * Android  Valt terug op `serif` (Noto Serif).
+ * `assets/fonts/` bevat statische snitten (van Google Fonts, per as-punt
+ * uitgeschreven, dus zonder variabele as). Native laadt ze met expo-font
+ * in `app/_layout.tsx`, onder de naam van het bestand. Web haalt Archivo,
+ * Instrument Serif en IBM Plex Mono bij Google zelf (sneller, gecachet)
+ * en alleen de smalle Archivo via `@font-face` uit `public/fonts/`, want
+ * die smalle snit bestaat bij Google alleen als as van het variabele
+ * bestand en react-native-web zet geen `font-stretch`.
  *
- * Android gelijktrekken is één commando en één regel:
- *   npx expo install @expo-google-fonts/bodoni-moda expo-font
- * en dan hieronder de `android`-tak omzetten plus het font laden in
- * `app/_layout.tsx`. Alle componenten lezen uitsluitend uit dit bestand.
+ * Daarom staan de gewichten hier als losse *snitten* en niet als
+ * `fontWeight`: op native heet Archivo 700 "Archivo-Bold", en een
+ * fontWeight op een snit die maar één gewicht heeft levert een nagemaakt
+ * vet op. `sans()`, `serif()`, `mono()` en `head()` kiezen per platform.
  */
 
-/** Alleen voor de grootste maten. */
-export const DISPLAY_FAMILY = Platform.select({
-  ios: "Didot",
-  android: "serif",
-  default: "'Bodoni Moda', Didot, 'Playfair Display', Georgia, serif",
-}) as string;
+const isWeb = Platform.OS === "web";
 
-/** Koppen en citaten op leesmaat. */
-export const SERIF_FAMILY = Platform.select({
-  ios: "Didot",
-  android: "serif",
-  default: "'Playfair Display', Didot, Georgia, 'Times New Roman', serif",
-}) as string;
+/** De familienamen zoals ze geregistreerd zijn (native) of op web heten. */
+export const FONT = {
+  head: isWeb ? "'ArchivoCond-Black', 'Archivo', 'Helvetica Neue', sans-serif" : "ArchivoCond-Black",
+  sans: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Regular",
+  sansMedium: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Medium",
+  sansBold: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Bold",
+  serif: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Regular",
+  serifItalic: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Italic",
+  mono: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-Regular",
+  monoMedium: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-Medium",
+  monoSemi: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-SemiBold",
+} as const;
 
-export const SERIF_FAMILY_ITALIC = Platform.select({
-  ios: "Didot-Italic",
-  android: "serif",
-  default: "'Playfair Display', Didot, Georgia, 'Times New Roman', serif",
-}) as string;
+/** De snitten die `app/_layout.tsx` op native laadt; sleutel = familienaam. */
+export const FONT_FILES = {
+  "ArchivoCond-Black": require("../../assets/fonts/ArchivoCond-Black.ttf"),
+  "Archivo-Regular": require("../../assets/fonts/Archivo-Regular.ttf"),
+  "Archivo-Medium": require("../../assets/fonts/Archivo-Medium.ttf"),
+  "Archivo-Bold": require("../../assets/fonts/Archivo-Bold.ttf"),
+  "InstrumentSerif-Regular": require("../../assets/fonts/InstrumentSerif-Regular.ttf"),
+  "InstrumentSerif-Italic": require("../../assets/fonts/InstrumentSerif-Italic.ttf"),
+  "IBMPlexMono-Regular": require("../../assets/fonts/IBMPlexMono-Regular.ttf"),
+  "IBMPlexMono-Medium": require("../../assets/fonts/IBMPlexMono-Medium.ttf"),
+  "IBMPlexMono-SemiBold": require("../../assets/fonts/IBMPlexMono-SemiBold.ttf"),
+};
 
-/** Neutrale grotesk voor alles wat geen inhoud is. */
-export const SANS_FAMILY = Platform.select({
-  ios: "Helvetica Neue",
-  android: "sans-serif",
-  default: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-}) as string;
+/** Archivo op leesmaat. */
+export function sans(weight: 400 | 500 | 700 = 400): TextStyle {
+  const fontFamily = weight === 700 ? FONT.sansBold : weight === 500 ? FONT.sansMedium : FONT.sans;
+  return isWeb ? { fontFamily, fontWeight: String(weight) as TextStyle["fontWeight"] } : { fontFamily };
+}
 
-// ===============================================================
-// FEED V3 — het sans-stelsel.
-//
-// Dit blok staat náást het serif-systeem hierboven; welke waar
-// geldt staat in DESIGN.md §3. Kort: `feedType` draagt de feed en
-// alles wat sinds de v3-uitrol herbouwd is, `type` draagt de
-// redactionele momenten (citaten, koppen van een vondst).
-//
-// De feed is bewust sans-only: ook de brontitel krijgt géén serif.
-// ===============================================================
+/** Instrument Serif, rechtop of cursief. */
+export function serif(italic = false): TextStyle {
+  return isWeb
+    ? { fontFamily: FONT.serif, fontStyle: italic ? "italic" : "normal", fontWeight: "400" }
+    : { fontFamily: italic ? FONT.serifItalic : FONT.serif };
+}
+
+/** IBM Plex Mono. */
+export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
+  const fontFamily = weight === 600 ? FONT.monoSemi : weight === 500 ? FONT.monoMedium : FONT.mono;
+  return isWeb ? { fontFamily, fontWeight: String(weight) as TextStyle["fontWeight"] } : { fontFamily };
+}
+
+/** Archivo 900, 75% breed — de kop. Altijd kapitaal. */
+export function head(): TextStyle {
+  return isWeb
+    ? { fontFamily: FONT.head, fontWeight: "900", textTransform: "uppercase" }
+    : { fontFamily: FONT.head, textTransform: "uppercase" };
+}
 
 /**
- * Inter — de grotesk van het feed-systeem.
+ * De typeschaal van v2. Maten uit README §Typography.
  *
- * Er wordt bewust géén fontbestand meegeleverd, exact zoals bij de
- * serifs hierboven:
- *   Web      Inter 400–900, opgehaald via de stylesheet in `app/+html.tsx`.
- *   iOS      San Francisco. Een neutrale grotesk met vrijwel dezelfde
- *            proporties als Inter (Inter is er letterlijk op gebaseerd),
- *            nul bytes in de bundle.
- *   Android  Roboto.
- *
- * Écht Inter op native is één commando en één regel:
- *   npx expo install @expo-google-fonts/inter
- * daarna hieronder de ios/android-takken op "Inter_400Regular" e.d.
- * zetten en de snitten laden in `app/_layout.tsx`. Dat kost ~6 snitten
- * in de native bundle — vandaar dat het niet de standaard is.
+ * Regelhoogtes staan in px: RN kent geen `line-height: 1`. Koppen op
+ * fontSize × 1 (README: .9–1), serif op × 1.25, lopende tekst op × 1.35.
  */
-export const INTER_FAMILY = Platform.select({
-  ios: "System",
-  android: "sans-serif",
-  default: "Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif",
-}) as string;
+export const lincinType = {
+  // ---- mono: meta, labels, knoppen ----
+  /** 11px, kapitaal, .06em — de kop van de app, chipteksten. */
+  meta: { ...mono(500), fontSize: 11, lineHeight: 14, letterSpacing: 0.66, textTransform: "uppercase" } as TextStyle,
+  /** 10px, kapitaal, .08em — de kleine regel: aantallen, tijd, rubriek. */
+  micro: { ...mono(500), fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase" } as TextStyle,
+  /** 9px — coördinaten, de allerkleinste noot. */
+  tiny: { ...mono(500), fontSize: 9, lineHeight: 12, letterSpacing: 0.54, textTransform: "uppercase" } as TextStyle,
+  /** 10px 600 — de actiebalk van een kaart, tabs in een blad. */
+  action: { ...mono(600), fontSize: 10, lineHeight: 13, letterSpacing: 0.4, textTransform: "uppercase" } as TextStyle,
+  /** 12px 600 — pollopties, naam bij een comment. */
+  monoBody: { ...mono(600), fontSize: 12, lineHeight: 16 } as TextStyle,
+
+  // ---- Archivo: lopende tekst en knoplabels ----
+  body: { ...sans(400), fontSize: 15, lineHeight: 20 } as TextStyle,
+  bodySmall: { ...sans(400), fontSize: 13, lineHeight: 18 } as TextStyle,
+  /** De knop: 700 10px kapitaal, .1em. */
+  button: { ...sans(700), fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase" } as TextStyle,
+  /** Het tabblad onderaan: dezelfde letter. */
+  tab: { ...sans(700), fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase" } as TextStyle,
+  /** De initiaal in een avatar. */
+  initial: { ...sans(700), fontSize: 13, lineHeight: 16 } as TextStyle,
+
+  // ---- Instrument Serif: bijschriften, titels, citaten ----
+  caption: { ...serif(), fontSize: 15, lineHeight: 19 } as TextStyle,
+  captionLarge: { ...serif(), fontSize: 17, lineHeight: 21 } as TextStyle,
+  /** Het tekstvlak van een tekstbijdrage, en het bijschrift op de bladzijde. */
+  quote: { ...serif(), fontSize: 19, lineHeight: 24 } as TextStyle,
+  quoteLarge: { ...serif(), fontSize: 20, lineHeight: 25 } as TextStyle,
+  /** "Zeg iets tegen …", de gestreepte kaarten. */
+  aside: { ...serif(true), fontSize: 17, lineHeight: 21 } as TextStyle,
+  asideSmall: { ...serif(true), fontSize: 14, lineHeight: 18 } as TextStyle,
+  /** De rij in een lijst (Instellingen →). */
+  row: { ...serif(), fontSize: 19, lineHeight: 24 } as TextStyle,
+  /** De naam in de gesprekkenlijst en de kop van een gesprek. */
+  name: { ...serif(), fontSize: 20, lineHeight: 25 } as TextStyle,
+  /** Titel van een event. */
+  eventTitle: { ...serif(), fontSize: 24, lineHeight: 26, letterSpacing: -0.24 } as TextStyle,
+  /** De paginatitel: "Wat je vrienden maken". */
+  pageTitle: { ...serif(), fontSize: 30, lineHeight: 31, letterSpacing: -0.3 } as TextStyle,
+  pageTitleItalic: { ...serif(true), fontSize: 30, lineHeight: 31, letterSpacing: -0.3 } as TextStyle,
+  pageTitleLarge: { ...serif(), fontSize: 32, lineHeight: 33, letterSpacing: -0.32 } as TextStyle,
+  /** Je eigen naam op "Jij". */
+  ownName: { ...serif(), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
+  ownNameItalic: { ...serif(true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
+
+  // ---- Archivo 900 smal: de koppen ----
+  /** Kaarttitel 22px, max 3 regels = 66px. */
+  cardTitle: { ...head(), fontSize: 22, lineHeight: 22, letterSpacing: -0.22 } as TextStyle,
+  /** Naam in de band. */
+  band: { ...head(), fontSize: 22, lineHeight: 22, letterSpacing: -0.22 } as TextStyle,
+  /** Tijdband in "Op tijd". */
+  bandSmall: { ...head(), fontSize: 20, lineHeight: 20, letterSpacing: -0.2 } as TextStyle,
+  /** Titel op de bladzijde van een bijdrage. */
+  postTitle: { ...head(), fontSize: 32, lineHeight: 31, letterSpacing: -0.32 } as TextStyle,
+  /** Naam op een profiel. */
+  profileName: { ...head(), fontSize: 44, lineHeight: 41, letterSpacing: -0.44 } as TextStyle,
+  /** "Je feed is zo leeg als een nieuw schetsboek". */
+  emptyTitle: { ...head(), fontSize: 40, lineHeight: 37, letterSpacing: -0.4 } as TextStyle,
+  /** De dag in een eventkaart, de initiaal in een gesprek. */
+  numeral: { ...head(), fontSize: 44, lineHeight: 42 } as TextStyle,
+  numeralSmall: { ...head(), fontSize: 28, lineHeight: 28 } as TextStyle,
+  numeralTiny: { ...head(), fontSize: 26, lineHeight: 26 } as TextStyle,
+  /** Track in een muziekkaart. */
+  track: { ...head(), fontSize: 18, lineHeight: 18 } as TextStyle,
+  /** Vermelde bijdrage in een gesprek. */
+  mini: { ...head(), fontSize: 12, lineHeight: 12 } as TextStyle,
+} as const;
+
+// ===============================================================
+// DE OUDE SCHALEN — namen blijven, letters zijn nu die van v2
+// ===============================================================
+//
+// `feedType` en `type` dragen de schermen die nog niet herbouwd zijn.
+// Hun families wijzen nu naar Archivo en Instrument Serif; de gewichten
+// blijven staan. Op iOS lost het systeem een gewicht binnen de familie op
+// (Archivo-Regular + 700 → de geladen Bold), op Android wordt het een
+// nagemaakt vet — aanvaardbaar voor schermen die nog aan de beurt komen.
+
+/** Alleen voor de grootste maten. */
+export const DISPLAY_FAMILY = FONT.serif;
+
+/** Koppen en citaten op leesmaat. */
+export const SERIF_FAMILY = FONT.serif;
+
+export const SERIF_FAMILY_ITALIC = FONT.serifItalic;
+
+/** Neutrale grotesk voor alles wat geen inhoud is. */
+export const SANS_FAMILY = FONT.sans;
+
+/** De grotesk van het feed-systeem. */
+export const INTER_FAMILY = FONT.sans;
 
 /**
  * Kaderdikte van het hele feed-systeem. Geen haarlijn: dit ontwerp

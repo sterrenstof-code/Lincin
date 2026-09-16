@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,500..900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+body{margin:0;background:#141414;font-family:Archivo,'Helvetica Neue',sans-serif;color:#F2EFE8}
+a{color:#F2EFE8}a:hover{color:#E5FF3A}
+[data-stand]{--p:#F2EFE8;--p2:#E7E3D8;--i:#141414;--dim:rgba(20,20,20,.58);--rule:rgba(20,20,20,.2);--acid:#E5FF3A;--red:#D8321F;--blue:#2F5BFF;--orange:#F06A2B;--ochre:#E0B64A;--green:#4C9A63}
+[data-stand="donker"]{--p:#1A1917;--p2:#232220;--i:#EDE8DD;--dim:rgba(237,232,221,.62);--rule:rgba(237,232,221,.2);--acid:#D9F04A;--red:#E4553F;--blue:#6E8CFF;--orange:#E88A5A;--ochre:#D2B25E;--green:#6FAE80}
+[data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.2,.7,.2,1),transform .6s cubic-bezier(.2,.7,.2,1)}
+[data-reveal].in{opacity:1;transform:none}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes nudge{0%,100%{transform:translate(0,-50%)}50%{transform:translate(-8px,-50%)}}
+@keyframes heroIn{from{transform:scale(.94) translateY(18px);opacity:0}to{transform:none;opacity:1}}
+@keyframes sheet{from{transform:translateY(100%)}to{transform:none}}
+.pscroll{scrollbar-width:none}.pscroll::-webkit-scrollbar{display:none}
+.snapy{scroll-snap-type:y proximity}.snapy>*{scroll-snap-align:start}
+</style>
+</helmet>
+
+<div data-stand="{{ stand }}" style="min-height:100vh;padding:48px 56px 80px;box-sizing:border-box;display:flex;flex-direction:column;gap:36px">
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:40px;max-width:1500px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:32px">
+    <div>
+      <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#E5FF3A;margin-bottom:14px">Lincin · verkenning 02 · nieuwe identiteit</div>
+      <div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.95;letter-spacing:-.02em;text-wrap:balance">Het schrift <em>is</em> de feed.<br>Geen algoritme, alleen vrienden.</div>
+    </div>
+    <div style="font-size:13px;line-height:1.55;color:#CFCAC0;text-wrap:pretty">
+      <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8E897E;margin-bottom:10px">Wat ik begreep</div>
+      DESIGN.md ligt opzij. Twee plekken: <strong style="color:#F2EFE8">Schrift</strong> — alles waar je vrienden mee bezig zijn, in de volgorde waarin ze het maakten (foto, krabbel, tekst, spraak, poll, link, plek, muziek) — en <strong style="color:#F2EFE8">Gesprekken</strong>. Bij elke bijdrage: meteen reageren, of er een privégesprek over beginnen. Speels, kunstzinnig, literair.
+    </div>
+    <div style="font-size:13px;line-height:1.55;color:#CFCAC0;text-wrap:pretty">
+      <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8E897E;margin-bottom:10px">Drie richtingen — kies er één</div>
+      <a href="#2a" style="text-decoration:none;font-weight:700">2a</a> Affiche — elke bijdrage een poster, het blad kleurt mee.<br>
+      <a href="#2b" style="text-decoration:none;font-weight:700">2b</a> Tijdschrift — tekst over beeld, kop klapt in, dicht en literair.<br>
+      <a href="#2c" style="text-decoration:none;font-weight:700">2c</a> Raster — brutalistisch krantenraster, tegels openen in zuurgeel.<br><br>
+      <span style="color:#8E897E">Overal: tik een reactie, of «Privé» voor een gesprek. Tweak: licht / donker.</span>
+    </div>
+  </div>
+
+  <section id="t7" style="display:flex;flex-direction:column;gap:18px;scroll-margin-top:16px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:44px">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><a href="#t7" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414;text-decoration:none">7</a><span style="font-size:13px;font-weight:600;line-height:1.5">Alle acht kaartvarianten op de homepage, in de vriendrijen. Zelfde app, alleen de kaart verschilt. De bijdragepagina heeft nu een groot reactievak: Emoji · GIF · Sticker.</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+      <div id="7a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7a</a>Kaart <a href="#5a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5a</a> · byline</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="5a" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7b</a>Kaart <a href="#5b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5b</a> · kleurstrook</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="5b" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7c</a>Kaart <a href="#5c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5c</a> · affiche</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="5c" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7d" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7d</a>Kaart <a href="#5d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5d</a> · krant</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="6d" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7e" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7e" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7e</a>Kaart <a href="#6a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6a</a> · meta-paneel + titelstrook</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="6a" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7f" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7f" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7f</a>Kaart <a href="#6b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6b</a> · titelkop</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="6b" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7g" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7g" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7g</a>Kaart <a href="#6c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6c</a> · affiche + onderschrift</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="6c" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="7h" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#7h" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">7h</a>Kaart <a href="#6d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6d</a> · meta-kolom</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" card="6d" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+    </div>
+  </section>
+
+  <section id="t6" style="display:flex;flex-direction:column;gap:18px;scroll-margin-top:16px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:44px">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><a href="#t6" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414;text-decoration:none">6</a><span style="font-size:13px;font-weight:600;line-height:1.5">Kruisingen van <a href="#5b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5b</a> (titel op een kleurstrook, acties als onderschrift) en <a href="#5c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5c</a> (affichepaneel naast het beeld, één actiebalk).</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+      <div id="6a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#6a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6a</a>Paneel links smal met meta · beeld · titelstrook eronder over de volle breedte · actiebalk</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="display:flex;height:220px">
+              <div style="flex:0 0 40px;background:var(--orange);color:#141414;border-right:1.5px solid var(--i);display:flex;align-items:center;justify-content:center"><span style="writing-mode:vertical-rl;transform:rotate(180deg);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em">Noor · foto · 22:41</span></div>
+              <div style="flex:1;position:relative;min-width:0"><image-slot id="c6a" shape="rect" placeholder="foto · dijk bij zonsondergang"></image-slot></div>
+            </div>
+            <div style="background:var(--orange);color:#141414;padding:10px 12px;border-top:1.5px solid var(--i);border-bottom:1.5px solid var(--i);font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase">Het licht om 22:19</div>
+            <div style="padding:10px 12px;font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2">Marken, net voor het donker werd. Zondag hierheen?</div>
+            <div style="display:flex;border-top:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace">
+              <div style="flex:1.4;height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border-right:1.5px solid var(--i)">🔥 3 <span style="color:var(--dim)">🌊 1</span></div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--i)">✎ 2</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center">✉</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="6b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#6b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6b</a>Titelstrook bovenaan als kop · paneel + beeld · zin · onderschrift-acties</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="background:var(--orange);color:#141414;padding:10px 12px;border-bottom:1.5px solid var(--i);display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><div style="font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase">Het licht om 22:19</div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;text-align:right;line-height:1.4;white-space:nowrap">Noor<br>foto · 22:41</div></div>
+            <div style="display:flex;height:210px">
+              <div style="flex:1;position:relative;min-width:0"><image-slot id="c6b" shape="rect" placeholder="foto · dijk bij zonsondergang"></image-slot></div>
+              <div style="flex:0 0 96px;background:var(--orange);color:#141414;border-left:1.5px solid var(--i);padding:10px;display:flex;flex-direction:column;justify-content:space-between"><span style="width:28px;height:28px;border-radius:50%;background:var(--p);color:var(--i);display:flex;align-items:center;justify-content:center;font:700 12px Archivo,sans-serif">N</span><span style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;line-height:1.2">Marken, net voor het donker.</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace">
+              <span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🔥 3</span><span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🌊 1</span><span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center">+</span>
+              <span style="flex:1"></span>
+              <span style="text-decoration:underline;text-underline-offset:3px">2 reacties</span><span style="color:var(--dim)">·</span><span style="text-decoration:underline;text-underline-offset:3px">Privé ✉</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="6c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#6c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6c</a>Paneel links met titel horizontaal (5c) · zin op een lichte strook · acties als onderschrift (5b)</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="display:flex;height:240px">
+              <div style="flex:0 0 44%;background:var(--orange);color:#141414;border-right:1.5px solid var(--i);padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="width:26px;height:26px;border-radius:50%;background:var(--p);color:var(--i);display:flex;align-items:center;justify-content:center;font:700 11px Archivo,sans-serif">N</span><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase">22:41</span></div>
+                <div style="font-weight:900;font-stretch:75%;font-size:30px;line-height:.92;text-transform:uppercase;text-wrap:balance">Het licht om 22:19</div>
+                <div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em">Noor · foto</div>
+              </div>
+              <div style="flex:1;position:relative;min-width:0"><image-slot id="c6c" shape="rect" placeholder="foto · dijk"></image-slot></div>
+            </div>
+            <div style="padding:10px 12px;border-top:1.5px solid var(--i);background:var(--p2);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2">Marken, net voor het donker werd. Zondag hierheen?</div>
+            <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace">
+              <span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🔥 3</span><span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🌊 1</span>
+              <span style="flex:1"></span>
+              <span style="text-decoration:underline;text-underline-offset:3px">✎ 2 reacties</span><span style="color:var(--dim)">·</span><span style="text-decoration:underline;text-underline-offset:3px">✉ Privé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="6d" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#6d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">6d</a>Beeld groot · titel als strook die het beeld snijdt · meta-kolom rechts · actiebalk (5c)</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="display:flex">
+              <div style="flex:1;min-width:0">
+                <div style="height:190px;position:relative"><image-slot id="c6d" shape="rect" placeholder="foto · dijk bij zonsondergang"></image-slot></div>
+                <div style="background:var(--orange);color:#141414;padding:10px 12px;border-top:1.5px solid var(--i);font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase">Het licht om 22:19</div>
+                <div style="padding:10px 12px;font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2;color:var(--dim)">Marken, net voor het donker werd. Zondag hierheen?</div>
+              </div>
+              <div style="flex:0 0 40px;border-left:1.5px solid var(--i);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0;background:var(--p2)"><span style="width:26px;height:26px;border-radius:50%;background:var(--orange);color:#141414;display:flex;align-items:center;justify-content:center;font:700 11px Archivo,sans-serif">N</span><span style="writing-mode:vertical-rl;transform:rotate(180deg);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em">Noor · foto · 22:41</span></div>
+            </div>
+            <div style="display:flex;border-top:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace">
+              <div style="flex:1.4;height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border-right:1.5px solid var(--i)">🔥 3 <span style="color:var(--dim)">🌊 1</span></div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--i)">✎ 2</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center">✉</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div style="font-size:12px;line-height:1.5;color:rgba(242,239,232,.5);max-width:900px">Volgende: "zet <a href="#6a" style="text-decoration:none;font-weight:700">6a</a> in de app" · "<a href="#6c" style="text-decoration:none;font-weight:700">6c</a> met de actiebalk van <a href="#6d" style="text-decoration:none;font-weight:700">6d</a>".</div>
+  </section>
+
+  <section id="t5" style="display:flex;flex-direction:column;gap:18px;scroll-margin-top:16px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:44px">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><a href="#t5" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414;text-decoration:none">5</a><span style="font-size:13px;font-weight:600;line-height:1.5">Vier kaartvarianten, dezelfde bijdrage. Leesvolgorde van boven naar beneden: wie → wat → titel → zin → wat kan ik doen. Kies er één, dan zet ik hem in de app.</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+      <div id="5a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#5a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5a</a>Kop als byline · beeld · tekst · twee knoppen</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--orange);color:#141414;border-bottom:1.5px solid var(--i)"><span style="width:26px;height:26px;border-radius:50%;background:var(--p);color:var(--i);display:flex;align-items:center;justify-content:center;font:700 12px Archivo,sans-serif">N</span><span style="font:700 13px Archivo,sans-serif;text-decoration:underline;text-underline-offset:3px">Noor</span><span style="flex:1"></span><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em">foto · 22:41</span></div>
+            <div style="height:220px;position:relative;border-bottom:1.5px solid var(--i)"><image-slot id="c5a" shape="rect" placeholder="foto · dijk bij zonsondergang"></image-slot></div>
+            <div style="padding:12px 12px 12px;display:flex;flex-direction:column;gap:6px">
+              <div style="font-weight:900;font-stretch:75%;font-size:24px;line-height:1;text-transform:uppercase">Het licht om 22:19</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2;color:var(--dim)">Marken, net voor het donker werd. Zondag hierheen?</div>
+            </div>
+            <div style="display:flex;border-top:1.5px solid var(--i)">
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 11px 'IBM Plex Mono',monospace;border-right:1.5px solid var(--i)">🔥 3 · 🌊 1 · ✎ 2</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;gap:6px;font:600 11px 'IBM Plex Mono',monospace">✉ Privé aan Noor</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#5b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5b</a>Beeld met kleurstrook · titel op de strook · acties als onderschrift</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="height:230px;position:relative"><image-slot id="c5b" shape="rect" placeholder="foto · dijk bij zonsondergang"></image-slot><div style="position:absolute;top:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;background:var(--p);color:var(--i);padding:3px 6px;pointer-events:none">Noor · foto · 22:41</div></div>
+            <div style="background:var(--orange);color:#141414;padding:10px 12px;border-top:1.5px solid var(--i);border-bottom:1.5px solid var(--i);font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase">Het licht om 22:19</div>
+            <div style="padding:10px 12px;font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2">Marken, net voor het donker werd. Zondag hierheen?</div>
+            <div style="display:flex;align-items:center;gap:6px;padding:0 12px 12px;font:600 11px 'IBM Plex Mono',monospace">
+              <span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🔥 3</span><span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">🌊 1</span><span style="height:28px;padding:0 8px;border:1.5px solid var(--i);display:flex;align-items:center;gap:4px">+</span>
+              <span style="flex:1"></span>
+              <span style="text-decoration:underline;text-underline-offset:3px">2 reacties</span><span style="color:var(--dim)">·</span><span style="text-decoration:underline;text-underline-offset:3px">Privé ✉</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#5c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5c</a>Affiche · titel horizontaal ín het paneel · beeld rechts · één actiebalk</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border:1.5px solid var(--i);background:var(--p)">
+            <div style="display:flex;height:250px">
+              <div style="flex:0 0 46%;background:var(--orange);color:#141414;border-right:1.5px solid var(--i);padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0">
+                <div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;line-height:1.5">Noor<br>foto · 22:41</div>
+                <div style="font-weight:900;font-stretch:75%;font-size:30px;line-height:.92;text-transform:uppercase;text-wrap:balance">Het licht om 22:19</div>
+              </div>
+              <div style="flex:1;position:relative;min-width:0"><image-slot id="c5c" shape="rect" placeholder="foto · dijk"></image-slot></div>
+            </div>
+            <div style="padding:10px 12px;border-top:1.5px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2;color:var(--dim)">Marken, net voor het donker werd. Zondag hierheen?</div>
+            <div style="display:flex;border-top:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace">
+              <div style="flex:1.4;height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border-right:1.5px solid var(--i)">🔥 3 <span style="color:var(--dim)">🌊 1</span></div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--i)">✎ 2</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center">✉</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5d" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#5d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">5d</a>Krant · geen kader, lijnen · beeld klein rechts · alles leesbaar in één blik</div>
+        <div style="width:366px;padding:18px;background:var(--p);color:var(--i);font-family:Archivo,sans-serif;box-sizing:border-box">
+          <div style="border-top:3px solid var(--orange);border-bottom:1.5px solid var(--i);padding:10px 0 12px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em"><span style="text-decoration:underline;text-underline-offset:3px">Noor</span><span style="color:var(--dim)">foto · 22:41</span></div>
+            <div style="display:flex;gap:12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <div style="font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase;text-wrap:balance">Het licht om 22:19</div>
+                <div style="font-family:'Instrument Serif',serif;font-size:16px;line-height:1.2;color:var(--dim)">Marken, net voor het donker werd. Zondag hierheen?</div>
+              </div>
+              <div style="flex:0 0 120px;height:120px;position:relative;border:1.5px solid var(--i)"><image-slot id="c5d" shape="rect" placeholder="foto"></image-slot></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font:600 11px 'IBM Plex Mono',monospace"><span>🔥 3</span><span>🌊 1</span><span style="color:var(--dim)">+</span><span style="flex:1"></span><span style="height:30px;padding:0 10px;border:1.5px solid var(--i);display:flex;align-items:center">✎ Reageer · 2</span><span style="height:30px;padding:0 10px;background:var(--i);color:var(--p);display:flex;align-items:center">✉ Privé</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div style="font-size:12px;line-height:1.5;color:rgba(242,239,232,.5);max-width:900px">Volgende: "zet <a href="#5a" style="text-decoration:none;font-weight:700">5a</a> in de app" · "<a href="#5c" style="text-decoration:none;font-weight:700">5c</a> met de actiebalk van <a href="#5d" style="text-decoration:none;font-weight:700">5d</a>" · "toon ze ook donker".</div>
+  </section>
+
+  <section id="t4" style="display:flex;flex-direction:column;gap:18px;scroll-margin-top:16px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:44px">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><a href="#t4" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414;text-decoration:none">4</a><span style="font-size:13px;font-weight:600;line-height:1.5">Eén werkende app: <a href="#2a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2a</a> als basis + de vriendbanden van <a href="#3c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">3c</a>. Voettabs Feed · Gesprekken · Events · Jij; meldingen en «+» in de kop; Instellingen en Meldingen onder Jij. Elke telefoon is dezelfde app, opgestart op een ander scherm — klik overal doorheen.</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+      <div id="4a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4a</a>Feed · kaart 5d · per vriend of op tijd · band kleeft · veeg zijwaarts · tik kaart → bijdrage · naam → profiel · ✎ reageer · ✉ privé</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="schrift" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="4b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4b</a>Gesprekken · tik een rij → gesprek, typ en verstuur</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="chats" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="4c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4c</a>Events · datum als poster, ik kom / misschien</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="events" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="4d" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4d</a>Jij · profiel → Instellingen, Meldingen</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="jij" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="4e" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4e" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4e</a>Instellingen · schakelaars</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="instellingen" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+      <div id="4f" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4f" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4f</a>Nieuwe bijdrage · soort, titel, kleur, delen</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="compose" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+    <div id="4g" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#4g" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">4g</a>Lege staat · nog geen lincs</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="leeg" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      </div>
+    </div>
+    <div style="font-size:12px;line-height:1.5;color:rgba(242,239,232,.5);max-width:900px">Volgende: "onboarding en inloggen in deze taal" · "een groepsgesprek met eigen schrift" · "de detailpagina van een event".</div>
+  </section>
+
+  <section id="t3" style="display:flex;flex-direction:column;gap:18px;scroll-margin-top:16px;border-bottom:1.5px solid rgba(242,239,232,.25);padding-bottom:44px">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><a href="#t3" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414;text-decoration:none">3</a><span style="font-size:13px;font-weight:600;line-height:1.5"><a href="#2a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2a</a> blijft de basis (kleuren, letters, posterkaart, blad kleurt mee). Erbij: sticky gekleurde banden per bladzijde uit 1c, de inktkop met «Volgorde»-dropdown en de voettabs uit <a href="#2c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2c</a>. Drie manieren waarop de banden kleven.</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+      <div id="3a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#3a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">3a</a>Stapel · elke posterkaart heeft een band die bovenaan kleeft en onder de volgende schuift · alles open, scrollen leest</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+          <div data-screen-label="3a Stapel" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:{{ bg3a }};transition:background .7s ease;color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+            <div style="flex:none;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:44px;font:700 13px Archivo,sans-serif"><span style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;background:{{ dot3a }};display:inline-block;transition:background .7s"></span>LINCIN</span><span style="font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase">Schrift · 4 nieuw</span></div>
+            <div style="flex:none;display:flex;border-bottom:1.5px solid var(--i);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;position:relative;z-index:8">
+              <div style="flex:1;padding:9px 12px;border-right:1.5px solid var(--i);display:flex;justify-content:space-between"><span>Weergave: stapel</span><span>⌵</span></div>
+              <div onClick="{{ toggleOrder3a }}" style="flex:1;padding:9px 12px;display:flex;justify-content:space-between;cursor:pointer;background:{{ orderBg3a }};color:{{ orderFg3a }}"><span>Volgorde: {{ orderLabel }}</span><span>⌵</span></div>
+              <sc-if value="{{ orderOpen3a }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:0;top:100%;width:50%;background:var(--i);color:var(--p);border-top:1.5px solid var(--p);animation:rise .2s ease">
+                  <sc-for list="{{ orderOptions }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.pick }}" style="padding:10px 12px;border-bottom:1.5px solid rgba(242,239,232,.2);cursor:pointer;display:flex;justify-content:space-between"><span>{{ o.label }}</span><span>{{ o.mark }}</span></div></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div class="pscroll" onScroll="{{ onScroll3a }}" style="flex:1;overflow:auto;position:relative;padding:0 18px">
+              <div style="padding:14px 0 10px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px"><div style="font-family:'Instrument Serif',serif;font-size:36px;line-height:.95;letter-spacing:-.02em;text-wrap:balance">Wat je vrienden <em>maken</em></div><div style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.4;color:var(--dim);white-space:nowrap">wo 16 sep<br>5 bladzijden</div></div>
+              <sc-for list="{{ posts3 }}" as="p" hint-placeholder-count="3">
+                <div data-a3-post="{{ $index }}" style="position:relative;margin-bottom:14px">
+                  <div style="position:sticky;top:0;z-index:{{ p.z }};background:{{ p.panel }};color:{{ p.panelInk }};height:52px;display:flex;align-items:center;gap:12px;padding:0 12px;border:1.5px solid var(--i);box-sizing:border-box">
+                    <span style="font:500 10px 'IBM Plex Mono',monospace">{{ p.no }}</span>
+                    <span style="flex:1;font-weight:900;font-stretch:62%;font-size:24px;line-height:.9;letter-spacing:-.01em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</span>
+                    <span style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.3">{{ p.by }}<br>{{ p.when }}</span>
+                  </div>
+                  <div data-reveal style="border:1.5px solid var(--i);border-top:0;background:var(--p)">
+                    <div style="display:flex;height:300px">
+                      <div style="flex:0 0 36%;min-width:0;background:{{ p.panel }};color:{{ p.panelInk }};position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1.5px solid var(--i)">
+                        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-stretch:62%;font-size:44px;line-height:.88;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;max-height:220px">{{ p.title }}</div>
+                        <div style="position:absolute;bottom:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace">{{ p.kind }}</div>
+                      </div>
+                      <div style="flex:1;min-width:0;overflow:hidden;position:relative"><image-slot id="{{ p.slotA }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></div>
+                    </div>
+                    <div style="border-top:1.5px solid var(--i);padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+                      <div style="font-family:'Instrument Serif',serif;font-size:18px;line-height:1.2;text-wrap:pretty">{{ p.caption }}</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <sc-for list="{{ p.reactionsA }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.tap }}" style="height:32px;padding:0 10px;border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;gap:5px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ r.emoji }} {{ r.n }}</div></sc-for>
+                        <div style="flex:1"></div>
+                        <div onClick="{{ p.privA }}" style="height:32px;padding:0 12px;background:var(--i);color:var(--p);display:flex;align-items:center;font:700 10px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Privé →</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="height:24px"></div>
+            </div>
+            <div style="flex:none;display:flex;background:var(--p);border-top:1.5px solid var(--i);position:relative;z-index:9">
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;background:var(--i);color:var(--p)">Schrift</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Gesprekken (2)</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Jij</div>
+            </div>
+            <sc-if value="{{ sheet3a }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end;z-index:20" onClick="{{ closeSheet }}">
+                <div style="background:var(--p);color:var(--i);border-top:1.5px solid var(--i);padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                  <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)">Privégesprek met {{ sheetBy }}</div>
+                  <div style="margin:10px 0 14px;padding:10px 12px;border-left:3px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.25;text-wrap:pretty">«{{ sheetQuote }}»</div>
+                  <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border:1.5px solid var(--i);display:flex;align-items:center;padding:0 12px;font-size:15px;color:var(--dim)">Schrijf iets over deze bladzijde…</div><div style="width:44px;height:44px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:18px">↑</div></div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </x-import>
+      </div>
+
+      <div id="3b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#3b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">3b</a>Register · alle banden dicht, als inhoudsopgave · tik: de posterkaart klapt uit, de band kleeft bovenaan</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+          <div data-screen-label="3b Register" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:{{ bg3b }};transition:background .7s ease;color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+            <div style="flex:none;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:44px;font:700 13px Archivo,sans-serif"><span style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;background:{{ dot3b }};display:inline-block;transition:background .7s"></span>LINCIN</span><span style="font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase">Schrift · 4 nieuw</span></div>
+            <div style="flex:none;display:flex;border-bottom:1.5px solid var(--i);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;position:relative;z-index:8">
+              <div style="flex:1;padding:9px 12px;border-right:1.5px solid var(--i);display:flex;justify-content:space-between"><span>Weergave: register</span><span>⌵</span></div>
+              <div onClick="{{ toggleOrder3b }}" style="flex:1;padding:9px 12px;display:flex;justify-content:space-between;cursor:pointer;background:{{ orderBg3b }};color:{{ orderFg3b }}"><span>Volgorde: {{ orderLabel }}</span><span>⌵</span></div>
+              <sc-if value="{{ orderOpen3b }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:0;top:100%;width:50%;background:var(--i);color:var(--p);border-top:1.5px solid var(--p);animation:rise .2s ease">
+                  <sc-for list="{{ orderOptions }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.pick }}" style="padding:10px 12px;border-bottom:1.5px solid rgba(242,239,232,.2);cursor:pointer;display:flex;justify-content:space-between"><span>{{ o.label }}</span><span>{{ o.mark }}</span></div></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div class="pscroll" style="flex:1;overflow:auto;position:relative">
+              <div style="padding:14px 18px 12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px"><div style="font-family:'Instrument Serif',serif;font-size:36px;line-height:.95;letter-spacing:-.02em;text-wrap:balance">Wat je vrienden <em>maken</em></div><div style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.4;color:var(--dim);white-space:nowrap">wo 16 sep<br>5 bladzijden</div></div>
+              <sc-for list="{{ posts3 }}" as="p" hint-placeholder-count="5">
+                <div style="position:relative">
+                  <div onClick="{{ p.toggleB }}" style="position:sticky;top:0;z-index:{{ p.z }};background:{{ p.panel }};color:{{ p.panelInk }};height:{{ p.bandH }};transition:height .3s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;gap:12px;padding:0 18px;border-top:1.5px solid var(--i);box-sizing:border-box;cursor:pointer;overflow:hidden">
+                    <span style="font:500 10px 'IBM Plex Mono',monospace;width:20px">{{ p.no }}</span>
+                    <span style="flex:1;font-weight:900;font-stretch:62%;font-size:{{ p.bandSize }};transition:font-size .3s;line-height:.9;letter-spacing:-.01em;text-transform:uppercase;text-wrap:balance">{{ p.title }}</span>
+                    <span style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.3;white-space:nowrap">{{ p.by }}<br>{{ p.kind }}</span>
+                    <span style="width:26px;height:26px;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;transform:rotate({{ p.glyphRot }});transition:transform .3s">+</span>
+                  </div>
+                  <sc-if value="{{ p.openB }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:14px 18px 18px;animation:rise .35s cubic-bezier(.2,.7,.2,1)">
+                      <div style="border:1.5px solid var(--i);background:var(--p)">
+                        <div style="display:flex;height:300px">
+                          <div style="flex:0 0 36%;min-width:0;background:{{ p.panel }};color:{{ p.panelInk }};position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1.5px solid var(--i)">
+                            <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-stretch:62%;font-size:44px;line-height:.88;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;max-height:220px">{{ p.title }}</div>
+                            <div style="position:absolute;bottom:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace">{{ p.when }}</div>
+                          </div>
+                          <div style="flex:1;min-width:0;overflow:hidden;position:relative"><image-slot id="{{ p.slotB }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></div>
+                        </div>
+                        <div style="border-top:1.5px solid var(--i);padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+                          <div style="font-family:'Instrument Serif',serif;font-size:18px;line-height:1.2;text-wrap:pretty">{{ p.caption }}</div>
+                          <div style="font-size:13px;line-height:1.5;color:var(--dim);text-wrap:pretty">{{ p.body }}</div>
+                          <div style="display:flex;gap:6px;align-items:center">
+                            <sc-for list="{{ p.reactionsB }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.tap }}" style="height:32px;padding:0 10px;border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;gap:5px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ r.emoji }} {{ r.n }}</div></sc-for>
+                            <div style="flex:1"></div>
+                            <div onClick="{{ p.privB }}" style="height:32px;padding:0 12px;background:var(--i);color:var(--p);display:flex;align-items:center;font:700 10px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Privé →</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="border-top:1.5px solid var(--i);padding:22px 18px 60px;font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;color:var(--dim);text-align:center">— dat was alles van vandaag —</div>
+            </div>
+            <div style="flex:none;display:flex;background:var(--p);border-top:1.5px solid var(--i);position:relative;z-index:9">
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;background:var(--i);color:var(--p)">Schrift</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Gesprekken (2)</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Jij</div>
+            </div>
+            <sc-if value="{{ sheet3b }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end;z-index:20" onClick="{{ closeSheet }}">
+                <div style="background:var(--p);color:var(--i);border-top:1.5px solid var(--i);padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                  <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)">Privégesprek met {{ sheetBy }}</div>
+                  <div style="margin:10px 0 14px;padding:10px 12px;border-left:3px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.25;text-wrap:pretty">«{{ sheetQuote }}»</div>
+                  <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border:1.5px solid var(--i);display:flex;align-items:center;padding:0 12px;font-size:15px;color:var(--dim)">Schrijf iets over deze bladzijde…</div><div style="width:44px;height:44px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:18px">↑</div></div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </x-import>
+      </div>
+
+      <div id="3c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+        <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#3c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">3c</a>Per vriend · één band per vriend kleeft · daaronder hun bladzijden als posters, veeg zijwaarts · tik band om dicht te vouwen</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+          <div data-screen-label="3c Per vriend" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:{{ bg3c }};transition:background .7s ease;color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+            <div style="flex:none;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:44px;font:700 13px Archivo,sans-serif"><span style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;background:{{ dot3c }};display:inline-block;transition:background .7s"></span>LINCIN</span><span style="font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase">Schrift · 4 nieuw</span></div>
+            <div style="flex:none;display:flex;border-bottom:1.5px solid var(--i);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;position:relative;z-index:8">
+              <div style="flex:1;padding:9px 12px;border-right:1.5px solid var(--i);display:flex;justify-content:space-between"><span>Weergave: per vriend</span><span>⌵</span></div>
+              <div onClick="{{ toggleOrder3c }}" style="flex:1;padding:9px 12px;display:flex;justify-content:space-between;cursor:pointer;background:{{ orderBg3c }};color:{{ orderFg3c }}"><span>Volgorde: {{ orderLabel }}</span><span>⌵</span></div>
+              <sc-if value="{{ orderOpen3c }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:0;top:100%;width:50%;background:var(--i);color:var(--p);border-top:1.5px solid var(--p);animation:rise .2s ease">
+                  <sc-for list="{{ orderOptions }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.pick }}" style="padding:10px 12px;border-bottom:1.5px solid rgba(242,239,232,.2);cursor:pointer;display:flex;justify-content:space-between"><span>{{ o.label }}</span><span>{{ o.mark }}</span></div></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div class="pscroll" onScroll="{{ onScroll3c }}" style="flex:1;overflow:auto;position:relative">
+              <div style="padding:14px 18px 12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px"><div style="font-family:'Instrument Serif',serif;font-size:36px;line-height:.95;letter-spacing:-.02em;text-wrap:balance">Wie <em>maakte</em> wat</div><div style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.4;color:var(--dim);white-space:nowrap">wo 16 sep<br>4 vrienden</div></div>
+              <sc-for list="{{ friends3 }}" as="f" hint-placeholder-count="3">
+                <div data-c3-group="{{ $index }}" style="position:relative">
+                  <div onClick="{{ f.toggle }}" style="position:sticky;top:0;z-index:{{ f.z }};background:{{ f.panel }};color:{{ f.panelInk }};height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;border-top:1.5px solid var(--i);box-sizing:border-box;cursor:pointer">
+                    <span style="width:30px;height:30px;border-radius:50%;background:var(--p);color:var(--i);display:flex;align-items:center;justify-content:center;font:700 13px Archivo,sans-serif;flex:none">{{ f.initial }}</span>
+                    <span style="flex:1;font-weight:900;font-stretch:62%;font-size:26px;line-height:.9;letter-spacing:-.01em;text-transform:uppercase">{{ f.name }}</span>
+                    <span style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.3;white-space:nowrap">{{ f.count }}<br>{{ f.last }}</span>
+                    <span style="width:26px;height:26px;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;transform:rotate({{ f.glyphRot }});transition:transform .3s">+</span>
+                  </div>
+                  <sc-if value="{{ f.open }}" hint-placeholder-val="{{ true }}">
+                    <div data-reveal class="pscroll snapx" style="display:flex;gap:12px;overflow-x:auto;padding:14px 18px 16px;border-top:1.5px solid var(--i)">
+                      <sc-for list="{{ f.posts }}" as="p" hint-placeholder-count="2">
+                        <div style="flex:none;width:300px;border:1.5px solid var(--i);background:var(--p)">
+                          <div style="display:flex;height:260px">
+                            <div style="flex:0 0 36%;min-width:0;background:{{ p.panel }};color:{{ p.panelInk }};position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1.5px solid var(--i)">
+                              <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-stretch:62%;font-size:38px;line-height:.88;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;max-height:190px">{{ p.title }}</div>
+                              <div style="position:absolute;top:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace">{{ p.no }}</div>
+                              <div style="position:absolute;bottom:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace">{{ p.when }}</div>
+                            </div>
+                            <div style="flex:1;min-width:0;overflow:hidden;position:relative"><image-slot id="{{ p.slotC }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></div>
+                          </div>
+                          <div style="border-top:1.5px solid var(--i);padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+                            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><div style="font-family:'Instrument Serif',serif;font-size:17px;line-height:1.2;text-wrap:pretty">{{ p.caption }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);white-space:nowrap">{{ p.kind }}</div></div>
+                            <div style="display:flex;gap:6px;align-items:center">
+                              <sc-for list="{{ p.reactionsC }}" as="r" hint-placeholder-count="2"><div onClick="{{ r.tap }}" style="height:30px;padding:0 9px;border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;gap:5px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ r.emoji }} {{ r.n }}</div></sc-for>
+                              <div style="flex:1"></div>
+                              <div onClick="{{ p.privC }}" style="height:30px;padding:0 10px;background:var(--i);color:var(--p);display:flex;align-items:center;font:700 10px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Privé →</div>
+                            </div>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <div onClick="{{ f.priv }}" style="flex:none;width:120px;border:1.5px dashed var(--i);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;line-height:1.2;padding:12px;cursor:pointer;color:var(--dim)">Zeg iets tegen {{ f.name }} →</div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="border-top:1.5px solid var(--i);padding:22px 18px 60px;font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;color:var(--dim);text-align:center">— dat was alles van vandaag —</div>
+            </div>
+            <div style="flex:none;display:flex;background:var(--p);border-top:1.5px solid var(--i);position:relative;z-index:9">
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;background:var(--i);color:var(--p)">Schrift</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Gesprekken (2)</div>
+              <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Jij</div>
+            </div>
+            <sc-if value="{{ sheet3c }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end;z-index:20" onClick="{{ closeSheet }}">
+                <div style="background:var(--p);color:var(--i);border-top:1.5px solid var(--i);padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                  <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)">Privégesprek met {{ sheetBy }}</div>
+                  <div style="margin:10px 0 14px;padding:10px 12px;border-left:3px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.25;text-wrap:pretty">«{{ sheetQuote }}»</div>
+                  <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border:1.5px solid var(--i);display:flex;align-items:center;padding:0 12px;font-size:15px;color:var(--dim)">Schrijf iets…</div><div style="width:44px;height:44px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:18px">↑</div></div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </x-import>
+      </div>
+
+    </div>
+    <div style="font-size:12px;line-height:1.5;color:rgba(242,239,232,.5);max-width:900px">Volgende: "werk <a href="#3a" style="text-decoration:none;font-weight:700">3a</a> uit in alle negen schermen" · "<a href="#3b" style="text-decoration:none;font-weight:700">3b</a> maar met de kaarten van <a href="#3c" style="text-decoration:none;font-weight:700">3c</a> erin" · "laat de gesprekkenpagina zien".</div>
+  </section>
+
+  <section id="t2" style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <!-- 2a AFFICHE -->
+    <div id="2a" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+      <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#2a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2a</a>Affiche · scroll: blad kleurt mee met de bijdrage · tik het plusteken voor detail</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+        <div data-screen-label="2a Affiche" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:{{ aBg }};transition:background .7s ease;color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 18px 0;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase"><span>Lincin</span><span>{{ aCounter }}</span></div>
+          <div style="padding:8px 18px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+            <div style="font-family:'Instrument Serif',serif;font-size:38px;line-height:.95;letter-spacing:-.02em;text-wrap:balance">Wat je vrienden <em>maken</em></div>
+            <div style="font:500 10px 'IBM Plex Mono',monospace;text-align:right;line-height:1.4;color:var(--dim);white-space:nowrap">vandaag 4<br>deze week 19</div>
+          </div>
+          <div class="pscroll snapy" onScroll="{{ onAScroll }}" style="flex:1;overflow:auto;padding:16px 18px 0;display:flex;flex-direction:column;gap:14px">
+            <sc-for list="{{ aPosts }}" as="p" hint-placeholder-count="3">
+              <div data-reveal data-a-post="{{ $index }}" style="flex:none;display:flex;flex-direction:column;border:1.5px solid var(--i);background:var(--p)">
+                <div style="display:flex;height:300px">
+                  <div style="flex:0 0 36%;min-width:0;background:{{ p.panel }};color:{{ p.panelInk }};position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1.5px solid var(--i)">
+                    <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-stretch:62%;font-size:44px;line-height:.88;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;max-height:220px">{{ p.title }}</div>
+                    <div style="position:absolute;top:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace">{{ p.no }}</div>
+                    <div style="position:absolute;bottom:10px;left:10px;font:500 10px 'IBM Plex Mono',monospace;line-height:1.35">{{ p.by }}<br>{{ p.when }}</div>
+                  </div>
+                  <div onClick="{{ p.open }}" style="flex:1;min-width:0;overflow:hidden;position:relative;cursor:zoom-in">
+                    <image-slot id="{{ p.slotId }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot>
+                    <div style="position:absolute;top:10px;right:10px;width:26px;height:26px;background:var(--p);border:1.5px solid var(--i);display:flex;align-items:center;justify-content:center;pointer-events:none"><div style="width:12px;height:1.5px;background:var(--i)"></div><div style="position:absolute;width:1.5px;height:12px;background:var(--i)"></div></div>
+                  </div>
+                </div>
+                <div style="border-top:1.5px solid var(--i);padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div style="font-family:'Instrument Serif',serif;font-size:18px;line-height:1.2;text-wrap:pretty">{{ p.caption }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);white-space:nowrap">{{ p.kind }}</div></div>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <sc-for list="{{ p.reactions }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.tap }}" style="height:32px;padding:0 10px;border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;gap:5px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ r.emoji }} {{ r.n }}</div></sc-for>
+                    <div style="flex:1"></div>
+                    <div onClick="{{ p.priv }}" style="height:32px;padding:0 12px;background:var(--i);color:var(--p);display:flex;align-items:center;font:700 10px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Privé →</div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="height:20px;flex:none"></div>
+          </div>
+          <div style="flex:none;margin:8px 18px 40px;display:flex;border:1.5px solid var(--i);background:var(--p)">
+            <div style="flex:1;padding:12px 0;text-align:center;font:700 11px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;background:var(--i);color:var(--p)">Schrift</div>
+            <div style="flex:1;padding:12px 0;text-align:center;font:700 11px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;border-left:1.5px solid var(--i);position:relative">Gesprekken<span style="position:absolute;top:6px;right:14px;width:7px;height:7px;background:var(--red)"></span></div>
+            <div style="flex:1;padding:12px 0;text-align:center;font:700 11px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;border-left:1.5px solid var(--i)">Jij</div>
+          </div>
+          <sc-if value="{{ aDetail }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ aClose }}" style="position:absolute;inset:0;background:{{ aDetail.panel }};color:{{ aDetail.panelInk }};display:flex;flex-direction:column;padding:60px 18px 44px;box-sizing:border-box;animation:rise .45s cubic-bezier(.2,.7,.2,1);cursor:zoom-out">
+              <div style="display:flex;justify-content:space-between;font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em"><span>{{ aDetail.no }} · {{ aDetail.by }} · {{ aDetail.when }}</span><span>Sluit ×</span></div>
+              <div style="flex:1;margin:14px 0;position:relative;border:1.5px solid currentColor"><image-slot id="{{ aDetail.slotId }}" shape="rect" placeholder="{{ aDetail.placeholder }}"></image-slot></div>
+              <div style="font-weight:900;font-stretch:62%;font-size:60px;line-height:.86;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance">{{ aDetail.title }}</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:21px;line-height:1.25;margin-top:12px;text-wrap:pretty">{{ aDetail.caption }}</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ aSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end" onClick="{{ closeSheet }}">
+              <div style="background:var(--p);color:var(--i);border-top:1.5px solid var(--i);padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)">Privégesprek met {{ sheetBy }}</div>
+                <div style="margin:10px 0 14px;padding:10px 12px;border-left:3px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.25;text-wrap:pretty">«{{ sheetQuote }}»</div>
+                <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border:1.5px solid var(--i);display:flex;align-items:center;padding:0 12px;font-size:15px;color:var(--dim)">Schrijf iets over deze bladzijde…</div><div style="width:44px;height:44px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:18px">↑</div></div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- 2b TIJDSCHRIFT -->
+    <div id="2b" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+      <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#2b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2b</a>Tijdschrift · kop klapt in bij scrollen · tekst over beeld, telkens ergens anders · rood als enige kleur</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+        <div data-screen-label="2b Tijdschrift" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:var(--p);color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+          <div style="flex:none;padding:0 18px 8px;border-bottom:1.5px solid var(--i);overflow:hidden;height:{{ bHeadH }};transition:height .3s cubic-bezier(.2,.7,.2,1);display:flex;flex-direction:column;justify-content:flex-end;box-sizing:border-box">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+              <div style="font-family:'Instrument Serif',serif;font-size:{{ bTitleSize }};line-height:.9;letter-spacing:-.03em;transition:font-size .3s cubic-bezier(.2,.7,.2,1);text-wrap:balance">Lincin<em style="color:var(--red)">.</em></div>
+              <div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);white-space:nowrap;text-align:right">wo 16 sep<br>nº 212</div>
+            </div>
+            <sc-if value="{{ bExpanded }}" hint-placeholder-val="{{ true }}"><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:19px;line-height:1.25;margin-top:10px;color:var(--dim);text-wrap:pretty">Vier vrienden maakten iets sinds gisteravond. Van boven naar beneden, zoals het kwam.</div></sc-if>
+          </div>
+          <div class="pscroll" onScroll="{{ onBScroll }}" style="flex:1;overflow:auto">
+            <sc-for list="{{ bPosts }}" as="p" hint-placeholder-count="4">
+              <div data-reveal style="border-bottom:1.5px solid var(--i)">
+                <div style="position:relative;height:{{ p.h }};overflow:hidden">
+                  <div style="position:absolute;inset:0"><image-slot id="{{ p.slotId }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></div>
+                  <div style="position:absolute;{{ p.pos }};pointer-events:none;max-width:80%;display:flex;flex-direction:column;align-items:{{ p.align }};gap:6px">
+                    <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--p);background:var(--red);padding:3px 6px">{{ p.by }} · {{ p.kind }}</div>
+                    <div style="font-family:'Instrument Serif',serif;font-size:{{ p.size }};line-height:.95;letter-spacing:-.02em;text-wrap:balance;text-align:{{ p.align }};color:var(--i);background:var(--p);padding:6px 10px;box-decoration-break:clone;-webkit-box-decoration-break:clone;display:inline">{{ p.title }}</div>
+                  </div>
+                </div>
+                <div style="padding:12px 18px 14px;display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:start">
+                  <div style="font-size:13px;line-height:1.5;text-wrap:pretty;color:var(--i)">{{ p.body }}</div>
+                  <div style="font:500 10px 'IBM Plex Mono',monospace;line-height:1.5;color:var(--dim);text-align:right">{{ p.when }}<br>{{ p.meta }}</div>
+                  <div style="grid-column:1/-1;display:flex;gap:14px;align-items:center;font:500 12px 'IBM Plex Mono',monospace">
+                    <sc-for list="{{ p.reactions }}" as="r" hint-placeholder-count="3"><span onClick="{{ r.tap }}" style="cursor:pointer;text-decoration:{{ r.deco }};text-decoration-color:var(--red);text-underline-offset:3px">{{ r.emoji }} {{ r.n }}</span></sc-for>
+                    <span style="flex:1"></span>
+                    <span onClick="{{ p.priv }}" style="cursor:pointer;color:var(--red);text-decoration:underline;text-underline-offset:3px;font-weight:600">Antwoord privé</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:26px 18px 60px;font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;color:var(--dim);text-align:center">— dat was alles van vandaag —</div>
+          </div>
+          <div style="flex:none;display:flex;justify-content:space-between;padding:10px 18px 40px;border-top:1.5px solid var(--i);font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.04em;background:var(--p)">
+            <span style="text-decoration:underline;text-decoration-color:var(--red);text-underline-offset:4px">Schrift</span><span>Gesprekken <span style="color:var(--red)">(2)</span></span><span>Schrijf +</span><span>Jij</span>
+          </div>
+          <sc-if value="{{ bSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end" onClick="{{ closeSheet }}">
+              <div style="background:var(--p);color:var(--i);border-top:1.5px solid var(--i);padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--red)">Privé aan {{ sheetBy }}</div>
+                <div style="margin:10px 0 14px;font-family:'Instrument Serif',serif;font-style:italic;font-size:19px;line-height:1.25;text-wrap:pretty">over «{{ sheetQuote }}»</div>
+                <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;font-size:15px;color:var(--dim)">Schrijf…</div><div style="height:44px;padding:0 14px;background:var(--red);color:#F2EFE8;display:flex;align-items:center;font:600 12px 'IBM Plex Mono',monospace">Stuur</div></div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- 2c RASTER -->
+    <div id="2c" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+      <div style="display:flex;align-items:baseline;gap:8px;font-size:11px;color:#8E897E"><a href="#2c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(242,239,232,.12);text-decoration:none">2c</a>Raster · brutalistisch krantenraster · tik een tegel: hij opent in zuurgeel · mono-metadata</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+        <div data-screen-label="2c Raster" style="font-family:Archivo,'Helvetica Neue',sans-serif;height:100%;display:flex;flex-direction:column;background:var(--p2);color:var(--i);padding-top:54px;box-sizing:border-box;position:relative">
+          <div style="flex:none;margin:0 0 0;background:var(--acid);color:#141414;display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:44px;border-bottom:1.5px solid #141414;font:700 13px Archivo,sans-serif;letter-spacing:-.01em">
+            <span style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;background:#141414;display:inline-block"></span>LINCIN</span>
+            <span style="font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase">Schrift · 19 nieuw</span>
+          </div>
+          <div style="flex:none;display:flex;border-bottom:1.5px solid var(--i);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;background:var(--p)">
+            <div style="flex:1;padding:8px 12px;border-right:1.5px solid var(--i);display:flex;justify-content:space-between"><span>Weergave: raster</span><span>⌵</span></div>
+            <div style="flex:1;padding:8px 12px;display:flex;justify-content:space-between"><span>Volgorde: nieuwste</span><span>⌵</span></div>
+          </div>
+          <div class="pscroll" style="flex:1;overflow:auto;padding:1.5px 0 0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:max-content;gap:1.5px;background:var(--i);align-content:start">
+            <sc-for list="{{ cTiles }}" as="t" hint-placeholder-count="6">
+              <div data-reveal onClick="{{ t.toggle }}" style="grid-column:{{ t.span }};background:{{ t.bg }};color:{{ t.fg }};min-height:196px;position:relative;cursor:pointer;display:flex;flex-direction:column;transition:background .3s">
+                <sc-if value="{{ t.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;animation:rise .35s cubic-bezier(.2,.7,.2,1)">
+                    <div style="display:flex;justify-content:space-between;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase"><span>{{ t.by }} · {{ t.kind }}</span><span>{{ t.when }}</span></div>
+                    <div style="font-weight:900;font-stretch:75%;font-size:30px;line-height:.92;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance">{{ t.title }}</div>
+                    <div style="height:150px;position:relative;border:1.5px solid #141414"><image-slot id="{{ t.slotId }}" shape="rect" placeholder="{{ t.placeholder }}"></image-slot></div>
+                    <div style="font-size:13px;line-height:1.45;text-wrap:pretty">{{ t.body }}</div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                      <sc-for list="{{ t.reactions }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.tap }}" style="height:30px;padding:0 9px;border:1.5px solid #141414;background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;gap:5px;font:600 12px 'IBM Plex Mono',monospace">{{ r.emoji }} {{ r.n }}</div></sc-for>
+                      <div style="flex:1"></div>
+                      <div onClick="{{ t.priv }}" style="font:600 12px 'IBM Plex Mono',monospace;text-decoration:underline;text-underline-offset:3px">Privé →</div>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ t.closed }}" hint-placeholder-val="{{ true }}">
+                  <div style="flex:1;position:relative;min-height:150px"><image-slot id="{{ t.slotId }}" shape="rect" placeholder="{{ t.placeholder }}"></image-slot></div>
+                  <div style="display:flex;justify-content:space-between;padding:6px 8px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;background:{{ t.bg }}"><span>{{ t.by }}</span><span>{{ t.kind }}</span></div>
+                  <sc-if value="{{ t.dot }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:var(--blue);border:1.5px solid var(--p)"></div></sc-if>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:none;display:flex;background:var(--p);border-top:1.5px solid var(--i)">
+            <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;background:var(--acid);color:#141414">Schrift</div>
+            <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Gesprekken (2)</div>
+            <div style="flex:1;padding:12px 0 42px;text-align:center;font:700 12px Archivo,sans-serif;border-left:1.5px solid var(--i)">Jij</div>
+          </div>
+          <sc-if value="{{ cSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:rgba(20,20,20,.35);display:flex;flex-direction:column;justify-content:flex-end" onClick="{{ closeSheet }}">
+              <div style="background:var(--acid);color:#141414;border-top:1.5px solid #141414;padding:16px 18px 44px;animation:sheet .35s cubic-bezier(.2,.7,.2,1)">
+                <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase">Privé → {{ sheetBy }}</div>
+                <div style="margin:8px 0 14px;font-weight:900;font-stretch:75%;font-size:26px;line-height:.95;text-transform:uppercase;text-wrap:balance">{{ sheetQuote }}</div>
+                <div style="display:flex;gap:8px"><div style="flex:1;height:44px;border:1.5px solid #141414;display:flex;align-items:center;padding:0 12px;font-size:15px;color:rgba(20,20,20,.55)">Schrijf…</div><div style="height:44px;padding:0 16px;background:#141414;color:var(--acid);display:flex;align-items:center;font:700 12px Archivo,sans-serif">STUUR</div></div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+
+  </section>
+
+  <div style="font-size:12px;line-height:1.5;color:rgba(242,239,232,.5);max-width:900px">Volgende: "werk <a href="#2a" style="text-decoration:none;font-weight:700">2a</a> uit in alle negen schermen" · "de kleur van <a href="#2a" style="text-decoration:none;font-weight:700">2a</a> met het raster van <a href="#2c" style="text-decoration:none;font-weight:700">2c</a>" · "<a href="#2b" style="text-decoration:none;font-weight:700">2b</a> maar met meer kleur" · "laat de gesprekkenpagina zien in elke richting".</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;stand&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;licht&quot;,&quot;donker&quot;],&quot;default&quot;:&quot;licht&quot;,&quot;tsType&quot;:&quot;'licht'|'donker'&quot;,&quot;section&quot;:&quot;Stand&quot;}}">
+class Component extends DCLogic {
+  state = { aIdx: 0, aDetail: null, bScroll: 0, cOpen: 1, sheet: null, reacts: {},
+    idx3a: 0, open3b: 0, openFriends: { 0: true, 1: true, 2: true, 3: true }, idx3c: 0, order: "nieuwste", orderOpen: null };
+  componentDidMount() {
+    this.io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.12 });
+    this.observe();
+    this.mo = new MutationObserver(() => this.observe());
+    this.mo.observe(document.body, { childList: true, subtree: true });
+  }
+  observe() { document.querySelectorAll("[data-reveal]:not(.in)").forEach(el => this.io.observe(el)); }
+  componentWillUnmount() { this.io?.disconnect(); this.mo?.disconnect(); }
+  react(key, i) {
+    this.setState(s => { const r = { ...s.reacts }; r[key + i] = !r[key + i]; return { reacts: r }; });
+  }
+  reactions(key, list, styleOn, styleOff) {
+    return list.map(([emoji, n], i) => {
+      const on = !!this.state.reacts[key + i];
+      return { emoji, n: n + (on ? 1 : 0), tap: (e) => { e.stopPropagation(); this.react(key, i); }, deco: on ? "underline" : "none", ...(on ? styleOn : styleOff) };
+    });
+  }
+  renderVals() {
+    const stand = this.props.stand ?? "licht";
+    const isDark = stand === "donker";
+    const sheet = (dir) => (by, quote) => (e) => { e.stopPropagation(); this.setState({ sheet: { dir, by, quote } }); };
+    const sheetA = sheet("a"), sheetB = sheet("b"), sheetC = sheet("c");
+
+    const posts = [
+      { no: "01", by: "Noor", when: "22:41", kind: "foto", title: "Het licht om 22:19", caption: "Marken, net voor het donker werd. Zondag hierheen?", body: "Ze stond twintig minuten op de dijk voor deze ene. De wind was zo hard dat de telefoon trilde.", placeholder: "foto · dijk bij zonsondergang", panel: "#F06A2B", ink: "#141414", meta: "1 foto", reacts: [["🔥", 3], ["🌊", 1], ["🧡", 2]] },
+      { no: "02", by: "Sem", when: "23:10", kind: "spraak · 0:41", title: "Idee voor het kamp", caption: "Een spraakbericht van 41 seconden waarin hij zichzelf drie keer tegenspreekt.", body: "«Oké, dus, hoor me even aan» — en dan volgt een plan met een kano.", placeholder: "golfvorm · spraakclip", panel: "#2F5BFF", ink: "#F2EFE8", meta: "0:41", reacts: [["😂", 4], ["🛶", 2], ["👀", 1]] },
+      { no: "03", by: "Lotte", when: "07:55", kind: "krabbel", title: "Ochtend, in potlood", caption: "Getekend in de trein. Ze zegt dat het een hond is.", body: "Lotte tekent elke ochtend één ding zonder het papier te bekijken.", placeholder: "krabbel · potloodtekening", panel: "#E0B64A", ink: "#141414", meta: "1 tekening", reacts: [["✏️", 2], ["🐕", 5], ["❤️", 3]] },
+      { no: "04", by: "Daan", when: "09:12", kind: "poll", title: "Tent of geen tent", caption: "Poll: 3 tegen 1. Daan is de 1.", body: "Slapen in de auto is volgens Daan óók kamperen. De groep is het daar niet mee eens.", placeholder: "beeld · poll-kaart", panel: "#4C9A63", ink: "#F2EFE8", meta: "4 stemmen", reacts: [["⛺", 3], ["🚗", 1], ["😤", 2]] },
+      { no: "05", by: "Yusuf", when: "10:30", kind: "muziek", title: "Space Song, weer", caption: "Beach House, op repeat sinds dinsdag.", body: "Een nummer als bladzijde: hoes, titel, en de zin die hij eronder zette.", placeholder: "hoes · album", panel: "#D8321F", ink: "#F2EFE8", meta: "3:52", reacts: [["🎧", 2], ["🌌", 4], ["🔁", 1]] },
+    ];
+
+    // 2a
+    const aPosts = posts.map((p, i) => ({ ...p, slotId: "a-" + p.no, panelInk: p.ink,
+      reactions: this.reactions("a" + i, p.reacts, { bg: "var(--i)", fg: "var(--p)" }, { bg: "transparent", fg: "var(--i)" }),
+      open: (e) => { e.stopPropagation(); this.setState({ aDetail: i }); }, priv: sheetA(p.by, p.caption) }));
+    const aCur = posts[this.state.aIdx] ?? posts[0];
+    const aBg = isDark ? "color-mix(in oklch, " + aCur.panel + " 55%, #151419)" : "color-mix(in oklch, " + aCur.panel + " 42%, #F2EFE8)";
+    const aDetail = this.state.aDetail === null ? null : { ...posts[this.state.aDetail], slotId: "a-" + posts[this.state.aDetail].no + "-detail", panelInk: posts[this.state.aDetail].ink };
+
+    // 2b
+    const bScroll = this.state.bScroll, bExpanded = bScroll < 40;
+    const positions = [
+      { pos: "left:18px;bottom:18px", align: "flex-start", size: "40px", h: "360px" },
+      { pos: "right:18px;top:18px", align: "flex-end", size: "34px", h: "280px" },
+      { pos: "left:18px;top:50%;transform:translateY(-50%)", align: "flex-start", size: "44px", h: "420px" },
+      { pos: "right:18px;bottom:18px", align: "flex-end", size: "36px", h: "300px" },
+      { pos: "left:50%;top:18px;transform:translateX(-50%)", align: "center", size: "38px", h: "330px" },
+    ];
+    const bPosts = posts.map((p, i) => ({ ...p, ...positions[i], slotId: "b-" + p.no, reactions: this.reactions("b" + i, p.reacts, {}, {}), priv: sheetB(p.by, p.title) }));
+
+    // 2c
+    const spans = ["1/-1", "auto", "auto", "auto", "auto"];
+    const cTiles = posts.map((p, i) => { const open = this.state.cOpen === i; return { ...p, open, closed: !open, slotId: "c-" + p.no, span: open ? "1/-1" : spans[i], bg: open ? "var(--acid)" : "var(--p)", fg: open ? "#141414" : "var(--i)", dot: i % 2 === 1,
+      reactions: this.reactions("c" + i, p.reacts, { bg: "#141414", fg: "var(--acid)" }, { bg: "transparent", fg: "#141414" }),
+      toggle: () => this.setState({ cOpen: open ? -1 : i }), priv: sheetC(p.by, p.title) }; });
+
+    // Turn 3 — 2a + sticky bands + 2c header/footer
+    const tint = (panel) => isDark ? "color-mix(in oklch, " + panel + " 55%, #151419)" : "color-mix(in oklch, " + panel + " 42%, #F2EFE8)";
+    const sheet3a = sheet("3a"), sheet3b = sheet("3b"), sheet3c = sheet("3c");
+    const ordered = this.state.order === "oudste" ? posts.slice().reverse() : this.state.order === "per vriend" ? posts.slice().sort((x, y) => x.by.localeCompare(y.by)) : posts;
+    const posts3 = ordered.map((p, i) => {
+      const openB = this.state.open3b === i;
+      return { ...p, panelInk: p.ink, z: i + 1, slotA: "3a-" + p.no, slotB: "3b-" + p.no,
+        reactionsA: this.reactions("3a" + i, p.reacts, { bg: "var(--i)", fg: "var(--p)" }, { bg: "transparent", fg: "var(--i)" }),
+        reactionsB: this.reactions("3b" + i, p.reacts, { bg: "var(--i)", fg: "var(--p)" }, { bg: "transparent", fg: "var(--i)" }),
+        privA: sheet3a(p.by, p.caption), privB: sheet3b(p.by, p.caption),
+        openB, bandH: openB ? "72px" : "56px", bandSize: openB ? "30px" : "22px", glyphRot: openB ? "45deg" : "0deg",
+        toggleB: () => this.setState({ open3b: openB ? -1 : i }) };
+    });
+    const byFriend = {};
+    posts.forEach(p => { (byFriend[p.by] = byFriend[p.by] || []).push(p); });
+    const friends3 = Object.keys(byFriend).map((name, i) => {
+      const list = byFriend[name]; const open = !!this.state.openFriends[i];
+      return { name, initial: name[0], panel: list[0].panel, panelInk: list[0].ink, z: i + 1, count: list.length + (list.length === 1 ? " bladzijde" : " bladzijden"), last: list[list.length - 1].when, open, glyphRot: open ? "45deg" : "0deg",
+        toggle: () => this.setState(s => ({ openFriends: { ...s.openFriends, [i]: !open } })), priv: sheet3c(name, "iets zeggen"),
+        posts: list.map((p, j) => ({ ...p, panelInk: p.ink, slotC: "3c-" + p.no, reactionsC: this.reactions("3c" + i + j, p.reacts.slice(0, 2), { bg: "var(--i)", fg: "var(--p)" }, { bg: "transparent", fg: "var(--i)" }), privC: sheet3c(p.by, p.caption) })) };
+    });
+    const cur3a = posts3[this.state.idx3a] ?? posts3[0];
+    const cur3b = posts3[this.state.open3b] ?? null;
+    const cur3c = friends3[this.state.idx3c] ?? friends3[0];
+    const orderOptions = ["nieuwste", "oudste", "per vriend"].map(o => ({ label: o, mark: o === this.state.order ? "●" : "", pick: (e) => { e.stopPropagation(); this.setState({ order: o, orderOpen: null }); } }));
+    const orderUI = (key) => { const open = this.state.orderOpen === key; return { ["toggleOrder" + key]: () => this.setState({ orderOpen: open ? null : key }), ["orderOpen" + key]: open, ["orderBg" + key]: open ? "var(--i)" : "transparent", ["orderFg" + key]: open ? "var(--p)" : "var(--i)" }; };
+    const nearest = (t, sel) => { const els = t.querySelectorAll(sel); const mid = t.scrollTop + 120; let idx = 0; els.forEach((el, i) => { if (el.offsetTop - t.offsetTop <= mid) idx = i; }); return idx; };
+    const t3 = {
+      posts3, friends3, orderLabel: this.state.order, orderOptions, ...orderUI("3a"), ...orderUI("3b"), ...orderUI("3c"),
+      bg3a: tint(cur3a.panel), dot3a: cur3a.panel, onScroll3a: (e) => { const i = nearest(e.currentTarget, "[data-a3-post]"); if (i !== this.state.idx3a) this.setState({ idx3a: i }); },
+      bg3b: cur3b ? tint(cur3b.panel) : "var(--p)", dot3b: cur3b ? cur3b.panel : "var(--acid)",
+      bg3c: tint(cur3c.panel), dot3c: cur3c.panel, onScroll3c: (e) => { const i = nearest(e.currentTarget, "[data-c3-group]"); if (i !== this.state.idx3c) this.setState({ idx3c: i }); },
+    };
+
+    const s = this.state.sheet;
+    return {
+      ...t3, sheet3a: s?.dir === "3a", sheet3b: s?.dir === "3b", sheet3c: s?.dir === "3c",
+      stand, isDark,
+      aPosts, aBg, aCounter: String(this.state.aIdx + 1).padStart(2, "0") + " / " + String(posts.length).padStart(2, "0"), aDetail, aClose: () => this.setState({ aDetail: null }),
+      onAScroll: (e) => { const t = e.currentTarget; const els = t.querySelectorAll("[data-a-post]"); const mid = t.scrollTop + t.clientHeight / 2; let idx = 0; els.forEach((el, i) => { if (el.offsetTop - t.offsetTop <= mid) idx = i; }); if (idx !== this.state.aIdx) this.setState({ aIdx: idx }); },
+      bPosts, bHeadH: bExpanded ? "148px" : "62px", bTitleSize: bExpanded ? "64px" : "30px", bExpanded,
+      onBScroll: (e) => { const y = e.currentTarget.scrollTop; if ((y < 40) !== (this.state.bScroll < 40)) this.setState({ bScroll: y }); },
+      cTiles,
+      aSheet: s?.dir === "a", bSheet: s?.dir === "b", cSheet: s?.dir === "c", sheetBy: s?.by ?? "", sheetQuote: s?.quote ?? "", closeSheet: () => this.setState({ sheet: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

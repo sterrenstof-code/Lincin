@@ -18,7 +18,8 @@ import { installPageTransitions } from "@/lib/page-transition";
 import { ConfirmProvider } from "@/lib/confirm";
 import { ToastProvider } from "@/lib/toast";
 import { loadStoredPreference, useScheme } from "@/lib/design/theme";
-import { desk } from "@/lib/design/type";
+import { desk, FONT_FILES } from "@/lib/design/type";
+import { useFonts } from "expo-font";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
@@ -43,6 +44,13 @@ const MODAL = {
 
 export default function RootLayout() {
   const scheme = useScheme();
+  /**
+   * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
+   * (`app/+html.tsx`) en is dit meteen klaar; op native laden ze hier, en
+   * tot die tijd staat er niets — een halve tel systeemletter die daarna
+   * verspringt is lelijker dan een halve tel leeg blad.
+   */
+  const [fontsReady] = useFonts(Platform.OS === "web" ? {} : FONT_FILES);
 
   useEffect(() => {
     // Haalt de bewaarde voorkeur op. Op web heeft het script in `+html.tsx`
