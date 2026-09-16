@@ -1,662 +1,221 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import {
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useMemo } from "react";
+import { Pressable, ScrollView, View } from "react-native";
 
-import { ActionSheet } from "@/components/ActionSheet";
-import { Avatar } from "@/components/Avatar";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { useWide } from "@/components/Editorial";
-import { EmptyState } from "@/components/EmptyState";
-import { RubricHead } from "@/components/PageHead";
-import { QueryError } from "@/components/QueryError";
-import { SkeletonListCard } from "@/components/Skeleton";
-import { useToast } from "@/lib/toast";
-import {
-  CONTROL_H,
-  creamOnDark,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flame,
-  flameDeep,
-  space,
-} from "@/lib/design/type";
-import { useAuth } from "@/lib/auth/provider";
-import {
-  chatAvatarUrl,
-  chatTitle,
-  deleteChatForEveryone,
-  getOrCreateDirectChat,
-  hideChat,
-  leaveChat,
-  listMyChats,
-  type ChatWithMembers,
-} from "@/lib/api/chats";
+import { LincinScreen } from "@/components/lincin/Chrome";
+import { BORDER, Box, DashedCard, GAP, GUTTER, Head, Mono, Serif } from "@/components/lincin/ui";
+import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
-import { plural } from "@/lib/plural";
-import {
-  forgetChatPreview,
-  useChatPreviews,
-  type ChatPreview,
-} from "@/lib/chat-preview";
+import { useAuth } from "@/lib/auth/provider";
+import { color, friendColor, hueFor, useScheme, type Hue } from "@/lib/design/theme";
+import { useLang, useT } from "@/lib/i18n";
+import { useChatPreviews } from "@/lib/chat-preview";
+import { displayName, timeLabel } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
-import { NL } from "@/lib/locale";
+import { useToast } from "@/lib/toast";
+
+/**
+ * Gesprekken (README §04).
+ *
+ * Eén kader met rijen van 72: links een vlak van 56 in de kleur van de
+ * ander met zijn initiaal, dan de naam in serif en de tijd (rood als er
+ * iets ongelezen ligt), de laatste regel gedempt, en rechts het aantal
+ * ongelezen. Groepen zijn groen en vierkant. Lincs zonder gesprek staan
+ * eronder met "Nog geen berichten".
+ */
 
 export default function ChatsScreen() {
-  usePageTitle("Chats");
+  usePageTitle("Gesprekken");
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
-  const wide = useWide();
-  const chrome = useChromeScroll();
   const qc = useQueryClient();
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
   const toast = useToast();
   const previews = useChatPreviews();
-
-  const [filter, setFilter] = useState("");
-  // Twee-traps menu voor chat-acties:
-  //   menuChat = chat waarvoor de eerste sheet (acties-lijst) open is
-  //   confirmKind = welke destructieve actie wacht op bevestiging
-  // We splitsen ze omdat hideChat geen confirm hoeft, maar leave/delete wel.
-  const [menuChat, setMenuChat] = useState<ChatWithMembers | null>(null);
-  const [confirmKind, setConfirmKind] = useState<
-    null | { chat: ChatWithMembers; kind: "leave" | "delete" }
-  >(null);
 
   const chats = useQuery({
     queryKey: ["chats", myUserId],
     queryFn: () => listMyChats(myUserId),
+    refetchOnWindowFocus: true,
   });
-
   const friendships = useQuery({
     queryKey: ["friendships", myUserId],
     queryFn: () => listMyFriendships(myUserId),
   });
 
-  const accepted = (friendships.data ?? []).filter((f) => f.status === "accepted");
-  const friendsInChats = new Set(
-    (chats.data ?? [])
-      .filter((c) => c.type === "direct")
-      .flatMap((c) => c.members.map((m) => m.id))
+  const list = useMemo(() => {
+    const all = [...(chats.data ?? [])];
+    all.sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at));
+    return all;
+  }, [chats.data]);
+
+  const inChats = useMemo(
+    () => new Set(list.filter((c) => c.type === "direct").flatMap((c) => c.members.map((m) => m.id))),
+    [list],
   );
-  const friendsWithoutChat = accepted.filter((f) => !friendsInChats.has(f.other.id));
+  const withoutChat = (friendships.data ?? []).filter((f) => f.status === "accepted" && !inChats.has(f.other.id));
+  const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
 
-  const filtered = useMemo(() => {
-    const all = chats.data ?? [];
-    if (!filter.trim()) return all;
-    const q = filter.trim().toLowerCase();
-    return all.filter((c) => chatTitle(c, myUserId).toLowerCase().includes(q));
-  }, [chats.data, filter, myUserId]);
-
-  async function openChatWith(friendUserId: string) {
+  async function openWith(friendId: string) {
     try {
-      const chatId = await getOrCreateDirectChat(friendUserId);
+      const id = await getOrCreateDirectChat(friendId);
       await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
-      router.push(`/chat/${chatId}`);
-    } catch {
-      toast.error("Het gesprek kon niet geopend worden.", {
-        action: { label: "Opnieuw", onPress: () => openChatWith(friendUserId) },
-      });
+      router.push(`/chat/${id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t.failed);
     }
   }
 
-  // Optimistisch wegtrekken uit de lijst: we filteren de chat eruit in de
-  // cache zodat hij meteen verdwijnt, daarna doet de mutatie z'n werk.
-  // Bij fout invalidate'n we de query zodat de echte server-state terugkomt.
-  function removeFromCache(chatId: string) {
-    qc.setQueryData<ChatWithMembers[]>(
-      ["chats", myUserId],
-      (old) => (old ?? []).filter((c) => c.id !== chatId)
+  function rowFor(c: ChatWithMembers) {
+    const isGroup = c.type === "group";
+    const other = isGroup ? null : otherMember(c, myUserId);
+    const hue: Hue = isGroup ? "green" : hueFor(other?.id);
+    const fc = friendColor(hue, scheme);
+    const name = chatTitle(c, myUserId);
+    const pv = previews[c.id];
+    let preview = "Nog geen berichten";
+    if (pv) preview = pv.fromMe ? `${t.me}: ${pv.text}` : isGroup && pv.sender ? `${pv.sender}: ${pv.text}` : pv.text;
+    const time = c.last_message_at ? timeLabel(c.last_message_at, t, lang) : "";
+    return (
+      <Row
+        key={c.id}
+        initial={name.slice(0, 1).toUpperCase()}
+        fill={fc.fill}
+        ink={fc.ink}
+        square={isGroup}
+        name={name}
+        time={time}
+        preview={preview}
+        unread={c.unread_count ?? 0}
+        onPress={() => router.push(`/chat/${c.id}`)}
+      />
     );
   }
 
-  /**
-   * Eén weg terug voor alle drie de acties hieronder.
-   *
-   * De rij is al uit de lijst getrokken voordat de server iets zei. Faalt
-   * de mutatie, dan zet de invalidatie hem terug — en dat gebeurde eerder
-   * zonder één woord: je drukt op "verwijder definitief", er beweegt iets,
-   * en dan staat het gesprek er weer. Een optimistische update is een
-   * belofte; wordt die teruggedraaid, dan hoort er te staan dát hij
-   * teruggedraaid is.
-   */
-  function rollback(message: string, retry: () => void) {
-    qc.invalidateQueries({ queryKey: ["chats", myUserId] });
-    toast.error(message, { action: { label: "Opnieuw", onPress: retry } });
-  }
-
-  async function onHide(chat: ChatWithMembers) {
-    removeFromCache(chat.id);
-    try {
-      await hideChat(chat.id, myUserId);
-    } catch {
-      rollback("Het gesprek kon niet verborgen worden.", () => onHide(chat));
-    }
-  }
-
-  async function onLeave(chat: ChatWithMembers) {
-    removeFromCache(chat.id);
-    try {
-      await leaveChat(chat.id, myUserId);
-      // De voorbeeldregel is van dit toestel; laat geen wees achter.
-      void forgetChatPreview(chat.id);
-    } catch {
-      rollback("Je kon de groep niet verlaten.", () => onLeave(chat));
-    }
-  }
-
-  async function onDeleteForEveryone(chat: ChatWithMembers) {
-    removeFromCache(chat.id);
-    try {
-      await deleteChatForEveryone(chat.id);
-      void forgetChatPreview(chat.id);
-    } catch {
-      rollback("Het gesprek kon niet verwijderd worden.", () =>
-        onDeleteForEveryone(chat)
-      );
-    }
-  }
-
-  // Acties dynamisch op basis van chat-type. Voor groepen geen "verwijder
-  // voor iedereen" (RLS blokkeert het server-side ook), maar wel "verlaat
-  // groep". Voor 1:1 chats: verberg + verwijder voor iedereen.
-  const menuActions = menuChat
-    ? menuChat.type === "direct"
-      ? [
-          {
-            label: "Verberg gesprek",
-            icon: "eye-off-outline" as const,
-            onPress: () => onHide(menuChat),
-          },
-          {
-            label: "Verwijder gesprek voor iedereen",
-            icon: "trash-outline" as const,
-            destructive: true,
-            onPress: () =>
-              setConfirmKind({ chat: menuChat, kind: "delete" }),
-          },
-        ]
-      : [
-          {
-            label: "Verberg gesprek",
-            icon: "eye-off-outline" as const,
-            onPress: () => onHide(menuChat),
-          },
-          {
-            label: "Verlaat groep",
-            icon: "exit-outline" as const,
-            destructive: true,
-            onPress: () => setConfirmKind({ chat: menuChat, kind: "leave" }),
-          },
-        ]
-    : [];
-
   return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Eén scroller voor de hele pagina, net als op de andere tabs.
-          De chatlijst is een gewone map i.p.v. een FlatList: een
-          VirtualizedList binnen een ScrollView nesten mag niet, en de
-          lijst is begrensd genoeg om virtualisatie niet te missen. */}
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        // Naar beneden trekken om te verversen. Stond op de feed, de agenda
-        // en de meldingen, en op deze drie niet — terwijl het gebaar hier
-        // net zo hard verwacht wordt. `isFetching && !isLoading`: bij de
-        // eerste keer laden dragen de skeletons het, dit is voor daarna.
-        refreshControl={
-          <RefreshControl
-            refreshing={chats.isFetching && !chats.isLoading}
-            onRefresh={() => {
-              void chats.refetch();
-              void friendships.refetch();
-            }}
-            tintColor={feed.ink}
-          />
-        }
-        contentStyle={{ paddingVertical: 20, paddingBottom: 40 }}
-      >
-        <View>
-          {/* Geen kop. De tab zegt al waar je bent, en de feed begint ook
-              meteen; een titel van drie regels was een derde van het
-              eerste scherm. */}
-          {/* Filterveld en de knop ernaast als één rij van 44 hoog
-              (CONTROL_H). Het veld had een eigen vulling; op een blad
-              waar verder niets gevuld is leest dat als een doos in
-              plaats van als een regel om in te typen (§4). */}
-          <View
-            style={{ flexDirection: "row", gap: space.sm, marginBottom: space.xxl }}
-          >
-            <View
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                height: CONTROL_H,
-                paddingHorizontal: space.md,
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-              }}
-            >
-              <Ionicons name="search" color={feed.inkDim} size={17} />
-              <TextInput
-                value={filter}
-                onChangeText={setFilter}
-                placeholder="Filter gesprekken"
-                placeholderTextColor={feed.inkDim}
-                accessibilityLabel="Gesprekken filteren"
-                style={[
-                  feedType.body,
-                  {
-                    flex: 1,
-                    color: feed.ink,
-                    paddingLeft: space.sm,
-                    ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null),
-                  },
-                ]}
-              />
-              {filter.length > 0 && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Filter wissen"
-                  onPress={() => setFilter("")}
-                  style={{
-                    // Was `hitSlop={12}`. Het kruisje heeft geen eigen doos —
-                    // het ís het glyph van 18 — en zijn buur is de `flex: 1`
-                    // TextInput, zonder tussenruimte. Twaalf punten slop
-                    // liggen dan over het einde van je eigen tekst, en omdat
-                    // dit de latere broer is wint hij het raken: je tikt om
-                    // je cursor te zetten en je filter is weg.
-                    // Een eigen kolom van 44 hoog raakt niemand anders.
-                    height: CONTROL_H,
-                    paddingLeft: space.sm,
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="close-circle" color={feed.inkDim} size={18} />
-                </Pressable>
-              )}
-            </View>
-            {/* Omlijnd en niet gevuld: de gevulde knop op dit scherm is de
-                oranje plus in de kopbalk, en er is er hoogstens één (§4). */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Nieuwe groep maken"
-              onPress={() => router.push("/group-create")}
-              style={({ pressed }) => ({
-                width: CONTROL_H,
-                height: CONTROL_H,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-                backgroundColor: pressed ? feed.panel : "transparent",
-              })}
-            >
-              <Ionicons name="people" color={feed.ink} size={18} />
-            </Pressable>
-          </View>
-
-          {/* Friends quick row */}
-          {friendsWithoutChat.length > 0 && (
-            <View style={{ marginBottom: space.xxl }}>
-              <RubricHead label="Start een gesprek" />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: space.xl, gap: space.md }}
-              >
-                {friendsWithoutChat.map((f) => (
-                  <Pressable
-                    key={f.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Gesprek beginnen met ${
-                      f.other.display_name ?? f.other.username
-                    }`}
-                    onPress={() => openChatWith(f.other.id)}
-                    className="items-center w-16"
-                  >
-                    <Avatar
-                      name={f.other.display_name ?? f.other.username}
-                      avatarUrl={f.other.avatar_url}
-                      size="lg"
-                      tint="warm"
-                    />
-                    <Text
-                      style={[
-                        feedType.label,
-                        { color: feed.inkDim, marginTop: space.sm, textAlign: "center" },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {f.other.display_name ?? f.other.username}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          <RubricHead label="Gesprekken" count={filtered.length || undefined} />
-
-          {chats.isLoading && <SkeletonListCard rows={3} />}
-        </View>
-        {/* Faalt de query, dan stond hier "nog geen gesprekken" — en dan
-            lijkt een lege lijst een feit in plaats van een storing. */}
-        {chats.isError ? (
-          <QueryError
-            title="Gesprekken konden niet geladen worden"
-            error={chats.error}
-            onRetry={() => chats.refetch()}
-          />
-        ) : filtered.length === 0 ? (
-          chats.isLoading ? null : (
-            /**
-             * Drie leegtes, en maar één ervan is een doodlopende weg.
-             *
-             * Bij een zoekterm valt er niets te doen dan hem weghalen, en
-             * dat veld staat er al. Heb je lincs maar nog geen gesprek, dan
-             * staat de rij met gezichten er vlak boven — dáár begin je er
-             * een, en een knop ernaast zou naar diezelfde rij wijzen.
-             *
-             * Maar "Ga naar Lincs om iemand toe te voegen" noemde een scherm
-             * en bood er geen ingang bij, terwijl dat de énige plek is waar
-             * dit scherm ooit vandaan gevuld wordt. Dat is de leegte die een
-             * knop verdient.
-             */
-            <EmptyState
-              title={filter.trim() ? "Geen gesprek gevonden" : "Nog geen gesprekken"}
-              body={
-                filter.trim()
-                  ? `Geen gesprek met "${filter.trim()}" in de naam.`
-                  : friendsWithoutChat.length > 0
-                  ? "Begin er een met iemand hierboven."
-                  : "Een gesprek begint bij een linc, en die heb je er nog niet bij."
-              }
-              action={
-                !filter.trim() && friendsWithoutChat.length === 0
-                  ? {
-                      label: "Zoek je lincs",
-                      onPress: () => router.push("/(app)/friends"),
-                    }
-                  : undefined
-              }
-            />
-          )
+    <LincinScreen tab="chats" counter={t.tabChats}>
+      <View style={{ paddingTop: 8, paddingHorizontal: GUTTER, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+        <Serif variant="pageTitle">{t.chats}</Serif>
+        <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
+          {unread} {t.unread}
+        </Mono>
+      </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
+        {chats.isLoading ? (
+          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
+            {t.loading}
+          </Mono>
+        ) : chats.isError ? (
+          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
+            {t.failed}
+          </Mono>
+        ) : list.length + withoutChat.length === 0 ? (
+          <DashedCard onPress={() => router.push("/friends")}>{t.noFriendsYet} →</DashedCard>
         ) : (
-          filtered.map((item, index) => (
-            <ChatRow
-              key={item.id}
-              chat={item}
-              myUserId={myUserId}
-              onPress={() => router.push(`/chat/${item.id}`)}
-              onLongPress={() => setMenuChat(item)}
-              onMenuPress={() => setMenuChat(item)}
-              isFirst={index === 0}
-              isLast={index === filtered.length - 1}
-              previews={previews}
-            />
-          ))
+          <Box>
+            {list.map(rowFor)}
+            {withoutChat.map((f) => {
+              const fc = friendColor(hueFor(f.other.id), scheme);
+              const name = displayName(f.other);
+              return (
+                <Row
+                  key={f.id}
+                  initial={name.slice(0, 1).toUpperCase()}
+                  fill={fc.fill}
+                  ink={fc.ink}
+                  name={name}
+                  time=""
+                  preview="Nog geen berichten"
+                  unread={0}
+                  onPress={() => openWith(f.other.id)}
+                />
+              );
+            })}
+          </Box>
         )}
-      </PageScroll>
-
-      {/* Acties-menu voor een specifieke chat (long-press of 3-dots). */}
-      <ActionSheet
-        visible={!!menuChat}
-        onClose={() => setMenuChat(null)}
-        title={menuChat ? chatTitle(menuChat, myUserId) : undefined}
-        actions={menuActions}
-      />
-
-      {/* Bevestigings-sheet voor destructieve acties — verlaat-groep of
-          verwijder-voor-iedereen. Aparte sheet zodat de eerste vlot dichtgaat. */}
-      <ActionSheet
-        visible={!!confirmKind}
-        onClose={() => setConfirmKind(null)}
-        title={
-          confirmKind?.kind === "delete"
-            ? "Verwijder dit gesprek voor iedereen?"
-            : confirmKind?.kind === "leave"
-            ? "Deze groep verlaten?"
-            : undefined
-        }
-        actions={
-          confirmKind?.kind === "delete"
-            ? [
-                {
-                  label: "Verwijder definitief",
-                  icon: "trash-outline",
-                  destructive: true,
-                  onPress: () => onDeleteForEveryone(confirmKind.chat),
-                },
-              ]
-            : confirmKind?.kind === "leave"
-            ? [
-                {
-                  label: "Verlaat groep",
-                  icon: "exit-outline",
-                  destructive: true,
-                  onPress: () => onLeave(confirmKind.chat),
-                },
-              ]
-            : []
-        }
-      />
-    </SafeAreaView>
+        <DashedCard onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
+      </ScrollView>
+    </LincinScreen>
   );
 }
 
-function ChatRow({
-  chat,
-  myUserId,
+function Row({
+  initial,
+  fill,
+  ink,
+  square = false,
+  name,
+  time,
+  preview,
+  unread,
   onPress,
-  onLongPress,
-  onMenuPress,
-  isFirst,
-  isLast,
-  previews,
 }: {
-  chat: ChatWithMembers;
-  myUserId: string;
+  initial: string;
+  fill: string;
+  ink: string;
+  square?: boolean;
+  name: string;
+  time: string;
+  preview: string;
+  unread: number;
   onPress: () => void;
-  onLongPress: () => void;
-  onMenuPress: () => void;
-  isFirst: boolean;
-  isLast: boolean;
-  previews: Record<string, ChatPreview>;
 }) {
-  const title = chatTitle(chat, myUserId);
-  /**
-   * Wat er als laatste gezegd is — en pas als dat er niet is, wat voor
-   * gesprek het is.
-   *
-   * De ondertitel wás altijd het tweede: "Direct · E2E" op élke rij, dus
-   * twintig regels die alle twintig hetzelfde zeggen. Juist op die regel
-   * zoek je een lijst af, en versleuteld zijn ze allemaal.
-   *
-   * De voorbeeldregel komt van dit toestel (`lib/chat-preview.ts`) en niet
-   * van de server: die ziet ciphertext en hoort dat te blijven zien. Op een
-   * gesprek dat je hier nog nooit opende is er dus niets, en dan valt hij
-   * terug op het aantal ongelezen berichten — dat weet de lijst zonder iets
-   * te ontsleutelen, en het is nog altijd meer dan een typeaanduiding.
-   */
-  const preview = previews[chat.id];
-  const baseSubtitle = preview
-    ? `${preview.fromMe ? "Jij" : preview.sender ?? title}: ${preview.text}`
-    : chat.unread_count > 0
-      ? plural(chat.unread_count, "nieuw bericht", "nieuwe berichten")
-      : chat.type === "direct"
-        // De scheidingsstip is `·` — achttien andere plekken in de app doen
-        // dat, de zijkolom van dit exacte gesprek incluis, en deze twee
-        // regels stonden als enige op de dikke `•`.
-        ? "Nog geen berichten"
-        : `Groep · ${plural(chat.members.length, "lid", "leden")}`;
-  const lastAt = chat.last_message_at;
-  const relTime = lastAt ? relativeTime(lastAt) : null;
-  const unread = chat.unread_count;
-
+  const t = useT();
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={400}
       accessibilityRole="button"
-      accessibilityLabel={
-        unread > 0 ? `${title}, ${unread} ongelezen` : title
-      }
-      // Geen afgeronde hoeken meer aan de uiteinden van de lijst: dit
-      // systeem kent maar één ronding en dat is de avatar. De rijen worden
-      // in plaats daarvan één gekaderd blok met scheidingslijnen ertussen.
-      //
-      // En geen vulling meer. De rij stond op `bg-paper-soft`, en twintig
-      // gevulde rijen onder elkaar lezen als twintig dozen in plaats van
-      // als één lijst (§4). Wat de opbouw draagt is de lijn: het blok sluit
-      // zichzelf af met inkt, de rijen erbinnen scheiden met de lichtere
-      // `postRule` — de binnenlijn hoort de zwakste te zijn, anders leest
-      // één lijst als losse kaartjes.
-      //
-      // Ingedrukt krijgt hij wél een vlak: dat is geen rusttoestand maar
-      // antwoord op een vinger, en zonder dat voelt een rij dood aan.
+      accessibilityLabel={unread ? `${name}, ${unread} ${t.unread}` : name}
+      onPress={onPress}
       style={({ pressed }) => ({
+        height: 72,
         flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: space.lg,
-        paddingVertical: 14,
-        backgroundColor: pressed ? feed.panel : "transparent",
-        borderLeftWidth: FEED_BORDER,
-        borderRightWidth: FEED_BORDER,
-        borderTopWidth: isFirst ? FEED_BORDER : 0,
-        borderBottomWidth: FEED_BORDER,
-        borderColor: feed.ink,
-        borderBottomColor: isLast ? feed.ink : feed.postRule,
+        alignItems: "stretch",
+        borderBottomWidth: BORDER,
+        borderBottomColor: color("ink"),
+        opacity: pressed ? 0.8 : 1,
       })}
     >
-      {/* Avatar is geen aparte tap-target meer — op mobile vrat de hitSlop
-          regelmatig de rij-tap op zodat je naar het profiel ging i.p.v. de
-          chat. Toegang tot het profiel zit nu via de header binnen de chat
-          (tap op de naam → /user/[username]). */}
-      {/* Dezelfde afweging als de zijkolom op breed scherm — hij stond hier
-          uitgeschreven en daar helemaal niet, dus stond dezelfde vriend
-          links als initialen en rechts als foto. Zie chatAvatarUrl. */}
-      <Avatar
-        name={title}
-        avatarUrl={chatAvatarUrl(chat, myUserId)}
-        size="md"
-        tint="warm"
-      />
-      <View style={{ flex: 1, marginLeft: space.md, marginRight: space.sm }}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text
-            style={[
-              feedType.body,
-              {
-                flex: 1,
-                fontSize: 14,
-                color: feed.ink,
-                fontWeight: unread > 0 ? "700" : "500",
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {relTime && (
-            <Text
-              style={[
-                feedType.label,
-                {
-                  marginLeft: space.sm,
-                  color: unread > 0 ? flameDeep : feed.inkDim,
-                  fontWeight: unread > 0 ? "700" : "500",
-                },
-              ]}
-            >
-              {relTime}
-            </Text>
-          )}
+      <View
+        style={{
+          width: 56,
+          backgroundColor: fill,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRightWidth: BORDER,
+          borderRightColor: color("ink"),
+          margin: square ? 0 : 0,
+        }}
+      >
+        <Head variant="numeralTiny" color={ink}>
+          {initial}
+        </Head>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12, justifyContent: "center", gap: 2 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          <Serif variant="name" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
+            {name}
+          </Serif>
+          {time ? (
+            <Mono variant="micro" tone={unread ? "red" : "dim"} style={{ textTransform: "none" }}>
+              {time}
+            </Mono>
+          ) : null}
         </View>
-        <Text
-          style={[
-            feedType.label,
-            { color: feed.inkDim, marginTop: 3 },
-          ]}
-          numberOfLines={1}
-        >
-          {baseSubtitle}
-        </Text>
+        <Mono variant="micro" tone="dim" numberOfLines={1} style={{ textTransform: "none", fontSize: 12, letterSpacing: 0 }}>
+          {preview}
+        </Mono>
       </View>
       {unread > 0 ? (
-        <View
-          style={{
-            minWidth: 22,
-            height: 22,
-            paddingHorizontal: 6,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: flame,
-            marginRight: space.xs,
-          }}
-        >
-          <Text
-            style={[
-              feedType.label,
-              { fontSize: 11, fontWeight: "800", color: creamOnDark.DEFAULT },
-            ]}
-          >
-            {unread > 99 ? "99+" : unread}
-          </Text>
+        <View style={{ alignSelf: "center", marginRight: 12, minWidth: 22, height: 22, paddingHorizontal: 6, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+          <Mono variant="action" style={{ color: "#F5F1E8", letterSpacing: 0 }}>
+            {unread}
+          </Mono>
         </View>
       ) : null}
-      {/* 3-dots actie-knop — opent verberg/verlaat/verwijder menu.
-          Eigen Pressable met hitSlop, NIET ingebed in de row-onPress: door
-          de visuele scheiding (rechts, klein icoon) en kleine hitbox gaan
-          row-taps NIET per ongeluk hierheen — alleen wie écht op de drie
-          puntjes mikt opent het menu. */}
-      {/* Geen eigen label: deze knop zit ín de rij-Pressable, en RN
-          behandelt die als één a11y-element — een label hier wordt
-          gewoon niet voorgelezen. De rij draagt de naam. */}
-      <Pressable
-        onPress={onMenuPress}
-        hitSlop={10}
-        className="w-9 h-9 items-center justify-center -mr-2"
-      >
-        <Ionicons name="ellipsis-horizontal" color={feed.inkDim} size={18} />
-      </Pressable>
     </Pressable>
   );
-}
-
-/**
- * Korte relatieve tijdsaanduiding voor chatlijst, zoals "5m" / "2u" / "3d".
- * Voor langer dan 7d tonen we de datum, zoals chat-apps doen.
- */
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const diffMs = Date.now() - then;
-  if (diffMs < 60_000) return "nu";
-  const min = Math.floor(diffMs / 60_000);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}u`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString(NL, {
-    day: "numeric",
-    month: "short",
-  });
 }

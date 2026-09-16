@@ -40,12 +40,13 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { AppChrome, useChromeScroll } from "@/components/AppChrome";
+import { LincinScreen } from "@/components/lincin/Chrome";
+import { BORDER, Head, Mono, Serif } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
 import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
-import { useWide } from "@/components/Editorial";
+
 import { QueryError } from "@/components/QueryError";
 import { plural } from "@/lib/plural";
 import { Skeleton } from "@/components/Skeleton";
@@ -77,6 +78,7 @@ import {
   type AttachmentInfo,
   type DecryptedMessage,
   type ReplyInfo,
+  type PostRef,
 } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import {
@@ -101,8 +103,9 @@ import {
 import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, rule, space } from "@/lib/design/type";
-import { color } from "@/lib/design/theme";
+import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, space } from "@/lib/design/type";
+import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { useT } from "@/lib/i18n";
 import {
   rememberChatPreview,
   shortenForPreview,
@@ -192,11 +195,9 @@ export default function ChatDetail() {
   // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
   const { width: windowWidth } = useWindowDimensions();
   const railVisible = windowWidth >= CHAT_RAIL_BREAKPOINT;
-  const wide = useWide();
   // De chat scrollt in een eigen omgekeerde lijst, dus de kop klapt hier
   // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
   // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
-  const chrome = useChromeScroll();
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();
@@ -1033,6 +1034,26 @@ export default function ChatDetail() {
     [messages]
   );
 
+  const t2 = useT();
+  const schemeNow = useScheme();
+  /** De kleur van de ander (groepen zijn groen), voor de kopcel en het blad. */
+  const partner =
+    chat?.type === "group"
+      ? friendColor("green", schemeNow)
+      : friendColor(hueFor(chat?.members.find((m) => m.id !== myUserId)?.id), schemeNow);
+  const partnerFill = chat ? partner.fill : null;
+  /** Bijdragen waar dit gesprek over ging — de strook "VERMELD". */
+  const mentioned = useMemo(() => {
+    const seen = new Map<string, PostRef>();
+    for (const m of messages ?? []) {
+      const r = m.content?.postRef;
+      if (r && !seen.has(r.id)) seen.set(r.id, r);
+    }
+    return Array.from(seen.values());
+  }, [messages]);
+  /** De knoppen in de balk onderaan: 44 in het vierkant, met kader. */
+  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderColor: color("ink") } as const;
+
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
     if (chat.type === "group") {
@@ -1044,7 +1065,7 @@ export default function ChatDetail() {
   }, [chat, myUserId, id, router]);
 
   return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+    <LincinScreen tab="chats" header="none" tint={partnerFill} full>
       {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
           balk was de chat een doodlopende straat: op desktop verbergt de
           gesprekkenlijst links de terug-knop, en dan was er geen enkele
@@ -1055,7 +1076,6 @@ export default function ChatDetail() {
           heeft. Hier stond er nóg een omheen: twee elementen met dezelfde
           naam tegelijk, waarop de browser de overgang afbreekt met
           "Unexpected duplicate view-transition-name". Zie AppChrome. */}
-      <AppChrome wide={wide} progress={chrome.progress} compact />
 
       {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
@@ -1072,126 +1092,130 @@ export default function ChatDetail() {
             vulling deed doet de lijn nu, en de knoppen dragen zichzelf op
             de maat die élke knop in de app heeft (CONTROL_H).
         */}
-        <View style={{ borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }}>
-          {/* Zelfde leesmaat als de berichten en de tekstregel: anders
-              begint de kop links, staan de berichten in het midden en loopt
-              het invoerveld weer tot de rand — drie verschillende lijnen op
-              één scherm. Zie THREAD_WIDTH. */}
-          <View
-            className="flex-row items-center"
+        {/* De kop van v2 (README §05): één kader van 48 — terug, de naam in
+            serif, en rechts een cel in de kleur van de ander met zijn
+            initiaal. Bellen zit als smalle cel ertussen; de kleurcel opent
+            de groepsinfo of het profiel. */}
+        <View
+          style={{
+            marginTop: 8,
+            marginHorizontal: 18,
+            height: 48,
+            flexDirection: "row",
+            borderWidth: BORDER,
+            borderColor: color("ink"),
+            backgroundColor: color("paper"),
+          }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t2.back}
+            onPress={() => safeBack(router, "/(app)/chats")}
             style={{
-              width: "100%",
-              maxWidth: THREAD_WIDTH,
-              alignSelf: "center",
-              paddingHorizontal: space.sm,
-              paddingVertical: space.sm,
+              paddingHorizontal: 12,
+              justifyContent: "center",
+              borderRightWidth: BORDER,
+              borderRightColor: color("ink"),
+              display: railVisible ? "none" : "flex",
             }}
           >
-            <Pressable
-              onPress={() => safeBack(router, "/(app)/chats")}
-              // Boven het breekpunt staat de gesprekkenlijst al links in
-              // beeld; een terug-knop wijst dan nergens heen.
-              style={({ pressed }) => [
-                AUX_BUTTON,
-                { display: railVisible ? "none" : "flex" },
-                pressed && AUX_PRESSED,
-              ]}
-            >
-              <Ionicons name="chevron-back" color={feed.ink} size={22} />
-              {otherUnread > 0 && (
-                <View
-                  className="bg-flame absolute px-1"
-                  style={{
-                    // Tegen het icoon aan, niet tegen de hoek van het
-                    // aanraakvlak: dat is 44 punten breed en het cijfer zou
-                    // anders los van de pijl komen te hangen.
-                    right: 4,
-                    top: 4,
-                    minWidth: 16,
-                    height: 16,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text className="text-cream text-[9px] font-bold">
-                    {otherUnread > 99 ? "99+" : otherUnread}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={onPressHeaderTitle}
-              className="flex-row items-center flex-1"
-              style={{ marginLeft: space.xs, minWidth: 0 }}
-              hitSlop={4}
-            >
-              <Avatar
-                name={title}
-                avatarUrl={
-                  chat?.type === "group"
-                    ? chat.avatar_url ?? null
-                    : (chat?.members.find((m) => m.id !== myUserId)?.avatar_url ?? null)
+            <Mono variant="meta" style={{ textTransform: "none" }}>
+              ← {t2.back}
+              {otherUnread > 0 ? ` · ${otherUnread > 99 ? "99+" : otherUnread}` : ""}
+            </Mono>
+          </Pressable>
+          <Pressable
+            onPress={onPressHeaderTitle}
+            hitSlop={4}
+            style={{ flex: 1, minWidth: 0, justifyContent: "center", paddingHorizontal: 12 }}
+          >
+            <Serif variant="name" numberOfLines={1}>
+              {title}
+            </Serif>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Videogesprek starten"
+            onPress={async () => {
+              if (!id) return;
+              if (typeof window !== "undefined" && window.document) {
+                setCallOpen(true);
+              } else {
+                openJitsiCall(id).catch(() => {});
+              }
+              if (!callSentRef.current && myUserId) {
+                callSentRef.current = true;
+                try {
+                  await sendMessage({ chatId: id, senderId: myUserId, call: { started: true } });
+                } catch (e: any) {
+                  console.warn("sendCallMessage", e?.message ?? e);
                 }
-                size="md"
-              />
-              <View className="flex-1 ml-3" style={{ minWidth: 0 }}>
-                <Text
-                  style={[feedType.label, { fontSize: 15, fontWeight: "700", color: feed.ink }]}
-                  numberOfLines={1}
-                >
-                  {title}
-                </Text>
-                {/* Het slot is de énige plek buiten het logo waar het
-                    merkblauw mag staan (DESIGN.md §2) — vandaar het token en
-                    niet langer de hex die hier los in de code stond. */}
-                <View className="flex-row items-center" style={{ marginTop: 1 }}>
-                  <Ionicons name="lock-closed" color={color("brand")} size={10} />
-                  <Text style={[feedType.label, { color: feed.inkDim, marginLeft: 4 }]}>
-                    {chat?.type === "group"
-                      ? `${chat.members.length} leden · E2E`
-                      : "End-to-end versleuteld"}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Videogesprek starten"
-              onPress={async () => {
-                if (!id) return;
-                // Op web: open in-app modal. Op native: open in browser.
-                if (typeof window !== "undefined" && window.document) {
-                  setCallOpen(true);
-                } else {
-                  openJitsiCall(id).catch(() => {});
-                }
-                // Stuur één keer per sessie een call-notificatie in de chat,
-                // zodat andere deelnemers een "Deelnemen"-kaart te zien krijgen.
-                if (!callSentRef.current && myUserId) {
-                  callSentRef.current = true;
-                  try {
-                    await sendMessage({ chatId: id, senderId: myUserId, call: { started: true } });
-                  } catch (e: any) {
-                    console.warn("sendCallMessage", e?.message ?? e);
-                  }
-                }
-              }}
-              style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
-            >
-              <Ionicons name="videocam-outline" color={feed.ink} size={20} />
-            </Pressable>
-            {chat?.type === "group" && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Groepsinfo openen"
-                onPress={() => router.push(`/group/${id}`)}
-                style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
-              >
-                <Ionicons name="information-circle-outline" color={feed.ink} size={20} />
-              </Pressable>
-            )}
-          </View>
+              }
+            }}
+            style={{ width: 44, alignItems: "center", justifyContent: "center", borderLeftWidth: BORDER, borderLeftColor: color("ink") }}
+          >
+            <Ionicons name="videocam-outline" color={color("ink")} size={18} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={chat?.type === "group" ? "Groepsinfo openen" : "Profiel"}
+            onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
+            style={{
+              width: 48,
+              backgroundColor: partner.fill,
+              alignItems: "center",
+              justifyContent: "center",
+              borderLeftWidth: BORDER,
+              borderLeftColor: color("ink"),
+            }}
+          >
+            <Head variant="numeralTiny" color={partner.ink} style={{ fontSize: 22, lineHeight: 24 }}>
+              {(title || "?").slice(0, 1).toUpperCase()}
+            </Head>
+          </Pressable>
         </View>
+
+        {mentioned.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, marginTop: 8, marginHorizontal: 18, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: color("paper2") }}
+            contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 10, alignItems: "center", gap: 8 }}
+          >
+            <View style={{ width: 14, height: 56, overflow: "hidden" }}>
+              <View style={{ position: "absolute", width: 56, height: 14, left: -21, top: 21, transform: [{ rotate: "-90deg" }] }}>
+                <Text numberOfLines={1} style={[lincinType.tiny, { color: color("ink", "inkDim") }]}>
+                  {t2.mentioned}
+                </Text>
+              </View>
+            </View>
+            {mentioned.map((ref) => (
+              <Pressable
+                key={ref.id}
+                accessibilityRole="button"
+                accessibilityLabel={ref.title}
+                onPress={() => router.push(`/post/${ref.id}` as never)}
+                style={{
+                  width: 96,
+                  height: 56,
+                  backgroundColor: partner.fill,
+                  borderWidth: BORDER,
+                  borderColor: color("ink"),
+                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text style={[lincinType.tiny, { color: partner.ink, fontSize: 8, lineHeight: 10 }]} numberOfLines={1}>
+                  {t2.post}
+                </Text>
+                <Head variant="mini" color={partner.ink} numberOfLines={2}>
+                  {ref.title}
+                </Head>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1431,6 +1455,7 @@ export default function ChatDetail() {
                     {dateSep}
                     <MessageBubble
                       msg={item}
+                      accent={partner.fill}
                       isMine={isMine}
                       isGroup={!!isGroup}
                       showSenderHeader={showSenderHeader}
@@ -1547,8 +1572,8 @@ export default function ChatDetail() {
           )}
 
           {typing.size > 0 && (
-            <View className="px-5 py-1 bg-shell">
-              <Text className="text-cream-soft text-xs italic">
+            <View style={{ paddingHorizontal: 18, paddingVertical: 4 }}>
+              <Text style={[lincinType.asideSmall, { color: color("ink", "inkDim") }]}>
                 {typingLabel(typing)}
               </Text>
             </View>
@@ -1641,7 +1666,7 @@ export default function ChatDetail() {
               kop. De rollen zijn nu omgedraaid: `shell` is de balk, en wat
               erin zit (het tekstveld) draagt `shell-soft`.
           */}
-          <View className="border-t border-line bg-shell">
+          <View style={{ borderTopWidth: BORDER, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
             {/* De inhoud van de balk volgt dezelfde maat; het vlak eronder
                 loopt wél door tot de rand, want dat is de bodem van het
                 scherm en geen kolom. */}
@@ -1660,17 +1685,17 @@ export default function ChatDetail() {
                     blauw. Deze balk staat op het donkere composer-vlak. */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
                   <View
-                    style={{ width: FEED_BORDER * 2, alignSelf: "stretch", backgroundColor: flame }}
+                    style={{ width: 3, alignSelf: "stretch", backgroundColor: partner.fill }}
                   />
                   <View style={{ flex: 1, paddingVertical: 2 }}>
                     <Text
-                      style={[feedType.kicker, { color: flame, letterSpacing: 0.55 }]}
+                      style={[feedType.kicker, { color: color("ink"), letterSpacing: 0.55 }]}
                       numberOfLines={1}
                     >
                       {replyTo.senderName.toUpperCase()}
                     </Text>
                     <Text
-                      style={[feedType.label, { color: creamOnDark.muted, marginTop: 3 }]}
+                      style={[feedType.label, { color: color("ink", "inkDim"), marginTop: 3 }]}
                       numberOfLines={1}
                     >
                       {replyTo.previewText}
@@ -1692,7 +1717,7 @@ export default function ChatDetail() {
                       opacity: pressed ? 0.5 : 1,
                     })}
                   >
-                    <Ionicons name="close" color={creamOnDark.muted} size={17} />
+                    <Ionicons name="close" color={color("ink")} size={17} />
                   </Pressable>
                 </View>
               </ComposerInset>
@@ -1729,7 +1754,7 @@ export default function ChatDetail() {
               style={{
                 flexDirection: "row",
                 alignItems: "flex-end",
-                gap: space.sm,
+                gap: 0,
               }}
              >
               {!recording && (
@@ -1740,9 +1765,9 @@ export default function ChatDetail() {
                   disabled={sending}
                   // Geen eigen vlak: een bijna-zwart vierkant op een zwarte
                   // balk is een kader zonder werk. Het icoon draagt zichzelf.
-                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                  style={({ pressed }) => [aux, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="add" color={creamOnDark.soft} size={22} />
+                  <Ionicons name="add" color={color("ink")} size={22} />
                 </Pressable>
               )}
               {!recording && (
@@ -1752,9 +1777,9 @@ export default function ChatDetail() {
                     if (!showEmojiPicker) inputRef.current?.blur();
                     else inputRef.current?.focus();
                   }}
-                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                  style={({ pressed }) => [aux, pressed && AUX_PRESSED]}
                 >
-                  <Text style={{ fontSize: 19 }}>😊</Text>
+                  <Text style={{ fontSize: 18, lineHeight: 22, color: color("ink") }}>☺</Text>
                 </Pressable>
               )}
 
@@ -1785,8 +1810,8 @@ export default function ChatDetail() {
                   // Een wit blad op een zwarte balk was het lichtste vlak van
                   // het hele scherm, en dus het luidste. `shell-soft` is
                   // waar §2 een vlak bínnen de balk heen stuurt.
-                  className="flex-1 bg-shell-soft max-h-32 justify-center"
-                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md }}
+                  className="flex-1 max-h-32 justify-center"
+                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderColor: color("ink") }}
                 >
                   <TextInput
                     ref={inputRef}
@@ -1795,12 +1820,12 @@ export default function ChatDetail() {
                     onKeyPress={onComposerKeyPress}
                     onFocus={() => setShowEmojiPicker(false)}
                     placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
-                    placeholderTextColor={creamOnDark.muted}
+                    placeholderTextColor={color("ink", "inkDim")}
                     multiline
                     editable={!sending}
                     // Tekst op een vlak dat in béide standen donker blijft is
                     // crème, nooit inkt — zie het kader in DESIGN.md §2.
-                    className="text-cream text-base"
+                    className="text-ink text-base"
                     style={{
                       minHeight: 24,
                       paddingVertical: 10,
@@ -1827,7 +1852,7 @@ export default function ChatDetail() {
                   accessibilityLabel="Opname versturen"
                   onPress={() => stopRecording(true)}
                   className="bg-red-500 active:bg-red-600"
-                  style={AUX_BUTTON}
+                  style={aux}
                 >
                   <Ionicons name="send" color="#fff" size={20} />
                 </Pressable>
@@ -1850,14 +1875,14 @@ export default function ChatDetail() {
                   disabled={sending || !draft.trim()}
                   className={
                     sending || !draft.trim()
-                      ? "bg-shell-soft"
-                      : "bg-announce active:bg-announce-deep"
+                      ? "bg-paper2"
+                      : "bg-ink"
                   }
-                  style={AUX_BUTTON}
+                  style={aux}
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? creamOnDark.muted : creamOnDark.DEFAULT}
+                    color={sending || !draft.trim() ? color("ink", "inkDim") : creamOnDark.DEFAULT}
                     size={21}
                   />
                 </Pressable>
@@ -1873,9 +1898,9 @@ export default function ChatDetail() {
                   // Net als de twee knoppen links: het icoon draagt zichzelf
                   // op de balk. Zodra er iets te versturen valt neemt de
                   // oranje knop deze plek over — dán is er een vlak.
-                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                  style={({ pressed }) => [aux, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="mic" color={creamOnDark.soft} size={21} />
+                  <Ionicons name="mic" color={color("ink")} size={21} />
                 </Pressable>
               )}
              </View>
@@ -2118,7 +2143,7 @@ export default function ChatDetail() {
           </Pressable>
         </Modal>
       </ChatWorkspace>
-    </SafeAreaView>
+    </LincinScreen>
   );
 }
 
@@ -2312,8 +2337,11 @@ function MessageBubble({
   onReactionLongPress,
   selected,
   onSelect,
+  accent,
 }: {
   msg: DecryptedMessage;
+  /** De kleur van de ander: de rand van een aangetikte bubbel, de kantlijn van een vermelding. */
+  accent?: string;
   isMine: boolean;
   isGroup?: boolean;
   showSenderHeader?: boolean;
@@ -2344,6 +2372,8 @@ function MessageBubble({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const router = useRouter();
+  const t2 = useT();
   const content = msg.content;
   const hasAttachment = !!content?.attachment;
   const hasText = !!content?.text && content.text.length > 0;
@@ -2433,6 +2463,30 @@ function MessageBubble({
         * de ingestelde gesture (die faalt bij >8px verticaal en dus wél
         * samenleeft met de lijst), op web niets.
         */}
+      {content?.postRef && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t2.about} ${content.postRef.title}`}
+          onPress={() => router.push(`/post/${content.postRef!.id}` as never)}
+          style={{
+            alignSelf: isMine ? "flex-end" : "flex-start",
+            maxWidth: "82%",
+            marginLeft: showAvatarSlot ? 44 : 0,
+            borderLeftWidth: 3,
+            borderLeftColor: accent ?? color("ink"),
+            paddingVertical: 6,
+            paddingHorizontal: 10,
+            marginBottom: 2,
+          }}
+        >
+          <Text
+            numberOfLines={2}
+            style={[lincinType.asideSmall, { color: color("ink", "inkDim"), textDecorationLine: "underline" }]}
+          >
+            {t2.about} «{content.postRef.quote || content.postRef.title}»
+          </Text>
+        </Pressable>
+      )}
       <SwipeWrap gesture={Platform.OS !== "web" ? panGesture : null}>
       <Animated.View
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
@@ -2466,9 +2520,8 @@ function MessageBubble({
           */
         style={{
           opacity: pending ? 0.65 : 1,
-          ...(isMine || failed
-            ? {}
-            : { borderWidth: StyleSheet.hairlineWidth, borderColor: rule.soft }),
+          borderWidth: BORDER,
+          borderColor: failed ? color("red") : selected && accent ? accent : color("ink"),
         }}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
@@ -2566,7 +2619,11 @@ function MessageBubble({
                 <MentionsText
                   text={content.text!}
                   isMine={isMine}
-                  className={`text-base ${isMine ? "text-cream" : "text-ink"}`}
+                  className={`${
+                    /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text!)
+                      ? "text-[34px] leading-[40px]"
+                      : "text-base"
+                  } ${isMine ? "text-cream" : "text-ink"}`}
                 />
               </View>
             )}
@@ -2577,8 +2634,8 @@ function MessageBubble({
             >
               <Text
                 style={[
-                  feedType.label,
-                  { color: isMine ? creamOnDark.muted : feed.inkDim },
+                  lincinType.micro,
+                  { textTransform: "none", color: isMine ? creamOnDark.muted : feed.inkDim },
                 ]}
               >
                 {time}{msg.edited_at ? " · bewerkt" : ""}
@@ -2691,15 +2748,16 @@ function MessageBubble({
               // de reactie van jou is — zelfde tweedeling, ander middel.
               className="flex-row items-center px-2 py-0.5"
               style={{
-                borderWidth: FEED_BORDER,
-                borderColor: r.mine ? flameDeep : rule.soft,
+                borderWidth: BORDER,
+                borderColor: color("ink"),
+                backgroundColor: color("paper"),
               }}
             >
               <Text style={{ fontSize: 13 }}>{r.emoji}</Text>
               <Text
                 style={[
                   feedType.label,
-                  { marginLeft: 4, fontWeight: "700", color: r.mine ? flameDeep : feed.inkDim },
+                  { marginLeft: 4, fontWeight: "700", color: color("ink") },
                 ]}
               >
                 {r.count}

@@ -1,700 +1,186 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
+import { Pressable, ScrollView, View } from "react-native";
 
-import { ActivityHistory } from "@/components/ActivityHistory";
-import {
-  BoardVocabulary,
-  InteractionSummaryCard,
-} from "@/components/InteractionSummary";
-import { MoodBoard } from "@/components/MoodBoard";
-import { ProfileHeader } from "@/components/ProfileHeader";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { useWide } from "@/components/Editorial";
-import { SectionBand } from "@/components/SectionBand";
-import {
-  creamOnDark,
-  feed,
-  FEED_BORDER,
-  feedType,
-  gutter,
-  rule,
-  sheetWidth,
-  space,
-} from "@/lib/design/type";
+import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
+import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel } from "@/components/lincin/ui";
+import { SafeImage } from "@/components/SafeImage";
+import { listMyFriendships } from "@/lib/api/friends";
+import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
+import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import {
-  getProfile,
-  updateMyProfile,
-  uploadAvatar,
-  uploadProfileHero,
-} from "@/lib/api/profiles";
-import { getInteractionSummary } from "@/lib/api/interactions";
-import { listUserPosts } from "@/lib/api/posts";
-import { uriToBytes } from "@/lib/crypto/file";
-import { bytesToBase64 } from "@/lib/crypto/base64";
-import { loadIdentity } from "@/lib/crypto/keys";
-import {
-  checkKeySync,
-  resetDeviceIdentity,
-  resyncDevice,
-  type KeySyncStatus,
-} from "@/lib/crypto/sync";
-import { confirm } from "@/lib/confirm";
-import { useToast } from "@/lib/toast";
-import { getPushStatus, sendTestPush, type PushStatus } from "@/lib/push";
+import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { useLang, useT, type Lang } from "@/lib/i18n";
+import { displayName, fromPost } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
 
-export default function ProfileScreen() {
-  usePageTitle("Profiel");
-  const { session, signOut } = useAuth();
-  const router = useRouter();
-  const wide = useWide();
-  const chrome = useChromeScroll();
-  const qc = useQueryClient();
-  const toast = useToast();
+/**
+ * Jij (README §07).
+ *
+ * Je naam in serif op twee regels (de achternaam cursief, gedempt) naast
+ * je avatar; drie cijfers in één kader; je laatste bijdragen als smalle
+ * posters met een gedraaide titel; en de lijst: Instellingen, Meldingen,
+ * Lincs & uitnodigingen, Mijn QR-code.
+ */
+
+const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
+
+export default function YouScreen() {
+  usePageTitle("Jij");
+  const { session } = useAuth();
   const myUserId = session!.user.id;
+  const router = useRouter();
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const unread = useUnread();
 
-  const [pubkey, setPubkey] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [heroUploading, setHeroUploading] = useState(false);
-  /**
-   * Je eigen bord door de ogen van een bezoeker.
-   *
-   * Sinds een vondst op `profile` kan staan is "wat staat er op mijn bord"
-   * niet meer hetzelfde als "wat zien mijn lincs" — en dat verschil kun je
-   * nergens zien. Je kunt naar je eigen profiel kijken en niet weten of dat
-   * ene ding nou wel of niet rondging.
-   *
-   * Deze stand haalt de bewerkknoppen weg en toont wat een ander ziet. Hij
-   * verbergt niets extra's: `profile`-vondsten zijn zichtbaar voor wie je
-   * bord bezoekt, dat is de hele betekenis van die waarde. Wat verdwijnt is
-   * dus alleen jouw kant van het scherm — de stipjes, de opties, de
-   * "wijzig"-knoppen.
-   */
-  const [asVisitor, setAsVisitor] = useState(false);
-  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushResult, setPushResult] = useState<string | null>(null);
-  const [keySync, setKeySync] = useState<KeySyncStatus | null>(null);
-  const [keyBusy, setKeyBusy] = useState(false);
-  const [keyMsg, setKeyMsg] = useState<string | null>(null);
+  const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId) });
+  const posts = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 60) });
+  const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId) });
 
-  const myPosts = useQuery({
-    queryKey: ["posts-by-user", myUserId],
-    queryFn: () => listUserPosts(myUserId, 60),
-    enabled: !!myUserId,
-  });
-
-  /**
-   * Hoeveel je de laatste maand gedaan hebt. Eigen query en geen onderdeel
-   * van `profile`: hij is trager (zes tellingen), hij mag falen zonder de
-   * kop mee te nemen, en hij hoeft niet opnieuw als je je bio aanpast.
-   */
-  const interactions = useQuery({
-    queryKey: ["interaction-summary", myUserId],
-    queryFn: () => getInteractionSummary(myUserId, 30),
-    enabled: !!myUserId,
-    staleTime: 5 * 60_000,
-  });
-
-  const profile = useQuery({
-    queryKey: ["profile", myUserId],
-    queryFn: () => getProfile(myUserId),
-  });
-
-  useEffect(() => {
-    loadIdentity().then((id) => {
-      if (id) setPubkey(bytesToBase64(id.publicKey));
-    });
-    getPushStatus().then(setPushStatus);
-    checkKeySync(myUserId)
-      .then(setKeySync)
-      .catch(() => setKeySync({ kind: "no-profile" }));
-  }, [myUserId]);
-
-  async function onSyncKeys() {
-    setKeyBusy(true);
-    setKeyMsg(null);
-    try {
-      await resyncDevice(myUserId);
-      const fresh = await checkKeySync(myUserId);
-      setKeySync(fresh);
-      setKeyMsg("✓ Toestel opnieuw geregistreerd. Nieuwe berichten zullen ontsleutelen.");
-    } catch (e: any) {
-      setKeyMsg(e?.message ?? "Registratie mislukt.");
-    } finally {
-      setKeyBusy(false);
-    }
-  }
-
-  async function onResetIdentity() {
-    const ok = await confirm(
-      "Reset device keys",
-      "Je krijgt verse keys. Oude berichten op andere toestellen kan je niet meer ontsleutelen — Signal-stijl. Nieuwe berichten werken vanaf nu. Doorgaan?",
-      { affirmativeLabel: "Reset", destructive: true }
-    );
-    if (!ok) return;
-    setKeyBusy(true);
-    setKeyMsg(null);
-    try {
-      const fresh = await resetDeviceIdentity(myUserId);
-      setPubkey(bytesToBase64(fresh.publicKey));
-      setKeySync({ kind: "ok", pubkey: bytesToBase64(fresh.publicKey) });
-      setKeyMsg("✓ Nieuwe keys gegenereerd en gepubliceerd.");
-    } catch (e: any) {
-      setKeyMsg(e?.message ?? "Reset mislukt.");
-    } finally {
-      setKeyBusy(false);
-    }
-  }
-
-  async function onTestPush() {
-    if (pushStatus?.kind !== "ready") return;
-    setPushBusy(true);
-    setPushResult(null);
-    const result = await sendTestPush(pushStatus.token);
-    setPushResult(
-      result.ok
-        ? "Verstuurd via Expo Push. Check je toestel — kan een paar seconden duren."
-        : `Niet gelukt: ${result.detail}`
-    );
-    setPushBusy(false);
-  }
-
-
-  /**
-   * De plaat. Bijsnijden op 3:1 en niet vierkant: dat is de verhouding
-   * waarin hij getoond wordt, en iemand een vierkant laten kiezen dat
-   * daarna tot een strook wordt geknipt is de bijsnijder twee keer laten
-   * doen — één keer voor niets.
-   */
-  async function onPickHero() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [3, 1],
-      quality: 0.85,
-    });
-    if (result.canceled) return;
-    await uploadPickedHero(result.assets[0].uri, result.assets[0].mimeType);
-  }
-
-  /** Apart van het kiezen, om dezelfde reden als bij de avatar hieronder. */
-  async function uploadPickedHero(uri: string, mimeType?: string | null) {
-    setHeroUploading(true);
-    try {
-      const bytes = await uriToBytes(uri);
-      const newUrl = await uploadProfileHero(myUserId, bytes, mimeType ?? "image/jpeg");
-      await updateMyProfile(myUserId, { hero_url: newUrl });
-      await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
-    } catch {
-      toast.error("De plaat kon niet geüpload worden.", {
-        action: {
-          label: "Opnieuw",
-          onPress: () => uploadPickedHero(uri, mimeType),
-        },
-      });
-    } finally {
-      setHeroUploading(false);
-    }
-  }
-
-  async function onPickAvatar() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (result.canceled) return;
-    await uploadPickedAvatar(result.assets[0].uri, result.assets[0].mimeType);
-  }
-
-  /**
-   * De upload apart van het kiezen, en wel hierom: "Opnieuw" hoort de
-   * mislukte handeling over te doen. Toen dit één functie was, opende die
-   * knop de fotobibliotheek opnieuw — dan gooi je de foto die de gebruiker
-   * net gekozen én bijgesneden heeft weg om hem hetzelfde nog eens te laten
-   * doen. Dat is geen nieuwe poging, dat is opnieuw beginnen.
-   */
-  async function uploadPickedAvatar(uri: string, mimeType?: string | null) {
-    setAvatarUploading(true);
-    try {
-      const bytes = await uriToBytes(uri);
-      const newUrl = await uploadAvatar(myUserId, bytes, mimeType ?? "image/jpeg");
-      await updateMyProfile(myUserId, { avatar_url: newUrl });
-      await qc.invalidateQueries({ queryKey: ["profile", myUserId] });
-    } catch {
-      // Zonder dit draaide het schijfje, stopte het, en bleef dezelfde
-      // avatar staan — de enige aanwijzing dat er iets mislukt was.
-      toast.error("De foto kon niet geüpload worden.", {
-        action: {
-          label: "Opnieuw",
-          onPress: () => uploadPickedAvatar(uri, mimeType),
-        },
-      });
-    } finally {
-      setAvatarUploading(false);
-    }
-  }
+  const p = profile.data;
+  const name = displayName(p ?? { username: session!.user.email ?? "" });
+  const [first, ...rest] = name.split(" ");
+  const last = rest.join(" ");
+  const fc = friendColor(hueFor(myUserId), scheme);
+  const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
+  const pendingIn = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId).length;
+  const since = new Date(session!.user.created_at);
+  const yy = `'${String(since.getFullYear()).slice(2)}`;
+  const mon = since.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "");
 
   return (
-    // Geen `top` in de randen: de plaat hoort tot de bovenrand van het
-    // venster te lopen, en de balk erboven draagt zijn eigen inspringing.
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["left", "right"]}>
-      {/* Eén scroller voor de hele pagina; de kop plakt bovenaan. */}
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        // Naar beneden trekken om te verversen. Stond op de feed, de agenda
-        // en de meldingen, en op deze drie niet — terwijl het gebaar hier
-        // net zo hard verwacht wordt. `isFetching && !isLoading`: bij de
-        // eerste keer laden dragen de skeletons het, dit is voor daarna.
-        refreshControl={
-          <RefreshControl
-            refreshing={myPosts.isFetching && !myPosts.isLoading}
-            onRefresh={() => {
-              void myPosts.refetch();
-              void profile.refetch();
-            }}
-            tintColor={feed.ink}
-          />
-        }
-        // De omslag begint op nul en loopt ónder de balk door: dat is wat
-        // een omslag doet — het beeld draagt de bovenrand en de navigatie
-        // ligt erop. `gutter={false}` haalt de bladmarge weg zodat de plaat
-        // en het bord tot de vensterrand lopen; elke tekstsectie zet zijn
-        // eigen marge, want tekst hoort niet tegen de rand.
-        gutter={false}
-        fullBleed
-        underChrome
-        contentStyle={{ paddingBottom: 60 }}
-      >
-        {/* ---- De kop: plaat, avatar, bio, links ---- */}
-        {/*
-            Stond hier uitgeschreven en op andermans profiel nóg een keer,
-            met een eigen opbouw. Nu één onderdeel voor allebei; het
-            verschil is alleen wat je mag — zie components/ProfileHeader.tsx.
-        */}
-        <ProfileHeader
-          profile={profile.data}
-          wide={wide}
-          heroBusy={heroUploading}
-          avatarBusy={avatarUploading}
-          onPickHero={asVisitor ? undefined : onPickHero}
-          onPickAvatar={asVisitor ? undefined : onPickAvatar}
-          onEditBio={asVisitor ? undefined : () => router.push("/profile-edit")}
-        />
-
-        {/* Alles onder de omslag houdt zich aan de bladbreedte. De plaat
-            mag tot de vensterrand lopen — dat is wat een omslag doet — maar
-            een bord van tweeduizend pixels breed leest niemand. */}
-        <View style={{ width: "100%", maxWidth: sheetWidth(wide), alignSelf: "center" }}>
-
-        {/*
-            Het bord loopt tot de bladrand.
-
-            Een rubriekkop met een bladmarge eromheen maakt er een sectie
-            in een pagina van; een bord dat de rand raakt ís de pagina. De
-            kop houdt zijn marge, want tekst hoort niet tegen de rand — het
-            beeld eronder wel. Dat is dezelfde scheiding als bij de omslag
-            hierboven en bij de volvlak-plaat van een vondst (§5,
-            `gutter={false}`).
-        */}
-        <View style={{ marginTop: space.section }}>
-          <SectionBand index={0} label="Het bord" padding={gutter(wide)} />
-        </View>
-        <View
-          style={{
-            paddingHorizontal: gutter(wide),
-            paddingTop: space.md,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityLabel="Bekijk je bord zoals een bezoeker het ziet"
-            accessibilityState={{ checked: asVisitor }}
-            onPress={() => setAsVisitor((v) => !v)}
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              gap: space.sm,
-              height: 44,
-              paddingHorizontal: space.md,
-              borderWidth: FEED_BORDER,
-              borderColor: asVisitor ? feed.ink : rule.soft,
-              backgroundColor: asVisitor ? feed.ink : "transparent",
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Ionicons
-              name={asVisitor ? "eye" : "eye-outline"}
-              size={14}
-              color={asVisitor ? creamOnDark.DEFAULT : feed.inkDim}
-            />
-            <Text
-              style={[
-                feedType.label,
-                { color: asVisitor ? creamOnDark.DEFAULT : feed.inkDim },
-              ]}
-            >
-              {asVisitor ? "Je kijkt als bezoeker" : "Bekijk als bezoeker"}
-            </Text>
-          </Pressable>
-        </View>
-        <MoodBoard
-          posts={myPosts.data}
-          loading={myPosts.isLoading}
-          editable={!asVisitor}
-          myUserId={myUserId}
-          onChanged={() => {
-            void myPosts.refetch();
-            void qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-          }}
-          emptyTitle="Je bord is nog leeg"
-          emptyLabel="Een link die je bijbleef, een zin uit wat je las, een foto, een clip. Alles wat je goed vindt mag hier — en niet alles hoeft de feed in."
-          emptyAction={{
-            label: "Zet er iets op",
-            onPress: () => router.push("/post-compose"),
-          }}
-        />
-
-        {/* De woorden van het bord, meteen onder het bord: ze gaan over wat
-            eróver staat, niet over wat je deed. Die tweede helft is naar
-            "Jouw activiteit" verhuisd, waar hij hoort. */}
-        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.section }}>
-          <BoardVocabulary posts={myPosts.data} />
-        </View>
-
-        {/* ---- Jouw activiteit ---- */}
-        {/*
-            De getallen stonden náást het bord, als kolom rechts. Daar
-            hoorden ze niet: het bord gaat over wát je goed vond en de
-            getallen over hoevéél je deed, en twee onderwerpen naast elkaar
-            leest als één onderwerp in twee kolommen.
-
-            Hier staan ze bij het enige andere dat over jouw doen gaat — de
-            lijst eronder. Samen zijn ze één rubriek: de samenvatting, en
-            dan het verhaal.
-        */}
-        <View style={{ marginTop: space.section }}>
-          <SectionBand index={1} label="Jouw activiteit" padding={gutter(wide)} />
-        </View>
-        <View
-          style={{
-            paddingHorizontal: gutter(wide),
-            marginTop: space.xl,
-            flexDirection: wide ? "row" : "column",
-            gap: wide ? space.section : space.xl,
-            alignItems: "flex-start",
-          }}
-        >
-          <View style={{ width: wide ? 320 : "100%" }}>
-            <InteractionSummaryCard
-              data={interactions.data}
-              loading={interactions.isLoading}
-              error={interactions.isError ? interactions.error : undefined}
-              onRetry={() => interactions.refetch()}
-            />
+    <LincinScreen tab="you" counter={t.tabYou}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 20 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Serif variant="ownName" numberOfLines={1}>
+              {first}
+            </Serif>
+            {last ? (
+              <Serif variant="ownNameItalic" tone="dim" numberOfLines={1}>
+                {last}
+              </Serif>
+            ) : null}
           </View>
-          <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : "100%" }}>
-            <ActivityHistory
-              userId={myUserId}
-              title="Wat je deed"
-              emptyLabel="Zodra je iets deelt of ergens aan meedoet, staat het hier."
-            />
-          </View>
-        </View>
-
-        {/* ---- Profiel ---- */}
-        <View style={{ marginTop: space.section }}>
-          <SectionBand index={2} label="Profiel" padding={gutter(wide)} />
-        </View>
-        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.xl }}>
-          {/* Je inlogadres hoort bij je account en niet op je omslag; het
-              stond eerder klein en grijs onder je bio. */}
-          <Text
-            style={[
-              feedType.label,
-              { color: feed.inkDim, marginBottom: space.md },
-            ]}
-          >
-            {session?.user.email}
-          </Text>
-        {/* Vrienden waren een eigen tabblad. Vier plekken in de kop is
-            genoeg; wie je kent hoort bij wie je bent. */}
-        <Pressable
-          onPress={() => router.push("/(app)/friends")}
-          className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
-        >
-          <View className="w-9 h-9 bg-paper-warm items-center justify-center">
-            <Ionicons name="people-outline" color={feed.ink} size={18} />
-          </View>
-          <View className="flex-1 ml-3">
-            <Text className="text-ink font-semibold">Vrienden</Text>
-            <Text className="text-ink-muted text-xs mt-0.5">
-              Je lincs, verzoeken en uitnodigingen
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push("/profile-edit")}
-          className="flex-row items-center bg-paper-soft active:bg-paper px-4 py-4 mb-2"
-        >
-          <View className="w-9 h-9 bg-paper-warm items-center justify-center">
-            <Ionicons name="create-outline" color={feed.ink} size={18} />
-          </View>
-          <View className="flex-1 ml-3">
-            <Text className="text-ink font-semibold">Bewerk profiel</Text>
-            <Text className="text-ink-muted text-xs mt-0.5">
-              Pas je handle, naam, bio of links aan
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" color={feed.inkDim} size={18} />
-        </Pressable>
-        </View>
-
-        {/* ---- Geavanceerd — helemaal onderaan ---- */}
-        {/*
-            Stond middenin, tussen je bord en je activiteit. Dat is een blok
-            van honderdvijftig regels over sleutels, apparaten en
-            pushmeldingen, en het staat op de pagina die verder over jou
-            gaat — dus scrolde je er elke keer doorheen om bij het minst
-            technische deel te komen.
-
-            Het is niet minder belangrijk geworden, alleen zeldzamer. Wat je
-            zelden nodig hebt hoort onderaan, en wat je vaak bekijkt bovenaan.
-        */}
-        <View style={{ marginTop: space.section }}>
-          <SectionBand index={3} label="Geavanceerd" padding={gutter(wide)} />
-        </View>
-        <View style={{ paddingHorizontal: gutter(wide), marginTop: space.lg }}>
-        <Pressable
-          onPress={() => setAdvancedOpen((v) => !v)}
-          className="flex-row items-center mt-6 mb-1 px-1"
-        >
-          <Text className="text-xs uppercase tracking-wider text-ink-muted flex-1">
-            Geavanceerd
-          </Text>
-          <Ionicons
-            name={advancedOpen ? "chevron-up" : "chevron-down"}
-            color={feed.inkDim}
-            size={14}
-          />
-        </Pressable>
-
-        {advancedOpen && <>
-
-        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-4 mb-3 px-1">
-          Versleuteling
-        </Text>
-        <View className="bg-paper-soft p-5">
-          <View className="flex-row items-center mb-3">
-            <View className="w-9 h-9 bg-brand/20 items-center justify-center">
-              <Ionicons name="lock-closed" color="#5B8DEF" size={18} />
-            </View>
-            <Text className="text-ink font-semibold ml-3">End-to-end versleuteld</Text>
-          </View>
-          <Text className="text-ink-soft text-sm leading-5">
-            Berichten worden versleuteld met X25519 + XChaCha20-Poly1305. Je
-            encryptie-sleutel is gekoppeld aan je account — elk apparaat
-            waarop je inlogt kan automatisch berichten lezen.
-          </Text>
-          <View className="bg-paper-light border border-line-paper mt-4 p-3">
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-              Identity public key
-            </Text>
-            <Text className="text-ink text-xs font-mono" numberOfLines={2}>
-              {pubkey ?? "—"}
-            </Text>
-          </View>
-
-          {/* Sleutelstatus */}
-          {keySync && keySync.kind === "ok" && (
-            <View className="flex-row items-center mt-3">
-              <Ionicons name="checkmark-circle" color="#22c55e" size={14} />
-              <Text className="text-ink-muted text-xs ml-1.5">
-                Sleutels actief — berichten worden correct ontsleuteld
-              </Text>
-            </View>
-          )}
-          {keySync && keySync.kind !== "ok" && (
-            <View className="bg-red-100 border border-red-300 mt-3 p-3">
-              <Text className="text-red-900 text-xs font-semibold mb-1">
-                {keySync.kind === "no-keys"
-                  ? "⚠ Geen encryptie-sleutels"
-                  : "⚠ Geen profiel gevonden"}
-              </Text>
-              <Text className="text-red-900 text-xs leading-5">
-                {keySync.kind === "no-keys"
-                  ? "Klik 'Herstel sleutels' om de sleutels van de server te halen."
-                  : "Profielrij ontbreekt. Probeer uit te loggen en opnieuw aan te melden."}
-              </Text>
-            </View>
-          )}
-
-          {/* Apparaat koppelen — QR-overdracht naar nieuw toestel */}
-          <Pressable
-            onPress={() => router.push("/device-link")}
-            className="flex-row items-center bg-brand/10 active:bg-brand/20 px-4 py-3 mt-3"
-          >
-            <Ionicons name="qr-code-outline" color="#5B8DEF" size={18} />
-            <View className="flex-1 ml-3">
-              <Text className="text-brand font-semibold text-sm">
-                Nieuw apparaat koppelen
-              </Text>
-              <Text className="text-ink-muted text-xs mt-0.5">
-                QR-code — chats blijven leesbaar
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" color="#5B8DEF" size={16} />
-          </Pressable>
-
-          <View className="flex-row gap-2 mt-2">
-            <Pressable
-              onPress={onSyncKeys}
-              disabled={keyBusy || keySync?.kind === "ok" || keySync?.kind === "no-profile"}
-              className={`flex-1 py-2.5 items-center ${
-                !keyBusy && keySync?.kind !== "ok" && keySync?.kind !== "no-profile"
-                  ? "bg-ink active:bg-ink-soft"
-                  : "bg-paper-warm"
-              }`}
-            >
-              <Text
-                className={`font-semibold text-xs ${
-                  !keyBusy && keySync?.kind !== "ok" && keySync?.kind !== "no-profile"
-                    ? "text-cream"
-                    : "text-ink-muted"
-                }`}
-              >
-                Herstel sleutels
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={onResetIdentity}
-              disabled={keyBusy}
-              className="flex-1 py-2.5 items-center border border-red-300"
-            >
-              <Text className="text-red-700 font-semibold text-xs">
-                Reset sleutels
-              </Text>
-            </Pressable>
-          </View>
-          {keyMsg && (
-            <Text className="text-ink-soft text-xs mt-2 text-center">
-              {keyMsg}
-            </Text>
-          )}
-        </View>
-
-        {/* ---- Push status ---- */}
-        <Text className="text-xs uppercase tracking-wider text-ink-muted mt-6 mb-3 px-1">
-          Notificaties
-        </Text>
-
-        <View className="bg-paper-soft p-5">
-          <View className="flex-row items-center mb-2">
-            <View className="w-9 h-9 bg-paper-warm items-center justify-center">
-              <Ionicons
-                name={pushStatus?.kind === "ready" ? "notifications" : "notifications-off-outline"}
-                color={feed.ink}
-                size={18}
-              />
-            </View>
-            <Text className="text-ink font-semibold ml-3">
-              {pushStatus?.kind === "ready" ? "Push actief" : "Push nog niet actief"}
-            </Text>
-          </View>
-          <Text className="text-ink-soft text-xs leading-5">
-            {pushStatusMessage(pushStatus)}
-          </Text>
-          {pushStatus?.kind === "ready" && (
-            <>
-              <View className="bg-paper-light border border-line-paper mt-3 p-3">
-                <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-                  Push token ({pushStatus.platform})
-                </Text>
-                <Text className="text-ink text-xs font-mono" numberOfLines={2}>
-                  {pushStatus.token}
-                </Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")}>
+            {p?.avatar_url ? (
+              <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: BORDER, borderColor: color("ink") }}>
+                <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
               </View>
-              <Pressable
-                onPress={onTestPush}
-                disabled={pushBusy}
-                className="mt-3 bg-ink active:bg-ink-soft py-2.5 items-center"
-              >
-                <Text className="text-cream font-semibold text-sm">
-                  {pushBusy ? "Bezig…" : "Stuur test-notificatie"}
-                </Text>
-              </Pressable>
-              {pushResult && (
-                <Text className="text-ink-soft text-xs mt-2 text-center">
-                  {pushResult}
-                </Text>
-              )}
-            </>
-          )}
+            ) : (
+              <Initial letter={name.slice(0, 1).toUpperCase()} size={72} bg={fc.fill} fg={fc.ink} fontSize={34} />
+            )}
+          </Pressable>
         </View>
 
-        </>}
-        </View>
+        <Box style={{ flexDirection: "row", marginTop: 16 }}>
+          <Stat n={String(posts.data?.length ?? 0)} label={t.posts} />
+          <Stat n={String(lincs)} label="lincs" />
+          <Stat n={yy} label={`${t.sinceMar} ${mon}`} last />
+        </Box>
 
-        <View style={{ paddingHorizontal: gutter(wide) }}>
-        {/* ---- Sign out ---- */}
-        <Pressable
-          /**
-           * Uitloggen vroeg niets. Eén tik en weg.
-           *
-           * Het was de enige destructieve handeling in de app zónder
-           * bevestiging — en hij staat onderaan een scherm waar je met je
-           * duim langs scrolt. In een end-to-end versleutelde app is dat
-           * bovendien geen "even opnieuw inloggen": de sleutels van dit
-           * toestel raak je niet kwijt, maar je bent er wel uit en moet
-           * terug via de mail.
-           */
-          onPress={async () => {
-            const ok = await confirm(
-              "Uitloggen",
-              "Je wordt uitgelogd op dit toestel. Om terug te komen heb je je e-mail of je wachtwoord nodig.",
-              { affirmativeLabel: "Uitloggen", destructive: true }
-            );
-            if (ok) signOut();
-          }}
-          className="mt-8 border border-ink py-3 items-center"
+        <Mono variant="micro" tone="dim" style={{ marginTop: 18, marginBottom: 8 }}>
+          {t.yourLatest}
+        </Mono>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -GUTTER }}
+          contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 10 }}
         >
-          <Text className="text-ink font-semibold">Uitloggen</Text>
-        </Pressable>
-        </View>
-        </View>
-      </PageScroll>
-    </SafeAreaView>
+          {(posts.data ?? []).slice(0, 8).map((post) => (
+            <Mini key={post.id} post={post} fill={fc.fill} ink={fc.ink} onPress={() => router.push(`/post/${post.id}` as never)} />
+          ))}
+          {posts.data && posts.data.length === 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/post-compose")}
+              style={{ width: 150, height: 190, borderWidth: BORDER, borderStyle: "dashed", borderColor: color("ink"), alignItems: "center", justifyContent: "center", padding: 12 }}
+            >
+              <Serif variant="aside" tone="dim" style={{ textAlign: "center" }}>
+                {t.emptyCompose}
+              </Serif>
+            </Pressable>
+          ) : null}
+        </ScrollView>
+
+        <Box style={{ marginTop: 18 }}>
+          <Row label={t.settings} right="→" onPress={() => router.push("/settings" as never)} />
+          <Row
+            label={t.notifications}
+            right={unread.notifications > 0 ? `${unread.notifications} ${t.new} →` : "→"}
+            red={unread.notifications > 0}
+            onPress={() => router.push("/notifications")}
+          />
+          <Row
+            label={t.lincsInvites}
+            right={pendingIn > 0 ? `${pendingIn} ${t.waitsForYou} →` : `${lincs} →`}
+            red={pendingIn > 0}
+            onPress={() => router.push("/friends")}
+          />
+          <Row label={t.myQr} right="→" onPress={() => router.push("/qr-code")} last />
+        </Box>
+      </ScrollView>
+    </LincinScreen>
   );
 }
 
-function pushStatusMessage(status: PushStatus | null): string {
-  if (!status) return "Status wordt opgehaald…";
-  switch (status.kind) {
-    case "ready":
-      return "Dit toestel kan push-notificaties ontvangen. Wanneer er een Edge Function deployt staat, krijg je een melding bij elk nieuw bericht of vriendschapsverzoek.";
-    case "permission-denied":
-      return "Je hebt notificaties geweigerd. Pas dit aan in je systeeminstellingen om pushes te ontvangen.";
-    case "no-token":
-      return "Toestel heeft geen push-token kunnen genereren. Probeer opnieuw in te loggen.";
-    case "unsupported":
-      return status.reason;
-    default:
-      return "";
-  }
+function Stat({ n, label, last = false }: { n: string; label: string; last?: boolean }) {
+  return (
+    <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: last ? 0 : BORDER, borderRightColor: color("ink") }}>
+      <Head variant="numeralSmall">{n}</Head>
+      <Mono variant="micro" tone="dim">
+        {label}
+      </Mono>
+    </View>
+  );
+}
+
+function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string; ink: string; onPress: () => void }) {
+  const card = fromPost(post);
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={card.title} onPress={onPress} style={{ width: 150, height: 190, borderWidth: BORDER, borderColor: color("ink"), flexDirection: "row" }}>
+      <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: color("ink"), overflow: "hidden" }}>
+        <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: "ArchivoCond-Black", fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
+      </View>
+      <View style={{ flex: 1, backgroundColor: color("paper2") }}>
+        {post.image_url ? (
+          <SafeImage uri={post.image_url} cacheKey={post.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 8 }}>
+            <Mono variant="tiny" tone="dim">
+              {card.kind}
+            </Mono>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+function Row({ label, right, red = false, onPress, last = false }: { label: string; right: string; red?: boolean; onPress: () => void; last?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderBottomWidth: last ? 0 : BORDER,
+        borderBottomColor: color("ink"),
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <Serif variant="row">{label}</Serif>
+      <Mono variant="meta" tone={red ? "red" : "ink"} style={{ textTransform: "none" }}>
+        {right}
+      </Mono>
+    </Pressable>
+  );
 }

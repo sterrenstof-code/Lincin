@@ -1,199 +1,159 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  RefreshControl,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import { ScrollView, View } from "react-native";
 
-import { EventCard } from "@/components/EventCard";
-import { SectionMark } from "@/components/IndexGrid";
-import { QueryError } from "@/components/QueryError";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import {
-  feed as feedColor,
-  FEED_BORDER,
-  feedType,
-  space,
-} from "@/lib/design/type";
-import { useWide } from "@/components/Editorial";
-import { Skeleton } from "@/components/Skeleton";
+import { LincinScreen } from "@/components/lincin/Chrome";
+import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif } from "@/components/lincin/ui";
+import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { listMyEvents } from "@/lib/api/events";
+import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { useLang, useT, type Lang } from "@/lib/i18n";
+import { hhmm } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Events (README §06).
+ *
+ * "Wat er komt": kaarten van minstens 150 hoog met links een datumvlak in
+ * de kleur van de gastheer (dag groot, maand mono), rechts wie en wanneer,
+ * de titel in serif, de plek en het gezelschap, en de knoppen. Wat nu
+ * bezig is staat bovenaan met een zuur etiket; wat voorbij is eronder.
+ *
+ * Het ontwerp heeft `IK KOM` / `MISSCHIEN`. De backend kent geen rsvp —
+ * je bent lid of niet — dus de knoppen zijn hier `OPEN →` en, voor de
+ * gastheer, `DEEL CODE`. Komt er een rsvp-tabel, dan komen die twee terug.
+ */
+
+const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 export default function EventsScreen() {
   usePageTitle("Events");
-  const wide = useWide();
-  const chrome = useChromeScroll();
-  const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
+  const router = useRouter();
+  const t = useT();
 
   const events = useQuery({
     queryKey: ["events", myUserId],
     queryFn: () => listMyEvents(myUserId),
-    // Keep "Live"/"Komt eraan" buckets and counts fresh without a manual pull.
-    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
-
   const data = events.data ?? [];
+  const now = Date.now();
   const active = data.filter((e) => e.is_active);
-  const upcoming = data.filter(
-    (e) => !e.is_active && new Date(e.starts_at).getTime() > Date.now()
-  );
-  const past = data.filter(
-    (e) => !e.is_active && new Date(e.ends_at).getTime() <= Date.now()
-  );
-
-  function renderBody() {
-    // Stond hier als eigen blok, met een eigen vorm en een eigen tekst.
-    // Vier schermen hadden er een en ze zagen er alle vier anders uit.
-    if (events.isError) {
-      return (
-        <View style={{ marginTop: space.sm }}>
-          <QueryError
-            title="Events konden niet geladen worden"
-            error={events.error}
-            onRetry={() => events.refetch()}
-          />
-        </View>
-      );
-    }
-
-    // Loading state — slechts één compacte placeholder
-    if (events.isLoading && !events.data) {
-      return <SkeletonEventCard />;
-    }
-
-    // Empty state
-    if (data.length === 0) {
-      return (
-        <View
-          style={{
-            marginTop: space.sm,
-            borderWidth: FEED_BORDER,
-            borderColor: feedColor.ink,
-            padding: space.xxxl,
-          }}
-        >
-          <Text
-            style={[feedType.tile, { fontSize: 20, color: feedColor.ink, marginBottom: space.sm }]}
-          >
-            Maak je eerste event
-          </Text>
-          <Text
-            style={[feedType.body, { color: feedColor.inkDim, maxWidth: 440, marginBottom: space.xl }]}
-          >
-            Een verjaardag, een trip, een diner — alle foto&apos;s van iedereen op
-            één plek.
-          </Text>
-          {/* Geen knop hier. "Nieuw event" staat al in de kop, tweehonderd
-              punten hierboven, en twee gevulde knoppen naar dezelfde plek
-              is er één te veel (§4). Hij stond hier bovendien in oranje met
-              crème erop op 11px — 2,8:1, terwijl de knop in de kop 17:1
-              haalt. De lege stand vertelt; de kop handelt. */}
-        </View>
-      );
-    }
-
-    // Data state — secties tonen. De nummering loopt dóór over de secties
-    // heen, zoals de paginering van een uitgave; hij zegt niets over rang.
-    let n = 0;
-    return (
-      <>
-        {active.length > 0 && (
-          <Section title="Nu live">
-            {active.map((e) => (
-              <EventCard key={e.id} event={e} index={++n} />
-            ))}
-          </Section>
-        )}
-        {upcoming.length > 0 && (
-          <Section title="Komt eraan">
-            {upcoming.map((e) => (
-              <EventCard key={e.id} event={e} index={++n} />
-            ))}
-          </Section>
-        )}
-        {past.length > 0 && (
-          <Section title="Afgelopen">
-            {past.map((e) => (
-              <EventCard key={e.id} event={e} index={++n} />
-            ))}
-          </Section>
-        )}
-      </>
-    );
-  }
+  const upcoming = data
+    .filter((e) => !e.is_active && new Date(e.starts_at).getTime() > now)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const past = data
+    .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
+    .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
 
   return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
-      {/* Eén scroller voor de hele pagina; de kop plakt bovenaan.
-          Geen ScreenContainer meer: dit ontwerp gebruikt de volle
-          breedte tot PAGE_MAX. */}
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        refreshControl={
-          <RefreshControl
-            refreshing={events.isFetching && !events.isLoading}
-            onRefresh={() =>
-              qc.invalidateQueries({ queryKey: ["events", myUserId] })
-            }
-            tintColor={feedColor.ink}
-          />
-        }
-      >
-        <View style={{ paddingVertical: 28, paddingBottom: 80 }}>
-          {/* Geen kop en geen eigen knop: de tab zegt waar je bent, en de
-              plus in de balk maakt hier een event (zie AddCell in
-              components/AppChrome.tsx). */}
-          {renderBody()}
-        </View>
-      </PageScroll>
-    </SafeAreaView>
-  );
-}
-
-/**
- * Een rubriek in de agenda.
- *
- * Gebruikt `SectionMark` uit de rasterlaag: schijf, woord, zware lijn. Dit
- * scherm is de directe tegenhanger van waar dat patroon vandaan komt — een
- * agenda met een lopende en een afgesloten afdeling — en het was hier een
- * los kickertje van 10 punten dat je makkelijk oversloeg. Drie rubrieken op
- * een pagina is precies waar deze kop voor bedoeld is; meer zou schreeuwen.
- *
- * Het teken in de schijf is de eerste letter van de rubriek. Geen icoon:
- * een letter zegt wélke rubriek, een pictogram alleen dát het er een is.
- */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={{ marginTop: 28 }}>
-      <SectionMark glyph={title.charAt(0).toUpperCase()} label={title} />
-      <View style={{ gap: 16 }}>{children}</View>
-    </View>
-  );
-}
-
-/** Compacte event-skeleton (geen vierkante image-area — past bij EventCard). */
-function SkeletonEventCard() {
-  return (
-    <View className="bg-paper-soft p-6 mt-2">
-      <View className="flex-row items-center mb-3">
-        <Skeleton className="w-9 h-9 bg-paper-warm" />
-        <View className="flex-1 ml-3">
-          <Skeleton className="w-24 h-3 bg-paper-warm" />
+    <LincinScreen tab="events" counter={t.tabEvents}>
+      <View style={{ paddingTop: 8, paddingHorizontal: GUTTER, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+        <Serif variant="pageTitle" style={{ flex: 1 }}>
+          {t.eventsA} <Serif variant="pageTitleItalic">{t.eventsB}</Serif>
+        </Serif>
+        <View style={{ alignItems: "flex-end" }}>
+          <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
+            {upcoming.length + active.length} {t.planned}
+          </Mono>
+          {active.length ? (
+            <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
+              {active.length} nu bezig
+            </Mono>
+          ) : null}
         </View>
       </View>
-      <Skeleton className="w-3/4 h-6 bg-paper-warm" />
-      <View className="h-2" />
-      <Skeleton className="w-1/2 h-3 bg-paper-warm" />
-    </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, paddingBottom: 20, gap: GAP }}>
+        {events.isLoading ? (
+          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
+            {t.loading}
+          </Mono>
+        ) : events.isError ? (
+          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
+            {t.failed}
+          </Mono>
+        ) : null}
+        {[...active, ...upcoming].map((e) => (
+          <EventCard key={e.id} event={e} live={e.is_active} />
+        ))}
+        <DashedCard onPress={() => router.push("/event-create")}>{t.planNew} →</DashedCard>
+        {past.length ? (
+          <Mono variant="micro" tone="dim" style={{ marginTop: 8 }}>
+            Voorbij
+          </Mono>
+        ) : null}
+        {past.map((e) => (
+          <EventCard key={e.id} event={e} past />
+        ))}
+      </ScrollView>
+    </LincinScreen>
+  );
+}
+
+function EventCard({ event: e, live = false, past = false }: { event: EventWithMeta; live?: boolean; past?: boolean }) {
+  const router = useRouter();
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const fc = friendColor(hueFor(e.host_user_id), scheme);
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+  const sameDay = start.toDateString() === end.toDateString();
+  const day = start.toLocaleDateString(LOCALE[lang], { weekday: "short" });
+  const when = sameDay
+    ? `${day} ${hhmm(e.starts_at)}`
+    : `${day} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" })}`;
+  const who = `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`;
+  return (
+    <Box style={{ flexDirection: "row", minHeight: 150, opacity: past ? 0.6 : 1 }}>
+      <View
+        style={{
+          width: 84,
+          backgroundColor: fc.fill,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+          borderRightWidth: BORDER,
+          borderRightColor: color("ink"),
+        }}
+      >
+        <Head variant="numeral" color={fc.ink}>
+          {String(start.getDate()).padStart(2, "0")}
+        </Head>
+        <Mono variant="micro" color={fc.ink}>
+          {start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")}
+        </Mono>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, padding: 12, gap: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
+            <Mono variant="micro" tone="dim" numberOfLines={1}>
+              {e.is_host ? t.me : "linc"}
+            </Mono>
+            {live ? <Chip label="nu bezig" tone="acid" /> : null}
+            {e.pending_requests_count > 0 && e.is_host ? <Chip label={`${e.pending_requests_count} ${t.waitsForYou}`} tone="red" /> : null}
+          </View>
+          <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
+            {when}
+          </Mono>
+        </View>
+        <Serif variant="eventTitle" numberOfLines={2}>
+          {e.name}
+        </Serif>
+        <Mono variant="micro" tone="dim" numberOfLines={1} style={{ textTransform: "none", fontSize: 12.5, letterSpacing: 0 }}>
+          {e.description ? `${e.description.split("\n")[0]} · ` : ""}
+          {who}
+          {e.contributions_count ? ` · ${e.contributions_count} foto's` : ""}
+        </Mono>
+        <View style={{ flexDirection: "row", gap: 6, marginTop: "auto" }}>
+          <Btn label="Open →" fill height={30} onPress={() => router.push(`/event/${e.id}` as never)} />
+          {e.is_host && !past ? (
+            <Btn label="Deel code" height={30} onPress={() => router.push(`/event-link/${e.id}` as never)} />
+          ) : null}
+        </View>
+      </View>
+    </Box>
   );
 }

@@ -67,9 +67,12 @@ export function LincinScreen({
   tint,
   counter,
   header = "default",
+  full = false,
   children,
 }: {
   tab: Tab;
+  /** Geen kolom van 640 op een breed scherm — voor wie zelf kolommen legt (het gesprek). */
+  full?: boolean;
   /** De vriendkleur (hex) van wie in beeld is; het blad kleurt mee. */
   tint?: string | null;
   /** Rechts in de kop, mono en gedempt: `01 / 05` of de schermnaam. */
@@ -81,7 +84,7 @@ export function LincinScreen({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const bg = tint ? pageTint(tint, scheme) : color("paper");
-  const wide = width > COLUMN_MAX + 40;
+  const wide = !full && width > COLUMN_MAX + 40;
 
   return (
     <View
