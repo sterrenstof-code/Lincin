@@ -1,1838 +1,361 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import * as ImagePicker from "expo-image-picker";
-import { useIsFocused } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useMemo, useState } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-import { ActionSheet } from "@/components/ActionSheet";
-import { ModalShell } from "@/components/ModalShell";
-import { FormatBar } from "@/components/FormatBar";
-import { Avatar } from "@/components/Avatar";
-import { RichText } from "@/components/RichText";
-import { MentionsText } from "@/components/MentionsText";
-import { DetailState } from "@/components/DetailState";
-import { IconButton } from "@/components/IconButton";
-import { useWide } from "@/components/Editorial";
-import {
-  AppChrome,
-  CHROME_COMPACT_H,
-  PageScroll,
-  useChromeScroll,
-} from "@/components/AppChrome";
-import { InteractionPeople } from "@/components/InteractionPeople";
-import { PostCarousel } from "@/components/PostCarousel";
-import { formatFeedTime, openUrl } from "@/components/FindBody";
+import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
+import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
+import { Media } from "@/components/lincin/Media";
+import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
+import { BackChip, BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
-import { PostReactions } from "@/components/PostReactions";
-import { PostSignalBar } from "@/components/PostSignalBar";
-import { Skeleton } from "@/components/Skeleton";
-import { useAuth } from "@/lib/auth/provider";
-import {
-  announce,
-  announceDeep,
-  CONTROL_H,
-  creamOnDark,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flameDeep,
-  gutter,
-  rule,
-  SERIF_FAMILY,
-  sheetWidth,
-  space,
-} from "@/lib/design/type";
 import {
   addEntityComment,
-  deleteEntityComment,
   listEntityComments,
   subscribeToEntityComments,
   type EntityComment,
 } from "@/lib/api/entity-comments";
-import {
-  deletePost,
-  getAlbumUrls,
-  KIND_LABELS,
-  normalizeRow,
-  POST_COLUMNS,
-  updatePost,
-  type PostWithAuthor,
-} from "@/lib/api/posts";
-import { getProfile } from "@/lib/api/profiles";
+import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
+import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
-import { asideTag, useHeroTag } from "@/lib/hero-transition";
-import { markSeen } from "@/lib/read-state";
-import { humanizeError } from "@/lib/errors";
+import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { lincinType } from "@/lib/design/type";
+import { useLang, useT } from "@/lib/i18n";
+import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
+import { usePostReactions } from "@/lib/lincin/reactions";
 import { safeBack } from "@/lib/nav";
-import { invalidatePostCaches } from "@/lib/post-cache";
-import { togglePanel, usePanelPrefs } from "@/lib/panel-prefs";
-import { useMentions } from "@/lib/useMentions";
-import { IMG, signedImageUrl } from "@/lib/media";
-import { supabase } from "@/lib/supabase/client";
 import { usePageTitle } from "@/lib/page-title";
-import { NL } from "@/lib/locale";
+import { invalidatePostCaches } from "@/lib/post-cache";
+import { markSeen } from "@/lib/read-state";
+import { useToast } from "@/lib/toast";
 
-export default function PostDetailScreen() {
+/**
+ * De bladzijde van een bijdrage (README §02).
+ *
+ * `← Terug` en een label bovenaan; dan de kaart: het beeld op 300 met een
+ * kleurstrook links, de titel groot, het bijschrift in serif, de tekst,
+ * en wie het maakte. Daaronder de reacties, een `◷ EVENT` als er iets te
+ * plannen valt, `PRIVAAT BERICHT`, en de comments. Onderaan de balk met
+ * `☺` (het reactievak), invoer en `↑`.
+ */
+
+const MEDIA_H = 300;
+const STRIP_W = 34;
+
+export default function PostScreen() {
+  const { id: raw } = useLocalSearchParams<{ id: string }>();
+  const id = String(raw ?? "");
   const router = useRouter();
-  const wide = useWide();
-  const chrome = useChromeScroll();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-
-  /** De verhouding van de foto, zodra hij binnen is. */
-  const [imageRatio, setImageRatio] = useState<number | null>(null);
-
-  /**
-   * Breedte van de gesprekskolom, afgeleid van de foto.
-   *
-   * ---------------------------------------------------------------
-   * WAAROM DE FOTO DE VERDELING BEPAALT
-   * ---------------------------------------------------------------
-   * De plaat vult de hoogte van het venster en wordt niet bijgesneden. Een
-   * staande foto heeft bij die hoogte dus maar wéinig breedte nodig; geef
-   * je hem meer, dan staat die ruimte leeg naast de foto — precies wat er
-   * gebeurde: een portret in het midden van een kolom van zeventig procent,
-   * met lavendel aan weerszijden.
-   *
-   * Dus rekenen we terug: bij deze hoogte is de foto zó breed, en wat
-   * overblijft is voor het gesprek. Een liggende foto vraagt vanzelf meer
-   * en houdt het gesprek smal; een staande vraagt weinig en geeft het
-   * gesprek de ruimte.
-   *
-   * De grenzen zijn er voor de uitersten. Een panorama mag de kolom niet
-   * opeten (hoogstens 62%), een heel smal portret mag de foto niet tot een
-   * strookje knijpen (minstens 28%), en het gesprek blijft tussen een
-   * leesbare 320 en 620 — daarboven worden regels te lang om te lezen.
-   */
-  const conversationWidth = (() => {
-    const available = windowWidth - gutter(true) - space.xxl;
-    // Wat de plaat aan hoogte krijgt: het venster min de balk en de marge.
-    const plateHeight = windowHeight - CHROME_COMPACT_H - gutter(true);
-    const natural = imageRatio ? plateHeight * imageRatio : available * 0.6;
-    const plateWidth = Math.min(
-      Math.max(natural, available * 0.28),
-      available * 0.62
-    );
-    return Math.round(Math.min(Math.max(available - plateWidth, 320), 620));
-  })();
-
   const qc = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  // Alleen het scherm dat je aankijkt draagt de naam van het gedeelde
-  // element — zie useHeroTag.
-  const heroStyle = useHeroTag(String(id));
-  // Alleen het scherm dat je aankijkt draagt de naam; twee elementen met
-  // dezelfde naam laat de browser de hele overgang overslaan.
-  const asideStyle = asideTag(useIsFocused());
+  const t = useT();
+  const scheme = useScheme();
+  const toast = useToast();
   const { session } = useAuth();
-  const myUserId = session?.user.id;
-  /**
-   * Wat je de vorige keer dichtklapte, staat nu weer dicht. Zie
-   * lib/panel-prefs.ts — drie panelen, één voorkeur per stuk.
-   */
-  const panels = usePanelPrefs(myUserId);
-
-  // Zodra je een vondst opent telt hij als gezien; de feed dimt hem daarna.
-  // Lokaal opgeslagen — zie lib/read-state.ts voor waarom niet op de server.
-  useEffect(() => {
-    if (id) markSeen(String(id));
-  }, [id]);
-
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [comments, setComments] = useState<EntityComment[] | null>(null);
-  const [commentError, setCommentError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
-  const [emojiList, setEmojiList] = useState<{ name: string; emoji: string }[] | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  /**
-   * Een gif of een meme die klaarstaat om mee te gaan met je reactie.
-   * Beeld is hier geen bijlage maar het antwoord zelf — daarom mag de
-   * tekst leeg blijven zolang dit gevuld is.
-   */
-  const [pendingImage, setPendingImage] = useState<string | null>(null);
-  // @-suggesties. Zonder vriendenlijst als startpunt: op een vondst noem
-  // je net zo goed iemand die je nog niet hebt toegevoegd, en de zoektocht
-  // op de server dekt beide.
-  const {
-    mentionList,
-    onChangeText: onMentionChange,
-    applyMention,
-  } = useMentions({ draft, setDraft, candidates: [] });
-  const inputRef = useRef<TextInput>(null);
+  const myUserId = session?.user.id ?? "";
 
   const post = useQuery({
     queryKey: ["post", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const { data, error } = await supabase
-        .from("posts")
-        // De gedeelde kolomlijst, niet een eigen — zie POST_COLUMNS.
-        .select(POST_COLUMNS)
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) return null;
-      const author = await getProfile(data.user_id);
-      const [imageUrl, album] = await Promise.all([
-        signedImageUrl("posts", data.image_path, IMG.hero),
-        getAlbumUrls(String(id)),
-      ]);
-      // `album_urls` blijft optioneel, net als op PostWithAuthor: de feed
-      // in de cache dient als beginwaarde en moet dezelfde vorm hebben.
-      return {
-        // `normalizeRow` vult `kind`, `body_text`, `tags` en `meta` aan voor
-        // rijen van vóór 0042; zonder dat komt een oude vondst hier binnen
-        // zonder soort en valt de weergave terug op niets.
-        ...normalizeRow(data),
-        author,
-        image_url: imageUrl,
-        ...(album.urls.length > 0
-          ? { album_urls: album.urls, album_paths: album.paths }
-          : null),
-      } as PostWithAuthor;
-    },
+    queryFn: () => getPost(id),
     enabled: !!id,
     initialData: () => {
-      if (!id || !myUserId) return undefined;
-      const sources = [
-        qc.getQueryData<PostWithAuthor[]>(["feed", myUserId]),
-        qc.getQueryData<PostWithAuthor[]>(["posts-by-user", myUserId]),
-      ];
-      for (const list of sources) {
-        const match = list?.find((p) => p.id === id);
-        if (match) return match;
-      }
-      return undefined;
+      const feed = qc.getQueryData<{ type: string; data: PostWithAuthor }[]>(["unified-feed", myUserId]);
+      return feed?.find((i) => i.type === "post" && i.data.id === id)?.data;
     },
-    initialDataUpdatedAt: () =>
-      qc.getQueryState(["feed", myUserId])?.dataUpdatedAt,
   });
-
+  const comments = useQuery({
+    queryKey: ["entity-comments", "post", id],
+    queryFn: () => listEntityComments("post", id),
+    enabled: !!id,
+  });
   useEffect(() => {
     if (!id) return;
-    let cancelled = false;
-    (async () => {
-      const list = await listEntityComments("post", id);
-      if (!cancelled) setComments(list);
-    })();
-    const channel = subscribeToEntityComments("post", id, (c) => {
-      setComments((prev) => {
-        if (!prev) return [c];
-        if (prev.some((x) => x.id === c.id)) return prev;
-        return [...prev, c];
-      });
-    });
+    markSeen(id);
+    const ch = subscribeToEntityComments("post", id, () => comments.refetch());
     return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
+      ch.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Focus input bij reply
-  useEffect(() => {
-    if (!replyTo) return;
-    const t = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(t);
-  }, [replyTo]);
+  const p = post.data ?? null;
+  const card = useMemo(() => (p ? fromPost(p) : null), [p]);
+  usePageTitle(card?.title ?? null);
+  const hue = hueFor(p?.user_id);
+  const fc = friendColor(hue, scheme);
+  const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
+  const grouped = reactions.grouped(id);
+  const mine = useMemo(() => new Set(grouped.filter((g) => g.mine).map((g) => g.emoji)), [grouped]);
 
-  function onDraftChange(text: string) {
-    const converted = replaceEmoticons(text);
-    setDraft(converted);
-    onMentionChange(converted);
-    // Emoji autocomplete
-    const match = converted.match(/:([a-z0-9_+\-]{2,})$/i);
-    if (match) {
-      const suggestions = emojiSuggestionsFor(match[1]);
-      setEmojiList(suggestions.length > 0 ? suggestions : null);
-    } else {
-      setEmojiList(null);
-    }
-  }
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [boxOpen, setBoxOpen] = useState(false);
+  const [sheet, setSheet] = useState<PrivateTarget | null>(null);
 
-  /**
-   * Een gif of meme kiezen. Uit je bibliotheek, want een gif die je ergens
-   * ziet bewaar je daar ook — en een eigen zoekdienst zou een sleutel en
-   * een account bij een derde vragen voor iets wat je toestel al kan.
-   */
-  async function onPickCommentImage() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      setCommentError("Geen toegang tot je foto's.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      // Niet comprimeren: dat maakt van een bewegende gif één beeld.
-      quality: 1,
-      allowsEditing: false,
-      selectionLimit: 1,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    setPendingImage(result.assets[0].uri);
-  }
-
-  function applyEmoji(name: string, emoji: string) {
-    const replaced = draft.replace(/:([a-z0-9_+\-]{2,})$/i, emoji + " ");
-    setDraft(replaced);
-    setEmojiList(null);
-  }
-
-  function onKeyPress(e: any) {
-    if (Platform.OS !== "web") return;
-    const key = e?.nativeEvent?.key;
-    if (key === "Tab") {
-      e.preventDefault?.();
-      if (emojiList && emojiList.length > 0) {
-        applyEmoji(emojiList[0].name, emojiList[0].emoji);
-      }
-      return;
-    }
-    if (key === "Enter" && !e?.nativeEvent?.shiftKey) {
-      e.preventDefault?.();
-      if (!sending && draft.trim()) onSend();
-    }
-  }
-
-  async function onSend() {
-    if (!myUserId || !id) return;
-    const text = draft.trim();
-    if (!text && !pendingImage) return;
+  async function send(imageUri?: string) {
+    if (!p || !myUserId) return;
+    const body = draft.trim();
+    if (!body && !imageUri) return;
     setSending(true);
-    setCommentError(null);
-    // Replies: prefix met @naam
-    const body = replyTo && text ? `@${replyTo.name} ${text}` : text;
     try {
-      const created = await addEntityComment({
-        entityType: "post",
-        entityId: id,
-        userId: myUserId,
-        body,
-        ownerId: post.data?.user_id,
-        imageUri: pendingImage,
-      });
-      setPendingImage(null);
+      await addEntityComment({ entityType: "post", entityId: id, userId: myUserId, body, ownerId: p.user_id, imageUri });
       setDraft("");
-      setReplyTo(null);
-      setEmojiList(null);
-      setComments((prev) => {
-        if (!prev) return [created];
-        if (prev.some((c) => c.id === created.id)) return prev;
-        return [...prev, created];
-      });
+      setBoxOpen(false);
+      await comments.refetch();
       invalidatePostCaches(qc);
-    } catch (e: any) {
-      setCommentError(
-        humanizeError(e, "post-comment", "Je reactie kon niet geplaatst worden. Probeer het opnieuw.")
-      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t.failed);
     } finally {
       setSending(false);
     }
   }
 
-  async function onDeleteComment(commentId: string) {
-    setCommentError(null);
+  async function remove() {
+    if (!p) return;
+    const ok = await confirm("Bijdrage verwijderen?", "Je vrienden zien hem dan niet meer.", {
+      affirmativeLabel: "Verwijder",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
-      await deleteEntityComment(commentId);
-      setComments((prev) => prev?.filter((c) => c.id !== commentId) ?? null);
-    } catch (e: any) {
-      setCommentError(
-        humanizeError(e, "post-comment", "Je reactie kon niet geplaatst worden. Probeer het opnieuw.")
-      );
-    }
-  }
-
-  const canModerate = post.data?.user_id === myUserId;
-
-  /**
-   * Bewerken van wat je zelf gedeeld hebt.
-   *
-   * Het optiemenu kende maar één ding: weggooien. Wie een typfout in zijn
-   * notitie zag had daarmee geen keuze — opnieuw schrijven, en de reacties
-   * eronder gingen mee. De feed had wél een snelle "toelichting bewerken",
-   * maar die raakt alleen `caption`, en sinds notities, ideeën en weetjes
-   * naar `body_text` schrijven is dat daar niet het stuk maar wat de deler
-   * erbij zei.
-   *
-   * Dus twee velden, en ze staan er allebei altijd: de kop en de tekst.
-   * Welke van de twee de vondst zélf draagt hangt van de soort af, en dat
-   * is niets waar je bij het verbeteren van een zin over hoort na te denken.
-   */
-  const [editOpen, setEditOpen] = useState(false);
-  const [editCaption, setEditCaption] = useState("");
-  const [editBody, setEditBody] = useState("");
-  const [editSelection, setEditSelection] = useState({ start: 0, end: 0 });
-  const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
-
-  /**
-   * De cursor terugzetten na een opmaakknop, en hem dan weer loslaten.
-   *
-   * `selection` op een TextInput is een gestuurde waarde: laat je hem
-   * staan, dan springt de cursor bij elke toetsaanslag terug. Eén tik en
-   * daarna weer los — dezelfde greep die post-compose gebruikt.
-   */
-  useEffect(() => {
-    if (!forcedSelection) return;
-    const t = setTimeout(() => setForcedSelection(null), 0);
-    return () => clearTimeout(t);
-  }, [forcedSelection]);
-
-  function onOpenEdit() {
-    if (!post.data) return;
-    setEditCaption(post.data.caption ?? "");
-    setEditBody(post.data.body_text ?? "");
-    setEditError(null);
-    setEditOpen(true);
-  }
-
-  async function onSaveEdit() {
-    if (!post.data) return;
-    setSaving(true);
-    setEditError(null);
-    try {
-      await updatePost(post.data.id, { caption: editCaption, body_text: editBody });
-      // De pagina zelf, en overal waar deze vondst nog staat.
-      await post.refetch();
+      await deletePost(p);
       invalidatePostCaches(qc);
-      setEditOpen(false);
-    } catch (e: any) {
-      setEditError(e?.message ?? "Kon de wijziging niet bewaren.");
-    } finally {
-      setSaving(false);
+      safeBack(router, "/feed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t.failed);
     }
   }
 
-  async function onDeletePost() {
-    if (!post.data) return;
-    const confirmed = await confirm(
-      `${kindLabel} verwijderen`,
-      `Deze ${kindLabel.toLowerCase()} wordt definitief verwijderd, samen met alle reacties.`,
-      { affirmativeLabel: "Verwijder", destructive: true }
-    );
-    if (!confirmed) return;
-    setDeleteError(null);
-    try {
-      await deletePost({
-        id: post.data.id,
-        user_id: post.data.user_id,
-        image_path: post.data.image_path,
-        caption: post.data.caption,
-        link_url: post.data.link_url ?? null,
-        created_at: post.data.created_at,
-      });
-      await invalidatePostCaches(qc);
-      safeBack(router, "/(app)/feed");
-    } catch (e: any) {
-      setDeleteError(e?.message ?? `Kon ${kindLabel.toLowerCase()} niet verwijderen.`);
-    }
-  }
+  const canEvent = !!p && (/\?/.test(p.caption ?? "") || card?.media.kind === "plek");
+  const own = !!p && p.user_id === myUserId;
+  const authorName = p ? displayName(p.author) : "";
 
-  /**
-   * Hoe deze vondst heet, in het menu en in de bevestiging.
-   *
-   * Er stond overal "foto": "Foto opties", "Foto verwijderen", "Deze foto
-   * wordt definitief verwijderd". Dat klopte toen de feed een fotostroom was
-   * (0042 maakte er vondsten van), maar bij een notitie of een fragment
-   * vraagt de app nu of je een foto wilt weggooien die er niet is — en dan
-   * aarzel je terecht voor je op verwijderen tikt.
-   */
-  const kindLabel = KIND_LABELS[post.data?.kind ?? "note"] ?? "Vondst";
-
-  // ---------------------------------------------------------------
-  // De stukken van deze pagina
-  // ---------------------------------------------------------------
-  //
-  // Ze staan hier als losse blokken en niet als één boom, omdat de
-  // pagina twee indelingen heeft: op een telefoon staat het gesprek
-  // ónder de foto, op een breed scherm ernáást. Zelfde stukken, andere
-  // volgorde — zie de twee `return`s onderaan.
-
-  const loading = post.isLoading || !post.data;
-
-  // De kop van de vondst in de browsertab; `null` zolang hij nog laadt,
-  // anders staat er "undefined" in je geschiedenis. Zie lib/page-title.ts.
-  usePageTitle(post.data?.caption?.trim() || (post.data ? "Vondst" : null));
-
-  /**
-   * Heeft deze vondst iets te tónen?
-   *
-   * Zonder beeld is er niets om de halve pagina mee te vullen: een link,
-   * een notitie of een fragment is tekst, en tekst naast een leeg vlak
-   * zetten maakt het niet leesbaarder. Dan krijgt het gesprek de hele
-   * bladspiegel, op zijn eigen leesmaat gecentreerd.
-   */
-  const hasPlate =
-    !!post.data?.image_url || (post.data?.album_urls?.length ?? 0) > 0 || loading;
-
-  /**
-   * De kop van de vondst: rubriek, waar het over gaat, en van wie.
-   *
-   * Dit lag eerder als een sluier óver de foto — avatar, naam, @naam, een
-   * chevron en het onderschrift in wit op een verloop. Twee dingen klopten
-   * daar niet aan. Een overlay dekt altijd net het stuk beeld af waar het
-   * om begonnen was, en het is de enige plek waar de hiërarchie uit een
-   * verloop komt in plaats van uit een lijn — precies wat DESIGN.md §4
-   * niet wil.
-   *
-   * Nu staat hij eronder, als de banden van §4: rubriek met de zware lijn,
-   * daaronder de kop op de kolomrand, en de herkomst ónder die kop én een
-   * stap naar binnen. Zo zie je aan de vorm al dat wie het deelde bij de
-   * kop hoort in plaats van ernaast te staan.
-   *
-   * `withKicker` staat uit waar `articleBlock` de rubriek al zet; anders
-   * staat dezelfde rubriek twee keer op de pagina.
-   */
-  const masthead = (withKicker: boolean) => {
-    if (!post.data) return null;
-
-    const author = post.data.author;
-    const name = author?.display_name ?? author?.username ?? "Onbekend";
-    const caption = post.data.caption?.trim();
-
-    /**
-     * Bij een foto ís het onderschrift de titel — "Zweden '26" — en dan
-     * mag het de kop van de pagina zijn. Bij een notitie is het wat de
-     * deler erbíj zei, en dat hoort onder zijn naam op leesmaat. De lengte
-     * is de scheiding: wat niet in twee regels past, is geen kop.
-     */
-    const asTitle = !!caption && hasPlate && caption.length <= 64 && !caption.includes("\n");
-
-    /** Eén stap naar binnen. Breder scherm, grotere stap. */
-    const indent = wide ? space.xxl : space.lg;
-
-    return (
-      <View style={{ paddingTop: space.lg }}>
-        {withKicker ? (
-          <>
-            <Text
-              style={[
-                feedType.kicker,
-                { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
-              ]}
-            >
-              {`VONDST · ${kindLabel.toUpperCase()}`}
-            </Text>
-            <View style={{ height: FEED_BORDER * 2, backgroundColor: feed.ink }} />
-          </>
-        ) : null}
-
-        {asTitle ? (
-          <MentionsText
-            text={caption!}
-            style={[
-              wide ? feedType.heroSmall : feedType.tagline,
-              { color: feed.ink, marginTop: withKicker ? space.md : 0 },
-            ]}
-          />
-        ) : null}
-
-        {/*
-            De herkomst. Een stap naar binnen, met de dunste lijn erboven —
-            dit is een band bínnen de kop, geen nieuw blok, en dan hoort de
-            lijn het zwakste gewicht van §4 te hebben.
-        */}
-        <Pressable
-          onPress={() => author?.username && router.push(`/user/${author.username}`)}
-          style={{
-            marginLeft: indent,
-            marginTop: asTitle || withKicker ? space.lg : 0,
-            paddingTop: space.md,
-            borderTopWidth: FEED_BORDER,
-            borderTopColor: rule.soft,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <Avatar name={name} avatarUrl={author?.avatar_url} size="sm" tint="warm" />
-          <View style={{ flex: 1, marginLeft: space.md, minWidth: 0 }}>
-            <Text
-              style={[feedType.label, { fontSize: 14, fontWeight: "700", color: feed.ink }]}
-              numberOfLines={1}
-            >
-              {name}
-            </Text>
-            <Text
-              style={[feedType.label, { color: feed.inkDim, marginTop: 1 }]}
-              numberOfLines={1}
-            >
-              {[
-                author?.username ? `@${author.username}` : null,
-                post.data.created_at ? formatFeedTime(post.data.created_at) : null,
-              ]
-                .filter(Boolean)
-                .join("   ·   ")}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" color={feed.inkDim} size={16} />
-        </Pressable>
-
-        {/* Wat de deler erbij zei, als het niet de kop is: onder zijn naam
-            en op dezelfde inspringing, want het is van hem en niet van de
-            vondst. */}
-        {caption && !asTitle && caption !== standfirst ? (
-          <MentionsText
-            text={caption}
-            style={[
-              feedType.pullSmall,
-              { color: feed.ink, marginLeft: indent, marginTop: space.md },
-            ]}
-          />
-        ) : null}
-      </View>
-    );
-  };
-
-  /** De plaat zelf. Op breed vult hij de kolom, op smal de bladbreedte. */
-  const heroBlock = (fill: boolean) => (
-    <View
-      style={{
-        width: "100%",
-        /**
-         * Op breed vult de plaat de hoogte van het venster. Op smal krijgt
-         * hij de volle breedte en bepaalt de fóto hoe hoog hij wordt: een
-         * vaste hoogte van 62% van het scherm sneed elke staande foto af
-         * precies waar het onderwerp stond. Zolang de verhouding nog niet
-         * binnen is houden we 4:5 aan — de maat van een telefoonfoto, dus
-         * de sprong bij aankomst is klein.
-         */
-        ...(fill
-          ? { height: "100%" as const }
-          : { aspectRatio: imageRatio ?? 4 / 5 }),
-        // Naast het gesprek staat de foto op de pagina zelf. Een plum vlak
-        // eronder werd bij een staande foto een rand aan weerszijden — een
-        // kader dat niemand gevraagd had. Onder een gesprek (smal) vult de
-        // foto zijn vlak wél, en dan is het vlak zijn achtergrond.
-        backgroundColor: fill ? "transparent" : feed.post,
-        // Zelfde naam als de tegel in de feed: de browser morpht het ene
-        // vlak naar het andere.
-        ...heroStyle,
-      }}
-    >
-      {(post.data?.album_urls?.length ?? 0) > 1 ? (
-        // Een album: blader erdoorheen op de plek waar anders de ene foto
-        // staat. Zelfde vlak, zelfde maat, alleen meer om te zien.
-        <PostCarousel
-          urls={post.data!.album_urls!}
-          cacheKeys={post.data!.album_paths}
-          style={{ position: "absolute", width: "100%", height: "100%" }}
-          contentFit={fill ? "contain" : "cover"}
-        />
-      ) : post.data?.image_path && post.data.image_url ? (
-        <Image
-          source={{ uri: post.data.image_url, cacheKey: post.data.image_path }}
-          cachePolicy="disk"
-          style={{ position: "absolute", width: "100%", height: "100%" }}
-          // Naast het gesprek is de foto het onderwerp en niet de vulling
-          // van een vlak: hij moet hélemaal te zien zijn. Onder een gesprek
-          // is hij de kop van de pagina en mag hij bijsnijden.
-          contentFit={fill ? "contain" : "cover"}
-          transition={150}
-          onLoad={(e) => {
-            const { width, height } = (e as any).source ?? {};
-            if (width && height) setImageRatio(width / height);
-          }}
-        />
-      ) : null}
-
-    </View>
-  );
-
-  /** De bron-strook onder een link-vondst. */
-  /**
-   * Het stuk zelf: rubriek, lijn, en de tekst.
-   *
-   * Stond in de gesprekskolom, en die is smal — een artikel van twintig
-   * regels kreeg daardoor minder ruimte dan een foto van dezelfde vondst.
-   * Nu staat het waar de plaat staat: links, op volle kolombreedte, met de
-   * reacties ernaast. Eén opzet voor élke soort vondst, of het nu beeld of
-   * tekst is; dat is precies waarom een foto en een artikel niet twee
-   * verschillende pagina's horen te zijn.
-   */
-  /**
-   * Alleen bij een tekst zonder plaat. Staat er wél beeld, dan is de
-   * plaat de kop en zet `masthead` het onderschrift al als titel — dan
-   * zou dit hetzelfde nog een keer zeggen.
-   */
-  const textTitle = !hasPlate ? post.data?.source_title?.trim() || null : null;
-  /**
-   * Wanneer een tekst lang genoeg is om eerst zijn begin te laten zien.
-   * De grens ligt hoog met opzet: een notitie van tien regels hoort niet
-   * afgekapt te worden om er een knop onder te kunnen zetten.
-   */
-  const isLongBody = (post.data?.body_text?.trim().length ?? 0) > LONG_TEXT_CHARS;
-  const clipBody = isLongBody && panels.longText;
-  const standfirst =
-    !hasPlate && post.data?.body_text?.trim() ? post.data?.caption?.trim() || null : null;
-
-  const articleBlock = post.data ? (
-    <View style={{ paddingVertical: space.lg }}>
-                {/**
-                  * De kop van het blad: waar dit stuk over gaat, en dan
-                  * een zware lijn. Een krant zet niet de schrijver
-                  * bovenaan maar de rubriek — die vertelt je in één woord
-                  * of dit iets is om nu te lezen of straks.
-                  */}
-                <Text
-                  style={[
-                    feedType.kicker,
-                    { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 },
-                  ]}
-                >
-                  {(KIND_LABELS[post.data.kind ?? "note"] ?? "Tekst").toUpperCase()}
-                </Text>
-                <View
-                  style={{
-                    height: FEED_BORDER * 2,
-                    backgroundColor: feed.ink,
-                    marginBottom: space.md,
-                  }}
-                />
-                {/**
-                  * De titel van het stuk, en daaronder in één zin waaróm
-                  * het hier staat.
-                  *
-                  * Die stonden er geen van beide. Je typte bij een tekst
-                  * een titel in ("De Vos en de kat"), en de pagina liet
-                  * hem nergens zien: er stond alleen VONDST · TEKST en dan
-                  * meteen de eerste alinea. Een stuk zonder kop is een
-                  * stuk waarvan je pas na drie regels weet wat het is.
-                  *
-                  * De titel staat in `source_title` en de uitleg in
-                  * `caption` — dezelfde twee kolommen die een fragment al
-                  * gebruikt (0042). Bij een tekst díe je zelf schrijft is
-                  * "waarin het stond" nu eenmaal de titel, en de
-                  * toelichting van de deler is precies de onderkop die een
-                  * krant boven een stuk zet.
-                  */}
-                {textTitle ? (
-                  <Text
-                    style={[
-                      wide ? feedType.heroSmall : feedType.tagline,
-                      { color: feed.ink, marginBottom: standfirst ? space.sm : space.md },
-                    ]}
-                  >
-                    {textTitle}
-                  </Text>
-                ) : null}
-                {standfirst ? (
-                  <MentionsText
-                    text={standfirst}
-                    style={[
-                      feedType.pullSmall,
-                      { color: feed.inkDim, marginBottom: space.md },
-                    ]}
-                  />
-                ) : null}
-                {/**
-                  * De tekst van een notitie, een idee of een fragment.
-                  *
-                  * Die stond hier niet: de pagina toonde alleen `caption`,
-                  * en dat werkte zolang een notitie daarheen schreef. Sinds
-                  * notities opmaak hebben gaan ze naar `body_text`, en toen
-                  * was de pagina leeg — het onderschrift eronder is de
-                  * toelichting van de deler, niet de vondst zelf.
-                  */}
-                {post.data.body_text?.trim() ? (
-                  /**
-                   * De vondst zelf, op volle kolombreedte en in de serif.
-                   *
-                   * Stond ingesprongen tot naast de avatar (36 + marge),
-                   * omdat het onderschríft dat doet — dat hoort bij de
-                   * persoon erboven. Maar dit is niet wat de deler erbij
-                   * zei, dit ís het stuk. Een krant laat de kolom bij de
-                   * kolomrand beginnen; alleen bijzaken springen in.
-                   *
-                   * En in de serif, niet de grotesk. Dezelfde stem als een
-                   * fragment op zijn eigen pagina en als de teksttegel in
-                   * het raster, zodat het stuk overal hetzelfde klinkt.
-                   */
-                  <View style={{ marginTop: space.md }}>
-                    {/**
-                      * Een lang stuk begint met zijn begin.
-                      *
-                      * Twaalfhonderd woorden onder elkaar is op zichzelf
-                      * geen probleem — daar is een detailpagina voor — maar
-                      * je ziet er niet meer aan wat het is, en de reacties
-                      * eronder liggen tien schermen verderop. Boven de
-                      * grens tonen we daarom het begin, met de rest achter
-                      * één tik.
-                      *
-                      * Wat je kiest blijft staan: wie zegt dat hij lange
-                      * teksten meteen helemaal wil, hoeft dat niet bij
-                      * elke vondst opnieuw te zeggen (lib/panel-prefs.ts).
-                      */}
-                    <View
-                      style={
-                        clipBody
-                          ? { maxHeight: LONG_TEXT_PREVIEW_H, overflow: "hidden" }
-                          : undefined
-                      }
-                    >
-                    <RichText
-                      text={post.data.body_text}
-                      /**
-                       * Kleiner op een telefoon. 19 punten serif is een
-                       * leesmaat voor een brede kolom; op 360 punten worden
-                       * dat vier woorden per regel, en dan leest een
-                       * opsomming van twintig punten als een muur. De
-                       * regelhoogte krimpt naar verhouding mee.
-                       */
-                      style={{
-                        fontFamily: SERIF_FAMILY,
-                        fontSize: wide ? 19 : 16,
-                        lineHeight: wide ? 30 : 25,
-                        letterSpacing: -0.2,
-                      }}
-                      color={feed.ink}
-                      dimColor={feed.inkDim}
-                      ruleColor={rule.soft}
-                    />
-                    </View>
-                    {isLongBody ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={clipBody ? "Lees verder" : "Toon minder"}
-                        onPress={() => togglePanel("longText")}
-                        style={{
-                          marginTop: space.md,
-                          paddingTop: space.md,
-                          borderTopWidth: FEED_BORDER,
-                          borderTopColor: feed.ink,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: space.sm,
-                        }}
-                      >
-                        <Ionicons
-                          name={clipBody ? "chevron-down" : "chevron-up"}
-                          size={16}
-                          color={flameDeep}
-                        />
-                        <Text
-                          style={[
-                            feedType.kicker,
-                            { color: flameDeep, letterSpacing: 0.55 },
-                          ]}
-                        >
-                          {clipBody ? "LEES VERDER" : "TOON MINDER"}
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ) : null}
-    </View>
-  ) : null;
-
-  const linkBlock = post.data?.link_url ? (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={`Open ${post.data.link_url}`}
-      onPress={() => {
-        // Was `require("expo-linking")` in deze closure, met een lege catch:
-        // faalde hij, dan gebeurde er niets. Zie openUrl in FindBody.
-        if (post.data?.link_url) void openUrl(post.data.link_url);
-      }}
-      style={{
-        /**
-         * Alleen een lijn bóven zich. Elke band in deze stapel opent met
-         * een lijn en laat zich sluiten door de lijn van de band eronder —
-         * anders staan er op elke grens twee. Wat hier volgt is de band met
-         * de knoppen, en die tekent zijn eigen bovenlijn.
-         */
-        borderTopWidth: FEED_BORDER,
-        borderColor: feed.ink,
-        backgroundColor: feed.panel,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        flexDirection: "row",
-        alignItems: "center",
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>BRON</Text>
-        <Text style={[feedType.tile, { color: feed.ink, marginTop: 4 }]} numberOfLines={1}>
-          {(() => {
-            try {
-              return new URL(post.data!.link_url!).hostname.replace(/^www\./, "");
-            } catch {
-              return post.data!.link_url;
-            }
-          })()}
-        </Text>
-      </View>
-      <Text style={[feedType.label, { color: feed.ink }]}>Openen ↗</Text>
-    </Pressable>
-  ) : null;
-
-  /** Reacties — de lijst zelf, zonder omhulsel. */
-  const commentsBlock = (
-    <>
-      {/**
-        * De kop van de lijst is tegelijk de knop die hem dichtklapt.
-        *
-        * Een gesprek dat je al gelezen hebt hoeft de kolom niet te vullen,
-        * en bij een lang gesprek staat het veld om zelf iets te zeggen
-        * anders onder twintig reacties. Dichtklappen laat de kop, het
-        * aantal en het invoerveld staan — precies wat je nodig hebt om te
-        * zien dát er gepraat is en om mee te doen.
-        *
-        * De stand blijft staan voor de volgende vondst (panel-prefs).
-        */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: !panels.comments }}
-        accessibilityLabel={panels.comments ? "Reacties tonen" : "Reacties verbergen"}
-        onPress={() => togglePanel("comments")}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: space.sm,
-          paddingTop: space.lg,
-          paddingBottom: space.md,
-          borderTopWidth: FEED_BORDER,
-          borderTopColor: feed.ink,
-        }}
-      >
-        <Text
-          style={[
-            feedType.kicker,
-            { color: feed.inkDim, letterSpacing: 0.6, flex: 1 },
-          ]}
-        >
-          {`REACTIES${comments && comments.length > 0 ? ` (${comments.length})` : ""}`}
-        </Text>
-        <Ionicons
-          name={panels.comments ? "chevron-down" : "chevron-up"}
-          size={16}
-          color={feed.inkDim}
-        />
-      </Pressable>
-
-      {/* Geen paneel eromheen. Een reactie is geen kaartje: wie het zei
-          staat vooraan, wat er staat springt in tot onder die naam, en een
-          lijn op diezelfde inspringing scheidt de een van de ander. Vlak,
-          uitlijning en ruimte doen het werk dat een achtergrondkleur deed. */}
-      {panels.comments ? null : comments === null ? (
-        <View style={{ gap: space.md, paddingVertical: space.md }}>
-          <Skeleton className="bg-paper-warm h-4" style={{ width: "70%" }} />
-          <Skeleton className="bg-paper-warm h-4" style={{ width: "55%" }} />
-        </View>
-      ) : comments.length === 0 ? (
-        <Text style={[feedType.body, { color: feed.inkDim, paddingVertical: space.md }]}>
-          Nog geen reacties. Stuur de eerste hieronder.
-        </Text>
-      ) : (
-        <View>
-          {comments.map((c, i) => (
-            <CommentRow
-              key={c.id}
-              comment={c}
-              isLast={i === comments.length - 1}
-              canDelete={canModerate || c.user_id === myUserId}
-              onDelete={() => onDeleteComment(c.id)}
-              onAvatarPress={() => c.author?.username && router.push(`/user/${c.author.username}`)}
-              onReply={() => {
-                const name = c.author?.username ?? c.author?.display_name ?? "reactie";
-                setReplyTo({ id: c.id, name });
-              }}
-            />
-          ))}
-        </View>
-      )}
-    </>
-  );
-
-  /** Alles wat onder de tekstregel hangt: fout, emoji's, antwoord-op. */
-  const composerBlock = (
-    <>
-      {commentError && (
-        <View className="bg-red-100 border border-red-300  mx-5 mb-2 px-4 py-3">
-          <Text className="text-red-800 text-sm font-semibold mb-1">Kon reactie niet plaatsen</Text>
-          <Text className="text-red-800 text-xs leading-5">{commentError}</Text>
-        </View>
-      )}
-
-      {mentionList && mentionList.length > 0 && (
-        <View className="px-3 pb-1">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="always"
-            contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
-          >
-            {mentionList.map((c) => (
-              <Pressable
-                key={c.id}
-                onPress={() => applyMention(c.username)}
-                className="bg-paper px-3 py-2 flex-row items-center gap-2"
-              >
-                <Avatar name={c.display} avatarUrl={c.avatarUrl} size="xs" />
-                <Text className="text-ink text-sm font-semibold">{c.display}</Text>
-                <Text className="text-ink-muted text-xs">@{c.username}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {emojiList && emojiList.length > 0 && (
-        <View className="px-3 pb-1">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="always"
-            contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
-          >
-            {emojiList.map(({ name, emoji }) => (
-              <Pressable
-                key={name}
-                onPress={() => applyEmoji(name, emoji)}
-                className="bg-paper  px-3 py-2 flex-row items-center gap-2"
-              >
-                <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                <Text className="text-ink-muted text-xs">:{name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {replyTo && (
-        <View className="flex-row items-center px-4 py-2 gap-3 border-t border-line-paper/60">
-          <View className="w-0.5 self-stretch bg-brand" />
-          <Text className="flex-1 text-ink-muted text-xs">
-            Antwoorden aan <Text className="text-brand font-semibold">@{replyTo.name}</Text>
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Antwoorden annuleren"
-            onPress={() => setReplyTo(null)} hitSlop={8}>
-            <Ionicons name="close" color={feed.inkDim} size={18} />
-          </Pressable>
-        </View>
-      )}
-
-      {showEmojiPicker && (
-        <View className="bg-paper-soft border-t border-line-paper" style={{ height: 200 }}>
-          <ScrollView
-            contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 8 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {POST_EMOJIS.map((emoji) => (
-              <Pressable
-                key={emoji}
-                onPress={() => {
-                  setDraft((d) => d + emoji);
-                  inputRef.current?.focus();
-                }}
-                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-              >
-                <Text style={{ fontSize: 22 }}>{emoji}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/*
-          De tekstregel.
-
-          Hier stonden drie oppervlakken naast elkaar op een vierde: een
-          lila vierkant met een emoji, een bijna-wit veld, en een zwarte
-          knop die in uitgeschakelde stand een zwart vlak op plum werd met
-          een pijl die je niet zag. Vier vlakken die niets met elkaar te
-          maken hadden.
-
-          Nu: één vlak (plum), en daarop drie kaders van dezelfde hoogte in
-          dezelfde lijn. Vlak en lijn dragen de hiërarchie — de knop die iets
-          dóet is de enige die gevuld is, en alleen wanneer hij ook echt iets
-          kan doen.
-      */}
-      <View
-        style={{
-          backgroundColor: feed.post,
-          borderTopWidth: FEED_BORDER,
-          borderTopColor: feed.ink,
-          padding: space.md,
-        }}
-      >
-        {/* Wat je zo meestuurt: een gif of een meme, met een kruisje om
-            hem weer weg te halen. */}
-        {pendingImage ? (
-          <View style={{ marginBottom: space.md, alignSelf: "flex-start" }}>
-            <Image
-              source={{ uri: pendingImage }}
-              style={{ width: 120, height: 120, borderWidth: FEED_BORDER, borderColor: feed.postRule }}
-              contentFit="cover"
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Foto weghalen"
-              onPress={() => setPendingImage(null)}
-              hitSlop={8}
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 28,
-                height: 28,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: feed.panel,
-              }}
-            >
-              <Ionicons name="close" size={16} color={feed.text} />
-            </Pressable>
-          </View>
-        ) : null}
-
-        {/*
-            Eén regel, vier dingen, en maar één ervan is een vlak.
-
-            Hier stonden vier omkaderde vakjes naast elkaar: twee icoontjes,
-            een veld en een pijl, allemaal even luid. Een kader betekent
-            "hier hoort iets in"; bij een icoon is dat niet zo. Dus dragen
-            de icoontjes zichzelf, houdt het veld een zachte vulling omdat
-            je er wél in typt, en is de knop die de reactie wegstuurt het
-            enige gevulde vlak — in het oranje van de primaire actie, en
-            alleen zolang er iets te versturen valt.
-        */}
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.xs }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Foto toevoegen"
-            onPress={onPickCommentImage}
-            style={{
-              width: CONTROL_H,
-              height: CONTROL_H,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="images-outline"
-              size={20}
-              color={pendingImage ? announce : feed.textDim}
-            />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Emoji kiezen"
-            onPress={() => {
-              setShowEmojiPicker((v) => !v);
-              if (!showEmojiPicker) {
-                inputRef.current?.blur();
-              } else {
-                inputRef.current?.focus();
-              }
-            }}
-            style={{
-              width: CONTROL_H,
-              height: CONTROL_H,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="happy-outline"
-              size={20}
-              color={showEmojiPicker ? announce : feed.textDim}
-            />
-          </Pressable>
-
-          <View
-            style={{
-              flex: 1,
-              minHeight: CONTROL_H,
-              maxHeight: 128,
-              justifyContent: "center",
-              paddingHorizontal: space.md,
-              backgroundColor: "rgba(243,237,228,0.08)",
-            }}
-          >
-            <TextInput
-              ref={inputRef}
-              value={draft}
-              onChangeText={onDraftChange}
-              onKeyPress={onKeyPress}
-              onFocus={() => setShowEmojiPicker(false)}
-              placeholder="Schrijf een reactie…"
-              placeholderTextColor={feed.textDim}
-              multiline
-              maxLength={500}
-              style={[
-                feedType.body,
-                {
-                  color: feed.text,
-                  minHeight: 22,
-                  ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {}),
-                },
-              ]}
-            />
-          </View>
-
-          {(() => {
-            const canSend = !sending && (!!draft.trim() || !!pendingImage);
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Reactie versturen"
-                onPress={onSend}
-                disabled={!canSend}
-                style={{
-                  width: CONTROL_H,
-                  height: CONTROL_H,
-                  borderRadius: CONTROL_H / 2,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: canSend ? announce : "transparent",
-                }}
-              >
-                <Ionicons
-                  name="arrow-up"
-                  color={canSend ? feed.text : feed.textDim}
-                  size={20}
-                />
-              </Pressable>
-            );
-          })()}
-        </View>
-      </View>
-    </>
-  );
-
-  /**
-   * Het bewerkscherm.
-   *
-   * Twee velden onder elkaar, elk met een rubriek en een lijn erboven —
-   * dezelfde opbouw als de rest van de app, zodat een formulier niet ineens
-   * een ander systeem is (DESIGN.md §4). De tekst krijgt de opmaakbalk die
-   * ook bij het plaatsen gebruikt wordt; anders kun je vet maken bij het
-   * schrijven maar niet meer bij het verbeteren.
-   */
-  const editSheet = (
-    <ModalShell
-      visible={editOpen}
-      onClose={() => setEditOpen(false)}
-      title={`${kindLabel} bewerken`}
-      maxWidth={560}
-    >
-      <ScrollView
-        style={{ maxHeight: 460 }}
-        contentContainerStyle={{ padding: space.lg }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Was "TITEL" bij een foto en "ONDERSCHRIFT" zonder — twee namen
-            voor hetzelfde veld, in hetzelfde venster, afhankelijk van iets
-            waar de schrijver niet aan denkt. Zie post-compose voor de vier
-            namen die `post.caption` had. */}
-        <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-          TOELICHTING
-        </Text>
-        <View style={{ height: FEED_BORDER, backgroundColor: feed.ink, marginTop: 6 }} />
-        <TextInput
-          value={editCaption}
-          onChangeText={setEditCaption}
-          placeholder="Waar gaat dit over?"
-          placeholderTextColor={feed.inkDim}
-          multiline
-          maxLength={1000}
-          style={[
-            feedType.pullSmall,
-            {
-              color: feed.ink,
-              paddingVertical: space.md,
-              minHeight: 56,
-              textAlignVertical: "top",
-              ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
-            },
-          ]}
-        />
-
-        <Text
-          style={[
-            feedType.kicker,
-            { color: flameDeep, letterSpacing: 0.55, marginTop: space.lg },
-          ]}
-        >
-          DE TEKST
-        </Text>
-        <View style={{ height: FEED_BORDER, backgroundColor: feed.ink, marginTop: 6 }} />
-        <FormatBar
-          value={editBody}
-          selection={editSelection}
-          onChange={(next) => {
-            setEditBody(next.text);
-            setEditSelection(next.selection);
-            setForcedSelection(next.selection);
-          }}
-        />
-        <TextInput
-          value={editBody}
-          onChangeText={setEditBody}
-          onSelectionChange={(e) => setEditSelection(e.nativeEvent.selection)}
-          selection={forcedSelection ?? undefined}
-          placeholder="Leeg laten mag — dan draagt de toelichting de vondst."
-          placeholderTextColor={feed.inkDim}
-          multiline
-          // Geen grens, net als bij het schrijven — zie post-compose. Stond
-          // hier een limiet, dan knipte één keer bewerken een lang stuk
-          // alsnog af.
-          style={[
-            feedType.body,
-            {
-              color: feed.ink,
-              fontSize: 15,
-              lineHeight: 23,
-              paddingVertical: space.md,
-              minHeight: 120,
-              textAlignVertical: "top",
-              ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
-            },
-          ]}
-        />
-
-        {editError ? (
-          <Text style={[feedType.label, { color: flameDeep, marginTop: space.md }]}>
-            {editError}
-          </Text>
-        ) : null}
-
-        {/* Eén gevulde knop, en dat is degene die iets dóet. Annuleren is
-            de rand van het scherm en het kruisje in de kop. */}
-        <Pressable
-          onPress={onSaveEdit}
-          disabled={saving}
-          style={({ pressed }) => ({
-            marginTop: space.lg,
-            height: CONTROL_H,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: saving ? feed.inkDim : pressed ? announceDeep : announce,
-          })}
-        >
-          <Text
-            style={[
-              feedType.label,
-              { fontSize: 13, fontWeight: "700", color: creamOnDark.DEFAULT },
-            ]}
-          >
-            {saving ? "Bewaren…" : "Bewaren"}
-          </Text>
-        </Pressable>
-      </ScrollView>
-    </ModalShell>
-  );
-
-  const shell = (children: React.ReactNode) => (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      {deleteError && (
-        <View className="bg-red-100 border border-red-300  mx-5 mt-2 px-4 py-3">
-          <Text className="text-red-800 text-sm">{deleteError}</Text>
-        </View>
-      )}
-
-      <ActionSheet
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        title={`${kindLabel} · opties`}
-        actions={[
-          {
-            label: "Bewerken",
-            icon: "pencil-outline",
-            onPress: () => {
-              setMenuOpen(false);
-              onOpenEdit();
-            },
-          },
-          {
-            label: `${kindLabel} verwijderen`,
-            icon: "trash-outline",
-            destructive: true,
-            onPress: onDeletePost,
-          },
-        ]}
-      />
-
-      {editSheet}
-
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      >
-        {children}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-
-  // Een mislukte query en een verwijderde vondst zagen er hetzelfde uit
-  // als een trage: `loading` hierboven is `isLoading || !data`, dus de
-  // skeletons bleven in beide gevallen staan tot je de app afsloot. De
-  // wachtstand houdt zijn skeletons — die kloppen — maar de andere twee
-  // krijgen hun eigen antwoord, mét de weg terug. Zie DetailState.
-  if (post.isError || (!post.isLoading && !post.data)) {
-    return (
-      <DetailState
-        kind={post.isError ? "error" : "missing"}
-        subject="Deze vondst"
-        error={post.error}
-        onRetry={() => post.refetch()}
-        backLabel="Terug naar de feed"
-        onBack={() => safeBack(router, "/(app)/feed")}
-      />
-    );
-  }
-
-  // ---------------------------------------------------------------
-  // BREED — de foto links, het gesprek ernaast
-  // ---------------------------------------------------------------
-  //
-  // Onder de foto is een gesprek een voetnoot: je moet erheen scrollen en
-  // de foto is dan weg. Ernáást staat het naast het onderwerp waar het
-  // over gaat, en blijft de foto in beeld terwijl je meeleest en typt.
-  // De pagina zelf scrolt hier niet; alleen de kolom met reacties.
-  if (wide) {
-    return shell(
-      <View style={{ flex: 1 }}>
-        <AppChrome
-          wide
-          progress={chrome.progress}
-          compact
-          backLabel="Terug naar de feed"
-          onBack={() => safeBack(router, "/(app)/feed")}
-          actionLabel={canModerate ? "Opties" : undefined}
-          onAction={canModerate ? () => setMenuOpen(true) : undefined}
-        />
-
-        {/* De foto loopt tot de rand van het venster: links geen marge, geen
-            vlak eronder. Een lijst met marges eromheen maakt van een foto
-            een kaartje, en dit is geen kaartje — dit ís de pagina. De
-            gesprekskolom rechts houdt zijn eigen marge, want tekst tegen een
-            vensterrand leest niet. */}
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            gap: space.xxl,
-            // Dezelfde bladspiegel als de kopbalk erboven, zodat de kolom
-            // precies onder de balk begint in plaats van eronderuit te
-            // steken. Zie CHROME_COLUMN in components/AppChrome.
-            width: "100%",
-            maxWidth: sheetWidth(true),
-            alignSelf: "center",
-            paddingHorizontal: gutter(true),
-            paddingBottom: gutter(true),
-          }}
-        >
-          {/**
-            * Links staat de vondst, wat het ook is.
-            *
-            * Een foto kreeg de volle kolom en een artikel moest het doen met
-            * de smalle gesprekskolom ernaast — dezelfde vondst, twee
-            * verschillende pagina's, afhankelijk van of er beeld bij zat.
-            * Nu vult de tekst dezelfde plek als de plaat, en staan de
-            * reacties er in beide gevallen naast.
-            */}
-          <View style={{ flex: 1, minWidth: 0 }}>
-            {hasPlate ? (
-              loading ? (
-                <Skeleton style={{ width: "100%", height: "100%", borderRadius: 0 }} />
-              ) : (
-                heroBlock(true)
-              )
-            ) : (
-              <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: space.xl }}
-                showsVerticalScrollIndicator={false}
-              >
-                {articleBlock}
-                {linkBlock}
-              </ScrollView>
-            )}
-          </View>
-
-          {/**
-            * De kolom met reacties kan weg.
-            *
-            * Bij een lang stuk is de vraag niet "wat vindt men ervan" maar
-            * "kan ik dit lezen": een kolom van 320 tot 620 punten naast de
-            * tekst maakt de regels korter dan ze hoeven te zijn. Dicht
-            * blijft er een strook over met het aantal erin — je ziet dat er
-            * een gesprek is, je leest alleen even niet mee.
-            *
-            * Hij komt op dezelfde manier terug, en de stand blijft staan
-            * voor de volgende vondst (lib/panel-prefs.ts).
-            */}
-          {panels.aside ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Reacties tonen"
-              onPress={() => togglePanel("aside")}
-              style={{
-                width: ASIDE_STRIP_W,
-                alignItems: "center",
-                gap: space.md,
-                paddingTop: space.lg,
-                borderLeftWidth: FEED_BORDER,
-                borderLeftColor: feed.ink,
-              }}
-            >
-              <Ionicons name="chevron-back" size={18} color={feed.ink} />
-              <Ionicons name="chatbubble-outline" size={18} color={feed.ink} />
-              {comments && comments.length > 0 ? (
-                <Text style={[feedType.kicker, { color: feed.ink }]}>
-                  {comments.length}
-                </Text>
+  return (
+    <LincinScreen
+      tab="feed"
+      tint={p ? fc.fill : null}
+      header={
+        <TopRow
+          left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
+          right={
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Mono variant="micro" tone="dim">
+                {t.post}
+                {card ? ` · ${card.kind}` : ""}
+              </Mono>
+              {own ? (
+                <Pressable accessibilityRole="button" onPress={remove} hitSlop={6}>
+                  <Mono variant="micro" tone="red">
+                    Verwijder
+                  </Mono>
+                </Pressable>
               ) : null}
-            </Pressable>
+            </View>
+          }
+        />
+      }
+    >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
+          {post.isLoading && !p ? (
+            <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
+              {t.loading}
+            </Mono>
+          ) : !p || !card ? (
+            <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
+              {t.failed}
+            </Mono>
           ) : (
-          <View
-            style={{
-              width: conversationWidth,
-              backgroundColor: feed.lav,
-              // Schuift van rechts naar binnen terwijl de foto uitgroeit —
-              // zie de keyframes in app/+html.tsx.
-              ...asideStyle,
-            }}
-          >
-            {/* De weg terug: dezelfde knop, andere kant op. Hij staat
-                bóven de kolom en niet erin, want hij gaat over de kolom
-                zelf en niet over de vondst. */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Reacties verbergen"
-              onPress={() => togglePanel("aside")}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                gap: space.xs,
-                paddingVertical: space.sm,
-              }}
-            >
-              <Text style={[feedType.kicker, { color: feed.inkDim, letterSpacing: 0.6 }]}>
-                VERBERGEN
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={feed.inkDim} />
-            </Pressable>
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 12 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {/*
-                  De kop van het gesprek: dezelfde banden als op een
-                  telefoon, alleen staat de plaat hier links in plaats van
-                  erboven. De rubriek komt mee zolang de plaat links staat;
-                  bij een artikel zet `articleBlock` hem daar al.
-              */}
-              <View style={{ paddingBottom: space.lg }}>{masthead(hasPlate)}</View>
-              {/* Bij een plaat staat de bron hier, want links is de foto.
-                  Bij een artikel staat hij links, bij het stuk zelf. */}
-              {hasPlate ? linkBlock : null}
-              {/*
-                  Wat er met deze vondst gedaan is, als één band van cellen
-                  tussen lijnen. De lijn hierboven is van dit blok; de rij
-                  knoppen tekent alleen de lijn onder zich, en de lijn onder
-                  de pillen is de lijn waar "REACTIES" mee begint. Zo staat
-                  er overal één lijn — eerder had de knoppenrij een eigen
-                  kader binnen dit blok, en dan zag je er twee.
-              */}
-              <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
-                <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
-                {/* Pillen en gezichten op één regel: het is één ding —
-                    wat er met deze vondst gedaan is. */}
+            <>
+              <Box>
+                {/* beeld met kleurstrook */}
+                <View style={{ flexDirection: "row", height: MEDIA_H }}>
+                  <View
+                    style={{
+                      width: STRIP_W,
+                      backgroundColor: fc.fill,
+                      borderRightWidth: BORDER,
+                      borderRightColor: color("ink"),
+                      overflow: "hidden",
+                    }}
+                  >
+                    <VerticalLabel
+                      text={`${card.kind} · ${hhmm(p.created_at)}`}
+                      width={STRIP_W}
+                      height={MEDIA_H}
+                      color={fc.ink}
+                      style={{ letterSpacing: 0.8, textTransform: "uppercase" }}
+                    />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Media media={card.media} height={MEDIA_H} hue={hue} postId={p.id} myUserId={myUserId} />
+                  </View>
+                </View>
+                {/* tekst */}
+                <View style={{ padding: 14, gap: 10, borderTopWidth: BORDER, borderTopColor: color("ink") }}>
+                  <Head variant="postTitle">{card.title}</Head>
+                  {card.caption ? <Serif variant="quoteLarge">{card.caption}</Serif> : null}
+                  {p.body_text && card.media.kind !== "tekst" && p.body_text.trim() !== (p.caption ?? "").trim() ? (
+                    <Body small tone="dim">
+                      {p.body_text}
+                    </Body>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${authorName}, ${t.viewProfile}`}
+                    onPress={() => p.author?.username && router.push(`/user/${p.author.username}` as never)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}
+                  >
+                    <Initial letter={authorName.slice(0, 1).toUpperCase()} size={28} bg={fc.fill} fg={fc.ink} border={false} fontSize={12} />
+                    <Text style={[lincinType.meta, { textTransform: "none", textDecorationLine: "underline", color: color("ink") }]}>
+                      {authorName}
+                    </Text>
+                    <Mono variant="meta" tone="dim" style={{ textTransform: "none" }}>
+                      · {t.viewProfile}
+                    </Mono>
+                  </Pressable>
+                </View>
+                {/* actierij */}
                 <View
                   style={{
                     flexDirection: "row",
-                    flexWrap: "wrap",
                     alignItems: "center",
-                    gap: space.sm,
-                    paddingVertical: space.md,
+                    borderTopWidth: BORDER,
+                    borderTopColor: color("ink"),
+                    paddingHorizontal: 8,
+                    paddingVertical: 6,
+                    gap: 4,
+                    flexWrap: "wrap",
                   }}
                 >
-                  <PostReactions postId={String(id)} tone="feed" padded={false} />
-                  <InteractionPeople postId={String(id)} />
+                  {grouped.map((g) => (
+                    <Pressable
+                      key={g.emoji}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${g.emoji} ${g.count}`}
+                      accessibilityState={{ selected: g.mine }}
+                      onPress={() => reactions.toggle(id, g.emoji)}
+                      style={{
+                        height: 34,
+                        paddingHorizontal: 8,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        backgroundColor: g.mine ? color("ink") : "transparent",
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, lineHeight: 18, color: g.mine ? color("paper") : color("ink") }}>{g.emoji}</Text>
+                      <Text style={[lincinType.action, { letterSpacing: 0, color: g.mine ? color("paper") : color("ink") }]}>{g.count}</Text>
+                    </Pressable>
+                  ))}
+                  <View style={{ flex: 1 }} />
+                  {canEvent ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/event-create")}
+                      style={{
+                        height: 30,
+                        paddingHorizontal: 8,
+                        borderWidth: BORDER,
+                        borderStyle: "dashed",
+                        borderColor: color("ink"),
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Mono variant="action">◷ {t.event}</Mono>
+                    </Pressable>
+                  ) : null}
+                  {!own ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        setSheet({
+                          friendId: p.user_id,
+                          friendName: authorName,
+                          quote: card.caption || card.title,
+                          postId: p.id,
+                          postTitle: card.title,
+                        })
+                      }
+                      style={{ height: 34, paddingHorizontal: 10, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Mono variant="action" tone="paper">
+                        {t.privateMsg}
+                      </Mono>
+                    </Pressable>
+                  ) : null}
                 </View>
-              </View>
-              {commentsBlock}
-            </ScrollView>
-            {composerBlock}
-          </View>
+              </Box>
+
+              {/* comments */}
+              <Mono variant="micro" tone="dim" style={{ marginTop: 6 }}>
+                {t.comments} · {comments.data?.length ?? p.comment_count ?? 0}
+              </Mono>
+              {(comments.data ?? []).map((c) => (
+                <CommentRow key={c.id} comment={c} myUserId={myUserId} />
+              ))}
+            </>
           )}
-        </View>
-      </View>
-    );
-  }
+        </ScrollView>
 
-  // ---------------------------------------------------------------
-  // SMAL — de foto bovenaan, het gesprek eronder
-  // ---------------------------------------------------------------
-  return shell(
-    <>
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        backLabel="Terug naar de feed"
-        onBack={() => safeBack(router, "/(app)/feed")}
-        actionLabel={canModerate ? "Opties" : undefined}
-        onAction={canModerate ? () => setMenuOpen(true) : undefined}
-        contentStyle={{ padding: gutter(wide), paddingBottom: space.section }}
-        gutter={false}
-        // De plaat begint aan de bovenrand van het venster, met de balk
-        // erover — niet pas onder een strook paginavlak.
-        underChrome
-      >
-        <View>
-          {loading ? (
-            <View className="bg-paper-soft  overflow-hidden">
-              <View className="flex-row items-center px-4 py-3">
-                <Skeleton className="w-11 h-11 bg-paper-warm" />
-                <View className="flex-1 ml-3">
-                  <Skeleton className="w-32 h-3.5 bg-paper-warm" />
-                  <View className="h-1.5" />
-                  <Skeleton className="w-20 h-3 bg-paper-warm" />
-                </View>
-              </View>
-              <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
-            </View>
-          ) : (
-            /**
-              * Een plaat als er beeld is, anders het stuk zelf.
-              *
-              * Hier stond alleen `heroBlock`. Bij een notitie — een vondst
-              * die per definitie geen foto heeft — betekende dat een leeg
-              * vlak van een halve schermhoogte en daaronder meteen de
-              * knoppen: de tekst kwam op een telefoon nergens in beeld.
-              *
-              * De brede tak kreeg die tekst wél, want daar is hij bij het
-              * splitsen van de kolommen ingehangen. Deze tak is toen
-              * overgeslagen, en dat viel niet op omdat een vondst mét foto
-              * er hetzelfde uitziet als eerst.
-              */
-            hasPlate ? (
-              <View>
-                {/* De plaat loopt tot de rand: precies de marge van de
-                    pagina terug, zodat hij op de kop erboven uitlijnt. Er
-                    ligt niets meer overheen — de kop staat eronder. */}
-                <View style={{ marginHorizontal: -gutter(wide), marginTop: -gutter(wide) }}>
-                  {heroBlock(false)}
-                </View>
-                {masthead(true)}
-                {linkBlock ? (
-                  <View style={{ marginHorizontal: -gutter(wide), marginTop: space.lg }}>
-                    {linkBlock}
-                  </View>
-                ) : null}
-              </View>
-            ) : (
-              <View>
-                {articleBlock}
-                {masthead(false)}
-                {linkBlock}
-              </View>
-            )
-          )}
-
-          {/* Dezelfde band als op een breed scherm: cellen tussen lijnen,
-              met één lijn erboven en de lijn van "REACTIES" eronder. */}
-          <View
-            style={{
-              marginTop: space.lg,
-              borderTopWidth: FEED_BORDER,
-              borderTopColor: feed.ink,
-            }}
-          >
-            <PostSignalBar postId={String(id)} ownerId={post.data?.user_id} />
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: space.sm,
-                paddingVertical: space.md,
-              }}
-            >
-              <PostReactions postId={String(id)} tone="feed" padded={false} />
-              <InteractionPeople postId={String(id)} />
-            </View>
-          </View>
-
-          {commentsBlock}
-        </View>
-      </PageScroll>
-
-      {composerBlock}
-    </>
+        <ComposeBar
+          value={draft}
+          onChange={setDraft}
+          onSend={() => send()}
+          placeholder={t.writeComment}
+          boxOpen={boxOpen}
+          onToggleBox={() => setBoxOpen((v) => !v)}
+          sending={sending}
+          above={
+            boxOpen ? (
+              <ReactBox
+                onClose={() => setBoxOpen(false)}
+                onEmoji={(e) => reactions.toggle(id, e)}
+                onImage={(uri) => send(uri)}
+                active={mine}
+              />
+            ) : null
+          }
+        />
+      </KeyboardAvoidingView>
+      <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
+    </LincinScreen>
   );
 }
 
-
-
-function CommentRow({
-  comment,
-  isLast,
-  canDelete,
-  onDelete,
-  onAvatarPress,
-  onReply,
-}: {
-  comment: EntityComment;
-  isLast: boolean;
-  canDelete: boolean;
-  onDelete: () => void;
-  onAvatarPress: () => void;
-  onReply: () => void;
-}) {
-  const time = formatCommentTime(comment.created_at);
-  const name = comment.author?.display_name ?? comment.author?.username ?? "Onbekend";
-
-  /**
-   * Bestaat de reactie uit niets dan een link naar een plaatje, dan is dat
-   * plaatje de reactie — en niet een blauwe regel waar je op moet klikken
-   * om te zien wat iemand bedoelde. Precies wat er gebeurt als je een gif
-   * van het web plakt.
-   */
-  const linkedImage = /^https?:\/\/\S+\.(gif|png|jpe?g|webp)(\?\S*)?$/i.test(
-    comment.body.trim()
-  )
-    ? comment.body.trim()
-    : null;
+function CommentRow({ comment: c, myUserId }: { comment: EntityComment; myUserId: string }) {
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const own = c.user_id === myUserId;
+  const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
+  const name = own ? t.me : displayName(c.author);
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        paddingVertical: space.md,
-        ...(isLast
-          ? null
-          : { borderBottomWidth: 1, borderBottomColor: "rgba(11,10,12,0.12)" }),
-      }}
-    >
-      <Pressable onPress={onAvatarPress} hitSlop={6}>
-        <Avatar name={name} avatarUrl={comment.author?.avatar_url} size="sm" />
-      </Pressable>
-
-      {/* De tekst springt in tot naast de avatar en blijft daar: naam en
-          reactie staan op dezelfde lijn onder elkaar, en die lijn is wat
-          een reactie van de volgende scheidt. */}
-      <View style={{ flex: 1, minWidth: 0, marginLeft: space.md }}>
-        <View style={{ flexDirection: "row", alignItems: "baseline", gap: space.sm }}>
-          <Text
-            style={[feedType.label, { fontSize: 14, fontWeight: "700", color: feed.ink }]}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-          <Text style={[feedType.label, { color: feed.inkDim }]}>{time}</Text>
+    <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+      <Initial letter={name.slice(0, 1).toUpperCase()} size={26} bg={fc.fill} fg={fc.ink} border={false} fontSize={11} />
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+          <Mono variant="monoBody">{name}</Mono>
+          <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
+            {timeLabel(c.created_at, t, lang)}
+          </Mono>
         </View>
-        {comment.body && !linkedImage ? (
-          <MentionsText
-            text={comment.body}
-            style={[feedType.body, { fontSize: 14, lineHeight: 20, color: feed.ink, marginTop: 2 }]}
-          />
+        {c.image_url ? (
+          <View style={{ width: 160, height: 110, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: color("paper2") }}>
+            <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+            <View style={{ position: "absolute", left: 6, bottom: 6, backgroundColor: color("ink"), paddingHorizontal: 5, paddingVertical: 2 }}>
+              <Mono variant="tiny" tone="paper">
+                {t.gifNote}
+              </Mono>
+            </View>
+          </View>
         ) : null}
-        {linkedImage ? (
-          <SafeImage
-            uri={linkedImage}
-            style={{ width: "100%", maxWidth: 260, aspectRatio: 1, marginTop: space.sm }}
-            contentFit="contain"
-            fallbackBg="bg-paper-warm"
-          />
+        {c.body ? (
+          <Body small style={{ fontSize: 14, lineHeight: 19 }}>
+            {c.body}
+          </Body>
         ) : null}
-        {comment.image_url ? (
-          <SafeImage
-            uri={comment.image_url}
-            cacheKey={comment.image_path ?? undefined}
-            style={{
-              width: "100%",
-              maxWidth: 260,
-              aspectRatio: 1,
-              marginTop: space.sm,
-            }}
-            contentFit="cover"
-            fallbackBg="bg-paper-warm"
-          />
-        ) : null}
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: space.sm }}>
-        <IconButton
-          name="return-down-back-outline"
-          label="Antwoorden op deze reactie"
-          onPress={onReply}
-          size={16}
-          color={feed.inkDim}
-          dense
-        />
-        {canDelete && (
-          <IconButton
-            name="trash-outline"
-            label="Reactie verwijderen"
-            onPress={onDelete}
-            size={16}
-            color={feed.inkDim}
-            dense
-          />
-        )}
       </View>
     </View>
   );
-}
-
-
-/**
- * Vanaf hoeveel tekens een stuk eerst zijn begin laat zien, en hoe hoog
- * dat begin is. Ongeveer duizend woorden staat er dan; genoeg om te weten
- * wat je leest en te besluiten of je verder gaat.
- */
-const LONG_TEXT_CHARS = 1800;
-const LONG_TEXT_PREVIEW_H = 560;
-
-/** De breedte van de strook die overblijft als de kolom dicht staat. */
-const ASIDE_STRIP_W = 48;
-
-const POST_EMOJIS = [
-  "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",
-  "🥺","😏","🤩","😇","🤗","😴","🥳","🤯","🫡","🤭",
-  "👍","👎","❤️","💔","🔥","✨","🎉","🙏","💯","👋",
-  "✌️","🤞","🤙","👌","💪","🫶","👏","🙌","🤜","🤛",
-  "🌟","⭐","💫","🌈","☀️","🌙","❄️","🌊","🍀","🌸",
-  "🍕","🍦","🎂","☕","🍺","🥂","🍷","🎵","🎶","🎮",
-  "🐶","🐱","🐻","🦁","🐸","🦄","🦋","🐝","💀","👻",
-  "👽","🤖","💩","🎭","🎲","🏆","💎","🔑","💡","🔥",
-];
-
-function formatCommentTime(iso: string): string {
-  const date = new Date(iso);
-  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (diffMin < 1) return "net";
-  if (diffMin < 60) return `${diffMin}m`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}u`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d`;
-  return date.toLocaleDateString(NL, { day: "numeric", month: "short" });
 }

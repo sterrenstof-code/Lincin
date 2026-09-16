@@ -15,12 +15,6 @@ import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
 import { listMyFriendships } from "@/lib/api/friends";
-import {
-  groupPostReactions,
-  listReactionsForPosts,
-  togglePostReaction,
-  type PostReactionRow,
-} from "@/lib/api/post-reactions";
 import { listUnifiedFeed } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, useScheme } from "@/lib/design/theme";
@@ -35,6 +29,8 @@ import {
   type FriendGroup,
   type TimeGroup,
 } from "@/lib/lincin/model";
+import { usePrefs } from "@/lib/lincin/prefs";
+import { usePostReactions } from "@/lib/lincin/reactions";
 import { usePageTitle } from "@/lib/page-title";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
 import { registerScroller, unregisterScroller } from "@/lib/scroll-top";
@@ -68,6 +64,7 @@ export default function FeedScreen() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  const prefs = usePrefs(myUserId);
 
   // ---- de weergave: per vriend of op tijd, onthouden per gebruiker ----
   const viewKey = `lincin.feed.view.${myUserId}`;
@@ -118,39 +115,7 @@ export default function FeedScreen() {
 
   // ---- reacties: één vraag voor de hele feed, optimistisch bijgewerkt ----
   const postIds = useMemo(() => cards.filter((c) => c.reactable).map((c) => c.id), [cards]);
-  const reactionsQ = useQuery({
-    queryKey: ["post-reactions-batch", postIds.join(",")],
-    queryFn: () => listReactionsForPosts(postIds),
-    enabled: postIds.length > 0,
-    staleTime: 15_000,
-  });
-  const [overrides, setOverrides] = useState<Record<string, PostReactionRow[]>>({});
-  useEffect(() => setOverrides({}), [reactionsQ.data]);
-  const reactionRows = useMemo(() => {
-    const m: Record<string, PostReactionRow[]> = {};
-    for (const r of reactionsQ.data ?? []) (m[r.post_id] ??= []).push(r);
-    return { ...m, ...overrides };
-  }, [reactionsQ.data, overrides]);
-  const react = useCallback(
-    async (postId: string, emoji: string) => {
-      const rows = reactionRows[postId] ?? [];
-      const mine = rows.some((r) => r.user_id === myUserId && r.emoji === emoji);
-      const next = mine
-        ? rows.filter((r) => !(r.user_id === myUserId && r.emoji === emoji))
-        : [...rows, { post_id: postId, user_id: myUserId, emoji }];
-      setOverrides((o) => ({ ...o, [postId]: next }));
-      try {
-        await togglePostReaction({ postId, userId: myUserId, emoji });
-      } catch {
-        setOverrides((o) => {
-          const c = { ...o };
-          delete c[postId];
-          return c;
-        });
-      }
-    },
-    [reactionRows, myUserId],
-  );
+  const reactions = usePostReactions(postIds, myUserId);
 
   // ---- gelezen: per bijdrage bewaard, per band afgeleid ----
   const { seen } = useSeenPosts();
@@ -186,13 +151,13 @@ export default function FeedScreen() {
     setRefreshing(true);
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] }),
-      qc.invalidateQueries({ queryKey: ["post-reactions-batch"] }),
+      reactions.refetch(),
     ]);
     setTimeout(() => {
       setRefreshing(false);
       scrollRef.current?.scrollTo({ y: PULL_H, animated: true });
     }, 600);
-  }, [qc, myUserId]);
+  }, [qc, myUserId, reactions]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -246,7 +211,7 @@ export default function FeedScreen() {
 
   // ---- de bladzijde ----
   const current = view === "friends" ? groups[idx] : undefined;
-  const tint = current ? friendColor(current.hue, scheme).fill : null;
+  const tint = current && prefs.tint ? friendColor(current.hue, scheme).fill : null;
   const counter = view === "friends" && groups.length ? `${two(Math.min(idx + 1, groups.length))} / ${two(groups.length)}` : t.tabFeed;
 
   const children: ReactNode[] = [];
@@ -319,8 +284,8 @@ export default function FeedScreen() {
                 hue={g.hue}
                 width={CARD_W}
                 myUserId={myUserId}
-                reactions={groupPostReactions(reactionRows[p.id] ?? [], myUserId)}
-                onReact={(emoji) => react(p.id, emoji)}
+                reactions={reactions.grouped(p.id)}
+                onReact={(emoji) => reactions.toggle(p.id, emoji)}
                 onOpen={() => openPost(p)}
                 onPrivate={() => privateAbout(g, p)}
                 onProfile={() => openProfile(g)}
@@ -361,8 +326,8 @@ export default function FeedScreen() {
               post={p}
               hue={groups.find((f) => f.key === p.authorId)?.hue ?? "orange"}
               myUserId={myUserId}
-              reactions={groupPostReactions(reactionRows[p.id] ?? [], myUserId)}
-              onReact={(emoji) => react(p.id, emoji)}
+              reactions={reactions.grouped(p.id)}
+              onReact={(emoji) => reactions.toggle(p.id, emoji)}
               onOpen={() => openPost(p)}
               onPrivate={() => privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
               onProfile={() => openProfile({ username: p.authorUsername })}

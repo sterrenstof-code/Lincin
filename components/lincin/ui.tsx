@@ -509,3 +509,46 @@ export function Segment<T extends string>({
 
 /** Voor wie een Pressable met de kaderstijl nodig heeft. */
 export type PressProps = PressableProps;
+
+/**
+ * Een regel die van onder naar boven leest, in een smalle kolom van
+ * bekende hoogte: de kleurstrook naast het beeld op de bladzijde, de
+ * "VERMELD"-strook in een gesprek.
+ *
+ * RN kent geen writing-mode; een View van `height` breed wordt 90°
+ * gedraaid en in de kolom van `width` gelegd. De Text erin knipt af —
+ * niet andersom, want react-native-web geeft een Text met numberOfLines
+ * een maxWidth van 100% van zijn ouder.
+ */
+export function VerticalLabel({
+  text,
+  width,
+  height,
+  color: c,
+  style,
+}: {
+  text: string;
+  width: number;
+  height: number;
+  color?: string;
+  style?: StyleProp<TextStyle>;
+}) {
+  const w = Math.max(0, height - 16);
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        width: w,
+        height: 14,
+        left: width / 2 - w / 2,
+        top: height / 2 - 7,
+        transform: [{ rotate: "-90deg" }],
+      }}
+    >
+      <Text numberOfLines={1} style={[lincinType.micro, { lineHeight: 14, color: c ?? color("ink") }, style]}>
+        {text}
+      </Text>
+    </View>
+  );
+}

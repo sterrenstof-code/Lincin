@@ -1,7 +1,8 @@
 import { supabase } from "../supabase/client";
-import { IMG, signedImageUrls } from "../media";
+import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
-import { getProfiles, type Profile } from "./profiles";
+import { getProfile, getProfiles, type Profile } from "./profiles";
+import { countEntityComments } from "./entity-comments";
 import { listFeedPolls, type PollWithDetails } from "./polls";
 import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
 import { createActivityEvent, listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
@@ -674,6 +675,39 @@ export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
  * vondst die de feed niet in ging staat wél op je bord. Dat ís het verschil
  * tussen de twee waarden.
  */
+/**
+ * Eén vondst, voor haar bladzijde. Nul als ze weg is of jij haar niet mag
+ * zien; de foto's van een album komen mee als er meer dan één is.
+ */
+export async function getPost(id: string): Promise<PostWithAuthor | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(POST_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = normalizeRow(data);
+  const [author, imageUrl, album, count] = await Promise.all([
+    getProfile(row.user_id),
+    signedImageUrl(POSTS_BUCKET, row.image_path, IMG.hero),
+    getAlbumUrls(id),
+    countEntityComments("post", id).catch(() => 0),
+  ]);
+  return {
+    ...row,
+    author,
+    image_url: imageUrl,
+    video_url: null,
+    comment_count: count,
+    reaction_count: 0,
+    boost_count: 0,
+    interaction_count: 0,
+    recent_interaction_count: 0,
+    ...(album.urls.length > 0 ? { album_urls: album.urls, album_paths: album.paths } : null),
+  };
+}
+
 export async function listUserPosts(userId: string, limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
