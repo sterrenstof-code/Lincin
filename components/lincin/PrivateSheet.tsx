@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
 import { sendMessage } from "@/lib/api/messages";
 import { useAuth } from "@/lib/auth/provider";
-import { color } from "@/lib/design/theme";
+import { color, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { useToast } from "@/lib/toast";
@@ -91,7 +91,7 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
               alignSelf: "center",
               backgroundColor: color("paper"),
               borderTopWidth: BORDER,
-              borderTopColor: color("ink"),
+              borderTopColor: line(),
               paddingTop: 16,
               paddingHorizontal: GUTTER,
               paddingBottom: Math.max(insets.bottom, 16) + 28,
@@ -109,7 +109,7 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
                   onPress={() => setWithQuote((v) => !v)}
                   style={{
                     borderWidth: BORDER,
-                    borderColor: color("ink"),
+                    borderColor: line(),
                     backgroundColor: withQuote ? color("ink") : "transparent",
                     paddingVertical: 5,
                     paddingHorizontal: 8,
@@ -122,7 +122,7 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
               ) : null}
             </View>
             {hasQuote && withQuote ? (
-              <View style={{ borderLeftWidth: 3, borderLeftColor: color("ink"), paddingLeft: 10 }}>
+              <View style={{ borderLeftWidth: 3, borderLeftColor: line(), paddingLeft: 10 }}>
                 <Serif variant="captionLarge" numberOfLines={3}>
                   {target?.quote}
                 </Serif>
@@ -144,7 +144,7 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
                     height: CONTROL,
                     borderWidth: BORDER,
                     borderRightWidth: 0,
-                    borderColor: color("ink"),
+                    borderColor: line(),
                     paddingHorizontal: 12,
                     color: color("ink"),
                     backgroundColor: "transparent",

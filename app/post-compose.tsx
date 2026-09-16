@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { BackChip, BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel } from "@/components/lincin/ui";
+import { BackChip, BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { createFind, type FindKind } from "@/lib/api/posts";
 import { findUrl, unfurl, type LinkPreview } from "@/lib/api/unfurl";
@@ -205,7 +205,7 @@ export default function ComposeScreen() {
           <Box style={{ flexDirection: "row", height: 300 }}>
             <View
               onLayout={(e) => setPanelW(e.nativeEvent.layout.width)}
-              style={{ width: "36%", backgroundColor: fc.fill, borderRightWidth: BORDER, borderRightColor: color("ink"), overflow: "hidden" }}
+              style={{ width: "36%", backgroundColor: fc.fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}
             >
               <VerticalLabel
                 text={kind}
@@ -246,7 +246,7 @@ export default function ComposeScreen() {
             autoCapitalize="characters"
             style={[
               lincinType.cardTitle,
-              { fontSize: 26, lineHeight: 30, height: 48, borderBottomWidth: BORDER, borderBottomColor: color("ink"), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
+              { fontSize: 26, lineHeight: 30, height: 48, borderBottomWidth: BORDER, borderBottomColor: line(), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
             ]}
           />
           <TextInput
@@ -256,7 +256,7 @@ export default function ComposeScreen() {
             placeholderTextColor={color("ink", "inkDim")}
             style={[
               lincinType.quote,
-              { height: 44, borderBottomWidth: BORDER, borderBottomColor: color("ink"), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
+              { height: 44, borderBottomWidth: BORDER, borderBottomColor: line(), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
             ]}
           />
           {kind === "tekst" ? (
@@ -268,7 +268,7 @@ export default function ComposeScreen() {
               multiline
               style={[
                 lincinType.quote,
-                { minHeight: 120, padding: 12, textAlignVertical: "top", borderWidth: BORDER, borderColor: color("ink"), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
+                { minHeight: 120, padding: 12, textAlignVertical: "top", borderWidth: BORDER, borderColor: line(), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
               ]}
             />
           ) : null}
@@ -283,7 +283,7 @@ export default function ComposeScreen() {
               keyboardType="url"
               style={[
                 lincinType.monoBody,
-                { height: 44, paddingHorizontal: 12, borderWidth: BORDER, borderColor: color("ink"), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
+                { height: 44, paddingHorizontal: 12, borderWidth: BORDER, borderColor: line(), color: color("ink"), ...(Platform.OS === "web" ? { outlineWidth: 0 } : null) } as object,
               ]}
             />
           ) : null}
@@ -292,7 +292,7 @@ export default function ComposeScreen() {
             <Mono variant="micro" tone="dim" style={{ marginBottom: 6 }}>
               {t.color}
             </Mono>
-            <View style={{ flexDirection: "row", borderWidth: BORDER, borderColor: color("ink") }}>
+            <View style={{ flexDirection: "row", borderWidth: BORDER, borderColor: line() }}>
               {HUES.map((h, i) => {
                 const c = friendColor(h, scheme);
                 const on = h === hue;
@@ -303,7 +303,7 @@ export default function ComposeScreen() {
                     accessibilityState={{ selected: on }}
                     accessibilityLabel={h}
                     onPress={() => setHue(h)}
-                    style={{ flex: 1, height: 40, backgroundColor: c.fill, alignItems: "center", justifyContent: "center", borderRightWidth: i < HUES.length - 1 ? BORDER : 0, borderRightColor: color("ink") }}
+                    style={{ flex: 1, height: 40, backgroundColor: c.fill, alignItems: "center", justifyContent: "center", borderRightWidth: i < HUES.length - 1 ? BORDER : 0, borderRightColor: line() }}
                   >
                     {on ? <View style={{ width: 10, height: 10, backgroundColor: c.ink }} /> : null}
                   </Pressable>
@@ -333,7 +333,7 @@ export default function ComposeScreen() {
                       }
                       setKind(k);
                     }}
-                    style={{ height: 32, paddingHorizontal: 10, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: on ? color("ink") : "transparent", justifyContent: "center", opacity: ok ? 1 : 0.4 }}
+                    style={{ height: 32, paddingHorizontal: 10, borderWidth: BORDER, borderColor: line(), backgroundColor: on ? color("ink") : "transparent", justifyContent: "center", opacity: ok ? 1 : 0.4 }}
                   >
                     <Text style={[lincinType.monoBody, { color: on ? color("paper") : color("ink") }]}>{k}</Text>
                   </Pressable>

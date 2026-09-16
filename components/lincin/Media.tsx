@@ -4,7 +4,7 @@ import { Linking, Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
 import { votePoll } from "@/lib/api/polls";
-import { color, friendColor, useScheme, type Hue } from "@/lib/design/theme";
+import { color, friendColor, useScheme, type Hue, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { waveform, type CardMedia } from "@/lib/lincin/model";
@@ -155,7 +155,7 @@ function Duo({
   return (
     <View style={{ height, flexDirection: "row" }}>
       {cover ? (
-        <View style={{ width: height, borderRightWidth: BORDER, borderRightColor: color("ink"), backgroundColor: color("paper2") }}>
+        <View style={{ width: height, borderRightWidth: BORDER, borderRightColor: line(), backgroundColor: color("paper2") }}>
           <SafeImage uri={cover} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         </View>
       ) : null}
@@ -228,7 +228,7 @@ function Poll({
             accessibilityRole="button"
             accessibilityLabel={`${o.label}, ${counts[i]}`}
             onPress={() => vote(o.id)}
-            style={{ height: 36, borderWidth: BORDER, borderColor: color("ink"), overflow: "hidden" }}
+            style={{ height: 36, borderWidth: BORDER, borderColor: line(), overflow: "hidden" }}
           >
             <View
               style={{
@@ -265,17 +265,17 @@ function Place({ place, coords, height, hue }: { place: string; coords: string; 
   const [w, setW] = useState(0);
   const cols = Math.ceil(w / 28);
   const rowsN = Math.ceil(height / 28);
-  const line = color("ink", "postRule");
+  const grid = color("ink", "postRule");
   return (
     <View
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
       style={{ height, backgroundColor: color("paper2"), overflow: "hidden" }}
     >
       {Array.from({ length: cols }, (_, i) => (
-        <View key={`c${i}`} style={{ position: "absolute", left: i * 28, top: 0, bottom: 0, width: 1, backgroundColor: line }} />
+        <View key={`c${i}`} style={{ position: "absolute", left: i * 28, top: 0, bottom: 0, width: 1, backgroundColor: grid }} />
       ))}
       {Array.from({ length: rowsN }, (_, i) => (
-        <View key={`r${i}`} style={{ position: "absolute", top: i * 28, left: 0, right: 0, height: 1, backgroundColor: line }} />
+        <View key={`r${i}`} style={{ position: "absolute", top: i * 28, left: 0, right: 0, height: 1, backgroundColor: grid }} />
       ))}
       <View
         style={{
@@ -291,7 +291,7 @@ function Place({ place, coords, height, hue }: { place: string; coords: string; 
         }}
       />
       <View style={{ position: "absolute", left: "58%", top: "36%", alignItems: "center", transform: [{ translateX: -40 }, { translateY: -40 }] }}>
-        <View style={{ backgroundColor: fc.fill, borderWidth: BORDER, borderColor: color("ink"), paddingVertical: 4, paddingHorizontal: 8 }}>
+        <View style={{ backgroundColor: fc.fill, borderWidth: BORDER, borderColor: line(), paddingVertical: 4, paddingHorizontal: 8 }}>
           <Mono variant="action" color={fc.ink} numberOfLines={1}>
             {place}
           </Mono>

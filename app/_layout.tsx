@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { Fragment, useEffect, type ReactNode } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import "react-native-reanimated";
 
@@ -12,12 +12,13 @@ import { AuthProvider, useAuth } from "@/lib/auth/provider";
 import { WebAnalytics } from "@/components/WebAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineNotice } from "@/components/OfflineNotice";
-import { stackScreenLayout } from "@/components/PageTransition";
+import { LincinThemeProvider } from "@/components/lincin/ThemeProvider";
+import { PageTransition } from "@/components/PageTransition";
 import { initCryptoRandom } from "@/lib/crypto/random";
 import { installPageTransitions } from "@/lib/page-transition";
 import { ConfirmProvider } from "@/lib/confirm";
 import { ToastProvider } from "@/lib/toast";
-import { loadStoredPreference, useScheme } from "@/lib/design/theme";
+import { loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/design/theme";
 import { desk, FONT_FILES } from "@/lib/design/type";
 import { useFonts } from "expo-font";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
@@ -42,8 +43,27 @@ const MODAL = {
   animation: "slide_from_bottom",
 } as const;
 
+/**
+ * Elk scherm hertekent zich bij een wissel van thema.
+ *
+ * `color()` is op web een variabele, maar de kaderdikte (`BORDER`), de
+ * letter van de koppen (`lincinType`) en de ronding zijn gewone waarden
+ * die een scherm bij het tekenen leest. Een `key` op de inhoud van elk
+ * scherm laat dat scherm opnieuw beginnen zónder de navigatie te raken:
+ * wie in Instellingen van thema wisselt, blijft in Instellingen. Op web
+ * blijft de paginaovergang (`PageTransition`) eromheen staan.
+ */
+function ThemedScreen({ children }: { children: ReactNode }) {
+  const theme = useTheme();
+  const body = Platform.OS === "web" ? <PageTransition>{children}</PageTransition> : children;
+  return <Fragment key={theme}>{body}</Fragment>;
+}
+
+const themedScreenLayout = ({ children }: { children: ReactNode }) => <ThemedScreen>{children}</ThemedScreen>;
+
 export default function RootLayout() {
   const scheme = useScheme();
+  const spec = useThemeSpec();
   /**
    * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
    * (`app/+html.tsx`) en is dit meteen klaar; op native laden ze hier, en
@@ -73,7 +93,8 @@ export default function RootLayout() {
     <ErrorBoundary key={Platform.OS === "web" ? "app" : scheme}>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={scheme === "light" ? DefaultTheme : DarkTheme}>
+        <LincinThemeProvider>
+        <ThemeProvider value={spec.dark ? DarkTheme : DefaultTheme}>
           {/* De strook onderaan die zegt wat er zojuist misging. Staat hier
               en niet per scherm: hij ligt óp de navigatie, dus een melding
               overleeft de pagina die hem opriep. Zie lib/toast.tsx. */}
@@ -89,11 +110,12 @@ export default function RootLayout() {
             <OfflineNotice />
           </ConfirmProvider>
           </ToastProvider>
-          {/* De balk bovenaan is in béide standen zwart, dus de
-              systeemklok erboven blijft licht. */}
-          <StatusBar style="light" />
+          {/* De klok volgt het blad: donker op papier, licht op een
+              donker blad (kleur-donker, modern). */}
+          <StatusBar style={spec.dark ? "light" : "dark"} />
           <WebAnalytics />
         </ThemeProvider>
+        </LincinThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
     </ErrorBoundary>
@@ -170,7 +192,7 @@ function RootStack() {
        `screenLayout` vult het gat voor browsers zonder View Transitions —
        zie components/PageTransition.tsx. */
     <Stack
-      screenLayout={stackScreenLayout}
+      screenLayout={themedScreenLayout}
       screenOptions={{
         headerShown: false,
         animation: "fade_from_bottom",

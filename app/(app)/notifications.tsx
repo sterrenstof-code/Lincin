@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { BackChip, BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif } from "@/components/lincin/ui";
+import { BackChip, BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -120,12 +120,12 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
         gap: 12,
         padding: 12,
         borderBottomWidth: BORDER,
-        borderBottomColor: color("ink"),
+        borderBottomColor: line(),
         backgroundColor: item.read ? "transparent" : scheme === "dark" ? "rgba(237,232,221,.07)" : "rgba(20,20,20,.05)",
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <View style={{ width: 10, backgroundColor: fc.fill, borderWidth: BORDER, borderColor: color("ink") }} />
+      <View style={{ width: 10, backgroundColor: fc.fill, borderWidth: BORDER, borderColor: line() }} />
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <Text style={[lincinType.bodySmall, { fontSize: 14, lineHeight: 19, color: color("ink") }]}>
           <Text style={{ fontFamily: lincinType.button.fontFamily, fontWeight: lincinType.button.fontWeight }}>

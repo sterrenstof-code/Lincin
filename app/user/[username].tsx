@@ -6,7 +6,7 @@ import { ScrollView, View } from "react-native";
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
-import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
+import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
 import {
@@ -205,7 +205,7 @@ export default function UserProfileScreen() {
                     borderRadius: 28,
                     overflow: "hidden",
                     borderWidth: 1.5,
-                    borderColor: color("ink"),
+                    borderColor: line(),
                     backgroundColor: color("paper"),
                   }}
                 >

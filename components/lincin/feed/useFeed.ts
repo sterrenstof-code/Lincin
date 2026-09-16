@@ -1,0 +1,168 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import type { PrivateTarget } from "@/components/lincin/PrivateSheet";
+import { listMyFriendships } from "@/lib/api/friends";
+import { listUnifiedFeed } from "@/lib/api/posts";
+import { useAuth } from "@/lib/auth/provider";
+import { useLang, useT } from "@/lib/i18n";
+import { groupByFriend, groupByTime, toCardPost, type CardPost } from "@/lib/lincin/model";
+import { usePostReactions } from "@/lib/lincin/reactions";
+import { markSeen, useSeenPosts } from "@/lib/read-state";
+
+/**
+ * Wat élke feed nodig heeft, ongeacht het thema (HANDOFF §Themes: "all
+ * three consume the same posts / friends query").
+ *
+ *   - de bijdragen van je vrienden als kaarten, per vriend en op tijd
+ *   - de reacties (één vraag voor allemaal, optimistisch)
+ *   - wat je al zag
+ *   - de weergave (per vriend | op tijd), per gebruiker onthouden
+ *   - de handelingen: openen, naar een profiel, een privé-bericht
+ *
+ * De drie lay-outs — `FeedKleur`, `FeedMagazine`, `FeedModern` — tekenen
+ * hier elk hun eigen blad omheen.
+ */
+
+export type FeedView = "friends" | "time";
+
+export function useFeed() {
+  const { session } = useAuth();
+  const myUserId = session!.user.id;
+  const router = useRouter();
+  const qc = useQueryClient();
+  const t = useT();
+  const lang = useLang();
+
+  // ---- de weergave: per vriend of op tijd, onthouden per gebruiker ----
+  const viewKey = `lincin.feed.view.${myUserId}`;
+  const [view, setView] = useState<FeedView>("friends");
+  useEffect(() => {
+    AsyncStorage.getItem(viewKey)
+      .then((v) => {
+        if (v === "friends" || v === "time") setView(v);
+      })
+      .catch(() => {});
+  }, [viewKey]);
+  const changeView = useCallback(
+    (v: FeedView) => {
+      setView(v);
+      AsyncStorage.setItem(viewKey, v).catch(() => {});
+    },
+    [viewKey],
+  );
+
+  // ---- gegevens ----
+  const feed = useQuery({
+    queryKey: ["unified-feed", myUserId],
+    queryFn: () => listUnifiedFeed(myUserId),
+    refetchOnWindowFocus: true,
+  });
+  const friendships = useQuery({
+    queryKey: ["friendships", myUserId],
+    queryFn: () => listMyFriendships(myUserId),
+    staleTime: 60_000,
+  });
+  const friendCount = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
+
+  useFocusEffect(
+    useCallback(() => {
+      qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
+    }, [qc, myUserId]),
+  );
+
+  const cards = useMemo(
+    () =>
+      (feed.data ?? [])
+        .map((i) => toCardPost(i, t))
+        .filter((c): c is CardPost => !!c && c.authorId !== myUserId),
+    [feed.data, t, myUserId],
+  );
+  const groups = useMemo(() => groupByFriend(cards), [cards]);
+  const timeGroups = useMemo(() => groupByTime(cards, t, lang), [cards, t, lang]);
+  /** Nieuwste eerst, over alle vrienden heen. */
+  const byTime = useMemo(() => [...cards].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), [cards]);
+  /**
+   * Het nummer van een bijdrage: "№ 01" is de oudste in de feed, zoals het
+   * prototype zijn bijdragen telt. Magazine zet het in de inhoudsopgave.
+   */
+  const numberOf = useMemo(() => {
+    const asc = [...cards].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    const m = new Map<string, string>();
+    asc.forEach((c, i) => m.set(c.id, String(i + 1).padStart(2, "0")));
+    return (id: string) => m.get(id) ?? "—";
+  }, [cards]);
+
+  // ---- reacties: één vraag voor de hele feed, optimistisch bijgewerkt ----
+  const postIds = useMemo(() => cards.filter((c) => c.reactable).map((c) => c.id), [cards]);
+  const reactions = usePostReactions(postIds, myUserId);
+
+  // ---- gelezen ----
+  const { seen } = useSeenPosts();
+  const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
+
+  const refresh = useCallback(
+    () => Promise.all([qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] }), reactions.refetch()]),
+    [qc, myUserId, reactions],
+  );
+
+  // ---- handelingen ----
+  const [sheet, setSheet] = useState<PrivateTarget | null>(null);
+  const openPost = useCallback(
+    (p: CardPost) => {
+      if (!p.href) return;
+      markSeen(p.id);
+      router.push(p.href as never);
+    },
+    [router],
+  );
+  const openProfile = useCallback(
+    (g: { username: string | null }) => {
+      if (g.username) router.push(`/user/${g.username}` as never);
+    },
+    [router],
+  );
+  const privateAbout = useCallback((g: { authorId: string; name: string }, p?: CardPost) => {
+    setSheet({
+      friendId: g.authorId,
+      friendName: g.name,
+      quote: p ? p.caption || p.title : undefined,
+      postId: p?.href ? p.id : undefined,
+      postTitle: p?.title,
+    });
+  }, []);
+  const compose = useCallback(() => router.push("/post-compose"), [router]);
+
+  const empty = !feed.isLoading && cards.length === 0;
+
+  return {
+    myUserId,
+    t,
+    lang,
+    router,
+    view,
+    changeView,
+    feed,
+    friendCount,
+    cards,
+    groups,
+    timeGroups,
+    byTime,
+    numberOf,
+    reactions,
+    seen,
+    fresh,
+    refresh,
+    sheet,
+    setSheet,
+    openPost,
+    openProfile,
+    privateAbout,
+    compose,
+    empty,
+  };
+}
+
+export type Feed = ReturnType<typeof useFeed>;

@@ -10,7 +10,7 @@
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
-import { propVarCss } from "@/lib/design/theme";
+import { propVarCss, themeVarCss } from "@/lib/design/theme";
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -49,11 +49,14 @@ export default function Root({ children }: PropsWithChildren) {
   if (p !== 'light' && p !== 'dark') {
     p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
+  var t = localStorage.getItem('lincin-thema');
+  if (t !== 'magazine' && t !== 'modern') t = 'kleur';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
+  r.dataset.lincinTheme = t;
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', p === 'dark' ? '#1A1917' : '#F2EFE8');
+  if (m) m.setAttribute('content', t === 'modern' ? '#1A1210' : t === 'magazine' ? '#F7F4EE' : p === 'dark' ? '#1A1917' : '#F2EFE8');
 }catch(e){}})();`,
           }}
         />
@@ -98,6 +101,13 @@ export default function Root({ children }: PropsWithChildren) {
           type="font/ttf"
           crossOrigin="anonymous"
         />
+        <link
+          rel="preload"
+          href="/fonts/ArchivoXCond-Black.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -107,6 +117,13 @@ export default function Root({ children }: PropsWithChildren) {
   font-weight: 900;
   font-display: swap;
   src: url(/fonts/ArchivoCond-Black.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'ArchivoXCond-Black';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url(/fonts/ArchivoXCond-Black.ttf) format('truetype');
 }
 `,
           }}
@@ -287,6 +304,13 @@ html, body {
             verhaal. Web-only: native heeft geen variabelen nodig.
             --------------------------------------------------------------- */}
         <style dangerouslySetInnerHTML={{ __html: propVarCss() }} />
+
+        {/* De thema's magazine en modern: hetzelfde palet, andere waarden,
+            gekoppeld aan `data-lincin-theme` op <html>. Uit dezelfde bron
+            als native (lib/design/theme.ts), zodat de twee niet uit elkaar
+            kunnen lopen. `html:root[…]` wint op specificiteit van
+            `.dark:root` in global.css, dat later in het document staat. */}
+        <style dangerouslySetInnerHTML={{ __html: themeVarCss().replace(/:root\[/g, "html:root[") }} />
 
         {/* ScrollViewStyleReset verwijdert de default body-scroll-styling. */}
         <ScrollViewStyleReset />

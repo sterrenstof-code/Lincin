@@ -2,13 +2,13 @@ import { memo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
-import { color, friendColor, useScheme, type Hue } from "@/lib/design/theme";
+import { color, friendColor, line, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 
 import { Media } from "./Media";
-import { BORDER, Head, Initial, Mono, Serif } from "./ui";
+import { BORDER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
 
 /**
  * De post-kaart, variant "7h" (README §Post card).
@@ -21,6 +21,11 @@ import { BORDER, Head, Initial, Mono, Serif } from "./ui";
  * Alles binnen één kader van 1.5px. De metakolom rechts is het tweede
  * vlak met de avatar boven en "NAAM · SOORT · TIJD" gedraaid onderaan.
  * Een tik op de kaart opent de bladzijde.
+ *
+ * Gedeeld door de drie thema's (HANDOFF §Themes). Wat verschilt: in kleur
+ * is de titelstrook gevuld met de vriendkleur en de titel Archivo 22; in
+ * magazine en modern is de strook papier met een kleurbalk van 6px links
+ * en de titel serif 24. Het kader is 1px en (modern) afgerond op 10.
  */
 
 export const CARD_W = 340;
@@ -55,9 +60,15 @@ export const PostCard = memo(function PostCard({
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  const spec = useThemeSpec();
   const fc = friendColor(hue, scheme);
   const ink = color("ink");
+  const edge = line();
   const canOpen = !!post.href;
+  const strip = spec.stripFilled
+    ? { backgroundColor: fc.fill, borderLeftWidth: 0, borderLeftColor: fc.fill }
+    : { backgroundColor: color("paper"), borderLeftWidth: 6, borderLeftColor: fc.fill };
+  const stripInk = spec.stripFilled ? fc.ink : ink;
 
   return (
     <Pressable
@@ -67,7 +78,9 @@ export const PostCard = memo(function PostCard({
       style={{
         width: width ?? "100%",
         borderWidth: BORDER,
-        borderColor: ink,
+        borderColor: edge,
+        borderRadius: RADIUS,
+        overflow: "hidden",
         backgroundColor: color("paper"),
       }}
     >
@@ -75,8 +88,8 @@ export const PostCard = memo(function PostCard({
         {/* hoofdkolom */}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} />
-          <View style={{ backgroundColor: fc.fill, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: BORDER, borderTopColor: ink }}>
-            <Head variant="cardTitle" color={fc.ink} numberOfLines={3} style={{ height: TITLE_H }}>
+          <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: BORDER, borderTopColor: edge, overflow: "hidden" }}>
+            <Head variant="cardTitle" color={stripInk} numberOfLines={3} style={{ height: TITLE_H }}>
               {post.title}
             </Head>
           </View>
@@ -97,7 +110,7 @@ export const PostCard = memo(function PostCard({
       </View>
 
       {/* actiebalk */}
-      <View style={{ flexDirection: "row", height: BAR_H, borderTopWidth: BORDER, borderTopColor: ink }}>
+      <View style={{ flexDirection: "row", height: BAR_H, borderTopWidth: BORDER, borderTopColor: edge }}>
         <View
           style={{
             flex: 1,
@@ -107,7 +120,7 @@ export const PostCard = memo(function PostCard({
             gap: 2,
             paddingHorizontal: 6,
             borderRightWidth: BORDER,
-            borderRightColor: ink,
+            borderRightColor: edge,
             overflow: "hidden",
           }}
         >
@@ -139,7 +152,7 @@ export const PostCard = memo(function PostCard({
           <Pressable
             accessibilityRole="button"
             onPress={onOpen}
-            style={{ paddingHorizontal: 10, justifyContent: "center", borderRightWidth: BORDER, borderRightColor: ink }}
+            style={{ paddingHorizontal: 10, justifyContent: "center", borderRightWidth: BORDER, borderRightColor: edge }}
           >
             <Mono variant="action" numberOfLines={1}>
               {t.comment}
@@ -191,7 +204,7 @@ function MetaColumn({
       style={{
         width: META_W,
         borderLeftWidth: BORDER,
-        borderLeftColor: color("ink"),
+        borderLeftColor: line(),
         backgroundColor: color("paper2"),
         paddingTop: 10,
         alignItems: "center",

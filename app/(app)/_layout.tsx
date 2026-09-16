@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, Tabs } from "expo-router";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { useAuth } from "@/lib/auth/provider";
@@ -14,8 +14,21 @@ import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
-import { tabScreenLayout } from "@/components/PageTransition";
+import { PageTransition } from "@/components/PageTransition";
+import { useTheme } from "@/lib/design/theme";
 import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
+
+/** Zie `ThemedScreen` in app/_layout.tsx: een tabblad hertekent bij een themawissel. */
+function ThemedTab({ children }: { children: ReactNode }) {
+  const theme = useTheme();
+  return (
+    <Fragment key={theme}>
+      <PageTransition>{children}</PageTransition>
+    </Fragment>
+  );
+}
+
+const themedTabLayout = ({ children }: { children: ReactNode }) => <ThemedTab>{children}</ThemedTab>;
 
 export default function AppLayout() {
   const { session, loading, hasPassword } = useAuth();
@@ -217,7 +230,7 @@ export default function AppLayout() {
       // Transition dat af (de tabs navigeren via router.push in AppChrome),
       // maar op native — en in een browser zonder die API — knippert het
       // zonder deze laag. Zie components/PageTransition.tsx.
-      screenLayout={tabScreenLayout}
+      screenLayout={themedTabLayout}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

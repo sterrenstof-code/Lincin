@@ -2,7 +2,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-import { color } from "@/lib/design/theme";
+import { color, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 
@@ -40,7 +40,7 @@ export function ComposeBar({
   above?: ReactNode;
 }) {
   return (
-    <View style={{ borderTopWidth: BORDER, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
+    <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
       {above}
       <View style={{ flexDirection: "row", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
         <SquareBtn
@@ -68,7 +68,7 @@ export function ComposeBar({
               minWidth: 0,
               height: CONTROL,
               borderWidth: BORDER,
-              borderColor: color("ink"),
+              borderColor: line(),
               paddingHorizontal: 12,
               color: color("ink"),
               backgroundColor: "transparent",

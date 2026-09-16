@@ -1,3 +1,4 @@
+import { isLincinTheme, type LincinTheme } from "../design/theme";
 import { supabase } from "../supabase/client";
 
 /** Eén regel op je profiel: waar je heen wijst, en hoe je het noemt. */
@@ -293,6 +294,28 @@ export async function updateMyProfile(
     throw error;
   }
   return data as Profile;
+}
+
+/**
+ * Het thema op het profiel (0058). Los van `PROFILE_COLUMNS`: zolang de
+ * migratie ergens nog niet gedraaid heeft, mag een ontbrekende kolom geen
+ * enkel ander profielverzoek breken. Onbekend → null, en dan geldt wat
+ * lokaal bewaard is.
+ */
+export async function getProfileTheme(userId: string): Promise<LincinTheme | null> {
+  try {
+    const { data, error } = await supabase.from("profiles").select("theme").eq("id", userId).maybeSingle();
+    if (error) return null;
+    const t = (data as { theme?: unknown } | null)?.theme;
+    return isLincinTheme(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setProfileTheme(userId: string, theme: LincinTheme): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ theme }).eq("id", userId);
+  if (error) throw error;
 }
 
 /** Fire-and-forget: update last_seen_at voor de huidige gebruiker. */

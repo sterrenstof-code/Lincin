@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { color } from "@/lib/design/theme";
+import { color, line, subscribeTheme, themeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 
 /**
@@ -21,12 +21,28 @@ import { lincinType } from "@/lib/design/type";
  *
  * Kleuren komen uit `color()` op het moment van tekenen: op web is dat
  * een variabele die met de stand meeschuift, op native de waarde van nu.
+ *
+ * De thema's (HANDOFF.md §Themes) zetten hier aan: magazine en modern
+ * tekenen haarlijnen van 1px, modern rondt kaarten en tabs af op 10 en
+ * zet de kaderlijn op papier-18%. `BORDER` en `RADIUS` zijn daarom een
+ * `let`: een import is een levende verwijzing, en bij een wissel
+ * hertekent elk scherm (zie `app/_layout.tsx`).
  */
 
-export const BORDER = 1.5;
+export let BORDER = themeSpec().border;
+/** Ronding op kaarten en de tabbalk. 0, behalve modern (10). */
+export let RADIUS = themeSpec().radius;
 export const GUTTER = 18;
 export const GAP = 12;
 export const CONTROL = 44;
+
+subscribeTheme(() => {
+  BORDER = themeSpec().border;
+  RADIUS = themeSpec().radius;
+});
+
+/** De kaderlijn: inkt, of papier-18% in modern. Zie `line()` in theme.ts. */
+export { line };
 
 // ---------------------------------------------------------------
 // Vlakken
@@ -48,8 +64,8 @@ export function Box({
     <View
       style={[
         {
-          borderWidth: BORDER,
-          borderColor: color("ink"),
+          borderWidth: dashed ? 1.5 : BORDER,
+          borderColor: dashed ? color("ink") : line(),
           borderStyle: dashed ? "dashed" : "solid",
           backgroundColor:
             fill === "none" ? "transparent" : fill === "ink" ? color("ink") : fill === "acid" ? color("acid") : color(fill),
@@ -165,7 +181,9 @@ export function Head({
     | "numeralSmall"
     | "numeralTiny"
     | "track"
-    | "mini";
+    | "mini"
+    | "endTitle"
+    | "masthead";
 }) {
   return (
     <Text {...rest} style={[lincinType[variant], { color: toneColor(tone, c) }, style]}>
@@ -238,7 +256,7 @@ export function Btn({
           height,
           paddingHorizontal: 12,
           borderWidth: BORDER,
-          borderColor: bg ?? color("ink"),
+          borderColor: bg ?? (fill ? color("ink") : line()),
           backgroundColor: background,
           alignItems: "center",
           justifyContent: "center",
@@ -289,7 +307,7 @@ export function SquareBtn({
           width: size,
           height: size,
           borderWidth: borderless ? 0 : BORDER,
-          borderColor: color("ink"),
+          borderColor: fill ? color("ink") : line(),
           backgroundColor: fill ? color("ink") : "transparent",
           alignItems: "center",
           justifyContent: "center",
@@ -337,7 +355,7 @@ export function BackChip({ label, onPress }: { label: string; onPress: () => voi
       hitSlop={6}
       style={({ pressed }) => ({
         borderWidth: BORDER,
-        borderColor: color("ink"),
+        borderColor: line(),
         paddingVertical: 6,
         paddingHorizontal: 10,
         opacity: pressed ? 0.7 : 1,
@@ -405,7 +423,7 @@ export function DashedCard({
       style={({ pressed }) => [
         {
           width,
-          borderWidth: BORDER,
+          borderWidth: 1.5,
           borderStyle: "dashed",
           borderColor: color("ink"),
           padding: 12,
@@ -450,7 +468,7 @@ export function Initial({
           borderRadius: round ? size / 2 : 0,
           backgroundColor: bg,
           borderWidth: border ? BORDER : 0,
-          borderColor: color("ink"),
+          borderColor: line(),
           alignItems: "center",
           justifyContent: "center",
         },
@@ -482,7 +500,7 @@ export function Segment<T extends string>({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={[{ flexDirection: "row", borderWidth: BORDER, borderColor: color("ink") }, style]}>
+    <View style={[{ flexDirection: "row", borderWidth: BORDER, borderColor: line() }, style]}>
       {options.map((o, i) => {
         const on = o.value === value;
         return (
@@ -496,7 +514,7 @@ export function Segment<T extends string>({
               paddingHorizontal: 9,
               backgroundColor: on ? color("ink") : "transparent",
               borderLeftWidth: i ? BORDER : 0,
-              borderLeftColor: color("ink"),
+              borderLeftColor: line(),
             }}
           >
             <Text style={[lincinType.action, { color: on ? color("paper") : color("ink") }]}>{o.label}</Text>

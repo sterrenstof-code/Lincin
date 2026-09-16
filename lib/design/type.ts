@@ -1,6 +1,6 @@
 import { Platform, type TextStyle } from "react-native";
 
-import { color, subscribeScheme } from "./theme";
+import { color, subscribeScheme, subscribeTheme, themeSpec } from "./theme";
 
 /**
  * ===============================================================
@@ -36,6 +36,8 @@ const isWeb = Platform.OS === "web";
 /** De familienamen zoals ze geregistreerd zijn (native) of op web heten. */
 export const FONT = {
   head: isWeb ? "'ArchivoCond-Black', 'Archivo', 'Helvetica Neue', sans-serif" : "ArchivoCond-Black",
+  /** Archivo 900 op 62% breed: cijfers, initialen in een kleurcel, het masthead. */
+  headX: isWeb ? "'ArchivoXCond-Black', 'ArchivoCond-Black', 'Archivo', sans-serif" : "ArchivoXCond-Black",
   sans: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Regular",
   sansMedium: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Medium",
   sansBold: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Bold",
@@ -49,6 +51,7 @@ export const FONT = {
 /** De snitten die `app/_layout.tsx` op native laadt; sleutel = familienaam. */
 export const FONT_FILES = {
   "ArchivoCond-Black": require("../../assets/fonts/ArchivoCond-Black.ttf"),
+  "ArchivoXCond-Black": require("../../assets/fonts/ArchivoXCond-Black.ttf"),
   "Archivo-Regular": require("../../assets/fonts/Archivo-Regular.ttf"),
   "Archivo-Medium": require("../../assets/fonts/Archivo-Medium.ttf"),
   "Archivo-Bold": require("../../assets/fonts/Archivo-Bold.ttf"),
@@ -78,11 +81,30 @@ export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
   return isWeb ? { fontFamily, fontWeight: String(weight) as TextStyle["fontWeight"] } : { fontFamily };
 }
 
-/** Archivo 900, 75% breed — de kop. Altijd kapitaal. */
+/**
+ * De kop. In kleur: Archivo 900, 75% breed, altijd kapitaal. In magazine
+ * en modern: Instrument Serif regular, geen kapitaal (`--tf/--tw/--tt` in
+ * het prototype). Leest het thema op het moment van bouwen; `lincinType`
+ * wordt bij een wissel opnieuw gebouwd.
+ */
 export function head(): TextStyle {
+  if (themeSpec().serifHeads) {
+    return isWeb
+      ? { fontFamily: FONT.serif, fontWeight: "400", fontStyle: "normal", textTransform: "none" }
+      : { fontFamily: FONT.serif, textTransform: "none" };
+  }
   return isWeb
     ? { fontFamily: FONT.head, fontWeight: "900", textTransform: "uppercase" }
     : { fontFamily: FONT.head, textTransform: "uppercase" };
+}
+
+/**
+ * Het cijfer: Archivo 900 op 62% — de dag in een eventkaart, de initiaal
+ * in een kleurcel, de drie cijfers op "Jij". In élk thema, want het
+ * prototype zet hier `font-stretch: 62%` los van `--tf`.
+ */
+export function numeral(): TextStyle {
+  return isWeb ? { fontFamily: FONT.headX, fontWeight: "900" } : { fontFamily: FONT.headX };
 }
 
 /**
@@ -91,7 +113,12 @@ export function head(): TextStyle {
  * Regelhoogtes staan in px: RN kent geen `line-height: 1`. Koppen op
  * fontSize × 1 (README: .9–1), serif op × 1.25, lopende tekst op × 1.35.
  */
-export const lincinType = {
+function buildLincinType() {
+  const serif_ = themeSpec().serifHeads;
+  /** Serifkoppen spatiëren niet; Archivo wel (−.01em). */
+  const ls = (px: number) => (serif_ ? 0 : -px / 100);
+  const cardTitle = themeSpec().cardTitle;
+  return {
   // ---- mono: meta, labels, knoppen ----
   /** 11px, kapitaal, .06em — de kop van de app, chipteksten. */
   meta: { ...mono(500), fontSize: 11, lineHeight: 14, letterSpacing: 0.66, textTransform: "uppercase" } as TextStyle,
@@ -139,26 +166,42 @@ export const lincinType = {
 
   // ---- Archivo 900 smal: de koppen ----
   /** Kaarttitel 22px, max 3 regels = 66px. */
-  cardTitle: { ...head(), fontSize: 22, lineHeight: 22, letterSpacing: -0.22 } as TextStyle,
+  cardTitle: { ...head(), fontSize: cardTitle, lineHeight: cardTitle, letterSpacing: ls(cardTitle) } as TextStyle,
   /** Naam in de band. */
-  band: { ...head(), fontSize: 22, lineHeight: 22, letterSpacing: -0.22 } as TextStyle,
+  band: { ...head(), fontSize: 22, lineHeight: 22, letterSpacing: ls(22) } as TextStyle,
   /** Tijdband in "Op tijd". */
-  bandSmall: { ...head(), fontSize: 20, lineHeight: 20, letterSpacing: -0.2 } as TextStyle,
+  bandSmall: { ...head(), fontSize: 20, lineHeight: 20, letterSpacing: ls(20), textTransform: "uppercase" } as TextStyle,
   /** Titel op de bladzijde van een bijdrage. */
-  postTitle: { ...head(), fontSize: 32, lineHeight: 31, letterSpacing: -0.32 } as TextStyle,
+  postTitle: { ...head(), fontSize: 32, lineHeight: 31, letterSpacing: ls(32) } as TextStyle,
   /** Naam op een profiel. */
-  profileName: { ...head(), fontSize: 44, lineHeight: 41, letterSpacing: -0.44 } as TextStyle,
+  profileName: { ...head(), fontSize: 44, lineHeight: 41, letterSpacing: ls(44) } as TextStyle,
   /** "Je feed is zo leeg als een nieuw schetsboek". */
-  emptyTitle: { ...head(), fontSize: 40, lineHeight: 37, letterSpacing: -0.4 } as TextStyle,
+  emptyTitle: { ...head(), fontSize: 40, lineHeight: 37, letterSpacing: ls(40) } as TextStyle,
   /** De dag in een eventkaart, de initiaal in een gesprek. */
-  numeral: { ...head(), fontSize: 44, lineHeight: 42 } as TextStyle,
-  numeralSmall: { ...head(), fontSize: 28, lineHeight: 28 } as TextStyle,
-  numeralTiny: { ...head(), fontSize: 26, lineHeight: 26 } as TextStyle,
+  numeral: { ...numeral(), fontSize: 44, lineHeight: 42 } as TextStyle,
+  numeralSmall: { ...numeral(), fontSize: 28, lineHeight: 28 } as TextStyle,
+  numeralTiny: { ...numeral(), fontSize: 26, lineHeight: 26 } as TextStyle,
   /** Track in een muziekkaart. */
-  track: { ...head(), fontSize: 18, lineHeight: 18 } as TextStyle,
+  track: { ...head(), fontSize: 18, lineHeight: 18, textTransform: "uppercase" } as TextStyle,
+  /** "Niemand maakte iets nieuws. Jij wel?" op de eindkaart: 26px. */
+  endTitle: { ...head(), fontSize: 26, lineHeight: 25, textTransform: "uppercase" } as TextStyle,
   /** Vermelde bijdrage in een gesprek. */
   mini: { ...head(), fontSize: 12, lineHeight: 12 } as TextStyle,
-} as const;
+  /** Het masthead van magazine: "LINCIN" op 132px, 62% breed. */
+  masthead: { ...numeral(), fontSize: 132, lineHeight: 108, letterSpacing: -5.28, textTransform: "uppercase" } as TextStyle,
+  } as const;
+}
+
+/**
+ * De typeschaal van v2. Een `let` en geen `const`: de koppen wisselen
+ * van letter met het thema, en een import is een levende verwijzing —
+ * wie `lincinType.cardTitle` leest ná een wissel krijgt de nieuwe.
+ */
+export let lincinType = buildLincinType();
+
+subscribeTheme(() => {
+  lincinType = buildLincinType();
+});
 
 // ===============================================================
 // DE OUDE SCHALEN — namen blijven, letters zijn nu die van v2

@@ -1,4 +1,55 @@
-# Handoff: Lincin mobile app (v2 — feed, notebook-cards, chat, events)
+# Lincin — development handoff (single file)
+
+## Prompt for Claude Code / the dev team
+
+> Read this file top to bottom. Then open `LincinApp.dc.html` (the complete interactive prototype: template + logic + NL/EN/DE dictionaries) and `Lincin Final.dc.html` (board with all 11 screens × 3 themes) and `Lincin Desktop Opties.dc.html` (desktop + mobile references for the Magazine and Modern themes).
+>
+> Implement this in our Expo / React Native app (`comm-app`, Supabase backend), in this order:
+> 1. **Tokens** — replace `lib/design/theme.ts` and `type.ts` with the token sets below (light, dark, and the three themes). Load Archivo (variable), Instrument Serif and IBM Plex Mono via `expo-font`.
+> 2. **ThemeProvider** — a `theme` value `'kleur' | 'magazine' | 'modern'` stored on the user profile (Supabase column `profiles.theme`, default `kleur`), cached locally, exposed via context. Switching must not require a reload.
+> 3. **Post card + media kinds** (foto, krabbel, plek, spraak, tekst, poll, muziek) as documented — this component is shared by all themes.
+> 4. **Feed screen** — `FeedScreen` renders `FeedKleur`, `FeedMagazine` or `FeedModern` depending on theme. All three consume the same `posts` / `friends` query. Behaviour (read state, per-friend vs by-time, end card, pull-to-refresh) is described per theme below.
+> 5. **Post page, friend profile, chats, thread (with mentions strip, quick reactions, replies, emoji/GIF bar), events (incl. draft event from a post), profile, settings (Theme · Language · light/dark), notifications, compose, empty state.**
+> 6. Compare every screen against `screenshots/` and the prototype at 402 × 874. Fidelity is high — colours, type, spacing, copy are final.
+>
+> Ask before inventing anything the prototype does not show. Do not port the HTML runtime files (`support.js`, `ios-frame.jsx`, `image-slot.js`).
+
+---
+
+## Themes
+
+| theme | look | reference |
+|---|---|---|
+| `kleur` (default) | Playful poster look: paper, ink lines, friend colours, sticky friend bands, 7h cards | all sections below; screenshots/ |
+| `magazine` | Paper, giant Archivo masthead in the hero post's friend colour over today's hero image, serif table of contents | `Lincin Desktop Opties.dc.html` #1b (desktop) · #2a (mobile) · `LincinApp.dc.html` block `FEED · MAGAZINE` |
+| `modern` | Warm dark radial gradient (#8A3A1E → #3A1A10 → #1A1210) with 3px grain overlay at 18%, image-first 2-col mosaic per friend, glass chat bar | #1c (desktop) · #2b (mobile) · block `FEED · MODERN` |
+
+The theme changes the **whole app**, not just the feed. Two layers:
+1. **Token set** (applied at the app root, every screen): paper/ink/dim/rule/accent colours, border width + colour, headline typeface, radius, band style, active-tab style.
+   - `kleur`: paper #F2EFE8, ink #141414, borders 1.5px ink, headlines Archivo 900 condensed uppercase, radius 0, friend bands filled with friend colour, active tab = ink fill, page tints with the friend in view.
+   - `magazine`: paper #F7F4EE, ink #141414, hairlines 1px ink, headlines Instrument Serif regular (no uppercase), radius 0, friend bands paper with colour bar, active tab underlined, no page tint, accent #F06A2B.
+   - `modern`: radial gradient background (#8A3A1E → #3A1A10 → #1A1210) + 3px grain at 18% on every screen, ink #F2EFE8, borders 1px rgba(242,239,232,.18), headlines Instrument Serif, radius 10px on cards/tabs, accent #FF8A65, glass surfaces rgba(242,239,232,.08) + blur.
+   - Card title strip: `kleur` = filled with friend colour; `magazine`/`modern` = paper with 6px friend-colour left bar, serif 24px.
+2. **Feed layout** (home only): `FeedKleur` (sticky bands + 7h cards), `FeedMagazine` (masthead hero + TOC), `FeedModern` (mosaic per friend + glass chat bar). All other screens share one layout and pick up the token set.
+
+### Magazine feed (mobile)
+- Hero = newest post. 520px image (or friend-colour block for non-image kinds), dark gradient 25 % top / 15 % bottom.
+- Top line mono 9px: "Editie wo 16 sep · № 38" | "4 nieuw". Masthead "LINCIN" Archivo 900 wdth 62 132px, colour = hero friend colour, overlapping the image top-left.
+- Left block (max 220px, `mix-blend-mode: difference` white): title Archivo 900 26px uppercase, caption serif italic 15px, then body serif 14px at y≈330.
+- Right block "Op *spotlight*" serif 24px + 4 mono lines (by · kind) → each opens that post.
+- Bottom row: reaction chips (1.5px border, nowrap) + COMMENT · n + PRIVAAT.
+- Below: sticky "In deze *editie*" bar (serif 24px, 1.5px rule) then TOC rows: 6px colour bar, mono byline, serif 19px title, № right, "Privaat" underlined. End line mono.
+- Tabs remain the standard footer.
+
+### Modern feed (mobile)
+- Root background = the radial gradient + grain. Ink is paper-white.
+- Sub-header mono 10px: "Per vriend | Op tijd" (inactive 50 % opacity) … "4 nieuw · 6 lincs".
+- Per friend: sticky mono label with 8px colour dot, name, count, "n nieuw" in #FF8A65; then a 2-column grid, rows 150px, gap 5px; first tile spans 2 columns unless the friend has exactly 2 posts. Tiles: image kinds on rgba(0,0,0,.2); text/poll/plek/spraak on rgba(242,239,232,.08) + blur(10px); muziek on #7A1E1E. Colour dot top-left; title + ✉ (private) bottom, text-shadow.
+- Glass chat bar under the feed (rgba(242,239,232,.08), blur 18, 1px border 18 %) with the latest unread thread → opens Gesprekken.
+
+---
+
+# Kleur theme (default) — full spec
 
 ## Overview
 Lincin is a friend-first social app: no algorithm, no strangers. The feed shows **only what your friends make**, grouped per friend under sticky colour bands. Every contribution (“bijdrage”) is an editorial poster card. Around it: private chats (with post mentions, replies, emoji/GIF), events (incl. events created from a post), a profile, settings (language NL/EN/DE, light/dark) and notifications.
@@ -160,3 +211,4 @@ Implementation hint: `FeedScreen` switches on `theme` between `FeedKleur`, `Feed
 - `Lincin Final.dc.html` — handoff board: 11 phones, light/dark switch.
 - `ios-frame.jsx`, `image-slot.js`, `support.js` — prototype runtime helpers (not to be ported).
 - `Lincin v2.dc.html` — exploration history (rounds 1–7), reference only.
+

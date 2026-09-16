@@ -3,11 +3,12 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { BackChip, BORDER, Body, Box, GUTTER, Mono, Segment, Serif } from "@/components/lincin/ui";
+import { useLincinTheme } from "@/components/lincin/ThemeProvider";
+import { BackChip, BORDER, Body, Box, GUTTER, Mono, Segment, Serif, line } from "@/components/lincin/ui";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, setPreference, usePreference, type ThemePreference } from "@/lib/design/theme";
+import { color, setPreference, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
 import { safeBack } from "@/lib/nav";
@@ -17,8 +18,10 @@ import { usePageTitle } from "@/lib/page-title";
  * Instellingen (README §08).
  *
  * Drie groepen, elk een mono-etiket en een kader met rijen: hoe het
- * eruitziet (taal, licht of donker, blad kleurt mee), meldingen, en wie
- * wat ziet. Onderaan uitloggen en "Lincin 2.0 · versleuteld op je toestel".
+ * eruitziet (thema, taal, licht of donker, blad kleurt mee), meldingen,
+ * en wie wat ziet. Onderaan uitloggen en "Lincin 2.0 · versleuteld op je
+ * toestel". Het thema (HANDOFF §Themes) staat op het profiel en wisselt
+ * zonder herlaad.
  */
 
 const THEME_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
@@ -32,6 +35,7 @@ export default function SettingsScreen() {
   const lang = useLang();
   const theme = usePreference();
   const prefs = usePrefs(myUserId);
+  const lincin = useLincinTheme();
 
   const friendships = useQuery({
     queryKey: ["friendships", myUserId],
@@ -64,6 +68,17 @@ export default function SettingsScreen() {
     >
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20, gap: 16 }}>
         <Group title={t.lookTitle}>
+          <Row label={t.theme} sub={t.themeSub}>
+            <Segment<LincinTheme>
+              options={[
+                { value: "kleur", label: t.themeKleur },
+                { value: "magazine", label: t.themeMagazine },
+                { value: "modern", label: t.themeModern },
+              ]}
+              value={lincin.theme}
+              onChange={lincin.choose}
+            />
+          </Row>
           <Row label={t.language} sub={t.languageSub}>
             <Segment<Lang>
               options={[
@@ -189,7 +204,7 @@ function Toggle({ on }: { on: boolean }) {
     <View
       accessibilityRole="switch"
       accessibilityState={{ checked: on }}
-      style={{ width: 44, height: 24, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: on ? color("ink") : "transparent" }}
+      style={{ width: 44, height: 24, borderWidth: BORDER, borderColor: line(), backgroundColor: on ? color("ink") : "transparent" }}
     >
       <View
         style={{

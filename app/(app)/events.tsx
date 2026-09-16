@@ -3,10 +3,10 @@ import { useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif } from "@/components/lincin/ui";
+import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
@@ -116,7 +116,7 @@ function EventCard({ event: e, live = false, past = false }: { event: EventWithM
           justifyContent: "center",
           gap: 2,
           borderRightWidth: BORDER,
-          borderRightColor: color("ink"),
+          borderRightColor: line(),
         }}
       >
         <Head variant="numeral" color={fc.ink}>

@@ -46,6 +46,8 @@ const NL = {
   visible: "Lincs zien mijn bijdragen", visibleSub: "Alleen wie je toevoegde", myLincs: "Mijn lincs", friends: "vrienden",
   gifNote: "gif", reply: "Antwoord", loading: "Laden…", failed: "Kon niet laden", retry: "Opnieuw",
   noFriendsYet: "Nog geen lincs", nothingNew: "Nog niets van je vrienden", me: "Jij",
+  theme: "Thema", themeSub: "Kleur · Magazine · Modern", themeKleur: "Kleur", themeMagazine: "Magazine", themeModern: "Modern",
+  edition: "Editie", editionA: "In deze", editionB: "editie", spotA: "Op", spotB: "spotlight", privateShort: "Privaat",
 };
 
 const EN: typeof NL = {
@@ -78,6 +80,8 @@ const EN: typeof NL = {
   visible: "Lincs see my posts", visibleSub: "Only people you added", myLincs: "My lincs", friends: "friends",
   gifNote: "gif", reply: "Reply", loading: "Loading…", failed: "Could not load", retry: "Retry",
   noFriendsYet: "No lincs yet", nothingNew: "Nothing from your friends yet", me: "You",
+  theme: "Theme", themeSub: "Colour · Magazine · Modern", themeKleur: "Colour", themeMagazine: "Magazine", themeModern: "Modern",
+  edition: "Edition", editionA: "In this", editionB: "edition", spotA: "On", spotB: "spotlight", privateShort: "Private",
 };
 
 const DE: typeof NL = {
@@ -110,6 +114,8 @@ const DE: typeof NL = {
   visible: "Lincs sehen meine Beiträge", visibleSub: "Nur wer du hinzugefügt hast", myLincs: "Meine Lincs", friends: "Freunde",
   gifNote: "gif", reply: "Antworten", loading: "Laden…", failed: "Konnte nicht laden", retry: "Nochmal",
   noFriendsYet: "Noch keine Lincs", nothingNew: "Noch nichts von deinen Freunden", me: "Du",
+  theme: "Thema", themeSub: "Farbe · Magazin · Modern", themeKleur: "Farbe", themeMagazine: "Magazin", themeModern: "Modern",
+  edition: "Ausgabe", editionA: "In dieser", editionB: "Ausgabe", spotA: "Im", spotB: "Rampenlicht", privateShort: "Privat",
 };
 
 export type Dict = typeof NL;

@@ -7,7 +7,7 @@ import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
-import { BackChip, BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel } from "@/components/lincin/ui";
+import { BackChip, BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import {
   addEntityComment,
@@ -174,7 +174,7 @@ export default function PostScreen() {
                       width: STRIP_W,
                       backgroundColor: fc.fill,
                       borderRightWidth: BORDER,
-                      borderRightColor: color("ink"),
+                      borderRightColor: line(),
                       overflow: "hidden",
                     }}
                   >
@@ -191,7 +191,7 @@ export default function PostScreen() {
                   </View>
                 </View>
                 {/* tekst */}
-                <View style={{ padding: 14, gap: 10, borderTopWidth: BORDER, borderTopColor: color("ink") }}>
+                <View style={{ padding: 14, gap: 10, borderTopWidth: BORDER, borderTopColor: line() }}>
                   <Head variant="postTitle">{card.title}</Head>
                   {card.caption ? <Serif variant="quoteLarge">{card.caption}</Serif> : null}
                   {p.body_text && card.media.kind !== "tekst" && p.body_text.trim() !== (p.caption ?? "").trim() ? (
@@ -220,7 +220,7 @@ export default function PostScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     borderTopWidth: BORDER,
-                    borderTopColor: color("ink"),
+                    borderTopColor: line(),
                     paddingHorizontal: 8,
                     paddingVertical: 6,
                     gap: 4,
@@ -257,7 +257,7 @@ export default function PostScreen() {
                         paddingHorizontal: 8,
                         borderWidth: BORDER,
                         borderStyle: "dashed",
-                        borderColor: color("ink"),
+                        borderColor: line(),
                         alignItems: "center",
                         justifyContent: "center",
                       }}
@@ -341,7 +341,7 @@ function CommentRow({ comment: c, myUserId }: { comment: EntityComment; myUserId
           </Mono>
         </View>
         {c.image_url ? (
-          <View style={{ width: 160, height: 110, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: color("paper2") }}>
+          <View style={{ width: 160, height: 110, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }}>
             <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             <View style={{ position: "absolute", left: 6, bottom: 6, backgroundColor: color("ink"), paddingHorizontal: 5, paddingVertical: 2 }}>
               <Mono variant="tiny" tone="paper">

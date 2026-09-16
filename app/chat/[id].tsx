@@ -41,7 +41,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Head, Mono, Serif } from "@/components/lincin/ui";
+import { BORDER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
@@ -1052,7 +1052,7 @@ export default function ChatDetail() {
     return Array.from(seen.values());
   }, [messages]);
   /** De knoppen in de balk onderaan: 44 in het vierkant, met kader. */
-  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderColor: color("ink") } as const;
+  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderColor: line() } as const;
 
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
@@ -1103,7 +1103,7 @@ export default function ChatDetail() {
             height: 48,
             flexDirection: "row",
             borderWidth: BORDER,
-            borderColor: color("ink"),
+            borderColor: line(),
             backgroundColor: color("paper"),
           }}
         >
@@ -1115,7 +1115,7 @@ export default function ChatDetail() {
               paddingHorizontal: 12,
               justifyContent: "center",
               borderRightWidth: BORDER,
-              borderRightColor: color("ink"),
+              borderRightColor: line(),
               display: railVisible ? "none" : "flex",
             }}
           >
@@ -1152,7 +1152,7 @@ export default function ChatDetail() {
                 }
               }
             }}
-            style={{ width: 44, alignItems: "center", justifyContent: "center", borderLeftWidth: BORDER, borderLeftColor: color("ink") }}
+            style={{ width: 44, alignItems: "center", justifyContent: "center", borderLeftWidth: BORDER, borderLeftColor: line() }}
           >
             <Ionicons name="videocam-outline" color={color("ink")} size={18} />
           </Pressable>
@@ -1166,7 +1166,7 @@ export default function ChatDetail() {
               alignItems: "center",
               justifyContent: "center",
               borderLeftWidth: BORDER,
-              borderLeftColor: color("ink"),
+              borderLeftColor: line(),
             }}
           >
             <Head variant="numeralTiny" color={partner.ink} style={{ fontSize: 22, lineHeight: 24 }}>
@@ -1179,7 +1179,7 @@ export default function ChatDetail() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0, marginTop: 8, marginHorizontal: 18, borderWidth: BORDER, borderColor: color("ink"), backgroundColor: color("paper2") }}
+            style={{ flexGrow: 0, marginTop: 8, marginHorizontal: 18, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }}
             contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 10, alignItems: "center", gap: 8 }}
           >
             <View style={{ width: 14, height: 56, overflow: "hidden" }}>
@@ -1200,7 +1200,7 @@ export default function ChatDetail() {
                   height: 56,
                   backgroundColor: partner.fill,
                   borderWidth: BORDER,
-                  borderColor: color("ink"),
+                  borderColor: line(),
                   paddingVertical: 6,
                   paddingHorizontal: 8,
                   justifyContent: "space-between",
@@ -1666,7 +1666,7 @@ export default function ChatDetail() {
               kop. De rollen zijn nu omgedraaid: `shell` is de balk, en wat
               erin zit (het tekstveld) draagt `shell-soft`.
           */}
-          <View style={{ borderTopWidth: BORDER, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
+          <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
             {/* De inhoud van de balk volgt dezelfde maat; het vlak eronder
                 loopt wél door tot de rand, want dat is de bodem van het
                 scherm en geen kolom. */}
@@ -1811,7 +1811,7 @@ export default function ChatDetail() {
                   // het hele scherm, en dus het luidste. `shell-soft` is
                   // waar §2 een vlak bínnen de balk heen stuurt.
                   className="flex-1 max-h-32 justify-center"
-                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderColor: color("ink") }}
+                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderColor: line() }}
                 >
                   <TextInput
                     ref={inputRef}
@@ -2749,7 +2749,7 @@ function MessageBubble({
               className="flex-row items-center px-2 py-0.5"
               style={{
                 borderWidth: BORDER,
-                borderColor: color("ink"),
+                borderColor: line(),
                 backgroundColor: color("paper"),
               }}
             >

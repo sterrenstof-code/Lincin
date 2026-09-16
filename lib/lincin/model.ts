@@ -35,6 +35,8 @@ export type CardPost = {
   createdAt: string;
   title: string;
   caption: string;
+  /** De lopende tekst onder het bijschrift (bladzijde, magazine-hero). */
+  body: string;
   media: CardMedia;
   commentCount: number;
   /** Alleen een post heeft emoji-reacties; een poll stemt. */
@@ -154,6 +156,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     // Een tekstkaart toont de tekst zelf al als medium; dan niet nog eens
     // als bijschrift eronder.
     caption: media.kind === "tekst" && caption === media.text ? "" : caption,
+    body: media.kind === "tekst" ? "" : (p.body_text ?? "").trim(),
     media,
     commentCount: p.comment_count ?? 0,
     reactable: true,
@@ -174,6 +177,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     createdAt: p.created_at,
     title: p.question,
     caption: `${p.total_votes} ${t.votes}`,
+    body: "",
     media: { kind: "poll", poll: p },
     commentCount: 0,
     reactable: false,

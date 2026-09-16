@@ -27,8 +27,8 @@ a{color:#F2EFE8}a:hover{color:#E5FF3A}
 <div data-stand="{{ stand }}" style="min-height:100vh;padding:48px 56px 80px;box-sizing:border-box;display:flex;flex-direction:column;gap:36px">
   <div style="display:flex;flex-direction:column;gap:18px;padding:0 0 24px;max-width:1400px">
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
-      <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:#8E897E">Lincin · finale versie · dev-handoff</div><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1;letter-spacing:-.02em;margin-top:6px">Elf schermen, één app</div></div>
-      <div style="display:flex;gap:6px;align-items:center;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase"><div onClick="{{ setLicht }}" style="padding:7px 10px;border:1.5px solid #F2EFE8;cursor:pointer;background:{{ lichtBg }};color:{{ lichtFg }}">Licht</div><div onClick="{{ setDonker }}" style="padding:7px 10px;border:1.5px solid #F2EFE8;cursor:pointer;background:{{ donkerBg }};color:{{ donkerFg }}">Donker</div></div>
+      <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:#8E897E">Lincin · finale versie · dev-handoff</div><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1;letter-spacing:-.02em;margin-top:6px">Elf schermen, één app, drie thema's</div></div>
+      <div style="display:flex;gap:6px;align-items:center;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase"><sc-for list="{{ themas }}" as="th" hint-placeholder-count="3"><div onClick="{{ th.pick }}" style="padding:7px 10px;border:1.5px solid #F2EFE8;cursor:pointer;background:{{ th.bg }};color:{{ th.fg }}">{{ th.label }}</div></sc-for><span style="width:14px"></span><div onClick="{{ setLicht }}" style="padding:7px 10px;border:1.5px solid #F2EFE8;cursor:pointer;background:{{ lichtBg }};color:{{ lichtFg }}">Licht</div><div onClick="{{ setDonker }}" style="padding:7px 10px;border:1.5px solid #F2EFE8;cursor:pointer;background:{{ donkerBg }};color:{{ donkerFg }}">Donker</div></div>
     </div>
     <div style="font-size:12.5px;line-height:1.55;color:rgba(242,239,232,.7);max-width:820px;text-wrap:pretty">Alles is dezelfde component (<span style="font:500 11px 'IBM Plex Mono',monospace">LincinApp.dc.html</span>), per telefoon opgestart op een ander scherm; elke telefoon is volledig doorklikbaar. Systeem: Archivo (900, condensed 75%) voor koppen, Instrument Serif voor zinnen, IBM Plex Mono voor meta; 1.5px inktlijnen, geen radius, geen schaduw; blad #F2EFE8 / inkt #141414 (donker: #1A1917 / #EDE8DD); vriendkleuren oranje, blauw, oker, groen, rood + acid als actiekleur; het blad tint mee met de vriend in beeld.</div>
   </div>
@@ -36,7 +36,7 @@ a{color:#F2EFE8}a:hover{color:#E5FF3A}
     <sc-for list="{{ screens }}" as="s" hint-placeholder-count="11">
     <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px;width:402px">
       <div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:#F2EFE8;color:#141414">{{ s.no }}</span><span style="font-size:15px;font-weight:700">{{ s.label }}</span></div><div style="font-size:11px;line-height:1.45;color:#8E897E">{{ s.sub }}</div></div>
-      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="{{ s.start }}" stand="{{ stand }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px"><dc-import name="LincinApp" start="{{ s.start }}" stand="{{ stand }}" thema="{{ thema }}" style="display:block;height:100%" hint-size="100%,100%"></dc-import></x-import>
     </div>
     </sc-for>
   </div>
@@ -44,7 +44,7 @@ a{color:#F2EFE8}a:hover{color:#E5FF3A}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;stand&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;licht&quot;,&quot;donker&quot;],&quot;default&quot;:&quot;licht&quot;,&quot;tsType&quot;:&quot;'licht'|'donker'&quot;,&quot;section&quot;:&quot;Weergave&quot;}}">
 class Component extends DCLogic {
-  state = { stand: "licht" };
+  state = { stand: "licht", thema: localStorage.getItem("lincin-thema") || "kleur" };
   componentDidMount() { const s = localStorage.getItem("lincin-final-stand"); if (s) this.setState({ override: s }); }
   renderVals() {
     const stand = this.state.override ?? this.props.stand ?? this.state.stand; const d = stand === "donker";
@@ -62,7 +62,8 @@ class Component extends DCLogic {
       ["compose", "Nieuwe bijdrage", "Soort · titel · zin · kleur · delen"],
       ["leeg", "Lege staat", "Nog geen lincs · QR · eerste bijdrage"],
     ].map(([start, label, sub], i) => ({ start, label, sub, id: "s" + (i + 1), no: String(i + 1).padStart(2, "0") }));
-    return { stand, isDark: d, screens, setLicht: set("licht"), setDonker: set("donker"), lichtBg: d ? "transparent" : "#F2EFE8", lichtFg: d ? "#F2EFE8" : "#141414", donkerBg: d ? "#F2EFE8" : "transparent", donkerFg: d ? "#141414" : "#F2EFE8" };
+    const thema = this.state.thema; const themas = [["kleur", "Kleur"], ["magazine", "Magazine"], ["modern", "Modern"]].map(([id, label]) => ({ label, bg: thema === id ? "#F2EFE8" : "transparent", fg: thema === id ? "#141414" : "#F2EFE8", pick: () => { localStorage.setItem("lincin-thema", id); this.setState({ thema: id }); } }));
+    return { stand, thema, themas, isDark: d, screens, setLicht: set("licht"), setDonker: set("donker"), lichtBg: d ? "transparent" : "#F2EFE8", lichtFg: d ? "#F2EFE8" : "#141414", donkerBg: d ? "#F2EFE8" : "transparent", donkerFg: d ? "#141414" : "#F2EFE8" };
   }
 }
 </script>

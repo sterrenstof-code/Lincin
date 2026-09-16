@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
-import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel } from "@/components/lincin/ui";
+import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
 import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
@@ -66,7 +66,7 @@ export default function YouScreen() {
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")}>
             {p?.avatar_url ? (
-              <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: BORDER, borderColor: color("ink") }}>
+              <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: BORDER, borderColor: line() }}>
                 <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
               </View>
             ) : (
@@ -97,7 +97,7 @@ export default function YouScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/post-compose")}
-              style={{ width: 150, height: 190, borderWidth: BORDER, borderStyle: "dashed", borderColor: color("ink"), alignItems: "center", justifyContent: "center", padding: 12 }}
+              style={{ width: 150, height: 190, borderWidth: BORDER, borderStyle: "dashed", borderColor: line(), alignItems: "center", justifyContent: "center", padding: 12 }}
             >
               <Serif variant="aside" tone="dim" style={{ textAlign: "center" }}>
                 {t.emptyCompose}
@@ -129,7 +129,7 @@ export default function YouScreen() {
 
 function Stat({ n, label, last = false }: { n: string; label: string; last?: boolean }) {
   return (
-    <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: last ? 0 : BORDER, borderRightColor: color("ink") }}>
+    <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: last ? 0 : BORDER, borderRightColor: line() }}>
       <Head variant="numeralSmall">{n}</Head>
       <Mono variant="micro" tone="dim">
         {label}
@@ -141,8 +141,8 @@ function Stat({ n, label, last = false }: { n: string; label: string; last?: boo
 function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string; ink: string; onPress: () => void }) {
   const card = fromPost(post);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={card.title} onPress={onPress} style={{ width: 150, height: 190, borderWidth: BORDER, borderColor: color("ink"), flexDirection: "row" }}>
-      <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: color("ink"), overflow: "hidden" }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={card.title} onPress={onPress} style={{ width: 150, height: 190, borderWidth: BORDER, borderColor: line(), flexDirection: "row" }}>
+      <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}>
         <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: "ArchivoCond-Black", fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
       </View>
       <View style={{ flex: 1, backgroundColor: color("paper2") }}>
@@ -173,7 +173,7 @@ function Row({ label, right, red = false, onPress, last = false }: { label: stri
         paddingVertical: 14,
         paddingHorizontal: 12,
         borderBottomWidth: last ? 0 : BORDER,
-        borderBottomColor: color("ink"),
+        borderBottomColor: line(),
         opacity: pressed ? 0.8 : 1,
       })}
     >

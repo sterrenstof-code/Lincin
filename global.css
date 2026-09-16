@@ -27,6 +27,8 @@
   --c-paper-2: 231 227 216;
   --c-acid: 229 255 58;
   --c-red: 216 50 31;
+  /* De kaderlijn: inkt, behalve in modern (zie lib/design/theme.ts). */
+  --c-line: 20 20 20;
 
   /* ---- Vlakken (oude namen, v2-waarden) ---- */
   --c-page: 242 239 232;
@@ -70,6 +72,7 @@
   --a-on-dark: 0.22;
   --a-pill: 0.35;
   --a-pill-soft: 0.28;
+  --a-line-a: 1;
 }
 
 .dark:root {
@@ -77,6 +80,7 @@
   --c-paper-2: 35 34 32;
   --c-acid: 217 240 74;
   --c-red: 228 85 63;
+  --c-line: 237 232 221;
 
   --c-page: 26 25 23;
   --c-panel: 26 25 23;
@@ -116,7 +120,12 @@
   --a-on-dark: 0.22;
   --a-pill: 0.35;
   --a-pill-soft: 0.28;
+  --a-line-a: 1;
 }
+
+/* De thema's magazine en modern overschrijven dit hele palet; die blokken
+   worden uit dezelfde bron gegenereerd (`themeVarCss()` in
+   lib/design/theme.ts) en staan in de <head> van app/+html.tsx. */
 
 /* ===============================================================
    WAAR JE BENT ALS JE NIET KLIKT

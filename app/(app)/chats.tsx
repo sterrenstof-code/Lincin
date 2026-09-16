@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, Box, DashedCard, GAP, GUTTER, Head, Mono, Serif } from "@/components/lincin/ui";
+import { BORDER, Box, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
@@ -175,7 +175,7 @@ function Row({
         flexDirection: "row",
         alignItems: "stretch",
         borderBottomWidth: BORDER,
-        borderBottomColor: color("ink"),
+        borderBottomColor: line(),
         opacity: pressed ? 0.8 : 1,
       })}
     >
@@ -186,7 +186,7 @@ function Row({
           alignItems: "center",
           justifyContent: "center",
           borderRightWidth: BORDER,
-          borderRightColor: color("ink"),
+          borderRightColor: line(),
           margin: square ? 0 : 0,
         }}
       >
