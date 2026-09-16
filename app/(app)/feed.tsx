@@ -1,4 +1,6 @@
 import { DesktopFeed } from "@/components/lincin/desktop/DesktopFeed";
+import { DesktopMagazine } from "@/components/lincin/desktop/DesktopMagazine";
+import { DesktopModern } from "@/components/lincin/desktop/DesktopModern";
 import { FeedKleur } from "@/components/lincin/feed/FeedKleur";
 import { FeedMagazine } from "@/components/lincin/feed/FeedMagazine";
 import { FeedModern } from "@/components/lincin/feed/FeedModern";
@@ -15,7 +17,7 @@ export default function FeedScreen() {
   usePageTitle("Feed");
   const { theme } = useLincinTheme();
   const desktop = useIsDesktop();
-  if (desktop) return <DesktopFeed />;
+  if (desktop) return theme === "magazine" ? <DesktopMagazine /> : theme === "modern" ? <DesktopModern /> : <DesktopFeed />;
   if (theme === "magazine") return <FeedMagazine />;
   if (theme === "modern") return <FeedModern />;
   return <FeedKleur />;

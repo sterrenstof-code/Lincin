@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { color, getPreference, setPreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType, mono, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
-import { PANEL_W, RAIL_W, setDesktopNow } from "@/lib/lincin/desktop";
+import { PANEL_W, RAIL_W } from "@/lib/lincin/desktop";
 import { displayName } from "@/lib/lincin/model";
 
 import { useUnread, type Tab } from "@/lib/lincin/unread";
@@ -39,10 +39,6 @@ const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 export function DesktopShell({ active, children }: { active: Tab; children: ReactNode }) {
   const spec = useThemeSpec();
-  useEffect(() => {
-    setDesktopNow(true);
-    return () => setDesktopNow(false);
-  }, []);
   const rule = color("ink", "postRule");
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: spec.gradient ? "transparent" : color("paper") }}>

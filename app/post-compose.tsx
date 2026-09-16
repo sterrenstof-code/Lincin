@@ -19,6 +19,8 @@ import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useUnsavedGuard } from "@/lib/unsaved";
+import { DesktopCompose } from "@/components/lincin/desktop/DesktopCompose";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 
 /**
  * Nieuwe bijdrage (README §10).
@@ -39,8 +41,13 @@ const SUPPORTED = new Set<Kind>(["foto", "tekst", "link", "muziek", "poll"]);
 
 type Draft = { kind: Kind; title: string; caption: string; body: string; url: string; hue: Hue };
 
-export default function ComposeScreen() {
-  usePageTitle("Nieuwe bijdrage");
+/**
+ * Wat een nieuwe bijdrage is en kan: de velden, het klad, het delen —
+ * los van hoe het scherm eruitziet. De telefoon (hieronder) en desktop
+ * (`components/lincin/desktop/DesktopCompose.tsx`) tekenen er elk hun
+ * eigen blad omheen.
+ */
+export function useCompose() {
   const router = useRouter();
   const qc = useQueryClient();
   const t = useT();
@@ -187,6 +194,17 @@ export default function ComposeScreen() {
   const [panelW, setPanelW] = useState(0);
   const green = friendColor("green", scheme).fill;
 
+  return { router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
+}
+
+export type Compose = ReturnType<typeof useCompose>;
+
+export default function ComposeScreen() {
+  usePageTitle("Nieuwe bijdrage");
+  const desktop = useIsDesktop();
+  const c = useCompose();
+  const { router, t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
+  if (desktop) return <DesktopCompose c={c} />;
   return (
     <LincinScreen
       tab="feed"

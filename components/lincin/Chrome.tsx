@@ -143,7 +143,7 @@ export function LincinScreen({
  * native hetzelfde is; de korrel is op web de radial-gradient uit het
  * prototype en op native een herhaalde tegel van dezelfde stippen.
  */
-function ModernBackdrop({ width, height }: { width: number; height: number }) {
+export function ModernBackdrop({ width, height }: { width: number; height: number }) {
   const g = MODERN_GRADIENT;
   return (
     <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" }}>

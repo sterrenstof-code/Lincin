@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
@@ -11,6 +11,7 @@ import { confirm } from "@/lib/confirm";
 import { color, setPreference, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
@@ -28,6 +29,12 @@ const THEME_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", 
 
 export default function SettingsScreen() {
   usePageTitle("Instellingen");
+  const desktop = useIsDesktop();
+  if (desktop) return <Redirect href="/profile" />;
+  return <SettingsMobile />;
+}
+
+function SettingsMobile() {
   const { session, signOut } = useAuth();
   const myUserId = session?.user.id ?? "anon";
   const router = useRouter();

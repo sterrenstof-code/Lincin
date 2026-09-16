@@ -7,10 +7,9 @@ import UserProfileScreen from "@/app/user/[username]";
 import { chatTitle, listMyChats, otherMember } from "@/lib/api/chats";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
-import { mono } from "@/lib/design/type";
+import { mono, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { closePanel, openProfile, openThread, usePanel } from "@/lib/lincin/desktop";
-import { serif } from "@/lib/design/type";
 
 /**
  * Het paneel rechts (Lincin Desktop.dc.html, "RIGHT PANEL"): in rust het

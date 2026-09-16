@@ -12,7 +12,8 @@ import { color, friendColor, hueFor, useScheme, type Hue } from "@/lib/design/th
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
-import { openThread } from "@/lib/lincin/desktop";
+import { DesktopChats } from "@/components/lincin/desktop/DesktopChats";
+import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -28,6 +29,12 @@ import { useToast } from "@/lib/toast";
 
 export default function ChatsScreen() {
   usePageTitle("Gesprekken");
+  const desktop = useIsDesktop();
+  if (desktop) return <DesktopChats />;
+  return <ChatsMobile />;
+}
+
+function ChatsMobile() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();

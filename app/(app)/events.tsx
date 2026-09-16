@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth/provider";
 import { friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
+import { DesktopEvents } from "@/components/lincin/desktop/DesktopEvents";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -28,6 +30,12 @@ const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 export default function EventsScreen() {
   usePageTitle("Events");
+  const desktop = useIsDesktop();
+  if (desktop) return <DesktopEvents />;
+  return <EventsMobile />;
+}
+
+function EventsMobile() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();

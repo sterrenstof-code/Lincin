@@ -13,7 +13,8 @@ import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
-import { openPost } from "@/lib/lincin/desktop";
+import { DesktopYou } from "@/components/lincin/desktop/DesktopYou";
+import { openPost, useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -29,6 +30,12 @@ const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 export default function YouScreen() {
   usePageTitle("Jij");
+  const desktop = useIsDesktop();
+  if (desktop) return <DesktopYou />;
+  return <YouMobile />;
+}
+
+function YouMobile() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
