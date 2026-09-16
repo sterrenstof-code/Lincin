@@ -23,6 +23,7 @@ import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm, numberMap, timeLabel, toCardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
+import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
@@ -42,10 +43,20 @@ import { useToast } from "@/lib/toast";
 const MEDIA_H = 300;
 const STRIP_W = 34;
 
-export default function PostScreen() {
+export default function PostScreen({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
-  const id = String(raw ?? "");
+  // In het desktoppaneel komt het id als prop; als scherm uit de route.
+  const id = idProp ?? String(raw ?? "");
   const router = useRouter();
+  const desktop = useIsDesktop();
+  // Op desktop is een bladzijde geen scherm maar het paneel rechts.
+  useEffect(() => {
+    if (desktop && !embedded && id) {
+      openPostAnywhere(id);
+      router.replace("/feed");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desktop, embedded, id]);
   const qc = useQueryClient();
   const t = useT();
   const scheme = useScheme();
@@ -140,6 +151,7 @@ export default function PostScreen() {
       tab="feed"
       tint={p ? fc.fill : null}
       counter={t.post}
+      embedded={embedded}
       header={
         <TopRow
           left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
@@ -209,7 +221,7 @@ export default function PostScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${authorName}, ${t.viewProfile}`}
-                    onPress={() => p.author?.username && router.push(`/user/${p.author.username}` as never)}
+                    onPress={() => p.author?.username && openProfileAnywhere(p.author.username)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}
                   >
                     <Initial letter={authorName.slice(0, 1).toUpperCase()} size={28} bg={fc.fill} fg={fc.ink} border={false} fontSize={12} />

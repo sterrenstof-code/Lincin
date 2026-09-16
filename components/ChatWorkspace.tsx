@@ -70,6 +70,7 @@ export function ChatWorkspace({
   myUserId,
   media,
   children,
+  compact = false,
 }: {
   /** De open chat, zodat de lijst links hem kan markeren. */
   chatId: string;
@@ -85,9 +86,11 @@ export function ChatWorkspace({
   media?: AttachmentInfo[];
   /** Het bestaande chatscherm. */
   children: ReactNode;
+  /** In het desktoppaneel: alleen het gesprek, geen kolommen erbij. */
+  compact?: boolean;
 }) {
   const { width } = useWindowDimensions();
-  const showRail = width >= CHAT_RAIL_BREAKPOINT;
+  const showRail = width >= CHAT_RAIL_BREAKPOINT && !compact;
   const showOptions = width >= CHAT_OPTIONS_BREAKPOINT;
 
   if (!showRail) return <>{children}</>;

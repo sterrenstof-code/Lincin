@@ -12,7 +12,7 @@ import { lincinType } from "@/lib/design/type";
 import type { Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 
-import { EmptyFeed } from "./FeedKleur";
+import { EmptyFeed } from "./EmptyFeed";
 import { useFeed } from "./useFeed";
 
 /**

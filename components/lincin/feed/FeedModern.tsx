@@ -14,7 +14,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { lincinType } from "@/lib/design/type";
 import { timeLabel, two, waveform, type CardPost } from "@/lib/lincin/model";
 
-import { EmptyFeed } from "./FeedKleur";
+import { EmptyFeed } from "./EmptyFeed";
 import { useFeed } from "./useFeed";
 
 /**

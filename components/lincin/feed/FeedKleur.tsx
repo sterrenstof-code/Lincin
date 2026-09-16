@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Pressable,
@@ -19,6 +18,7 @@ import { usePrefs } from "@/lib/lincin/prefs";
 import { markSeen } from "@/lib/read-state";
 import { registerScroller, unregisterScroller } from "@/lib/scroll-top";
 
+import { EmptyFeed } from "./EmptyFeed";
 import { useFeed } from "./useFeed";
 
 /**
@@ -414,32 +414,6 @@ export function EndCard({ onCompose }: { onCompose: () => void }) {
         </View>
         <SquareBtn glyph="+" size={44} fontSize={22} fill borderless onPress={onCompose} accessibilityLabel={t.newPost} style={{ backgroundColor: "#141414" }} />
       </Box>
-    </View>
-  );
-}
-
-/** De lege staat (HANDOFF §11): nog niemand hier. */
-export function EmptyFeed() {
-  const t = useT();
-  const router = useRouter();
-  return (
-    <View style={{ paddingHorizontal: GUTTER, paddingBottom: 20, gap: 12 }}>
-      <Box fill="acid" style={{ paddingVertical: 18, paddingHorizontal: 16, gap: 10 }}>
-        <Mono variant="micro" color="#141414">
-          {t.emptyKicker}
-        </Mono>
-        <Head variant="emptyTitle" color="#141414">
-          {t.emptyTitle}
-        </Head>
-        <Serif variant="captionLarge" color="#141414" style={{ fontSize: 18, lineHeight: 23 }}>
-          {t.emptyBody}
-        </Serif>
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
-          <Btn label={t.scanQr} flex={1} bg="#141414" fg={color("acid")} onPress={() => router.push("/qr-scan")} />
-          <Btn label={t.shareCode} flex={1} bg="transparent" fg="#141414" style={{ borderWidth: 1.5, borderColor: "#141414" }} onPress={() => router.push("/qr-code")} />
-        </View>
-      </Box>
-      <DashedCard onPress={() => router.push("/post-compose")}>{t.emptyCompose}</DashedCard>
     </View>
   );
 }

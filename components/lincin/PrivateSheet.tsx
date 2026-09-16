@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,6 +8,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { color, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
+import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
 import { useToast } from "@/lib/toast";
 
 import { BORDER, CONTROL, GUTTER, Mono, Serif, SquareBtn } from "./ui";
@@ -34,7 +34,6 @@ export type PrivateTarget = {
 
 export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null; onClose: () => void }) {
   const t = useT();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const toast = useToast();
@@ -64,7 +63,7 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
             : undefined,
       });
       close();
-      router.push(`/chat/${chatId}`);
+      openThread(chatId);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.failed);
     } finally {
@@ -73,6 +72,9 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
   }
 
   const hasQuote = !!target?.quote;
+  // Desktop (Lincin Desktop.dc.html): geen blad van onder maar een kader
+  // van 480 in het midden.
+  const desktop = useIsDesktop();
 
   return (
     <Modal visible={!!target} transparent animationType="slide" onRequestClose={close}>
@@ -80,21 +82,23 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
         accessibilityRole="button"
         accessibilityLabel={t.cancel}
         onPress={close}
-        style={{ flex: 1, backgroundColor: "rgba(20,20,20,.35)", justifyContent: "flex-end" }}
+        style={{ flex: 1, backgroundColor: "rgba(20,20,20,.35)", justifyContent: desktop ? "center" : "flex-end", alignItems: desktop ? "center" : "stretch" }}
       >
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Pressable
             onPress={() => {}}
             style={{
-              width: "100%",
+              width: desktop ? 480 : "100%",
               maxWidth: 640,
               alignSelf: "center",
               backgroundColor: color("paper"),
               borderTopWidth: BORDER,
               borderTopColor: line(),
-              paddingTop: 16,
-              paddingHorizontal: GUTTER,
-              paddingBottom: Math.max(insets.bottom, 16) + 28,
+              borderWidth: desktop ? 1 : undefined,
+              borderColor: desktop ? color("ink") : undefined,
+              paddingTop: desktop ? 24 : 16,
+              paddingHorizontal: desktop ? 26 : GUTTER,
+              paddingBottom: desktop ? 24 : Math.max(insets.bottom, 16) + 28,
               gap: 12,
             }}
           >

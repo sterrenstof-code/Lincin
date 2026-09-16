@@ -48,6 +48,7 @@ const NL = {
   noFriendsYet: "Nog geen lincs", nothingNew: "Nog niets van je vrienden", me: "Jij",
   theme: "Thema", themeSub: "Kleur · Magazine · Modern", themeKleur: "Kleur", themeMagazine: "Magazine", themeModern: "Modern",
   edition: "Editie", editionA: "In deze", editionB: "editie", spotA: "Op", spotB: "spotlight", privateShort: "Privaat",
+  noAlgo: "geen algoritme · alleen vrienden",
 };
 
 const EN: typeof NL = {
@@ -82,6 +83,7 @@ const EN: typeof NL = {
   noFriendsYet: "No lincs yet", nothingNew: "Nothing from your friends yet", me: "You",
   theme: "Theme", themeSub: "Colour · Magazine · Modern", themeKleur: "Colour", themeMagazine: "Magazine", themeModern: "Modern",
   edition: "Edition", editionA: "In this", editionB: "edition", spotA: "On", spotB: "spotlight", privateShort: "Private",
+  noAlgo: "no algorithm · friends only",
 };
 
 const DE: typeof NL = {
@@ -116,6 +118,7 @@ const DE: typeof NL = {
   noFriendsYet: "Noch keine Lincs", nothingNew: "Noch nichts von deinen Freunden", me: "Du",
   theme: "Thema", themeSub: "Farbe · Magazin · Modern", themeKleur: "Farbe", themeMagazine: "Magazin", themeModern: "Modern",
   edition: "Ausgabe", editionA: "In dieser", editionB: "Ausgabe", spotA: "Im", spotB: "Rampenlicht", privateShort: "Privat",
+  noAlgo: "kein Algorithmus · nur Freunde",
 };
 
 export type Dict = typeof NL;

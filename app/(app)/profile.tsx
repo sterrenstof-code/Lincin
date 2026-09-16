@@ -13,6 +13,7 @@ import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
+import { openPost } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -92,7 +93,7 @@ export default function YouScreen() {
           contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 10 }}
         >
           {(posts.data ?? []).slice(0, 8).map((post) => (
-            <Mini key={post.id} post={post} fill={fc.fill} ink={fc.ink} onPress={() => router.push(`/post/${post.id}` as never)} />
+            <Mini key={post.id} post={post} fill={fc.fill} ink={fc.ink} onPress={() => openPost(post.id)} />
           ))}
           {posts.data && posts.data.length === 0 ? (
             <Pressable

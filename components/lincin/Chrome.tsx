@@ -1,17 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { listMyChats } from "@/lib/api/chats";
-import { countUnreadNotifications } from "@/lib/api/notifications";
-import { useAuth } from "@/lib/auth/provider";
 import { color, MODERN_GRADIENT, pageTint, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType, mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
+import { useIsDesktop } from "@/lib/lincin/desktop";
+import { useUnread, type Tab } from "@/lib/lincin/unread";
 import { scrollActiveToTop } from "@/lib/scroll-top";
+
+import { DesktopShell } from "./desktop/Shell";
 
 import { BORDER, GUTTER, line, RADIUS, SquareBtn } from "./ui";
 
@@ -29,7 +29,8 @@ import { BORDER, GUTTER, line, RADIUS, SquareBtn } from "./ui";
  * juiste tabblad aan.
  */
 
-export type Tab = "feed" | "chats" | "events" | "you";
+export type { Tab };
+export { useUnread };
 
 const TAB_HREF: Record<Tab, string> = {
   feed: "/feed",
@@ -51,28 +52,6 @@ export function columnWidth(windowWidth: number): number {
   return windowWidth > COLUMN_MAX + 40 ? COLUMN_MAX : windowWidth;
 }
 
-/** Wat er ligt: ongelezen gesprekken en meldingen. */
-export function useUnread(): { chats: number; notifications: number } {
-  const { session } = useAuth();
-  const myId = session?.user.id ?? "anon";
-  const chats = useQuery({
-    queryKey: ["chats", myId],
-    queryFn: () => listMyChats(myId),
-    enabled: !!session,
-    staleTime: 30_000,
-  });
-  const notes = useQuery({
-    queryKey: ["notifications-unread", myId],
-    queryFn: () => countUnreadNotifications(myId),
-    enabled: !!session,
-    staleTime: 30_000,
-  });
-  return {
-    chats: (chats.data ?? []).reduce((n, c) => n + (c.unread_count ?? 0), 0),
-    notifications: notes.data ?? 0,
-  };
-}
-
 export function LincinScreen({
   tab,
   tint,
@@ -80,6 +59,8 @@ export function LincinScreen({
   header = "default",
   full = false,
   bleed = false,
+  embedded = false,
+  ownDesktop = false,
   children,
 }: {
   tab: Tab;
@@ -98,12 +79,33 @@ export function LincinScreen({
   header?: "default" | "none" | ReactNode;
   /** De inhoud loopt onder de statusbalk door (het magazine-hero). */
   bleed?: boolean;
+  /** In het desktoppaneel: alleen de inhoud, geen kop, voet of blad. */
+  embedded?: boolean;
+  /** Dit scherm tekent zijn eigen desktopvorm (de feed): geen omlijsting. */
+  ownDesktop?: boolean;
   children: ReactNode;
 }) {
   const scheme = useScheme();
   const spec = useThemeSpec();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const desktop = useIsDesktop();
+  if (embedded) return <View style={{ flex: 1, minHeight: 0 }}>{children}</View>;
+  if (desktop && !ownDesktop) {
+    // Desktop (Lincin Desktop.dc.html): rail, hoofdkolom, paneel. Een scherm
+    // zonder eigen desktopvorm staat als kolom van 640 in het midden, mét
+    // zijn eigen bovenrij (← Terug) maar zonder de telefoonkop en -voet.
+    return (
+      <DesktopShell active={tab}>
+        <View style={{ flex: 1, minHeight: 0, alignItems: "center" }}>
+          <View style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 640, paddingTop: 16 }}>
+            {header === "default" || header === "none" ? null : header}
+            {children}
+          </View>
+        </View>
+      </DesktopShell>
+    );
+  }
   const bg = spec.gradient ? MODERN_GRADIENT.base : tint && spec.tint ? pageTint(tint, scheme) : color("paper");
   const wide = !full && columnWidth(width) !== width;
 

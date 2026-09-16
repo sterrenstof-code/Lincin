@@ -51,6 +51,7 @@ import { QueryError } from "@/components/QueryError";
 import { plural } from "@/lib/plural";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
+import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { useToast } from "@/lib/toast";
 import {
@@ -190,11 +191,22 @@ function ComposerInset({
   );
 }
 
-export default function ChatDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function ChatDetail({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+  const params = useLocalSearchParams<{ id: string }>();
+  // In het desktoppaneel komt het id als prop; als scherm uit de route.
+  const id = idProp ?? params.id;
+  const desktop = useIsDesktop();
   // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
   const { width: windowWidth } = useWindowDimensions();
-  const railVisible = windowWidth >= CHAT_RAIL_BREAKPOINT;
+  const railVisible = !embedded && windowWidth >= CHAT_RAIL_BREAKPOINT;
+  // Op desktop is een gesprek geen scherm maar het paneel rechts.
+  useEffect(() => {
+    if (desktop && !embedded && id) {
+      openThread(String(id));
+      router.replace("/chats" as never);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desktop, embedded, id]);
   // De chat scrollt in een eigen omgekeerde lijst, dus de kop klapt hier
   // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
   // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
@@ -1068,7 +1080,7 @@ export default function ChatDetail() {
   }, [chat, myUserId, id, router]);
 
   return (
-    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full>
+    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full embedded={embedded}>
       {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
           balk was de chat een doodlopende straat: op desktop verbergt de
           gesprekkenlijst links de terug-knop, en dan was er geen enkele
@@ -1083,7 +1095,7 @@ export default function ChatDetail() {
       {/* Op desktop drie kolommen: gesprekken links, dit gesprek in het
           midden, opties rechts. Onder 900px levert ChatWorkspace gewoon
           de middenkolom terug en verandert er niets aan dit scherm. */}
-      <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""} media={sharedMedia}>
+      <ChatWorkspace chatId={String(id)} myUserId={myUserId ?? ""} media={sharedMedia} compact={embedded}>
         {/*
             De kop van het gesprek staat op het paginavlak zelf en sluit af
             met één inktlijn.
@@ -1108,6 +1120,8 @@ export default function ChatDetail() {
             borderWidth: BORDER,
             borderColor: line(),
             backgroundColor: color("paper"),
+            // In het desktoppaneel draagt het paneel zelf naam en profiel.
+            display: embedded ? "none" : "flex",
           }}
         >
           <Pressable
@@ -1119,7 +1133,7 @@ export default function ChatDetail() {
               justifyContent: "center",
               borderRightWidth: BORDER,
               borderRightColor: line(),
-              display: railVisible ? "none" : "flex",
+              display: railVisible || embedded ? "none" : "flex",
             }}
           >
             <Mono variant="meta" style={{ textTransform: "none" }}>

@@ -3,11 +3,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+
 import type { PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { useLang, useT } from "@/lib/i18n";
+import { openPost as openPostAnywhere, openProfile as openProfileAnywhere } from "@/lib/lincin/desktop";
 import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
@@ -108,20 +110,15 @@ export function useFeed() {
 
   // ---- handelingen ----
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
-  const openPost = useCallback(
-    (p: CardPost) => {
-      if (!p.href) return;
-      markSeen(p.id);
-      router.push(p.href as never);
-    },
-    [router],
-  );
-  const openProfile = useCallback(
-    (g: { username: string | null }) => {
-      if (g.username) router.push(`/user/${g.username}` as never);
-    },
-    [router],
-  );
+  // Op een telefoon een scherm, op desktop het paneel rechts (lib/lincin/desktop.ts).
+  const openPost = useCallback((p: CardPost) => {
+    if (!p.href) return;
+    markSeen(p.id);
+    openPostAnywhere(p.id);
+  }, []);
+  const openProfile = useCallback((g: { username: string | null }) => {
+    if (g.username) openProfileAnywhere(g.username);
+  }, []);
   const privateAbout = useCallback((g: { authorId: string; name: string }, p?: CardPost) => {
     setSheet({
       friendId: g.authorId,

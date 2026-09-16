@@ -12,6 +12,7 @@ import { color, friendColor, hueFor, useScheme, type Hue } from "@/lib/design/th
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
+import { openThread } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -64,7 +65,7 @@ export default function ChatsScreen() {
     try {
       const id = await getOrCreateDirectChat(friendId);
       await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
-      router.push(`/chat/${id}`);
+      openThread(id);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.failed);
     }
@@ -91,7 +92,7 @@ export default function ChatsScreen() {
         time={time}
         preview={preview}
         unread={c.unread_count ?? 0}
-        onPress={() => router.push(`/chat/${c.id}`)}
+        onPress={() => openThread(c.id)}
       />
     );
   }
