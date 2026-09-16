@@ -2520,7 +2520,9 @@ function MessageBubble({
           */
         style={{
           opacity: pending ? 0.65 : 1,
-          borderWidth: BORDER,
+          // Anderhalve pixel in álle thema's, los van het thema-kader
+          // (prototype THREAD: `border: 1.5px solid` naast `--bw`).
+          borderWidth: 1.5,
           borderColor: failed ? color("red") : selected && accent ? accent : color("ink"),
         }}
         className={`${

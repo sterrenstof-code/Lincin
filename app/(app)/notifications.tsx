@@ -11,7 +11,7 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { shortDate } from "@/lib/lincin/model";
@@ -107,6 +107,9 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  // De ongelezen-tint volgt het blad, niet de stand: modern is altijd
+  // donker, ook als de stand licht is.
+  const darkPaper = useThemeSpec().dark;
   const fc = friendColor(hueFor(item.actor_id), scheme);
   const name = item.actor?.display_name ?? item.actor?.username ?? "Iemand";
   const { text } = describe(item);
@@ -121,7 +124,7 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
         padding: 12,
         borderBottomWidth: BORDER,
         borderBottomColor: line(),
-        backgroundColor: item.read ? "transparent" : scheme === "dark" ? "rgba(237,232,221,.07)" : "rgba(20,20,20,.05)",
+        backgroundColor: item.read ? "transparent" : darkPaper ? "rgba(237,232,221,.07)" : "rgba(20,20,20,.05)",
         opacity: pressed ? 0.8 : 1,
       })}
     >

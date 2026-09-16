@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 
-import { LincinScreen } from "@/components/lincin/Chrome";
+import { columnWidth, LincinScreen } from "@/components/lincin/Chrome";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { GUTTER, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
@@ -38,8 +38,14 @@ export function FeedModern() {
   const f = useFeed();
   const { t, router, view, changeView, feed, groups, byTime, seen, myUserId, sheet, setSheet } = f;
   const scheme = useScheme();
-  const [w, setW] = useState(0);
   const accent = color("acid");
+  /**
+   * De breedte van het mozaïek wordt niet gemeten maar berekend — het blad
+   * min de twee marges (prototype: `repeat(2, minmax(0, 1fr))`). Zo staan
+   * de tegels er bij de eerste render al; een meting via `onLayout` blijft
+   * op web soms uit, en dan bleef het mozaïek leeg.
+   */
+  const w = columnWidth(useWindowDimensions().width) - PAD * 2;
 
   const noFriends = f.empty && f.friendCount === 0;
   const counter = view === "friends" && groups.length ? `${two(1)} / ${two(groups.length)}` : t.tabFeed;
@@ -61,9 +67,12 @@ export function FeedModern() {
   }, [view, groups, byTime, seen, scheme, t.byTime, f]);
 
   const hueOf = (p: CardPost): Hue => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
-  const half = w > 0 ? (w - GAP) / 2 : 0;
+  const half = (w - GAP) / 2;
 
   const children: ReactNode[] = [];
+  // De kleefregels: de labelrij van elke vriend blijft bovenaan staan tot
+  // de volgende hem verdringt (prototype: `position: sticky; top: 0`).
+  const sticky: number[] = [];
   if (feed.isLoading) {
     children.push(
       <Mono key="loading" variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
@@ -74,6 +83,7 @@ export function FeedModern() {
     children.push(<EmptyFeed key="empty" />);
   } else {
     sections.forEach((s) => {
+      sticky.push(children.length);
       children.push(
         <Pressable
           key={`label-${s.key}`}
@@ -98,22 +108,20 @@ export function FeedModern() {
       );
       children.push(
         <View key={`grid-${s.key}`} style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP, marginBottom: 14 }}>
-          {half > 0
-            ? s.posts.map((p, j) => {
-                const span = j === 0 && s.posts.length !== 2 ? 2 : 1;
-                return (
-                  <Tile
-                    key={p.id}
-                    post={p}
-                    width={span === 2 ? w : half}
-                    fc={friendColor(hueOf(p), scheme)}
-                    myUserId={myUserId}
-                    onOpen={() => f.openPost(p)}
-                    onPrivate={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
-                  />
-                );
-              })
-            : null}
+          {s.posts.map((p, j) => {
+            const span = j === 0 && s.posts.length !== 2 ? 2 : 1;
+            return (
+              <Tile
+                key={p.id}
+                post={p}
+                width={span === 2 ? w : half}
+                fc={friendColor(hueOf(p), scheme)}
+                myUserId={myUserId}
+                onOpen={() => f.openPost(p)}
+                onPrivate={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
+              />
+            );
+          })}
         </View>,
       );
     });
@@ -146,8 +154,8 @@ export function FeedModern() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: 14, paddingHorizontal: PAD }}
+        stickyHeaderIndices={sticky}
         showsVerticalScrollIndicator={false}
-        onLayout={(e) => setW(e.nativeEvent.layout.width - PAD * 2)}
       >
         {children}
       </ScrollView>
@@ -180,8 +188,9 @@ function Tile({
   const isImg = m.kind === "foto" || (m.kind === "link" && !!m.image);
   const bg = isImg ? "rgba(0,0,0,.2)" : m.kind === "muziek" ? MUSIC : m.kind === "kleur" ? m.hex : GLASS.fill;
   return (
+    // Bewust géén `accessibilityRole="button"`: op web wordt dat een
+    // <button>, en daar mogen de ✉ en de pollopties (zelf knoppen) niet in.
     <Pressable
-      accessibilityRole="button"
       accessibilityLabel={`${p.title}, ${p.authorName}`}
       onPress={onOpen}
       style={[{ width, height: ROW_H, overflow: "hidden", backgroundColor: bg }, glass(!isImg && m.kind !== "muziek")]}

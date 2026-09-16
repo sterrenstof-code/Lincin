@@ -71,8 +71,10 @@ export const PostCard = memo(function PostCard({
   const stripInk = spec.stripFilled ? fc.ink : ink;
 
   return (
+    // Bewust géén `accessibilityRole="button"`: op web wordt dat een
+    // <button>, en daar mogen de reacties, COMMENT, PRIVAAT en de avatar
+    // (zelf knoppen) niet in.
     <Pressable
-      accessibilityRole={canOpen ? "button" : undefined}
       accessibilityLabel={`${post.title}, ${post.authorName}`}
       onPress={canOpen ? onOpen : undefined}
       style={{

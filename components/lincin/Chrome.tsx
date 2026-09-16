@@ -39,7 +39,17 @@ const TAB_HREF: Record<Tab, string> = {
 };
 
 /** Hoe breed het blad op een groot scherm mag worden. */
-const COLUMN_MAX = 640;
+export const COLUMN_MAX = 640;
+
+/**
+ * Hoe breed het blad nú is, gegeven de vensterbreedte: het venster zelf,
+ * of de kolom als het venster ruim breder is. Wie iets moet verdelen over
+ * die breedte (het mozaïek van modern) rekent hiermee in plaats van te
+ * meten — een `onLayout` op de ScrollView blijft op web wel eens uit.
+ */
+export function columnWidth(windowWidth: number): number {
+  return windowWidth > COLUMN_MAX + 40 ? COLUMN_MAX : windowWidth;
+}
 
 /** Wat er ligt: ongelezen gesprekken en meldingen. */
 export function useUnread(): { chats: number; notifications: number } {
@@ -89,7 +99,7 @@ export function LincinScreen({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const bg = spec.gradient ? MODERN_GRADIENT.base : tint && spec.tint ? pageTint(tint, scheme) : color("paper");
-  const wide = !full && width > COLUMN_MAX + 40;
+  const wide = !full && columnWidth(width) !== width;
 
   return (
     <View

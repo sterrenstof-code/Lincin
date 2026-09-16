@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
@@ -100,7 +100,7 @@ export function FeedMagazine() {
         </Svg>
 
         {/* de bovenregel: editie · ◉ + */}
-        <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }, blend()]}>
+        <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }, BLEND]}>
           <Mono variant="tiny" color={ON_IMAGE} style={{ letterSpacing: 1.26 }}>
             {edition}
           </Mono>
@@ -121,7 +121,7 @@ export function FeedMagazine() {
         </Text>
 
         {/* links: titel en bijschrift */}
-        <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: top + 136, left: PAD, maxWidth: 220 }, blend()]}>
+        <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: top + 136, left: PAD, maxWidth: 220 }, BLEND]}>
           <Text style={[lincinType.cardTitle, { fontSize: 26, lineHeight: 25, letterSpacing: 0, color: ON_IMAGE }]}>{hero.title}</Text>
           {hero.caption ? (
             <Text style={[lincinType.asideSmall, { fontSize: 15, lineHeight: 19, marginTop: 8, color: ON_IMAGE }]}>{hero.caption}</Text>
@@ -129,7 +129,7 @@ export function FeedMagazine() {
         </Pressable>
 
         {/* rechts: op spotlight */}
-        <View style={[{ position: "absolute", right: PAD, top: top + 146, width: 120, alignItems: "flex-end" }, blend()]}>
+        <View style={[{ position: "absolute", right: PAD, top: top + 146, width: 120, alignItems: "flex-end" }, BLEND]}>
           <Text style={[lincinType.eventTitle, { fontSize: 24, lineHeight: 24, letterSpacing: 0, color: ON_IMAGE, textAlign: "right" }]}>
             {t.spotA} <Text style={lincinType.asideSmall}>{t.spotB}</Text>
           </Text>
@@ -146,16 +146,17 @@ export function FeedMagazine() {
 
         {/* de lopende tekst */}
         {hero.body ? (
-          <Text
-            numberOfLines={5}
-            style={[lincinType.caption, { position: "absolute", left: PAD, top: top + 276, maxWidth: 250, fontSize: 14, lineHeight: 20, color: ON_IMAGE }, blend()]}
-          >
-            {hero.body}
-          </Text>
+          // De mengmodus zit op de View, niet op de Text: native kent hem
+          // alleen op View en Image.
+          <View style={[{ position: "absolute", left: PAD, top: top + 276, maxWidth: 250 }, BLEND]}>
+            <Text numberOfLines={5} style={[lincinType.caption, { fontSize: 14, lineHeight: 20, color: ON_IMAGE }]}>
+              {hero.body}
+            </Text>
+          </View>
         ) : null}
 
         {/* onderaan: reacties · comment · privaat */}
-        <View style={[{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "center" }, blend()]}>
+        <View style={[{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "center" }, BLEND]}>
           {grouped.map((r) => (
             <Pressable
               key={r.emoji}
@@ -213,9 +214,10 @@ export function FeedMagazine() {
     toc.forEach((p) => {
       const fc = friendColor(hueOf(p), scheme);
       children.push(
+        // Bewust géén `accessibilityRole="button"`: op web wordt dat een
+        // <button>, en daar mag de privaat-knop rechts niet in.
         <Pressable
           key={p.id}
-          accessibilityRole="button"
           accessibilityLabel={p.title}
           onPress={() => f.openPost(p)}
           style={({ pressed }) => ({
@@ -269,10 +271,12 @@ export function FeedMagazine() {
   );
 }
 
-/** Tekst op het beeld: papier, gemengd met `difference` zodat hij op licht én donker leest. */
-function blend(): object {
-  return Platform.OS === "web" ? { mixBlendMode: "difference" } : { mixBlendMode: "difference" };
-}
+/**
+ * Tekst op het beeld: papier, gemengd met `difference` zodat hij op licht
+ * én donker leest. Alleen op een omhullende View — RN kent `mixBlendMode`
+ * op View en Image, niet op Text.
+ */
+const BLEND: ViewStyle = { mixBlendMode: "difference" };
 
 const onImageBtn = {
   width: 30,
