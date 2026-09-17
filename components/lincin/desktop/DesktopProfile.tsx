@@ -160,6 +160,13 @@ function Card({ post: c, width, number, onPress }: { post: CardPost; width: numb
       <View style={{ flex: 1, minHeight: 0, backgroundColor: color("paper2"), alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         {image ? (
           <SafeImage uri={image.uri} cacheKey={image.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
+        ) : m.kind === "tekst" && m.text ? (
+          // Een tekst toont zijn begin, zoals een tekstkaart in de feed.
+          <Text numberOfLines={5} style={[serif(), { alignSelf: "stretch", paddingHorizontal: 14, fontSize: 15, lineHeight: 19, color: color("ink") }]}>
+            {m.text}
+          </Text>
+        ) : m.kind === "link" && m.image ? (
+          <SafeImage uri={m.image} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         ) : (
           <Text style={[mono(500), { fontSize: 10, lineHeight: 13, textTransform: "uppercase", color: dim }]}>{c.kind}</Text>
         )}

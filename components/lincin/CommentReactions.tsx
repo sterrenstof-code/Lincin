@@ -9,7 +9,8 @@ import { mono } from "@/lib/design/type";
 /**
  * Reacties onder één comment (HANDOFF 2.1 §Comment reactions).
  *
- * Een rij chips van 24px — 1.5px inktkader, emoji 12px en een mono-telling;
+ * Een rij chips van 34px, zo hoog als de andere knoppen op de bladzijde
+ * (de 24px van het ontwerp was te klein om te zien) — 1.5px inktkader, emoji en een mono-telling;
  * de mijne zuur gevuld — en een gestreepte ☺. Een tik op ☺ opent eronder
  * een omlijnd vak met zes emoji (❤️ 😂 🔥 😮 👏 🥹, cellen van 32px);
  * kiezen zet mijn reactie aan of uit en sluit het vak.
@@ -45,8 +46,8 @@ export function CommentReactions({
             accessibilityState={{ selected: r.mine }}
             onPress={() => onToggle(r.emoji)}
             style={{
-              height: 24,
-              paddingHorizontal: 7,
+              height: 34,
+              paddingHorizontal: 10,
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
@@ -55,8 +56,8 @@ export function CommentReactions({
               backgroundColor: r.mine ? color("acid") : "transparent",
             }}
           >
-            <Text style={{ fontSize: 12, lineHeight: 14 }}>{r.emoji}</Text>
-            <Text style={{ ...mono(600), fontSize: 10, lineHeight: 13, color: r.mine ? "#141414" : ink }}>{r.count}</Text>
+            <Text style={{ fontSize: 15, lineHeight: 18 }}>{r.emoji}</Text>
+            <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: r.mine ? "#141414" : ink }}>{r.count}</Text>
           </Pressable>
         ))}
         <Pressable
@@ -65,8 +66,8 @@ export function CommentReactions({
           accessibilityState={{ expanded: isOpen }}
           onPress={() => setOpen(!isOpen)}
           style={{
-            height: 24,
-            width: 28,
+            height: 34,
+            paddingHorizontal: 12,
             borderWidth: 1.5,
             borderStyle: "dashed",
             borderColor: ink,
@@ -75,7 +76,8 @@ export function CommentReactions({
             justifyContent: "center",
           }}
         >
-          <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: isOpen ? color("paper") : color("ink", "inkDim") }}>☺</Text>
+          {/* In inkt en zo groot als de andere knoppen: goed te zien. */}
+          <Text style={{ ...mono(600), fontSize: 15, lineHeight: 18, color: isOpen ? color("paper") : ink }}>☺ +</Text>
         </Pressable>
       </View>
       {isOpen ? (

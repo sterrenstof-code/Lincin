@@ -285,7 +285,7 @@ function Card({
             </Pressable>
           ))}
           <View style={{ flex: 1 }} />
-          <MonoLink label={`${t.comment}${p.commentCount ? ` · ${p.commentCount}` : ""}`} active />
+          <MonoLink label={`${t.comment}${p.commentCount ? ` · ${p.commentCount}` : ""}`} active onPress={onOpen} />
         </View>
       </View>
     </Pressable>

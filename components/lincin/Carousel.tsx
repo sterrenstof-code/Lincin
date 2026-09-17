@@ -100,17 +100,10 @@ export function Carousel({
     }
   }
 
-  const slide = (uri: string | null, i: number) => (
-    <Pressable
-      key={`${uri ?? "leeg"}-${i}`}
-      accessibilityRole={onZoom && !video ? "imagebutton" : undefined}
-      accessibilityLabel={multi ? `Foto ${i + 1} van ${n}` : "Foto"}
-      onPress={onZoom && !video ? () => onZoom(i) : undefined}
-      style={[
-        { width: w || "100%", height: height ?? "100%", backgroundColor: color("paper2") },
-        onZoom && !video ? ({ cursor: "zoom-in" } as object) : null,
-      ]}
-    >
+  const zoomable = !!onZoom && !video;
+  const slide = (uri: string | null, i: number) => {
+    const style = { width: w || "100%", height: height ?? "100%", backgroundColor: color("paper2") } as const;
+    const image = (
       <SafeImage
         uri={uri}
         cacheKey={cacheKeys?.[i]}
@@ -119,8 +112,27 @@ export function Carousel({
         fallbackBg="bg-paper2"
         fallbackColor={color("ink", "inkDim")}
       />
-    </Pressable>
-  );
+    );
+    // Zonder lichtbak geen knop: dan gaat de tik door naar de kaart eromheen.
+    if (!zoomable) {
+      return (
+        <View key={`${uri ?? "leeg"}-${i}`} style={style}>
+          {image}
+        </View>
+      );
+    }
+    return (
+      <Pressable
+        key={`${uri ?? "leeg"}-${i}`}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={multi ? `Foto ${i + 1} van ${n}` : "Foto"}
+        onPress={() => onZoom!(i)}
+        style={[style, { cursor: "zoom-in" } as object]}
+      >
+        {image}
+      </Pressable>
+    );
+  };
 
   return (
     <View

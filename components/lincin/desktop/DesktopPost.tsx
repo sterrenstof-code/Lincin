@@ -19,6 +19,7 @@ import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
+import { useMeasure } from "@/lib/lincin/measure";
 import { useImageRatio } from "@/lib/lincin/ratio";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
 import { safeBack } from "@/lib/nav";
@@ -93,7 +94,7 @@ export function DesktopPost({ id }: { id: string }) {
   const [pickOpen, setPickOpen] = useState<string | null>(null);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
   const [slide, setSlide] = useState(0);
-  const [stage, setStage] = useState({ w: 0, h: 0 });
+  const { ref: stageRef, size: stage, onLayout: onStageLayout } = useMeasure();
 
   const close = () => safeBack(router, "/feed");
 
@@ -206,7 +207,8 @@ export function DesktopPost({ id }: { id: string }) {
       {/* het beeld, van rand tot rand */}
       <View
         style={[{ flex: 1, minHeight: 0, overflow: "hidden" }, Platform.OS === "web" ? ({ animationKeyframes: RISE, animationDuration: "300ms", animationTimingFunction: "cubic-bezier(.2,.7,.2,1)" } as object) : null]}
-        onLayout={(e) => setStage({ w: Math.round(e.nativeEvent.layout.width), h: Math.round(e.nativeEvent.layout.height) })}
+        ref={stageRef}
+        onLayout={onStageLayout}
       >
         {stage.h > 0 && photos ? (
           <>
@@ -238,21 +240,37 @@ export function DesktopPost({ id }: { id: string }) {
             ) : null}
           </>
         ) : stage.h > 0 ? (
-          // Geen foto: het vlak in de kleur van de maker met de soort groot,
-          // en het medium zelf (tekst, poll, muziek…) in een kader eronder.
-          <View style={{ flex: 1, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center", gap: 18, padding: 24 }}>
-            <Text style={[head(), { fontSize: 44, lineHeight: 44, textTransform: "uppercase", color: fc.ink }]}>{card.kind}</Text>
-            <View style={{ width: Math.min(640, stage.w - 48), borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), overflow: "hidden" }}>
-              <Media media={card.media} height={Math.min(260, stage.h - 110)} hue={hue} postId={p.id} myUserId={myUserId} size="page" />
+          // Geen foto: een affiche in de kleur van de maker, met de titel
+          // groot. Een tekst staat er helemaal onder, te lezen tot het eind
+          // (het vlak scrolt); poll, muziek, link houden hun eigen medium.
+          <ScrollView
+            style={{ flex: 1, backgroundColor: fc.fill }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40, paddingHorizontal: 24 }}
+          >
+            <View style={{ width: Math.min(720, stage.w - 48), gap: 20 }}>
+              <Text style={[head(), { fontSize: 64, lineHeight: 60, letterSpacing: spec.serifHeads ? 0 : -0.64, color: fc.ink }]}>{card.title}</Text>
+              {card.media.kind === "tekst" ? (
+                <View style={{ borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), paddingVertical: 22, paddingHorizontal: 26 }}>
+                  <Text selectable style={[serif(), { fontSize: 20, lineHeight: 30, color: ink }]}>
+                    {card.media.text}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), overflow: "hidden" }}>
+                  <Media media={card.media} height={Math.min(260, stage.h - 110)} hue={hue} postId={p.id} myUserId={myUserId} size="page" />
+                </View>
+              )}
             </View>
-          </View>
+          </ScrollView>
         ) : null}
       </View>
 
       {/* de band onderaan: tekst en reacties links, comments rechts */}
       <View style={{ maxHeight: 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: spec.gradient ? "transparent" : color("paper") }}>
         <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }} showsVerticalScrollIndicator={false}>
-          <Text style={[head(), { fontSize: 34, lineHeight: 31, letterSpacing: spec.serifHeads ? 0 : -0.34, color: ink }]}>{card.title}</Text>
+          {photos ? (
+            <Text style={[head(), { fontSize: 34, lineHeight: 31, letterSpacing: spec.serifHeads ? 0 : -0.34, color: ink }]}>{card.title}</Text>
+          ) : null}
           {card.caption ? <Text style={[serif(), { fontSize: 19, lineHeight: 24, color: ink }]}>{card.caption}</Text> : null}
           {card.body && card.body !== card.caption ? <Text style={[sans(), { fontSize: 13.5, lineHeight: 20, color: dim, maxWidth: 640 }]}>{card.body}</Text> : null}
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: "auto", paddingTop: 4 }}>
@@ -263,9 +281,9 @@ export function DesktopPost({ id }: { id: string }) {
                 accessibilityLabel={`${r.emoji} ${r.count}`}
                 accessibilityState={{ selected: r.mine }}
                 onPress={() => reactions.toggle(id, r.emoji)}
-                style={{ borderWidth: 1.5, borderColor: ink, backgroundColor: r.mine ? ink : "transparent", paddingVertical: 5, paddingHorizontal: 8 }}
+                style={{ height: 34, justifyContent: "center", borderWidth: 1.5, borderColor: ink, backgroundColor: r.mine ? ink : "transparent", paddingHorizontal: 10 }}
               >
-                <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: r.mine ? color("paper") : ink }]}>
+                <Text style={[mono(600), { fontSize: 12, lineHeight: 15, color: r.mine ? color("paper") : ink }]}>
                   {r.emoji} {r.count}
                 </Text>
               </Pressable>
@@ -275,9 +293,10 @@ export function DesktopPost({ id }: { id: string }) {
               accessibilityLabel="Reageer"
               accessibilityState={{ expanded: boxOpen }}
               onPress={() => setBoxOpen((v) => !v)}
-              style={{ borderWidth: 1.5, borderStyle: "dashed", borderColor: rule, paddingVertical: 5, paddingHorizontal: 9 }}
+              // Zo groot als de reacties ernaast, in inkt: goed te zien.
+              style={{ height: 34, justifyContent: "center", borderWidth: 1.5, borderStyle: "dashed", borderColor: ink, backgroundColor: boxOpen ? ink : "transparent", paddingHorizontal: 12 }}
             >
-              <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: dim }]}>☺</Text>
+              <Text style={[mono(600), { fontSize: 15, lineHeight: 18, color: boxOpen ? color("paper") : ink }]}>☺ +</Text>
             </Pressable>
             <View style={{ flex: 1 }} />
             {p.author?.username ? (
