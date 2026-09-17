@@ -181,7 +181,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
       }
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }} showsVerticalScrollIndicator={false}>
           {post.isLoading && !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.loading}
