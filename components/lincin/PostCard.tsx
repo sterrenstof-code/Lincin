@@ -84,7 +84,6 @@ export const PostCard = memo(function PostCard({
     ? { backgroundColor: fc.fill, borderLeftWidth: 0, borderLeftColor: fc.fill }
     : { backgroundColor: color("paper"), borderLeftWidth: 6, borderLeftColor: fc.fill };
   const stripInk = spec.stripFilled ? fc.ink : ink;
-  const zoom = { number, author: post.authorName, kind: post.kind, time: timeLabel(post.createdAt, t, lang), title: post.title };
   const photo = post.media.kind === "foto";
   const lifted = bleed && photo;
 
@@ -116,7 +115,6 @@ export const PostCard = memo(function PostCard({
               postId={post.id}
               myUserId={myUserId}
               photoFit="ratio"
-              zoom={zoom}
             />
           )}
           <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: lifted ? 0 : BORDER, borderTopColor: edge, overflow: "hidden" }}>
@@ -213,9 +211,10 @@ export const PostCard = memo(function PostCard({
   if (!lifted) return card;
   return (
     <View>
-      <View style={{ marginHorizontal: -GUTTER }}>
-        <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" zoom={zoom} />
-      </View>
+      {/* Een tik op de foto opent de bijdrage; de lichtbak zit op de bladzijde. */}
+      <Pressable accessibilityLabel={`${post.title}, ${post.authorName}`} onPress={canOpen ? onOpen : undefined} style={{ marginHorizontal: -GUTTER }}>
+        <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" />
+      </Pressable>
       {card}
     </View>
   );
