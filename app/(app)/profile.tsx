@@ -63,7 +63,13 @@ function YouMobile() {
     <LincinScreen tab="you" counter={t.tabYou}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          {/* Je naam opent je profiel, zoals je vrienden het zien; de avatar bewerkt. */}
+          <Pressable
+            accessibilityRole="link"
+            disabled={!p?.username}
+            onPress={() => p?.username && router.push(`/user/${p.username}` as never)}
+            style={{ flex: 1, minWidth: 0 }}
+          >
             <Serif variant="ownName" numberOfLines={1}>
               {first}
             </Serif>
@@ -72,7 +78,7 @@ function YouMobile() {
                 {last}
               </Serif>
             ) : null}
-          </View>
+          </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")}>
             {p?.avatar_url ? (
               <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: BORDER, borderColor: line() }}>

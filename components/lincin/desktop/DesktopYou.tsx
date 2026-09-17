@@ -72,7 +72,12 @@ export function DesktopYou() {
     <DesktopShell active="you">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 16 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")} style={{ flexShrink: 1 }}>
+          {/* Je naam opent je profiel; bewerken staat onder Account. */}
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile-edit") as never)}
+            style={{ flexShrink: 1 }}
+          >
             <Text style={[serif(), { fontSize: 46, lineHeight: 44, color: ink }]}>
               {first} {last ? <Text style={[serif(true), { color: dim }]}>{last}</Text> : null}
             </Text>

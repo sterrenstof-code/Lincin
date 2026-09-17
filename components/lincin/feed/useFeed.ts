@@ -120,8 +120,10 @@ export function useFeed() {
   }, []);
   const openProfile = useCallback(
     (g: { username: string | null; authorId?: string }) => {
-      if (g.authorId === myUserId) router.push("/profile");
-      else if (g.username) openProfileAnywhere(g.username);
+      // Ook je eigen naam opent je profiel — de pagina die je vrienden zien,
+      // met al je bijdragen. Zonder gebruikersnaam: Jij.
+      if (g.username) openProfileAnywhere(g.username);
+      else if (g.authorId === myUserId) router.push("/profile");
     },
     [myUserId, router],
   );

@@ -377,14 +377,23 @@ function Comment({
   const own = c.user_id === myUserId;
   const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
   const name = own ? t.me : displayName(c.author);
+  const router = useRouter();
+  // Een naam opent een profiel — ook "Jij" het jouwe.
+  const toProfile = c.author?.username ? () => router.push(`/user/${c.author!.username}` as never) : undefined;
   return (
     <View style={{ flexDirection: "row", gap: 10 }}>
-      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={name}
+        onPress={toProfile}
+        disabled={!toProfile}
+        style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}
+      >
         <Text style={[head(), { fontSize: 11, lineHeight: 13, color: fc.ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
-      </View>
+      </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-          <Text numberOfLines={1} style={[mono(600), { fontSize: 11, lineHeight: 14, color: color("ink"), flexShrink: 1 }]}>
+          <Text numberOfLines={1} onPress={toProfile} style={[mono(600), { fontSize: 11, lineHeight: 14, color: color("ink"), flexShrink: 1 }]}>
             {name}
           </Text>
           <Text style={[mono(500), { fontSize: 10, lineHeight: 14, color: color("ink", "inkDim") }]}>{timeLabel(c.created_at, t, lang)}</Text>

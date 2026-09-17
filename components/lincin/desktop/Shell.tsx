@@ -219,7 +219,8 @@ function Rail({ active }: { active: Tab }) {
         </View>
         <Pressable
           accessibilityRole="link"
-          onPress={() => router.push("/profile")}
+          // Je naam opent je profiel, zoals bij een vriend.
+          onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile") as never)}
           style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}
         >
           <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color("paper2"), borderWidth: 1, borderColor: ink, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>

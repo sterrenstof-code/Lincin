@@ -394,12 +394,18 @@ function CommentRow({
   const own = c.user_id === myUserId;
   const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
   const name = own ? t.me : displayName(c.author);
+  // Een naam opent een profiel — ook "Jij" het jouwe.
+  const toProfile = c.author?.username ? () => openProfileAnywhere(c.author!.username) : undefined;
   return (
     <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-      <Initial letter={name.slice(0, 1).toUpperCase()} size={26} bg={fc.fill} fg={fc.ink} border={false} fontSize={11} />
+      <Pressable accessibilityRole="link" accessibilityLabel={name} onPress={toProfile} disabled={!toProfile}>
+        <Initial letter={name.slice(0, 1).toUpperCase()} size={26} bg={fc.fill} fg={fc.ink} border={false} fontSize={11} />
+      </Pressable>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <Mono variant="monoBody">{name}</Mono>
+          <Mono variant="monoBody" onPress={toProfile}>
+            {name}
+          </Mono>
           <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
             {timeLabel(c.created_at, t, lang)}
           </Mono>
