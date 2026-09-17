@@ -23,6 +23,7 @@ import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
+import { useMeasure } from "@/lib/lincin/measure";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
@@ -148,6 +149,9 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   }
 
   const photo = card?.media.kind === "foto";
+  /** Een tekst krijgt geen vak van 300 maar zijn volle lengte: te lezen tot het eind. */
+  const fullText = card?.media.kind === "tekst";
+  const { ref: mediaRef, size: mediaSize, onLayout: onMediaLayout } = useMeasure();
   const canEvent = !!p && (/\?/.test(p.caption ?? "") || card?.media.kind === "plek");
   const own = !!p && p.user_id === myUserId;
   const authorName = p ? displayName(p.author) : "";
@@ -211,7 +215,12 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
               <Box>
                 {/* beeld met kleurstrook — de andere soorten */}
                 {photo ? null : (
-                <View style={{ flexDirection: "row", height: MEDIA_H }}>
+                <View
+                  ref={mediaRef}
+                  onLayout={onMediaLayout}
+                  // Een tekst staat er helemaal, zo lang als hij is; de rest op 300.
+                  style={{ flexDirection: "row", ...(fullText ? { minHeight: MEDIA_H } : { height: MEDIA_H }) }}
+                >
                   <View
                     style={{
                       width: STRIP_W,
@@ -224,21 +233,29 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                     <VerticalLabel
                       text={`${card.kind} · ${hhmm(p.created_at)}`}
                       width={STRIP_W}
-                      height={MEDIA_H}
+                      height={fullText ? Math.max(MEDIA_H, mediaSize.h) : MEDIA_H}
                       color={fc.ink}
                       style={{ letterSpacing: 0.8, textTransform: "uppercase" }}
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Media
-                      media={card.media}
-                      height={MEDIA_H}
-                      hue={hue}
-                      postId={p.id}
-                      myUserId={myUserId}
-                      size="page"
-                      zoom={zoom}
-                    />
+                    {fullText ? (
+                      <View style={{ flex: 1, backgroundColor: color("paper2"), paddingVertical: 16, paddingHorizontal: 18 }}>
+                        <Serif variant="quote" selectable>
+                          {card.media.kind === "tekst" ? card.media.text : ""}
+                        </Serif>
+                      </View>
+                    ) : (
+                      <Media
+                        media={card.media}
+                        height={MEDIA_H}
+                        hue={hue}
+                        postId={p.id}
+                        myUserId={myUserId}
+                        size="page"
+                        zoom={zoom}
+                      />
+                    )}
                   </View>
                 </View>
                 )}

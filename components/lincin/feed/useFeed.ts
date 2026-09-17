@@ -84,6 +84,16 @@ export function useFeed() {
   /** Nieuwste eerst, over alle vrienden heen. */
   const byTime = useMemo(() => [...cards].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), [cards]);
   /**
+   * Het hero van magazine: de foto waar de laatste maand het meest mee
+   * gedaan is (comments, emoji, duwen). Bij gelijkstand de nieuwste. Geen
+   * foto in de feed: de nieuwste bijdrage.
+   */
+  const heroPost = useMemo(() => {
+    const photos = byTime.filter((c) => c.media.kind === "foto" && !c.media.video);
+    if (!photos.length) return byTime[0];
+    return photos.reduce((best, c) => (c.monthInteractions > best.monthInteractions ? c : best), photos[0]);
+  }, [byTime]);
+  /**
    * Het nummer van een bijdrage: "№ 01" is de oudste in de feed, zoals het
    * prototype zijn bijdragen telt. Magazine zet het in de inhoudsopgave.
    */
@@ -154,6 +164,7 @@ export function useFeed() {
     groups,
     timeGroups,
     byTime,
+    heroPost,
     numberOf,
     reactions,
     seen,

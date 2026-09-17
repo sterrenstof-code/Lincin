@@ -53,6 +53,8 @@ export type CardPost = {
   body: string;
   media: CardMedia;
   commentCount: number;
+  /** Comments, emoji en duwen van de laatste dertig dagen, gewogen. */
+  monthInteractions: number;
   /** Alleen een post heeft emoji-reacties; een poll stemt. */
   reactable: boolean;
 };
@@ -192,6 +194,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     body: media.kind === "tekst" ? "" : (p.body_text ?? "").trim(),
     media,
     commentCount: p.comment_count ?? 0,
+    monthInteractions: p.month_interaction_count ?? 0,
     reactable: true,
   };
 }
@@ -214,6 +217,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     body: "",
     media: { kind: "poll", poll: p },
     commentCount: 0,
+    monthInteractions: 0,
     reactable: false,
   };
 }

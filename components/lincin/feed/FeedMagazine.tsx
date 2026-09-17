@@ -34,6 +34,9 @@ const PAD = 16;
 const ON_IMAGE = "#F2EFE8";
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
+/** Hoe gedempt een regel in de inhoudsopgave staat als je hem al zag. */
+export const SEEN_OPACITY = 0.5;
+
 export function FeedMagazine() {
   const f = useFeed();
   const { t, lang, router, feed, byTime, groups, reactions, sheet, setSheet, numberOf } = f;
@@ -48,9 +51,12 @@ export function FeedMagazine() {
    */
   const top = Math.max(insets.top, 54);
 
-  const hero = byTime[0];
-  const spotlight = byTime.slice(1, 5);
-  const toc = useMemo(() => [...byTime.slice(1)].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)), [byTime]);
+  // Het hero: de foto met de meeste interacties deze maand (useFeed).
+  const hero = f.heroPost;
+  const rest = useMemo(() => byTime.filter((p) => p.id !== hero?.id), [byTime, hero]);
+  const spotlight = rest.slice(0, 4);
+  // De inhoudsopgave van nieuw naar oud; wat je al zag staat gedempt.
+  const toc = rest;
   const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const heroColor = hero ? friendColor(hueOf(hero), scheme) : friendColor("orange", scheme);
   const heroImg = hero && hero.media.kind === "foto" ? hero.media : null;
@@ -230,7 +236,8 @@ export function FeedMagazine() {
             borderBottomWidth: 1,
             borderBottomColor: color("ink", "postRule"),
             alignItems: "stretch",
-            opacity: pressed ? 0.7 : 1,
+            // Al gezien of gelezen: licht gedempt, zodat het nieuwe opvalt.
+            opacity: (f.seen.has(p.id) ? SEEN_OPACITY : 1) * (pressed ? 0.7 : 1),
           })}
         >
           <View style={{ width: 6, backgroundColor: fc.fill }} />

@@ -16,6 +16,7 @@ import { useT, type Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useUnread } from "@/lib/lincin/unread";
 
+import { SEEN_OPACITY } from "../feed/FeedMagazine";
 import { useFeed } from "../feed/useFeed";
 
 /**
@@ -39,9 +40,12 @@ export function DesktopMagazine() {
   const scheme = useScheme();
   const router = useRouter();
   const unread = useUnread();
-  const hero = byTime[0];
-  const spotlight = byTime.slice(1, 5);
-  const toc = useMemo(() => [...byTime.slice(1)].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)), [byTime]);
+  // Het hero: de foto met de meeste interacties deze maand (useFeed).
+  const hero = f.heroPost;
+  const rest = useMemo(() => byTime.filter((p) => p.id !== hero?.id), [byTime, hero]);
+  const spotlight = rest.slice(0, 4);
+  // De inhoudsopgave van nieuw naar oud; wat je al zag staat gedempt.
+  const toc = rest;
   const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const heroColor = hero ? friendColor(hueOf(hero), scheme) : friendColor("orange", scheme);
   const heroImg = hero && hero.media.kind === "foto" ? hero.media : null;
@@ -164,7 +168,7 @@ export function DesktopMagazine() {
           {toc.map((p, i) => {
             const fc = friendColor(hueOf(p), scheme);
             return (
-              <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule }}>
+              <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule, opacity: f.seen.has(p.id) ? SEEN_OPACITY : 1 }}>
                 <View style={{ width: 8, backgroundColor: fc.fill }} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>

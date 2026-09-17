@@ -145,10 +145,17 @@ export type PostWithAuthor = PostRow & {
    * totaal blijft één oude vondst maanden bovenaan staan.
    */
   recent_interaction_count: number;
+  /**
+   * Hetzelfde over de laatste dertig dagen. Magazine kiest hiermee zijn
+   * hero: de foto waar deze maand het meest mee gedaan is.
+   */
+  month_interaction_count: number;
 };
 
 /** De week van `recent_interaction_count`. */
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** De maand van `month_interaction_count`. */
+const MONTH_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const POSTS_BUCKET = "posts";
 
@@ -432,8 +439,8 @@ export async function createPost(args: {
  */
 async function countCommentsByPost(
   postIds: string[]
-): Promise<Map<string, { total: number; recent: number }>> {
-  const counts = new Map<string, { total: number; recent: number }>();
+): Promise<Map<string, { total: number; recent: number; month: number }>> {
+  const counts = new Map<string, { total: number; recent: number; month: number }>();
   if (postIds.length === 0) return counts;
   const { data, error } = await supabase
     .from("entity_comments")
@@ -442,10 +449,13 @@ async function countCommentsByPost(
     .in("entity_id", postIds);
   if (error) throw error;
   const since = Date.now() - RECENT_WINDOW_MS;
+  const monthSince = Date.now() - MONTH_WINDOW_MS;
   for (const row of (data ?? []) as { entity_id: string; created_at: string }[]) {
-    const entry = counts.get(row.entity_id) ?? { total: 0, recent: 0 };
+    const entry = counts.get(row.entity_id) ?? { total: 0, recent: 0, month: 0 };
     entry.total += 1;
-    if (new Date(row.created_at).getTime() >= since) entry.recent += 1;
+    const at = new Date(row.created_at).getTime();
+    if (at >= since) entry.recent += 1;
+    if (at >= monthSince) entry.month += 1;
     counts.set(row.entity_id, entry);
   }
   return counts;
@@ -564,6 +574,8 @@ type SignalCounts = {
   boosts: number;
   recentReactions: number;
   recentBoosts: number;
+  monthReactions: number;
+  monthBoosts: number;
 };
 
 /** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
@@ -571,13 +583,19 @@ async function countSignals(postIds: string[]): Promise<Map<string, SignalCounts
   const counts = new Map<string, SignalCounts>();
   if (postIds.length === 0) return counts;
   const since = Date.now() - RECENT_WINDOW_MS;
+  const monthSince = Date.now() - MONTH_WINDOW_MS;
 
   const bump = (postId: string, key: "reactions" | "boosts", createdAt: string) => {
     const entry =
-      counts.get(postId) ?? { reactions: 0, boosts: 0, recentReactions: 0, recentBoosts: 0 };
+      counts.get(postId) ??
+      { reactions: 0, boosts: 0, recentReactions: 0, recentBoosts: 0, monthReactions: 0, monthBoosts: 0 };
     entry[key] += 1;
-    if (new Date(createdAt).getTime() >= since) {
+    const at = new Date(createdAt).getTime();
+    if (at >= since) {
       entry[key === "reactions" ? "recentReactions" : "recentBoosts"] += 1;
+    }
+    if (at >= monthSince) {
+      entry[key === "reactions" ? "monthReactions" : "monthBoosts"] += 1;
     }
     counts.set(postId, entry);
   };
@@ -647,6 +665,11 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
       signalCounts.get(r.id)?.recentReactions,
       signalCounts.get(r.id)?.recentBoosts
     ),
+    month_interaction_count: weigh(
+      commentCounts.get(r.id)?.month,
+      signalCounts.get(r.id)?.monthReactions,
+      signalCounts.get(r.id)?.monthBoosts
+    ),
   }));
 }
 
@@ -704,6 +727,7 @@ export async function getPost(id: string): Promise<PostWithAuthor | null> {
     boost_count: 0,
     interaction_count: 0,
     recent_interaction_count: 0,
+    month_interaction_count: 0,
     ...(album.urls.length > 0 ? { album_urls: album.urls, album_paths: album.paths } : null),
   };
 }
@@ -926,6 +950,7 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       boost_count: 0,
       interaction_count: 0,
       recent_interaction_count: 0,
+      month_interaction_count: 0,
     };
     items.unshift({ type: "memory", id: `memory-${memPost.id}`, created_at: new Date().toISOString(), data: memItem });
   }
