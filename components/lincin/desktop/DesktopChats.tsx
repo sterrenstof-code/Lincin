@@ -1,117 +1,111 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
-import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember } from "@/lib/api/chats";
+import { ChatDetail } from "@/app/chat/[id]";
+import { chatTitle, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
-import { useAuth } from "@/lib/auth/provider";
-import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
-import { mono, sans, serif } from "@/lib/design/type";
-import { useLang, useT } from "@/lib/i18n";
-import { openThread, pickThread, usePanel } from "@/lib/lincin/desktop";
-import { displayName, shortAgo } from "@/lib/lincin/model";
-import { useToast } from "@/lib/toast";
+import { color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { mono, serif } from "@/lib/design/type";
+import { useLang, useT, type Lang } from "@/lib/i18n";
+import { LIST_W, pickThread } from "@/lib/lincin/desktop";
 
-import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
+import { chatHue, ChatList, ChatListHead, useSortedChats } from "./ChatList";
+import { DesktopShell, MonoLink } from "./Shell";
 
 /**
- * Gesprekken op desktop (Lincin Desktop.dc.html, CHATS): een lijst van
- * hoogstens 720 breed met een inktlijn erboven; per rij een kleurblok van
- * 10×40, de naam in serif 26, de tijd (rood bij ongelezen), de laatste
- * regel gedempt, en rechts "n ongelezen". De open rij staat op papier 2.
- * Een tik opent het gesprek in het paneel rechts.
+ * Gesprekken op volle breedte (Lincin Desktop.dc.html, GESPREKKEN — model
+ * 3e). De rail klapt in tot 64; links de lijst van 280, rechts het gesprek
+ * over de rest: een kop van 56 met de naam in serif 26, "linc sinds …" of
+ * "groep · n lincs", en PROFIEL →; daaronder het gesprek zelf — dezelfde
+ * draad als op de telefoon, versleuteling en al, met de vermelde
+ * bijdragen bovenaan en de invoer onderaan.
+ *
+ * `/chats` kiest zelf (het laatste ongelezen, anders het laatste);
+ * `/chat/[id]` toont dat gesprek. Een andere rij kiezen verandert de URL.
  */
-export function DesktopChats() {
-  const { session } = useAuth();
-  const myUserId = session!.user.id;
+
+const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
+
+export function DesktopChats({ chatId }: { chatId?: string | null }) {
   const router = useRouter();
-  const qc = useQueryClient();
-  const t = useT();
-  const lang = useLang();
   const scheme = useScheme();
-  const toast = useToast();
-  const previews = useChatPreviews();
-  const panel = usePanel();
+  const spec = useThemeSpec();
+  const { myUserId, list, chats } = useSortedChats();
+  const current = pickThread(chatId ?? null, list);
+  const chat = list.find((c) => c.id === current) ?? null;
+  const tint = chat ? friendColor(chatHue(chat, myUserId), scheme).fill : null;
 
-  const chats = useQuery({ queryKey: ["chats", myUserId], queryFn: () => listMyChats(myUserId), refetchOnWindowFocus: true });
-  const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId) });
-  const list = useMemo(() => {
-    const all = [...(chats.data ?? [])];
-    all.sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at));
-    return all;
-  }, [chats.data]);
-  // Dezelfde keuze als het paneel: in rust staat daar al het laatste
-  // ongelezen (of laatste) gesprek open, dus die rij hoort gemarkeerd.
-  const current = panel.kind === "thread" ? pickThread(panel.chatId, list) : null;
-  const inChats = useMemo(() => new Set(list.filter((c) => c.type === "direct").flatMap((c) => c.members.map((m) => m.id))), [list]);
-  const withoutChat = (friendships.data ?? []).filter((f) => f.status === "accepted" && !inChats.has(f.other.id));
-  const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
-
-  async function openWith(friendId: string) {
-    try {
-      const id = await getOrCreateDirectChat(friendId);
-      await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
-      openThread(id);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t.failed);
-    }
-  }
-
-  const ink = color("ink");
-  const dim = color("ink", "inkDim");
-  const rule = color("ink", "postRule");
-
-  const row = (key: string, fill: string, name: string, time: string, preview: string, n: number, active: boolean, onPress: () => void) => (
-    <Pressable
-      key={key}
-      accessibilityRole="button"
-      accessibilityLabel={n ? `${name}, ${n} ${t.unread}` : name}
-      onPress={onPress}
-      style={{ flexDirection: "row", alignItems: "center", gap: 18, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: rule, backgroundColor: active ? color("paper2") : "transparent" }}
-    >
-      <View style={{ width: 10, height: 40, backgroundColor: fill }} />
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-          <Text numberOfLines={1} style={[serif(), { fontSize: 26, lineHeight: 27, letterSpacing: -0.26, color: ink, flexShrink: 1 }]}>
-            {name}
-          </Text>
-          {time ? <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, color: n ? color("red") : dim }]}>{time}</Text> : null}
-        </View>
-        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }]}>
-          {preview}
-        </Text>
-      </View>
-      {n > 0 ? (
-        <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 0.9, textTransform: "uppercase", color: color("red") }]}>
-          {n} {t.unread}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
+  const open = (id: string) => {
+    if (id === current) return;
+    if (chatId) router.setParams({ id });
+    else router.push(`/chat/${id}` as never);
+  };
 
   return (
-    <DesktopShell active="chats">
-      <DesktopTitle right={<MonoLink label={`${unread} ${t.unread}`} on={false} />}>{t.chats}</DesktopTitle>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 22, paddingHorizontal: 48, paddingBottom: 40 }}>
-        <View style={{ borderTopWidth: 1, borderTopColor: ink, maxWidth: 720 }}>
-          {list.map((c) => {
-            const isGroup = c.type === "group";
-            const other = isGroup ? null : otherMember(c, myUserId);
-            const fc = friendColor(isGroup ? "green" : hueFor(other?.id), scheme);
-            const pv = previews[c.id];
-            const preview = pv ? (pv.fromMe ? `${t.me}: ${pv.text}` : isGroup && pv.sender ? `${pv.sender}: ${pv.text}` : pv.text) : "Nog geen berichten";
-            return row(c.id, fc.fill, chatTitle(c, myUserId), c.last_message_at ? shortAgo(c.last_message_at, t, lang) : "", preview, c.unread_count ?? 0, c.id === current, () => openThread(c.id));
-          })}
-          {withoutChat.map((f) =>
-            row(f.id, friendColor(hueFor(f.other.id), scheme).fill, displayName(f.other), "", "Nog geen berichten", 0, false, () => openWith(f.other.id)),
-          )}
-          <View style={{ paddingVertical: 18 }}>
-            <MonoLink label="Nieuwe groep →" active onPress={() => router.push("/group-create")} />
-          </View>
+    <DesktopShell active="chats" mode="full" tint={tint}>
+      <View style={{ flex: 1, minHeight: 0, flexDirection: "row" }}>
+        <View style={{ width: LIST_W, minHeight: 0, borderRightWidth: spec.border, borderRightColor: color("ink") }}>
+          <ChatListHead />
+          <ChatList activeId={current} onOpen={open} full />
         </View>
-      </ScrollView>
+        <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+          {current ? (
+            <>
+              <ThreadHead chatId={current} />
+              <View style={{ flex: 1, minHeight: 0 }}>
+                <ChatDetail key={current} id={current} embedded />
+              </View>
+            </>
+          ) : chats.isLoading ? null : (
+            <EmptyThread />
+          )}
+        </View>
+      </View>
     </DesktopShell>
+  );
+}
+
+function EmptyThread() {
+  const t = useT();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{t.noFriendsYet}</Text>
+    </View>
+  );
+}
+
+/** Naam, ondertitel en "Profiel →" boven het gesprek. */
+function ThreadHead({ chatId }: { chatId: string }) {
+  const t = useT();
+  const lang = useLang();
+  const router = useRouter();
+  const spec = useThemeSpec();
+  const { myUserId, list } = useSortedChats();
+  const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId) });
+  const chat = list.find((c) => c.id === chatId);
+  if (!chat) return null;
+  const isGroup = chat.type === "group";
+  const other = isGroup ? null : otherMember(chat, myUserId);
+  const since = other ? (friendships.data ?? []).find((f) => f.other.id === other.id && f.status === "accepted")?.accepted_at : null;
+  const sub = isGroup
+    ? `${t.group} · ${chat.members.length} lincs`
+    : since
+      ? `${t.lincSince} ${new Date(since).toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")} '${String(new Date(since).getFullYear()).slice(2)}`
+      : "";
+  return (
+    <View style={{ height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16, paddingHorizontal: 24, borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12, flexShrink: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={[serif(), { fontSize: 26, lineHeight: 28, color: color("ink"), flexShrink: 1 }]}>
+          {chatTitle(chat, myUserId)}
+        </Text>
+        {sub ? <MonoLink label={sub} on={false} /> : null}
+      </View>
+      {isGroup ? (
+        <MonoLink label={`${t.scrProfile} →`} active onPress={() => router.push(`/group/${chat.id}` as never)} />
+      ) : other?.username ? (
+        <MonoLink label={`${t.scrProfile} →`} active onPress={() => router.push(`/user/${other.username}` as never)} />
+      ) : null}
+    </View>
   );
 }

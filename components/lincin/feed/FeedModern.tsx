@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 
 import { columnWidth, LincinScreen } from "@/components/lincin/Chrome";
@@ -7,7 +7,8 @@ import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { GUTTER, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { chatTitle, listMyChats, otherMember } from "@/lib/api/chats";
-import { votePoll } from "@/lib/api/polls";
+import { usePollVote } from "@/lib/lincin/poll";
+import { useImageRatio } from "@/lib/lincin/ratio";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, GLASS, hueFor, useScheme, type FriendColor, type Hue } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
@@ -111,15 +112,19 @@ export function FeedModern() {
         <View key={`grid-${s.key}`} style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP, marginBottom: 14 }}>
           {s.posts.map((p, j) => {
             const span = j === 0 && s.posts.length !== 2 ? 2 : 1;
+            // Een foto zoals Instagram: rand tot rand over het scherm, de
+            // hoogte uit zijn eigen verhouding. De andere soorten blijven tegels.
+            const photo = p.media.kind === "foto";
             return (
               <Tile
                 key={p.id}
                 post={p}
-                width={span === 2 ? w : half}
+                bleed={photo ? PAD : 0}
+                width={photo ? w + PAD * 2 : span === 2 ? w : half}
                 fc={friendColor(hueOf(p), scheme)}
                 myUserId={myUserId}
                 onOpen={() => f.openPost(p)}
-                onPrivate={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
+                onPrivate={f.isMine(p.authorId) ? undefined : () => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
               />
             );
           })}
@@ -173,6 +178,7 @@ export function FeedModern() {
 function Tile({
   post: p,
   width,
+  bleed = 0,
   fc,
   myUserId,
   onOpen,
@@ -180,10 +186,12 @@ function Tile({
 }: {
   post: CardPost;
   width: number;
+  /** Zijmarge om over heen te lopen: een foto staat rand tot rand. */
+  bleed?: number;
   fc: FriendColor;
   myUserId: string;
   onOpen: () => void;
-  onPrivate: () => void;
+  onPrivate?: () => void;
 }) {
   const m = p.media;
   const t = useT();
@@ -191,6 +199,8 @@ function Tile({
   const isImg = m.kind === "foto" || (m.kind === "link" && !!m.image);
   // Referentie #2b: "Noor · Het licht om 22:19". Zonder titel: de naam en de tijd.
   const line1 = `${p.authorName} · ${p.untitled ? timeLabel(p.createdAt, t, lang) : p.title}`;
+  const ratio = useImageRatio(bleed && m.kind === "foto" ? m.uri : null, m.kind === "foto" ? m.cacheKey : undefined);
+  const height = bleed ? Math.round(width / ratio) : ROW_H;
   const bg = isImg ? "rgba(0,0,0,.2)" : m.kind === "muziek" ? MUSIC : m.kind === "kleur" ? m.hex : GLASS.fill;
   return (
     // Bewust géén `accessibilityRole="button"`: op web wordt dat een
@@ -198,7 +208,10 @@ function Tile({
     <Pressable
       accessibilityLabel={`${p.title}, ${p.authorName}`}
       onPress={onOpen}
-      style={[{ width, height: ROW_H, overflow: "hidden", backgroundColor: bg }, glass(!isImg && m.kind !== "muziek")]}
+      style={[
+        { width, height, marginHorizontal: -bleed, overflow: "hidden", backgroundColor: bg },
+        glass(!isImg && m.kind !== "muziek"),
+      ]}
     >
       {m.kind === "foto" ? (
         <SafeImage uri={m.uri} cacheKey={m.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
@@ -264,9 +277,11 @@ function Tile({
         <Mono variant="tiny" color={INK} numberOfLines={1} style={{ flex: 1, letterSpacing: 0.9 }}>
           {line1}
         </Mono>
-        <Pressable accessibilityRole="button" accessibilityLabel="Privaat bericht" onPress={onPrivate} hitSlop={8}>
-          <Text style={{ color: INK, fontSize: 12, lineHeight: 14, opacity: 0.8 }}>✉</Text>
-        </Pressable>
+        {onPrivate ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Privaat bericht" onPress={onPrivate} hitSlop={8}>
+            <Text style={{ color: INK, fontSize: 12, lineHeight: 14, opacity: 0.8 }}>✉</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -274,28 +289,12 @@ function Tile({
 
 function PollTile({ media, fill, myUserId }: { media: Extract<CardPost["media"], { kind: "poll" }>; fill: string; myUserId: string }) {
   const poll = media.poll;
-  const [mine, setMine] = useState<string | null>(poll.my_vote_option_id);
-  const counts = poll.options.map((o) => {
-    let n = o.vote_count;
-    if (poll.my_vote_option_id === o.id) n -= 1;
-    if (mine === o.id) n += 1;
-    return n;
-  });
-  const total = counts.reduce((a, b) => a + b, 0);
-  async function vote(id: string) {
-    if (id === mine) return;
-    setMine(id);
-    try {
-      await votePoll({ optionId: id, userId: myUserId, pollId: poll.id });
-    } catch {
-      setMine(poll.my_vote_option_id);
-    }
-  }
+  const { mine, counts, total, vote } = usePollVote(poll, myUserId);
   return (
     <View style={{ flex: 1, padding: 12, justifyContent: "center", gap: 5 }}>
       {poll.options.slice(0, 4).map((o, i) => {
         const pct = total ? Math.round((counts[i] / total) * 100) : 0;
-        const on = mine === o.id;
+        const on = mine.has(o.id);
         return (
           <Pressable key={o.id} accessibilityRole="button" accessibilityLabel={`${o.label}, ${counts[i]}`} onPress={() => vote(o.id)} style={{ height: 24, backgroundColor: GLASS.strong, overflow: "hidden" }}>
             <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, backgroundColor: fill }} />

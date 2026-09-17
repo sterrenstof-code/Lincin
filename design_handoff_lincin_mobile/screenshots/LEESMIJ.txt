@@ -1,0 +1,10 @@
+Lincin — schermafbeeldingen
+
+6 mappen: thema (kleur / magazine / modern) x weergave (licht / donker).
+Elke map bevat 11 schermen, 402x874 px, iPhone-frame inbegrepen.
+
+01 feed · 02 bijdrage · 03 vriendprofiel · 04 gesprekken · 05 gesprek
+06 events · 07 jij · 08 instellingen · 09 meldingen · 10 nieuwe bijdrage · 11 lege staat
+
+De contactbladen per thema (alle 11 schermen op een blad, 1680x2670) staan in /contactbladen.
+Bron: Lincin Final.dc.html + LincinApp.dc.html

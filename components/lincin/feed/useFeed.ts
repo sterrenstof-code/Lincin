@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { listMyFriendships } from "@/lib/api/friends";
-import { listUnifiedFeed } from "@/lib/api/posts";
+import { listUnifiedFeed, type FeedItem } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
-import { useLang, useT } from "@/lib/i18n";
+import { useLang, useT, type Dict } from "@/lib/i18n";
 import { openPost as openPostAnywhere, openProfile as openProfileAnywhere } from "@/lib/lincin/desktop";
 import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
@@ -75,13 +75,10 @@ export function useFeed() {
     }, [qc, myUserId]),
   );
 
-  const cards = useMemo(
-    () =>
-      (feed.data ?? [])
-        .map((i) => toCardPost(i, t))
-        .filter((c): c is CardPost => !!c && c.authorId !== myUserId),
-    [feed.data, t, myUserId],
-  );
+  // Je eigen bijdragen staan er ook tussen, onder "Jij" — in elke weergave
+  // en elk thema. Ze tellen nooit als nieuw en je stuurt jezelf geen bericht.
+  const cards = useMemo(() => ownCards(feed.data, t, myUserId), [feed.data, t, myUserId]);
+  const isMine = useCallback((authorId: string) => authorId === myUserId, [myUserId]);
   const groups = useMemo(() => groupByFriend(cards), [cards]);
   const timeGroups = useMemo(() => groupByTime(cards, t, lang), [cards, t, lang]);
   /** Nieuwste eerst, over alle vrienden heen. */
@@ -100,7 +97,12 @@ export function useFeed() {
   const reactions = usePostReactions(postIds, myUserId);
 
   // ---- gelezen ----
-  const { seen } = useSeenPosts();
+  const { seen: seenPosts } = useSeenPosts();
+  /** Gelezen: wat je opende of voorbij scrolde, en alles wat je zelf maakte. */
+  const seen = useMemo(() => {
+    const own = cards.filter((c) => c.authorId === myUserId).map((c) => c.id);
+    return own.length ? new Set([...seenPosts, ...own]) : seenPosts;
+  }, [seenPosts, cards, myUserId]);
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
 
   const refresh = useCallback(
@@ -116,10 +118,15 @@ export function useFeed() {
     markSeen(p.id);
     openPostAnywhere(p.id);
   }, []);
-  const openProfile = useCallback((g: { username: string | null }) => {
-    if (g.username) openProfileAnywhere(g.username);
-  }, []);
+  const openProfile = useCallback(
+    (g: { username: string | null; authorId?: string }) => {
+      if (g.authorId === myUserId) router.push("/profile");
+      else if (g.username) openProfileAnywhere(g.username);
+    },
+    [myUserId, router],
+  );
   const privateAbout = useCallback((g: { authorId: string; name: string }, p?: CardPost) => {
+    if (g.authorId === myUserId) return;
     setSheet({
       friendId: g.authorId,
       friendName: g.name,
@@ -127,7 +134,7 @@ export function useFeed() {
       postId: p?.href ? p.id : undefined,
       postTitle: p?.title,
     });
-  }, []);
+  }, [myUserId]);
   const compose = useCallback(() => router.push("/post-compose"), [router]);
 
   const empty = !feed.isLoading && cards.length === 0;
@@ -155,6 +162,7 @@ export function useFeed() {
     openPost,
     openProfile,
     privateAbout,
+    isMine,
     compose,
     empty,
   };
@@ -180,8 +188,16 @@ export function useFeedCard(id: string | undefined) {
     staleTime: 30_000,
   });
   return useMemo(() => {
-    const cards = (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c): c is CardPost => !!c && c.authorId !== myUserId);
+    const cards = ownCards(feed.data, t, myUserId);
     const card = id ? cards.find((c) => c.id === id) ?? null : null;
     return { card, number: id ? numberMap(cards).get(id) ?? null : null };
   }, [feed.data, t, myUserId, id]);
+}
+
+/** Alle kaarten van de feed; die van jezelf onder de naam "Jij". */
+function ownCards(items: FeedItem[] | undefined, t: Dict, myUserId: string): CardPost[] {
+  return (items ?? [])
+    .map((i) => toCardPost(i, t))
+    .filter((c): c is CardPost => !!c)
+    .map((c) => (c.authorId === myUserId ? { ...c, authorName: t.me, initial: t.me.slice(0, 1).toUpperCase() } : c));
 }

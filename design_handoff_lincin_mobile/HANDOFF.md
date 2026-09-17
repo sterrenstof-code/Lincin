@@ -1,5 +1,7 @@
 # Lincin — development handoff (single file)
 
+**Version 2.1 · 17 September 2026 · Kleur = default theme, dark = default mode.** New since 2.0: dark default, verloop gradient, band ticker, Rubrieken tab bar, comment reactions, lightbox, poll composer — see the table below.
+
 ## Prompt for Claude Code / the dev team
 
 > Read this file top to bottom. Then open `LincinApp.dc.html` (the complete interactive prototype: template + logic + NL/EN/DE dictionaries) and `Lincin Final.dc.html` (board with all 11 screens × 3 themes) and `Lincin Desktop Opties.dc.html` (desktop + mobile references for the Magazine and Modern themes).
@@ -13,6 +15,53 @@
 > 6. Compare every screen against `screenshots/` and the prototype at 402 × 874. Fidelity is high — colours, type, spacing, copy are final.
 >
 > Ask before inventing anything the prototype does not show. Do not port the HTML runtime files (`support.js`, `ios-frame.jsx`, `image-slot.js`).
+
+---
+
+## Version 2.1 — what is NEW, what is UNCHANGED
+
+Handoff of **17 September 2026**. Everything is marked so you can see at a glance what changed since the 2.0 package.
+
+### NEW in 2.1 (build these)
+| # | Change | Where in this doc | Impact |
+|---|---|---|---|
+| 1 | **Light/dark follows the device** (`prefers-color-scheme`) as the default; the user can override to Licht or Donker in Settings, which then persists. Dark = "nachtpapier" (ink-black paper, 18 % friend tint). | Colour — dark | Theme provider |
+| 2 | **"Verloop" page tint** — background is a vertical gradient: current friend's tint on top, the **next** friend's tint at the bottom (other screens fade to paper). | Page tint | Feed + tinted screens |
+| 3 | **Band ticker** — a friend band with unread posts replaces the red "2 nieuw" chip and the count column with a scrolling mono line of what is new. Read bands stay static. | Global chrome › Motion | Feed band component |
+| 4 | **New footer tabs, model "Rubrieken"** — 4-column grid, numbered 01–04, name under the number, active cell filled in the friend colour of the moment. Replaces the icon-above-label tab bar. | Footer tabs | Tab bar (rewrite) |
+| 5 | **Reactions on comments** — every comment gets reaction chips + a ☺ picker (6 emoji). Before, reactions existed only on the post itself. | Comment reactions | Post page comments |
+| 6 | **Lightbox** — tapping a photo opens it full-screen, always full width, height from the image's real pixel ratio, so landscape and portrait both display correctly. Meta + px-size + orientation shown. | Lightbox | New component |
+| 7 | **Poll composer** — kind `poll` in Nieuwe bijdrage now opens a real choice editor (2–4 numbered options, add/remove, one-vote ↔ multiple-choice toggle). The question is the post title. | Poll composer | Compose screen |
+| 8 | **Several photos per post** — a post can carry up to 6 images. Card and post page show a scroll-snap **carousel** (edge-to-edge, `scroll-snap-type:x mandatory`, one image per frame) with a counter chip `01 / 03` top-right and dash indicators bottom-centre (active 16px, rest 6px). Compose lets you drop several photos: a slot carousel with `+ foto erbij` / `−`, up to 6. | Photo carousel | Card, post, compose |
+| 9 | **Screenshots for all three themes × light/dark** (66 PNG, 402 × 874) plus 6 contact sheets. | Assets | Reference only |
+
+### Removed since 2.0
+- The **"breathing" tint overlay** that pulsed while scrolling — tried, judged too busy, taken out. Do not build it.
+- The **acid marker bar** on the active tab (superseded by item 4).
+- The old icon-glyph tab bar (◫ ◌ ◷ ◍ above the label).
+
+### UNCHANGED since 2.0 (already specified, still valid)
+Screen inventory (11 screens) · navigation and routing · post card "7h" and all seven media kinds · feed grouping (per friend / by time), read state, pull-to-refresh, end card · post page, friend profile, chats, thread (mentions strip, quick reactions, replies, emoji/GIF bar) · events incl. draft event from a post · profile, settings, notifications, empty state · private-message sheet · typography, shape, spacing, hit targets · the Magazine and Modern themes · NL/EN/DE dictionaries · data model and session state.
+
+**In short:** structure and features did not change. What changed is the Kleur skin (dark default, gradient, ticker), the tab bar, and three functional additions: comment reactions, lightbox, poll composer.
+
+### Desktop — DECIDED: model 3c “Prikbord + lade”, posts and chats full width
+`Lincin Desktop.dc.html` is rebuilt on model **3c** and is now interactive: 
+- **Feed** — rail 196 px · feed · chat list 300 px. Full-width friend bands in the friend colour (name Archivo 900 condensed + a mono line of what is new), cards in an auto-fill grid (min 330 px) with a 34 px colour spine carrying `№` and `by · kind · time`, photo carousel inside the card, title + caption + reactions + comment count below.
+- **Click a card → the post page, full width**: the rail collapses to 64 px, the chat list disappears, the carousel runs edge to edge with ‹ › and dash indicators, and the bottom band holds title/caption/body + reaction chips + ☺ picker on the left and a 420 px **comment column** on the right where you can actually write comments (Enter or ↑) and react per comment. `← Feed` or × returns.
+- **A conversation is also full width**: Gesprekken = list 280 px + thread over the rest, mentions strip on top, working input, bubbles max 620 px.
+- Profile, Events, Jij (settings incl. language + light/dark/device) and Nieuwe bijdrage (multi-photo carousel up to 6, poll editor) are in the same file. Light/dark follows the device by default; the rail toggle cycles device → licht → donker.
+- The previous desktop is kept as `Lincin Desktop v1.dc.html` for reference.
+
+### Earlier open question (resolved above)
+**Desktop navigation.** The current 3-column desktop puts feed, post, profile and chat in one right-hand panel, which makes it unclear where you are. Three replacement models are drawn in `Lincin Desktop Opties.dc.html`, section 3 (1280 × 800):
+- **3a Index + lezer** — numbered index of all posts (column 2) + one large reader (column 3); active index row filled in the friend colour; chats are their own screen. Keyboard ↑↓/⏎.
+- **3b Diavoorstelling** — one post fills the screen; ← → moves through that friend's posts, ↑ ↓ switches friend; colour rail of friends on the left, per-friend progress bar on top; comments in a right column.
+- **3c Prikbord + lade** — closest to today: full-width friend bands in colour, cards with a colour spine + big number, and a post opens in a wide **drawer under the feed** instead of the right panel; the right panel then only ever shows chats.
+
+- **3d Volle breedte · bijdrage** and **3e Volle breedte · gesprek** — applies to all three models: a post and a conversation can each take the WHOLE window, never all panes at once. Opening a post collapses the nav rail to 64 px and hides the index/chat panel (⤢ or double-click opens, Esc or × closes); the photo carousel then runs edge to edge with ‹ › and dash indicators, title + reactions bottom-left and a 420 px comment column bottom-right. Gesprekken is its own screen: list 280 px left, thread filling the rest with the mentions strip on top; bubbles stay readable through a 620 px max line width, not a narrow column.
+
+**Chosen: 3c**, with 3d/3e (full-width post and conversation) included — built out in `Lincin Desktop.dc.html`.
 
 ---
 
@@ -72,13 +121,14 @@ The bundled files are **design references written in HTML** (interactive prototy
 - Accent acid `--acid` **#E5FF3A** (call-to-action cards, active tab in sheets) · Red `--red` **#D8321F** (unread/new)
 - Friend colours (each friend/group owns one): orange **#F06A2B** (ink on it #141414), blue **#2F5BFF** (ink #F2EFE8), ochre **#E0B64A** (#141414), green **#4C9A63** (#F2EFE8), red **#D8321F** (#F2EFE8), acid **#E5FF3A** (#141414)
 
-### Colour — dark (“donker”)
+### Colour — dark (“donker” / “nachtpapier”) — NEW in 2.1
+Mode follows the **device** by default (`prefers-color-scheme`, live-updating); an explicit Licht/Donker choice in Settings overrides and persists. Dark = ink-black paper with 18 % friend tint, bands in full friend colour, cards dark with paper-coloured 1.5px lines.
 - Paper **#1A1917** · Paper 2 **#232220** · Ink **#EDE8DD** · Dim rgba(237,232,221,.62) · Rule rgba(237,232,221,.20)
 - Acid #D9F04A · Red #E4553F
 - Friend colours (ink on all = #1A1917): orange #D9764A, blue #5F7FE6, ochre #C9A94F, green #5E9C72, red #CF5442, acid #D2E85A
 
-### Page tint
-The screen background is `color-mix(in oklch, <friendColour> 42%, paper)` (dark: 18%) for the friend currently in view (feed), the chat partner (thread), the post’s author (post/profile) or the chosen swatch (compose). Transition `background .7s ease`.
+### Page tint — “verloop” — NEW in 2.1
+The screen background is a vertical gradient, not a flat fill. Feed (per friend): current friend tint 0–38 %, then blends to the **next** friend’s tint at 100 % — the page anticipates who comes next. Other tinted screens (thread, post, profile, compose): tint 0–30 %, blending to plain paper at 100 %. Tint = `color-mix(in oklch, <friendColour> 42%, paper)` (dark: 18%) for the friend currently in view (feed), the chat partner (thread), the post’s author (post/profile) or the chosen swatch (compose). Transition `background .7s ease`.
 
 ### Typography (Google Fonts)
 - **Archivo** variable (wdth 62–125, wght 500–900). Headlines: weight 900, `font-stretch: 75%`, uppercase, line-height .9–1, letter-spacing −.01em. Body 15px/1.35 regular.
@@ -102,9 +152,12 @@ Scale: mono meta 9–11px · body 13–15px · serif caption 15–17px (cards) /
 
 ## Global chrome
 
+**Motion (Kleur only)** — NEW in 2.1
+- **Ticker**: in a friend band that has unread posts, the red “2 nieuw” chip and the count/time column are replaced by a scrolling mono line (600 9px uppercase, .1em, edge-faded 10 % mask): `2 NIEUW · FOTO 22:41 · PLEK 22:58 ·` repeated, translateX 0 → −50 % linear, duration = max(7 s, 0.28 s × chars). Read bands are static. Pause when reduce-motion is on.
+
 **Header** (all screens except thread/post/profile/settings/notifications/compose which use their own top row): 18px padding, mono 11px uppercase. Left “Lincin” (600). Right: counter (feed: `01 / 05` current friend / friends), **◉ notifications** 32×32 outlined (red 9px square badge when unread), **+ new post** 32×32 filled ink.
 
-**Footer tabs**: box `border 1.5px ink`, margin `10px 18px 34px`, four equal cells 60px high, glyph (mono 16px) above label (Archivo 700 10px uppercase, .1em). Active cell = ink background / paper text. Cells: ◫ Feed · ◌ Gesprekken (red 7px dot when unread) · ◷ Events · ◍ Jij. Thread → Gesprekken active; post/profile → Feed; settings/notifications → Jij.
+**Footer tabs — “Rubrieken”** — NEW in 2.1 (replaces the 2.0 icon tab bar): box `border 1.5px ink`, margin `10px 18px 34px`, 4-column grid (`minmax(0,1fr)`), cells 56px high, padding 0 10px, 1px `rule` dividers between cells, paper background. Each cell is left-aligned, two lines: number (mono 500 9px: `01 02 03 04`, red 6px square after `02` when unread) above the name (Archivo 900 uppercase 13px, stretch 75 %; 62 % for names longer than 8 chars so “Gesprekken” never truncates). Active cell = filled in the **friend colour of the moment** (feed: friend in view; thread: chat partner; post/profile: author) with that colour’s ink; when no friend is in view (chats list, events, jij, settings…) active = ink fill / paper text. Inactive = dim ink. Order: 01 Feed · 02 Gesprekken · 03 Events · 04 Jij. Thread → 02 active; post/profile → 01; settings/notifications → 04.
 
 ---
 
@@ -185,6 +238,12 @@ Dim overlay rgba(20,20,20,.35); bottom sheet paper, top border, padding 16px 18p
 
 ---
 
+**Comment reactions** (post page) — NEW in 2.1: every comment has a row of reaction chips (24px, 1.5px ink border, emoji 12px + mono count; mine = acid fill) plus a dashed ☺ button. Tap ☺ → 6-emoji picker (❤️ 😂 🔥 😮 👏 🥹, 32px cells) in a bordered box under the comment; picking toggles my reaction and closes the picker. State `cReacts{postNo:idx → {emoji: bool}}`.
+
+**Lightbox** — NEW in 2.1: tapping any photo/scribble media (feed card, post hero) opens a full-screen lightbox — 92 %-opaque ink ground, mono meta line top (`№ 01 · Noor · foto · 22:41`) with a bordered ×, the image centred in a 1.5px-framed box whose `aspect-ratio` is the image's REAL pixel ratio (read from the loaded image; falls back to 3:2 for photos, 3:4 for scribbles, 1:1 for covers). The frame is ALWAYS full width (edge to edge, no side gaps, no border); its height comes from the image's own ratio, so landscape stays short and portrait tall. The centre area scrolls vertically when a very tall image exceeds the viewport; the image is `object-fit:cover` inside its exact-ratio frame, so it never letterboxes. **With several photos** the lightbox becomes a slideshow: ‹ › buttons over the image (40px, 1.5px paper border on a 50 %-dark ground), counter `01 / 03` in the top bar, a 52px thumbnail filmstrip under the caption (active = full-opacity paper border), ←/→ keys, and it opens on the image you tapped. Footer: title (serif 24px) + `3024 × 4032 px · staand|liggend|vierkant`. Close = tap the ground or Esc.
+
+**Poll composer** — NEW in 2.1: in Nieuwe bijdrage, picking kind `poll` swaps the media box for a choice editor — 2 to 4 numbered rows (01–04) with text inputs, × to remove (only above 2), a dashed “+ Keuze erbij” row, and a footer toggle `één stem per linc` ↔ `meerdere keuzes`. The question itself is the post title. Other kinds keep the image slot.
+
 ## State (per app session)
 `screen, prev, view(friends|time), feedIdx, openFriends{}, seen{friend→bool}, post, vriend, chat, sent{chat→msg[]}, draft, replyTo, activeMsg, msgReacts{}, comments{postNo→[]}, extra{postNo→emoji→bool}, reacts{}, votes{postNo→idx}, playing{postNo}, rsvp{}, draftEvent, toggles{}, lang(nl|en|de, persisted), stand(licht|donker), reactBoxOpen, chatBoxOpen, reactTab, gifQuery, readNotes{}, compose fields`.
 
@@ -201,14 +260,15 @@ Profile › Settings › **Thema**: `kleur` (default, this README) · `magazine`
 Implementation hint: `FeedScreen` switches on `theme` between `FeedKleur`, `FeedMagazine`, `FeedModern`; each consumes the same `posts`/`friends` query.
 
 ## Assets
-- `screenshots/01–11-*.png` — one capture per screen (light mode, as shown in the user's preview).
+- `screenshots/<thema>-<licht|donker>/01–11-*.png` — NEW in 2.1: all 11 screens for every theme × mode (66 PNG, 402 × 874, iPhone frame included), plus `screenshots/contactbladen/*.png` (all 11 screens of one theme on one sheet, 1680 × 2670).
 - Fonts: Archivo, Instrument Serif, IBM Plex Mono (Google Fonts).
 - Images are placeholders (`<image-slot>`) — real photos/covers come from the backend.
 - Glyphs used as icons: ◉ + ◫ ◌ ◷ ◍ ☺ ↑ ↩ ▶ ❚❚ × ✓ →. Replace with the app's icon set if preferred, same sizes.
 
 ## Files
 - `LincinApp.dc.html` — the entire app (template + logic + dictionaries). Props: `start` (screen), `stand` (licht|donker).
-- `Lincin Final.dc.html` — handoff board: 11 phones, light/dark switch.
+- `Lincin Final.dc.html` — handoff board: 11 phones, light/dark switch (dark = default).
+- `Lincin Kleur Verdieping.dc.html` — Kleur exploration rounds 4–7; round 8 (the final skin) = 7a verloop + 7i ticker + 7l nachtpapier, applied in `LincinApp.dc.html`.
 - `ios-frame.jsx`, `image-slot.js`, `support.js` — prototype runtime helpers (not to be ported).
 - `Lincin v2.dc.html` — exploration history (rounds 1–7), reference only.
 

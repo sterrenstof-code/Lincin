@@ -1,11 +1,11 @@
 import { usePathname, useRouter } from "expo-router";
-import type { ReactNode } from "react";
-import { Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
-import Svg, { Defs, Ellipse, RadialGradient, Rect, Stop } from "react-native-svg";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { color, MODERN_GRADIENT, pageTint, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { lincinType, mono } from "@/lib/design/type";
+import { color, inkOn, MODERN_GRADIENT, pageTint, paperHex, useScheme, useThemeSpec, type Scheme } from "@/lib/design/theme";
+import { FONT, lincinType, mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
@@ -21,8 +21,11 @@ import { BORDER, GUTTER, line, RADIUS, SquareBtn } from "./ui";
  *   KOP      "Lincin" links; rechts een teller, ◉ meldingen, + nieuw.
  *            Niet op schermen die hun eigen bovenrij hebben (gesprek,
  *            bladzijde, profiel, instellingen, meldingen, nieuw).
- *   BLAD     het papier, getint met de kleur van wie in beeld is.
- *   VOET     vier tabbladen in één kader: Feed · Gesprekken · Events · Jij.
+ *   BLAD     het papier, getint met de kleur van wie in beeld is — als
+ *            verloop (2.1): bovenaan de tint, onderaan de volgende vriend
+ *            (feed) of het papier (elders).
+ *   VOET     "Rubrieken" (2.1): vier genummerde cellen in één kader,
+ *            01 Feed · 02 Gesprekken · 03 Events · 04 Jij.
  *
  * De voet staat hier en niet in de tabnavigator: een gesprek en een
  * bladzijde zijn stack-schermen en horen hem óók te hebben, met het
@@ -55,6 +58,8 @@ export function columnWidth(windowWidth: number): number {
 export function LincinScreen({
   tab,
   tint,
+  tintNext = null,
+  tabTint,
   counter,
   header = "default",
   full = false,
@@ -68,6 +73,17 @@ export function LincinScreen({
   full?: boolean;
   /** De vriendkleur (hex) van wie in beeld is; het blad kleurt mee (alleen in kleur). */
   tint?: string | null;
+  /**
+   * Feed, per vriend: de kleur van de vólgende vriend. Het verloop loopt
+   * dan van `tint` naar deze in plaats van naar papier (HANDOFF 2.1).
+   */
+  tintNext?: string | null;
+  /**
+   * De vriendkleur van het actieve tabblad (alleen in kleur). Standaard
+   * `tint`; een scherm dat wel tint maar geen vriend in beeld heeft
+   * (nieuwe bijdrage) geeft `null`.
+   */
+  tabTint?: string | null;
   /** Rechts in de kop, mono en gedempt: `01 / 05` of de schermnaam. */
   counter?: string;
   /**
@@ -106,19 +122,19 @@ export function LincinScreen({
       </DesktopShell>
     );
   }
-  const bg = spec.gradient ? MODERN_GRADIENT.base : tint && spec.tint ? pageTint(tint, scheme) : color("paper");
+  const verloop = !spec.gradient && spec.tint && !!tint;
+  const bg = spec.gradient ? MODERN_GRADIENT.base : color("paper");
   const wide = !full && columnWidth(width) !== width;
+  const activeTint = spec.tint ? (tabTint === undefined ? tint : tabTint) ?? null : null;
 
   return (
     <View
       style={[
         { flex: 1, backgroundColor: bg, paddingTop: bleed ? 0 : insets.top },
-        Platform.OS === "web"
-          ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object)
-          : null,
       ]}
     >
       {spec.gradient ? <ModernBackdrop width={width} height={height} /> : null}
+      {verloop ? <Verloop tint={tint!} next={tintNext} scheme={scheme} /> : null}
       <View
         style={{
           flex: 1,
@@ -130,10 +146,71 @@ export function LincinScreen({
         {header === "none" ? null : <Header counter={counter} />}
         {header === "default" || header === "none" ? null : header}
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
-        <FooterTabs active={tab} bottomInset={Math.max(insets.bottom, 16)} />
+        <FooterTabs active={tab} tint={activeTint} bottomInset={Math.max(insets.bottom, 16)} />
       </View>
     </View>
   );
+}
+
+/**
+ * Het verloop van kleur (HANDOFF 2.1 §Page tint — "verloop").
+ *
+ * Geen vlakke tint meer maar een verticaal verloop. In de feed: de tint
+ * van de vriend in beeld van 0 tot 38%, dan naar de tint van de vólgende
+ * vriend op 100% — het blad kijkt vooruit. Elders (gesprek, bladzijde,
+ * profiel, nieuw): de tint van 0 tot 30%, dan naar papier.
+ *
+ * Een CSS-verloop laat zich niet overvloeien, dus de overgang van .7s is
+ * een laag die erbovenop invloeit: de vorige blijft eronder liggen tot de
+ * nieuwe er helemaal staat.
+ */
+function Verloop({ tint, next, scheme }: { tint: string; next: string | null; scheme: Scheme }) {
+  const top = pageTint(tint, scheme);
+  const bottom = next ? pageTint(next, scheme) : paperHex(scheme);
+  const hold = next ? 0.38 : 0.3;
+  const key = `${top}-${bottom}-${hold}`;
+  const [layers, setLayers] = useState<{ key: string; top: string; bottom: string; hold: number }[]>(() => [
+    { key, top, bottom, hold },
+  ]);
+  const fade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    setLayers((l) => {
+      if (l[l.length - 1]?.key === key) return l;
+      return [l[l.length - 1], { key, top, bottom, hold }].filter(Boolean);
+    });
+    fade.setValue(0);
+    Animated.timing(fade, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== "web" }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return (
+    <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
+      {layers.map((l, i) => (
+        <Animated.View
+          key={l.key}
+          style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, opacity: i === layers.length - 1 && layers.length > 1 ? fade : 1 }}
+        >
+          <Svg width="100%" height="100%" preserveAspectRatio="none">
+            <Defs>
+              {/* Het id draagt de kleuren: op web staan meerdere schermen tegelijk
+                  in het document, en `url(#…)` pakt het eerste met die naam. */}
+              <LinearGradient id={gradientId(l.key)} x1="0" y1="0" x2="0" y2="1">
+                <Stop offset={0} stopColor={l.top} />
+                <Stop offset={l.hold} stopColor={l.top} />
+                <Stop offset={1} stopColor={l.bottom} />
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId(l.key)})`} />
+          </Svg>
+        </Animated.View>
+      ))}
+    </View>
+  );
+}
+
+function gradientId(key: string): string {
+  return `verloop-${key.replace(/[^a-z0-9]/gi, "")}`;
 }
 
 /**
@@ -228,18 +305,43 @@ export function Header({ counter }: { counter?: string }) {
   );
 }
 
-/** ◫ Feed · ◌ Gesprekken · ◷ Events · ◍ Jij */
-export function FooterTabs({ active, bottomInset = 34 }: { active: Tab; bottomInset?: number }) {
+/**
+ * De voet, model "Rubrieken" (HANDOFF 2.1 §Footer tabs).
+ *
+ * Eén kader, vier gelijke kolommen van 56px met haarlijnen ertussen. Elke
+ * cel links uitgelijnd, twee regels: het nummer (mono 500 9px; na `02` een
+ * rood blokje van 6px als er iets ongelezen is) boven de naam (de kopletter
+ * op 13px; in kleur Archivo 900 op 75% breed, en op 62% voor een naam
+ * langer dan acht tekens, zodat "Gesprekken" nooit afbreekt).
+ *
+ * Het actieve vak is gevuld: in kleur met de vriendkleur van het moment
+ * (de vriend in beeld, de gesprekspartner, de maker) en de inkt die daarop
+ * hoort; zonder vriend in beeld — en in magazine en modern — met inkt en
+ * papier erop. De andere drie zijn gedempt.
+ */
+export function FooterTabs({
+  active,
+  tint = null,
+  bottomInset = 34,
+}: {
+  active: Tab;
+  /** De vriendkleur van het moment (hex), of `null`. */
+  tint?: string | null;
+  bottomInset?: number;
+}) {
   const router = useRouter();
   const t = useT();
   const unread = useUnread();
   const spec = useThemeSpec();
-  const tabs: { id: Tab; label: string; glyph: string; dot: boolean }[] = [
-    { id: "feed", label: t.tabFeed, glyph: "◫", dot: false },
-    { id: "chats", label: t.tabChats, glyph: "◌", dot: unread.chats > 0 && active !== "chats" },
-    { id: "events", label: t.tabEvents, glyph: "◷", dot: false },
-    { id: "you", label: t.tabYou, glyph: "◍", dot: false },
+  const scheme = useScheme();
+  const tabs: { id: Tab; label: string; dot: boolean }[] = [
+    { id: "feed", label: t.tabFeed, dot: false },
+    { id: "chats", label: t.tabChats, dot: unread.chats > 0 && active !== "chats" },
+    { id: "events", label: t.tabEvents, dot: false },
+    { id: "you", label: t.tabYou, dot: false },
   ];
+  const onBg = tint ?? color("ink");
+  const onFg = tint ? inkOn(tint, scheme) : color("paper");
   return (
     <View
       style={{
@@ -256,10 +358,8 @@ export function FooterTabs({ active, bottomInset = 34 }: { active: Tab; bottomIn
     >
       {tabs.map((tab, i) => {
         const on = tab.id === active;
-        // Kleur: het actieve tabblad is een inktvlak. Magazine en modern:
-        // inkt-tekst voor het actieve, de rest gedempt (prototype `tabs`).
-        const fill = on && spec.tabFill;
-        const fg = fill ? color("paper") : on ? color("ink") : spec.tabFill ? color("ink") : color("ink", "inkDim");
+        const fg = on ? onFg : color("ink", "inkDim");
+        const narrow = !spec.serifHeads && tab.label.length > 8;
         return (
           <Pressable
             key={tab.id}
@@ -270,26 +370,38 @@ export function FooterTabs({ active, bottomInset = 34 }: { active: Tab; bottomIn
               if (on) scrollActiveToTop();
               else router.push(TAB_HREF[tab.id] as never);
             }}
-            style={{
-              flex: 1,
-              height: 60,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 5,
-              backgroundColor: fill ? color("ink") : "transparent",
-              borderLeftWidth: i ? BORDER : 0,
-              borderLeftColor: line(),
-            }}
+            style={[
+              {
+                flex: 1,
+                minWidth: 0,
+                height: 56,
+                paddingHorizontal: 10,
+                justifyContent: "center",
+                gap: 3,
+                overflow: "hidden",
+                backgroundColor: on ? onBg : "transparent",
+                borderLeftWidth: i ? 1 : 0,
+                borderLeftColor: color("ink", "postRule"),
+              },
+              Platform.OS === "web"
+                ? ({ transitionProperty: "background-color, color", transitionDuration: "300ms" } as object)
+                : null,
+            ]}
           >
-            <Text style={[lincinType.meta, { fontSize: 16, lineHeight: 18, letterSpacing: 0, textTransform: "none", color: fg }]}>
-              {tab.glyph}
-            </Text>
-            <Text style={[lincinType.tab, { color: fg }]} numberOfLines={1}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Text style={{ ...mono(500), fontSize: 9, lineHeight: 10, color: fg }}>{String(i + 1).padStart(2, "0")}</Text>
+              {tab.dot ? <View style={{ width: 6, height: 6, backgroundColor: color("red") }} /> : null}
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[
+                lincinType.cardTitle,
+                { fontSize: 13, lineHeight: 14, letterSpacing: spec.serifHeads ? 0 : -0.26, color: fg },
+                narrow ? { fontFamily: FONT.headX } : null,
+              ]}
+            >
               {tab.label}
             </Text>
-            {tab.dot ? (
-              <View style={{ position: "absolute", top: 8, right: 12, width: 7, height: 7, backgroundColor: color("red") }} />
-            ) : null}
           </Pressable>
         );
       })}

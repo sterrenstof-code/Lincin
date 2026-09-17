@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  addPhoto: "foto erbij", dropMany: "sleep meerdere foto's — tot 6", pollOptions: "Keuzes", pollAdd: "Keuze erbij", pollOne: "één stem per linc", pollMulti: "meerdere keuzes", pollPh1: "Tent", pollPh2: "Geen tent, auto", pollPhN: "Nog een keuze…", landscape: "liggend", portrait: "staand", square: "vierkant", noImage: "nog geen afbeelding",
   feedA: "Wat je vrienden", feedB: "maken", perFriend: "Per vriend", byTime: "Op tijd",
   emptyKicker: "Nog niemand hier", emptyTitle: "Je feed is zo leeg als een nieuw schetsboek",
   emptyBody: "Lincin toont alleen wat je vrienden maken. Geen vrienden, geen feed — voeg er één toe en het begint.",
@@ -49,9 +50,11 @@ const NL = {
   theme: "Thema", themeSub: "Kleur · Magazine · Modern", themeKleur: "Kleur", themeMagazine: "Magazine", themeModern: "Modern",
   edition: "Editie", editionA: "In deze", editionB: "editie", spotA: "Op", spotB: "spotlight", privateShort: "Privaat",
   noAlgo: "geen algoritme · alleen vrienden",
+  device: "toestel", profileOf: "Profiel van", panelNote: "een gesprek opent op volle breedte", on: "aan", off: "uit",
 };
 
 const EN: typeof NL = {
+  addPhoto: "add photo", dropMany: "drop several photos — up to 6", pollOptions: "Choices", pollAdd: "Add choice", pollOne: "one vote per linc", pollMulti: "multiple choices", pollPh1: "Tent", pollPh2: "No tent, car", pollPhN: "Another choice…", landscape: "landscape", portrait: "portrait", square: "square", noImage: "no image yet",
   feedA: "What your friends", feedB: "make", perFriend: "By friend", byTime: "By time",
   emptyKicker: "Nobody here yet", emptyTitle: "Your feed is as empty as a new sketchbook",
   emptyBody: "Lincin only shows what your friends make. No friends, no feed — add one and it starts.",
@@ -84,9 +87,11 @@ const EN: typeof NL = {
   theme: "Theme", themeSub: "Colour · Magazine · Modern", themeKleur: "Colour", themeMagazine: "Magazine", themeModern: "Modern",
   edition: "Edition", editionA: "In this", editionB: "edition", spotA: "On", spotB: "spotlight", privateShort: "Private",
   noAlgo: "no algorithm · friends only",
+  device: "device", profileOf: "Profile of", panelNote: "a chat opens full width", on: "on", off: "off",
 };
 
 const DE: typeof NL = {
+  addPhoto: "Foto hinzufügen", dropMany: "mehrere Fotos ablegen — bis 6", pollOptions: "Auswahl", pollAdd: "Auswahl hinzufügen", pollOne: "eine Stimme pro Linc", pollMulti: "mehrere Auswahlen", pollPh1: "Zelt", pollPh2: "Kein Zelt, Auto", pollPhN: "Noch eine Auswahl…", landscape: "liegend", portrait: "stehend", square: "quadratisch", noImage: "noch kein Bild",
   feedA: "Was deine Freunde", feedB: "machen", perFriend: "Nach Freund", byTime: "Nach Zeit",
   emptyKicker: "Noch niemand hier", emptyTitle: "Dein Feed ist so leer wie ein neues Skizzenbuch",
   emptyBody: "Lincin zeigt nur, was deine Freunde machen. Keine Freunde, kein Feed — füg einen hinzu und es geht los.",
@@ -119,6 +124,7 @@ const DE: typeof NL = {
   theme: "Thema", themeSub: "Farbe · Magazin · Modern", themeKleur: "Farbe", themeMagazine: "Magazin", themeModern: "Modern",
   edition: "Ausgabe", editionA: "In dieser", editionB: "Ausgabe", spotA: "Im", spotB: "Rampenlicht", privateShort: "Privat",
   noAlgo: "kein Algorithmus · nur Freunde",
+  device: "Gerät", profileOf: "Profil von", panelNote: "ein Gespräch öffnet in voller Breite", on: "an", off: "aus",
 };
 
 export type Dict = typeof NL;

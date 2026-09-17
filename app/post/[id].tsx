@@ -23,8 +23,10 @@ import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
-import { usePostReactions } from "@/lib/lincin/reactions";
-import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
+import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
+import { CommentReactions } from "@/components/lincin/CommentReactions";
+import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
+import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
@@ -44,20 +46,22 @@ import { useToast } from "@/lib/toast";
 const MEDIA_H = 300;
 const STRIP_W = 34;
 
-export default function PostScreen({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+/**
+ * Op desktop (model 3c/3d) is een bijdrage hetzelfde scherm, maar op volle
+ * breedte: `DesktopPost`. Daaronder de telefoonbladzijde, onveranderd.
+ */
+export default function PostRoute(props: { id?: string; embedded?: boolean } = {}) {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
-  // In het desktoppaneel komt het id als prop; als scherm uit de route.
+  const desktop = useIsDesktop();
+  if (desktop && !props.embedded) return <DesktopPost id={props.id ?? String(raw ?? "")} />;
+  return <PostScreen {...props} />;
+}
+
+export function PostScreen({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+  const { id: raw } = useLocalSearchParams<{ id: string }>();
+  // Ingebed komt het id als prop; als scherm uit de route.
   const id = idProp ?? String(raw ?? "");
   const router = useRouter();
-  const desktop = useIsDesktop();
-  // Op desktop is een bladzijde geen scherm maar het paneel rechts.
-  useEffect(() => {
-    if (desktop && !embedded && id) {
-      openPostAnywhere(id);
-      router.replace("/feed");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desktop, embedded, id]);
   const qc = useQueryClient();
   const t = useT();
   const scheme = useScheme();
@@ -104,6 +108,10 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
   const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
+  const commentIds = useMemo(() => (comments.data ?? []).map((c) => c.id), [comments.data]);
+  const commentReactions = useCommentReactions(commentIds, myUserId);
+  /** Welke comment zijn ☺-kiezer open heeft — één tegelijk. */
+  const [pickOpen, setPickOpen] = useState<string | null>(null);
 
   async function send(imageUri?: string) {
     if (!p || !myUserId) return;
@@ -139,9 +147,11 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
     }
   }
 
+  const photo = card?.media.kind === "foto";
   const canEvent = !!p && (/\?/.test(p.caption ?? "") || card?.media.kind === "plek");
   const own = !!p && p.user_id === myUserId;
   const authorName = p ? displayName(p.author) : "";
+  const zoom = p && card ? { number, author: authorName, kind: card.kind, time: hhmm(p.created_at), title: card.title } : undefined;
 
   return (
     <LincinScreen
@@ -182,8 +192,25 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
             </Mono>
           ) : (
             <>
+              {/* Een foto zoals Instagram: rand tot rand over het scherm, de
+                  hoogte uit zijn eigen verhouding (4:5–1.91:1). */}
+              {photo ? (
+                <View style={{ marginHorizontal: -GUTTER, marginBottom: -GAP }}>
+                  <Media
+                    media={card.media}
+                    height={MEDIA_H}
+                    hue={hue}
+                    postId={p.id}
+                    myUserId={myUserId}
+                    size="page"
+                    photoFit="ratio"
+                    zoom={zoom}
+                  />
+                </View>
+              ) : null}
               <Box>
-                {/* beeld met kleurstrook */}
+                {/* beeld met kleurstrook — de andere soorten */}
+                {photo ? null : (
                 <View style={{ flexDirection: "row", height: MEDIA_H }}>
                   <View
                     style={{
@@ -203,11 +230,20 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Media media={card.media} height={MEDIA_H} hue={hue} postId={p.id} myUserId={myUserId} />
+                    <Media
+                      media={card.media}
+                      height={MEDIA_H}
+                      hue={hue}
+                      postId={p.id}
+                      myUserId={myUserId}
+                      size="page"
+                      zoom={zoom}
+                    />
                   </View>
                 </View>
+                )}
                 {/* tekst */}
-                <View style={{ padding: 14, gap: 10, borderTopWidth: BORDER, borderTopColor: line() }}>
+                <View style={{ padding: 14, gap: 10, borderTopWidth: photo ? 0 : BORDER, borderTopColor: line() }}>
                   <Head variant="postTitle">{card.title}</Head>
                   {card.caption ? <Serif variant="quoteLarge">{card.caption}</Serif> : null}
                   {p.body_text && card.media.kind !== "tekst" && p.body_text.trim() !== (p.caption ?? "").trim() ? (
@@ -299,7 +335,19 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
                 {t.comments} · {comments.data?.length ?? p.comment_count ?? 0}
               </Mono>
               {(comments.data ?? []).map((c) => (
-                <CommentRow key={c.id} comment={c} myUserId={myUserId} />
+                <CommentRow
+                  key={c.id}
+                  comment={c}
+                  myUserId={myUserId}
+                  reactions={
+                    <CommentReactions
+                      reactions={commentReactions.grouped(c.id)}
+                      onToggle={(emoji) => commentReactions.toggle(c.id, emoji)}
+                      open={pickOpen === c.id}
+                      onOpenChange={(o) => setPickOpen(o ? c.id : null)}
+                    />
+                  }
+                />
               ))}
             </>
           )}
@@ -330,7 +378,16 @@ export default function PostScreen({ id: idProp, embedded = false }: { id?: stri
   );
 }
 
-function CommentRow({ comment: c, myUserId }: { comment: EntityComment; myUserId: string }) {
+function CommentRow({
+  comment: c,
+  myUserId,
+  reactions,
+}: {
+  comment: EntityComment;
+  myUserId: string;
+  /** De chips en de ☺ onder de comment (HANDOFF 2.1). */
+  reactions?: React.ReactNode;
+}) {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
@@ -362,6 +419,7 @@ function CommentRow({ comment: c, myUserId }: { comment: EntityComment; myUserId
             {c.body}
           </Body>
         ) : null}
+        {reactions}
       </View>
     </View>
   );

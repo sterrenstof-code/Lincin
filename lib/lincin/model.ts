@@ -12,7 +12,15 @@ import { getLang, type Dict, type Lang } from "@/lib/i18n";
  */
 
 export type CardMedia =
-  | { kind: "foto"; uri: string | null; cacheKey?: string; video?: boolean }
+  | {
+      kind: "foto";
+      uri: string | null;
+      cacheKey?: string;
+      video?: boolean;
+      /** HANDOFF 2.1: tot 6 foto's, de omslag eerst. Altijd minstens `[uri]`. */
+      uris: (string | null)[];
+      cacheKeys: (string | undefined)[];
+    }
   | { kind: "tekst"; text: string }
   | { kind: "poll"; poll: PollWithDetails }
   | { kind: "muziek"; cover: string | null; track: string; artist: string; url: string | null }
@@ -116,6 +124,19 @@ function hostOf(url: string | null): string {
   }
 }
 
+/** Een foto, of een album: `album_urls` draagt ze allemaal, de omslag eerst. */
+function photo(p: PostWithAuthor, video = false): CardMedia {
+  const album = !video && (p.album_urls?.length ?? 0) > 1;
+  return {
+    kind: "foto",
+    uri: p.image_url,
+    cacheKey: p.image_path ?? undefined,
+    video,
+    uris: album ? p.album_urls! : [p.image_url],
+    cacheKeys: album ? p.album_urls!.map((_, i) => p.album_paths?.[i]) : [p.image_path ?? undefined],
+  };
+}
+
 function postMedia(p: PostWithAuthor): CardMedia {
   const meta = p.meta ?? {};
   switch (p.kind) {
@@ -130,7 +151,7 @@ function postMedia(p: PostWithAuthor): CardMedia {
     case "link":
     case "video":
       if (p.kind === "video" && p.image_url) {
-        return { kind: "foto", uri: p.image_url, cacheKey: p.image_path ?? undefined, video: true };
+        return photo(p, true);
       }
       return {
         kind: "link",
@@ -143,7 +164,7 @@ function postMedia(p: PostWithAuthor): CardMedia {
       return { kind: "kleur", hex: p.swatch_hex ?? "#E7E3D8" };
     default:
       if (p.image_url) {
-        return { kind: "foto", uri: p.image_url, cacheKey: p.image_path ?? undefined };
+        return photo(p);
       }
       return { kind: "tekst", text: (p.body_text ?? p.caption ?? "").trim() };
   }

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
@@ -22,7 +22,8 @@ import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortDate, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
-import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, openThread, useIsDesktop } from "@/lib/lincin/desktop";
+import { DesktopProfile } from "@/components/lincin/desktop/DesktopProfile";
+import { openPost as openPostAnywhere, openThread, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { markSeen } from "@/lib/read-state";
@@ -48,9 +49,16 @@ type Relation =
   | { kind: "incoming"; friendshipId: string; requesterId: string }
   | { kind: "stranger" };
 
-export default function UserProfileScreen({ username: usernameProp, embedded = false }: { username?: string; embedded?: boolean } = {}) {
-  const router = useRouter();
+/** Op desktop hetzelfde scherm in zijn desktopvorm (`DesktopProfile`); daaronder de telefoon, onveranderd. */
+export default function UserProfileRoute(props: { username?: string; embedded?: boolean } = {}) {
+  const { username: raw } = useLocalSearchParams<{ username: string }>();
   const desktop = useIsDesktop();
+  if (desktop && !props.embedded) return <DesktopProfile username={(props.username ?? raw ?? "").toString().trim().toLowerCase()} />;
+  return <UserProfileScreen {...props} />;
+}
+
+export function UserProfileScreen({ username: usernameProp, embedded = false }: { username?: string; embedded?: boolean } = {}) {
+  const router = useRouter();
   const qc = useQueryClient();
   const t = useT();
   const lang = useLang();
@@ -59,16 +67,8 @@ export default function UserProfileScreen({ username: usernameProp, embedded = f
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "";
   const { username: raw } = useLocalSearchParams<{ username: string }>();
-  // In het desktoppaneel komt de handle als prop; als scherm uit de route.
+  // Ingebed komt de handle als prop; als scherm uit de route.
   const username = (usernameProp ?? raw ?? "").toString().trim().toLowerCase();
-  // Op desktop is een profiel geen scherm maar het paneel rechts.
-  useEffect(() => {
-    if (desktop && !embedded && username) {
-      openProfileAnywhere(username);
-      router.replace("/feed");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desktop, embedded, username]);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
 
@@ -257,6 +257,7 @@ export default function UserProfileScreen({ username: usernameProp, embedded = f
           <PostCard
             key={c.id}
             post={c}
+            bleed
             hue={hue}
             myUserId={myUserId}
             reactions={reactions.grouped(c.id)}

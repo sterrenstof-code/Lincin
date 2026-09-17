@@ -268,8 +268,6 @@ export type ThemeSpec = {
   serifHeads: boolean;
   /** Het blad kleurt mee met de vriend in beeld. Alleen kleur. */
   tint: boolean;
-  /** Actieve tab = inktvlak met papier erop. Anders: inkt-tekst, de rest gedempt. */
-  tabFill: boolean;
   /** De vriendband in de feed gevuld met zijn kleur. Anders papier met kleurbalk. */
   bandFilled: boolean;
   /** Titelstrook van een kaart gevuld met de vriendkleur; anders papier met 6px balk. */
@@ -293,7 +291,6 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: 0,
     serifHeads: false,
     tint: true,
-    tabFill: true,
     bandFilled: true,
     stripFilled: true,
     feedHeader: true,
@@ -307,7 +304,6 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: 0,
     serifHeads: true,
     tint: false,
-    tabFill: false,
     bandFilled: false,
     stripFilled: false,
     feedHeader: false,
@@ -321,7 +317,6 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: 10,
     serifHeads: true,
     tint: false,
-    tabFill: false,
     bandFilled: false,
     stripFilled: false,
     feedHeader: true,
@@ -497,6 +492,21 @@ export function hueFor(id: string | null | undefined): Hue {
 }
 
 /**
+ * De inkt die op een vriendkleur hoort, gegeven alleen het vlak (hex).
+ * Voor wie een kleur doorkreeg zonder zijn tint — het actieve tabblad
+ * (HANDOFF 2.1 §Footer tabs). Onbekend vlak → de inkt van de stand.
+ */
+export function inkOn(fill: string, s: Scheme = getScheme()): string {
+  const f = fill.toLowerCase();
+  for (const scheme_ of [s, s === "dark" ? "light" : "dark"] as Scheme[]) {
+    for (const hue of HUES) {
+      if (FRIEND[scheme_][hue].fill.toLowerCase() === f) return FRIEND[s][hue].ink;
+    }
+  }
+  return inkHex(s);
+}
+
+/**
  * De vriendkleuren volgen de stand (licht of donker), ook in de thema's:
  * dat is wat het prototype doet — modern met stand "licht" toont de
  * lichte vriendkleuren op zijn donkere blad.
@@ -565,21 +575,22 @@ function tripletToHex(triplet: string): string {
  *
  * Licht: 42% vriendkleur op papier; donker: 18%. Gemengd in OKLCH, zoals
  * de CSS `color-mix(in oklch, …)` uit het ontwerp, zodat de tint dezelfde
- * is als in het prototype. Een bijna-grijs papier heeft geen tint van
- * zichzelf; dan neemt het de tint van de vriend over (dat is ook wat CSS
- * doet met een "powerless" hue).
+ * is als in het prototype.
+ *
+ * De tint houdt de kleurtoon van de vriend. Het papier is bijna grijs, en
+ * de browser behandelt zijn toon in `color-mix` als machteloos: hij mengt
+ * alleen lichtheid en verzadiging. Nagemeten in Chrome — groen #4C9A63 op
+ * #F2EFE8 geeft oklch(0.814 0.053 151.4), precies de toon van het groen.
+ * Mengden we de toon van het papier mee, dan trok elke tint naar geel.
  */
-export function pageTint(fill: string, s: Scheme = getScheme()): string {
-  const w = s === "dark" ? 0.18 : 0.42;
+export function pageTint(fill: string, s: Scheme = getScheme(), weight?: { light: number; dark: number }): string {
+  // Desktop mengt zachter (Lincin Desktop.dc.html: 26% licht, 14% donker).
+  const w = weight ? (s === "dark" ? weight.dark : weight.light) : s === "dark" ? 0.18 : 0.42;
   const [Lf, Cf, Hf] = toOklch(fill);
-  const [Lp, Cp, Hp0] = toOklch(paperHex(s));
-  const Hp = Cp < 0.004 ? Hf : Hp0;
-  let dH = Hp - Hf;
-  if (dH > 180) dH -= 360;
-  if (dH < -180) dH += 360;
+  const [Lp, Cp] = toOklch(paperHex(s));
   const L = Lf * w + Lp * (1 - w);
   const C = Cf * w + Cp * (1 - w);
-  const H = (Hf + dH * (1 - w) + 360) % 360;
+  const H = Hf;
   return fromOklch(L, C, H);
 }
 

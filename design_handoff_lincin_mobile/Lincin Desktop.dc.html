@@ -7,12 +7,12 @@
 </head>
 <body>
 <x-dc>
-<helmet data-dc-atomics>
+<helmet data-dc-atomics="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,500..900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,500..900&amp;family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <script src="./image-slot.js"></script>
 <style>
-body{margin:0;font-family:Archivo,'Helvetica Neue',sans-serif;overflow:auto;background:#141414}
+body{margin:0;background:#141414;font-family:Archivo,'Helvetica Neue',sans-serif;overflow:auto}
 a{color:inherit}a:hover{color:#E5FF3A}
 [data-stand]{--p:#F2EFE8;--p2:#E7E3D8;--i:#141414;--dim:rgba(20,20,20,.58);--rule:rgba(20,20,20,.2);--acid:#E5FF3A;--red:#D8321F}
 [data-stand="donker"]{--p:#1A1917;--p2:#232220;--i:#EDE8DD;--dim:rgba(237,232,221,.62);--rule:rgba(237,232,221,.2);--acid:#D9F04A;--red:#E4553F}
@@ -21,360 +21,483 @@ a{color:inherit}a:hover{color:#E5FF3A}
 input::placeholder{color:var(--dim)}
 </style>
 </helmet>
-<div data-stand="{{ stand }}" data-screen-label="Desktop · {{ navLabel }}" style="height:100vh;min-width:1280px;display:grid;grid-template-columns:220px minmax(0,1fr) 400px;background:{{ bg }};transition:background .7s ease;color:var(--i);font-family:Archivo,'Helvetica Neue',sans-serif;overflow:hidden">
+<div data-stand="{{ stand }}" data-screen-label="Desktop · {{ scrLabel }}" style="height:100vh;min-height:0;min-width:900px;display:grid;grid-template-columns:{{ cols }};grid-template-rows:minmax(0,1fr);background:{{ bg }};transition:background .7s ease,grid-template-columns .3s ease;color:var(--i)">
 
   <!-- RAIL -->
-  <aside style="border-right:1px solid var(--rule);display:flex;flex-direction:column;padding:34px 28px 28px;box-sizing:border-box;min-height:0">
-    <div style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1;letter-spacing:-.02em">Lincin<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:block;margin-top:6px">{{ t.dateLine }}</span></div>
-    <nav style="display:flex;flex-direction:column;gap:2px;margin-top:40px">
+  <sc-if value="{{ railWide }}" hint-placeholder-val="{{ true }}">
+  <aside style="border-right:1.5px solid var(--i);padding:26px 20px;display:flex;flex-direction:column;box-sizing:border-box;min-height:0">
+    <div style="font-family:'Instrument Serif',serif;font-size:27px;line-height:1">Lincin</div>
+    <div style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:6px">{{ t.dateLine }}</div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:30px">
       <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
-        <div onClick="{{ n.go }}" style="display:flex;align-items:baseline;gap:12px;height:40px;cursor:pointer;color:var(--i);border-bottom:1px solid var(--rule);font-family:'Instrument Serif',serif;font-size:20px;position:relative;font-style:{{ n.style }}"><span style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);width:18px">{{ n.num }}</span>{{ n.label }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;min-width:18px;height:18px;background:var(--red);color:#F5F1E8;font:600 10px 'IBM Plex Mono',monospace;display:flex;align-items:center;justify-content:center;padding:0 5px">{{ n.badge }}</span></sc-if></div>
+        <div onClick="{{ n.go }}" style="height:40px;display:flex;align-items:center;gap:9px;padding:0 10px;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em">{{ n.num }} {{ n.label }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;background:var(--red);color:#F5F1E8;padding:1px 5px;font-size:9px">{{ n.badge }}</span></sc-if></div>
       </sc-for>
-    </nav>
-    <div onClick="{{ goCompose }}" style="margin-top:28px;height:44px;border:1px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 14px;cursor:pointer;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase"><span>{{ t.newPost }}</span><span style="font-size:16px;line-height:1">+</span></div>
-    <div style="margin-top:auto;display:flex;flex-direction:column;gap:14px">
+    </div>
+    <div onClick="{{ goCompose }}" style="margin-top:24px;height:42px;border:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 12px;cursor:pointer;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase">{{ t.newPost }}<span style="font-size:16px">+</span></div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:12px">
       <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:var(--dim);line-height:1.4">{{ t.noAlgo }}</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em"><div style="display:flex;gap:10px"><sc-for list="{{ langs }}" as="l" hint-placeholder-count="3"><span onClick="{{ l.pick }}" style="cursor:pointer;color:{{ l.color }};text-decoration:{{ l.deco }};text-underline-offset:4px">{{ l.code }}</span></sc-for></div><span onClick="{{ toggleStand }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ standLabel }}</span></div>
-      <div onClick="{{ goJij }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding-top:14px;border-top:1px solid var(--rule)"><span style="width:34px;height:34px;border-radius:50%;background:var(--p2);color:var(--i);border:1px solid var(--i);display:flex;align-items:center;justify-content:center;font-weight:900;font-stretch:75%;font-size:16px">J</span><span><div style="font-family:'Instrument Serif',serif;font-size:17px;line-height:1">Jonas Vermeer</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim)">23 {{ t.posts }} · 6 lincs</div></span></div>
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em"><span style="display:flex;gap:10px"><sc-for list="{{ langs }}" as="l" hint-placeholder-count="3"><span onClick="{{ l.pick }}" style="cursor:pointer;color:{{ l.color }};text-decoration:{{ l.deco }};text-underline-offset:4px">{{ l.code }}</span></sc-for></span><span onClick="{{ cycleStand }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ standLabel }}</span></div>
+      <div onClick="{{ goJij }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding-top:12px;border-top:1px solid var(--rule)"><span style="width:32px;height:32px;border-radius:50%;background:var(--p2);border:1px solid var(--i);display:flex;align-items:center;justify-content:center;font:900 15px Archivo;font-stretch:75%">J</span><span><span style="font-family:'Instrument Serif',serif;font-size:16px;line-height:1;display:block">Jonas Vermeer</span><span style="font:500 9px 'IBM Plex Mono',monospace;color:var(--dim)">23 {{ t.posts }} · 6 lincs</span></span></div>
     </div>
   </aside>
+  </sc-if>
 
-  <!-- MAIN -->
-  <main style="min-width:0;min-height:0;display:flex;flex-direction:column">
+  <!-- RAIL, SMAL (volle-breedte standen) -->
+  <sc-if value="{{ railNarrow }}" hint-placeholder-val="{{ false }}">
+  <aside style="border-right:1.5px solid var(--i);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:14px;box-sizing:border-box;min-height:0">
+    <span style="font-family:'Instrument Serif',serif;font-size:20px">L</span>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+      <span onClick="{{ n.go }}" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};border:{{ n.border }};font:600 10px 'IBM Plex Mono',monospace;position:relative">{{ n.num }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--red)"></span></sc-if></span>
+    </sc-for>
+    <span onClick="{{ goCompose }}" style="margin-top:auto;width:34px;height:34px;border:1.5px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">+</span>
+  </aside>
+  </sc-if>
+
+  <!-- MIDDEN -->
+  <main style="min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden">
 
     <!-- FEED -->
     <sc-if value="{{ isFeed }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:34px 48px 18px;border-bottom:1px solid var(--i);flex:none">
-        <div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.92;letter-spacing:-.025em">{{ t.feedA }} <em>{{ t.feedB }}</em></div>
-        <div style="display:flex;gap:16px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;padding-bottom:8px"><span onClick="{{ viewFriends }}" style="cursor:pointer;color:{{ vfColor }};text-decoration:{{ vfDeco }};text-underline-offset:5px">{{ t.perFriend }}</span><span onClick="{{ viewTime }}" style="cursor:pointer;color:{{ vtColor }};text-decoration:{{ vtDeco }};text-underline-offset:5px">{{ t.byTime }}</span></div>
+      <div style="flex:none;padding:22px 24px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border-bottom:1.5px solid var(--i)">
+        <div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:.95;letter-spacing:-.02em">{{ t.feedA }} <em>{{ t.feedB }}</em></div>
+        <div style="display:flex;gap:14px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;padding-bottom:6px"><span onClick="{{ viewFriends }}" style="cursor:pointer;color:{{ vfColor }};text-decoration:{{ vfDeco }};text-underline-offset:5px">{{ t.perFriend }}</span><span onClick="{{ viewTime }}" style="cursor:pointer;color:{{ vtColor }};text-decoration:{{ vtDeco }};text-underline-offset:5px">{{ t.byTime }}</span></div>
       </div>
-      <div class="pscroll" onScroll="{{ onFeedScroll }}" style="flex:1;overflow:auto;position:relative">
-        <sc-if value="{{ byFriendView }}" hint-placeholder-val="{{ true }}">
-        <sc-for list="{{ friends }}" as="f" hint-placeholder-count="3">
-          <div data-group="{{ $index }}">
-            <div style="position:sticky;top:0;z-index:{{ f.z }};background:var(--p);color:var(--i);height:64px;display:flex;align-items:center;gap:16px;padding:0 48px;border-bottom:1px solid var(--i);box-sizing:border-box">
-              <span style="width:10px;height:36px;background:{{ f.panel }};opacity:{{ f.blockOpacity }};flex:none;transition:opacity .5s"></span>
-              <span onClick="{{ f.profile }}" style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1;letter-spacing:-.01em;cursor:pointer;color:{{ f.nameColor }}">{{ f.name }}</span>
-              <sc-if value="{{ f.isGroup }}" hint-placeholder-val="{{ false }}"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)">{{ t.group }} · {{ f.members }}</span></sc-if>
-              <sc-if value="{{ f.fresh }}" hint-placeholder-val="{{ false }}"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--red)">{{ f.fresh }} {{ t.new }}</span></sc-if>
-              <sc-if value="{{ f.seen }}" hint-placeholder-val="{{ false }}"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)">{{ t.read }}</span></sc-if>
-              <span style="margin-left:auto;font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);white-space:nowrap">{{ f.count }} · {{ f.last }}</span>
-              <span onClick="{{ f.chat }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;text-decoration:underline;text-underline-offset:4px;white-space:nowrap">{{ t.privateMsg }}</span>
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+          <div>
+            <div style="position:sticky;top:0;z-index:{{ g.z }};height:46px;background:{{ g.bandBg }};color:{{ g.bandInk }};display:flex;align-items:center;gap:12px;padding:0 24px;box-sizing:border-box;border-bottom:1.5px solid var(--i)">
+              <span onClick="{{ g.profile }}" style="font:900 17px Archivo;font-stretch:72%;text-transform:uppercase;cursor:pointer;letter-spacing:-.01em">{{ g.name }}</span>
+              <span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.85">{{ g.sub }}</span>
+              <span style="margin-left:auto;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.06em">{{ g.count }}</span>
+              <span onClick="{{ g.chat }}" style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ t.privateMsg }}</span>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--rule);border-bottom:1px solid var(--i)">
-              <sc-for list="{{ f.posts }}" as="p" hint-placeholder-count="2">
-                <div onClick="{{ p.open }}" style="background:{{ p.cardBg }};cursor:pointer;display:flex;flex-direction:column;transition:background .2s;padding:22px 24px 18px;box-sizing:border-box;gap:14px">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)"><span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;background:{{ p.panel }};display:inline-block"></span>{{ p.by }} · {{ p.kind }}</span><span>№ {{ p.no }} · {{ p.when }}</span></div>
-                  <div style="display:flex;flex-direction:column;gap:12px">
-                      <div style="height:180px;position:relative;overflow:hidden;border:1px solid var(--rule)">
-                        <sc-if value="{{ p.isImg }}" hint-placeholder-val="{{ true }}"><image-slot id="{{ p.slot }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></sc-if>
-                        <sc-if value="{{ p.isPlek }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background-color:var(--p2);background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:28px 28px"><div style="position:absolute;left:8%;right:30%;top:42%;border-top:2px dashed var(--i);transform:rotate(-12deg)"></div><div style="position:absolute;left:58%;top:38%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center"><div style="background:{{ p.panel }};color:{{ p.ink }};border:1px solid var(--i);padding:4px 8px;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase">{{ p.place }}</div><div style="width:1.5px;height:14px;background:var(--i)"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--i)"></div></div></div></sc-if>
-                        <sc-if value="{{ p.isSpraak }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);display:flex;align-items:center;gap:12px;padding:0 16px"><div onClick="{{ p.togglePlay }}" style="width:44px;height:44px;border-radius:50%;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;cursor:pointer">{{ p.playGlyph }}</div><div style="flex:1;display:flex;align-items:center;gap:3px;height:60px"><sc-for list="{{ p.bars }}" as="b" hint-placeholder-count="24"><div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div></sc-for></div><div style="font:600 11px 'IBM Plex Mono',monospace">{{ p.dur }}</div></div></sc-if>
-                        <sc-if value="{{ p.isTekst }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);padding:16px 18px;display:flex;align-items:center"><div style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.25;text-wrap:pretty">{{ p.textBody }}</div></div></sc-if>
-                        <sc-if value="{{ p.isPoll }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px"><sc-for list="{{ p.pollOpts }}" as="o" hint-placeholder-count="2"><div onClick="{{ o.vote }}" style="position:relative;height:36px;border:1px solid var(--i);cursor:pointer;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ o.pct }};background:{{ o.bg }};transition:width .4s"></div><div style="position:relative;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font:600 12px 'IBM Plex Mono',monospace"><span>{{ o.label }}{{ o.mark }}</span><span>{{ o.n }}</span></div></div></sc-for></div></sc-if>
-                        <sc-if value="{{ p.isMuziek }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex"><div style="flex:0 0 170px;position:relative;border-right:1px solid var(--i)"><image-slot id="{{ p.slot }}" shape="rect" placeholder="hoes"></image-slot></div><div style="flex:1;min-width:0;background:var(--p2);padding:14px;display:flex;flex-direction:column;justify-content:space-between"><div><div style="font-weight:900;font-stretch:75%;font-size:20px;line-height:1;text-transform:uppercase">{{ p.track }}</div><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;margin-top:4px">{{ p.artist }}</div></div><div style="display:flex;align-items:center;gap:8px"><div onClick="{{ p.togglePlay }}" style="width:32px;height:32px;border-radius:50%;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer">{{ p.playGlyph }}</div><div style="flex:1;height:1.5px;background:var(--rule)"></div><span style="font:500 9px 'IBM Plex Mono',monospace">{{ p.dur }}</span></div></div></div></sc-if>
-                      </div>
-                      <div style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.02;letter-spacing:-.015em;text-wrap:balance;min-height:57px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ p.title }}</div>
-                    <div style="font-size:14px;line-height:1.45;color:var(--dim);text-wrap:pretty;height:40px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ p.caption }}</div>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:14px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;border-top:1px solid var(--rule);padding-top:12px;margin-top:auto">
-                    <div style="display:flex;gap:10px"><sc-for list="{{ p.reactions }}" as="r" hint-placeholder-count="3"><span onClick="{{ r.tap }}" style="cursor:pointer;display:flex;align-items:center;gap:4px;color:{{ r.color }};font-size:12px">{{ r.emoji }} {{ r.n }}</span></sc-for></div>
-                    <span style="flex:1"></span>
-                    <span onClick="{{ p.open }}" style="cursor:pointer;text-transform:uppercase;text-decoration:underline;text-underline-offset:4px;white-space:nowrap">{{ t.comment }}{{ p.commentsLabel }}</span>
-                    <span onClick="{{ p.priv }}" style="cursor:pointer;text-transform:uppercase;text-decoration:underline;text-underline-offset:4px;white-space:nowrap">{{ t.privateMsg }}</span>
-                  </div>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-        </sc-for>
-        </sc-if>
-        <sc-if value="{{ byTimeView }}" hint-placeholder-val="{{ false }}">
-        <sc-for list="{{ timeline }}" as="g" hint-placeholder-count="2">
-          <div data-group="{{ $index }}">
-            <div style="position:sticky;top:0;z-index:{{ g.z }};background:var(--p);color:var(--i);height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 48px;border-bottom:1px solid var(--i);box-sizing:border-box"><span style="font-family:'Instrument Serif',serif;font-size:30px;font-style:italic">{{ g.label }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim)">{{ g.range }} · {{ g.count }}</span></div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--rule);border-bottom:1px solid var(--i)">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1px;background:var(--rule);border-bottom:1.5px solid var(--i)">
               <sc-for list="{{ g.posts }}" as="p" hint-placeholder-count="2">
-                <div onClick="{{ p.open }}" style="background:{{ p.cardBg }};cursor:pointer;display:flex;flex-direction:column;transition:background .2s;padding:22px 24px 18px;box-sizing:border-box;gap:14px">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)"><span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;background:{{ p.panel }};display:inline-block"></span>{{ p.by }} · {{ p.kind }}</span><span>№ {{ p.no }} · {{ p.when }}</span></div>
-                  <div style="display:flex;flex-direction:column;gap:12px">
-                      <div style="height:180px;position:relative;overflow:hidden;background:var(--p2);border:1px solid var(--rule)"><sc-if value="{{ p.isImg }}" hint-placeholder-val="{{ true }}"><image-slot id="{{ p.slot }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></sc-if><sc-if value="{{ p.isTekst }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;padding:16px 18px;display:flex;align-items:center"><div style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.25">{{ p.textBody }}</div></div></sc-if><sc-if value="{{ p.isOther }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)">{{ p.kind }}</div></sc-if></div>
-                      <div style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.02;letter-spacing:-.015em;text-wrap:balance;min-height:57px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ p.title }}</div>
-                    <div style="font-size:14px;line-height:1.45;color:var(--dim);text-wrap:pretty;height:40px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ p.caption }}</div>
+                <div onClick="{{ p.open }}" style="background:var(--p);display:flex;height:248px;cursor:pointer">
+                  <div style="flex:0 0 34px;background:{{ p.panel }};color:{{ p.ink }};display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 0;font:600 10px 'IBM Plex Mono',monospace">
+                    <span>{{ p.no }}</span>
+                    <span style="writing-mode:vertical-rl;transform:rotate(180deg);text-transform:uppercase;letter-spacing:.1em">{{ p.by }} · {{ p.kind }} · {{ p.when }}</span>
                   </div>
-                  <div style="display:flex;align-items:center;gap:14px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;border-top:1px solid var(--rule);padding-top:12px;margin-top:auto">
-                    <div style="display:flex;gap:10px"><sc-for list="{{ p.reactions }}" as="r" hint-placeholder-count="3"><span onClick="{{ r.tap }}" style="cursor:pointer;display:flex;align-items:center;gap:4px;color:{{ r.color }};font-size:12px">{{ r.emoji }} {{ r.n }}</span></sc-for></div>
-                    <span style="flex:1"></span>
-                    <span onClick="{{ p.open }}" style="cursor:pointer;text-transform:uppercase;text-decoration:underline;text-underline-offset:4px;white-space:nowrap">{{ t.comment }}{{ p.commentsLabel }}</span>
-                    <span onClick="{{ p.priv }}" style="cursor:pointer;text-transform:uppercase;text-decoration:underline;text-underline-offset:4px;white-space:nowrap">{{ t.privateMsg }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                    <div style="flex:1;min-height:0;position:relative;overflow:hidden">
+                      <sc-if value="{{ p.isImg }}" hint-placeholder-val="{{ true }}"><div class="pscroll" onScroll="{{ p.onCar }}" onClick="{{ p.stop }}" style="position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory"><sc-for list="{{ p.shots }}" as="sh" hint-placeholder-count="1"><div style="flex:0 0 100%;position:relative;scroll-snap-align:start"><image-slot id="{{ sh.id }}" shape="rect" placeholder="{{ sh.ph }}"></image-slot></div></sc-for></div></sc-if>
+                      <sc-if value="{{ p.isPlek }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background-color:var(--p2);background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:26px 26px"><span style="position:absolute;left:50%;top:46%;transform:translate(-50%,-100%);background:{{ p.panel }};color:{{ p.ink }};border:1px solid var(--i);padding:3px 7px;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase">{{ p.place }}</span></div></sc-if>
+                      <sc-if value="{{ p.isSpraak }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);display:flex;align-items:center;gap:12px;padding:0 16px"><span onClick="{{ p.togglePlay }}" style="width:42px;height:42px;border-radius:50%;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;cursor:pointer">{{ p.playGlyph }}</span><span style="flex:1;display:flex;align-items:center;gap:3px;height:54px"><sc-for list="{{ p.bars }}" as="b" hint-placeholder-count="24"><span style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></span></sc-for></span><span style="font:600 11px 'IBM Plex Mono',monospace">{{ p.dur }}</span></div></sc-if>
+                      <sc-if value="{{ p.isTekst }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);padding:16px 18px;display:flex;align-items:center"><span style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.25;text-wrap:pretty">{{ p.textBody }}</span></div></sc-if>
+                      <sc-if value="{{ p.isPoll }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px"><sc-for list="{{ p.pollOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.vote }}" style="position:relative;height:36px;border:1px solid var(--i);cursor:pointer;overflow:hidden;display:block"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ o.pct }};background:{{ o.bg }};transition:width .4s"></span><span style="position:relative;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font:600 12px 'IBM Plex Mono',monospace"><span>{{ o.label }}{{ o.mark }}</span><span>{{ o.n }}</span></span></span></sc-for></div></sc-if>
+                      <sc-if value="{{ p.isMuziek }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex"><span style="flex:0 0 46%;width:46%;min-width:0;position:relative;border-right:1px solid var(--i);display:block"><image-slot id="{{ p.coverId }}" shape="rect" placeholder="hoes"></image-slot></span><span style="flex:1;min-width:0;background:var(--p2);padding:14px;display:flex;flex-direction:column;justify-content:space-between"><span><span style="font:900 19px Archivo;font-stretch:75%;text-transform:uppercase;line-height:1;display:block">{{ p.track }}</span><span style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px">{{ p.artist }}</span></span><span style="font:500 9px 'IBM Plex Mono',monospace">{{ p.dur }}</span></span></div></sc-if>
+                      <sc-if value="{{ p.multi }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:8px;right:8px;background:rgba(10,10,9,.74);color:#F2EFE8;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;padding:3px 6px;pointer-events:none">{{ p.carLabel }}</span><span style="position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:4px;pointer-events:none"><sc-for list="{{ p.dots }}" as="d" hint-placeholder-count="3"><span style="width:{{ d.w }};height:3px;background:{{ d.bg }}"></span></sc-for></span></sc-if>
+                    </div>
+                    <div style="flex:none;padding:10px 12px;border-top:1px solid var(--rule)">
+                      <div style="font:900 18px Archivo;font-stretch:75%;text-transform:uppercase;line-height:1;letter-spacing:-.005em">{{ p.title }}</div>
+                      <div style="font-family:'Instrument Serif',serif;font-size:15px;line-height:1.2;color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.caption }}</div>
+                    </div>
+                    <div style="flex:none;height:38px;border-top:1px solid var(--rule);display:flex;align-items:center;gap:10px;padding:0 12px;font:500 10px 'IBM Plex Mono',monospace">
+                      <sc-for list="{{ p.reactions }}" as="r" hint-placeholder-count="3"><span onClick="{{ r.tap }}" style="cursor:pointer;color:{{ r.color }};font-size:12px">{{ r.emoji }} {{ r.n }}</span></sc-for>
+                      <span style="flex:1"></span>
+                      <span style="text-transform:uppercase;text-decoration:underline;text-underline-offset:4px">{{ t.comment }}{{ p.commentsLabel }}</span>
+                    </div>
                   </div>
                 </div>
               </sc-for>
             </div>
           </div>
         </sc-for>
-        </sc-if>
-        <div style="padding:40px 48px 64px;display:flex;flex-direction:column;gap:18px;align-items:flex-start"><div style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.14em;color:var(--dim)">{{ t.endLine }}</div><div onClick="{{ goCompose }}" style="cursor:pointer;max-width:560px"><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1;letter-spacing:-.02em;text-wrap:balance">{{ t.endTitle }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-top:14px;text-decoration:underline;text-underline-offset:5px">{{ t.newPost }} →</div></div></div>
+        <div style="padding:34px 24px 50px;display:flex;flex-direction:column;gap:14px;align-items:flex-start"><div style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.14em;color:var(--dim)">{{ t.endLine }}</div><div onClick="{{ goCompose }}" style="cursor:pointer;max-width:560px"><div style="font-family:'Instrument Serif',serif;font-size:34px;line-height:1;text-wrap:balance">{{ t.endTitle }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-top:12px;text-decoration:underline;text-underline-offset:5px">{{ t.newPost }} →</div></div></div>
       </div>
     </sc-if>
 
-    <!-- CHATS (full) -->
-    <sc-if value="{{ isChats }}" hint-placeholder-val="{{ false }}">
-      <div style="padding:34px 48px 18px;border-bottom:1px solid var(--i);flex:none;display:flex;justify-content:space-between;align-items:flex-end"><div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.92;letter-spacing:-.025em">{{ t.chats }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding-bottom:8px">2 {{ t.unread }}</div></div>
-      <div class="pscroll" style="flex:1;overflow:auto;padding:22px 48px 40px"><div style="border-top:1px solid var(--i);max-width:720px">
-        <sc-for list="{{ chats }}" as="c" hint-placeholder-count="5">
-          <div onClick="{{ c.open }}" style="display:flex;align-items:center;gap:18px;border-bottom:1px solid var(--rule);cursor:pointer;padding:18px 0;background:{{ c.rowBg }}">
-            <span style="width:10px;height:40px;background:{{ c.panel }};flex:none"></span>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;letter-spacing:-.01em">{{ c.name }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:{{ c.timeColor }}">{{ c.time }}</span></div><div style="font-size:14px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.preview }}</div></div>
-            <sc-if value="{{ c.unread }}" hint-placeholder-val="{{ false }}"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--red);white-space:nowrap">{{ c.unread }} {{ t.unread }}</span></sc-if>
+    <!-- BIJDRAGE, VOLLE BREEDTE -->
+    <sc-if value="{{ isPost }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em">
+        <span style="display:flex;gap:16px;align-items:center"><span onClick="{{ goFeed }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">← {{ t.backFeed }}</span><span>{{ t.post }} № {{ post.no }} · {{ post.by }} · {{ post.kind }}</span></span>
+        <span style="display:flex;gap:16px;align-items:center"><span style="color:var(--dim)">{{ post.carLabel }}</span><span onClick="{{ post.priv }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ t.privateMsg }}</span><span onClick="{{ goFeed }}" style="width:30px;height:30px;border:1.5px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px">×</span></span>
+      </div>
+      <div style="flex:1;min-height:0;position:relative;animation:rise .3s cubic-bezier(.2,.7,.2,1)">
+        <sc-if value="{{ post.isImg }}" hint-placeholder-val="{{ true }}"><div class="pscroll" onScroll="{{ post.onCar }}" style="position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory"><sc-for list="{{ post.shots }}" as="sh" hint-placeholder-count="1"><div style="flex:0 0 100%;position:relative;scroll-snap-align:start"><image-slot id="{{ sh.id }}" shape="rect" placeholder="{{ sh.ph }}"></image-slot></div></sc-for></div></sc-if>
+        <sc-if value="{{ post.notImg }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:{{ post.panel }};color:{{ post.ink }};display:flex;align-items:center;justify-content:center;font:900 44px Archivo;font-stretch:72%;text-transform:uppercase">{{ post.kind }}</div></sc-if>
+        <sc-if value="{{ post.multi }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;pointer-events:none"><span onClick="{{ post.prev }}" style="pointer-events:auto;width:44px;height:44px;border:1.5px solid rgba(242,239,232,.7);background:rgba(10,10,9,.45);color:#F2EFE8;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer">‹</span><span onClick="{{ post.next }}" style="pointer-events:auto;width:44px;height:44px;border:1.5px solid rgba(242,239,232,.7);background:rgba(10,10,9,.45);color:#F2EFE8;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer">›</span></div>
+          <div style="position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:6px;pointer-events:none"><sc-for list="{{ post.dots }}" as="d" hint-placeholder-count="3"><span style="width:{{ d.w }};height:3px;background:{{ d.bg }}"></span></sc-for></div>
+        </sc-if>
+      </div>
+      <div style="flex:none;border-top:1.5px solid var(--i);display:flex;align-items:stretch;max-height:300px">
+        <div style="flex:1;min-width:0;padding:16px 22px 18px;display:flex;flex-direction:column;gap:8px">
+          <div style="font:900 34px Archivo;font-stretch:72%;text-transform:uppercase;line-height:.92;letter-spacing:-.01em;text-wrap:balance">{{ post.title }}</div>
+          <div style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.25;text-wrap:pretty">{{ post.caption }}</div>
+          <div style="font-size:13.5px;line-height:1.5;color:var(--dim);max-width:640px;text-wrap:pretty">{{ post.body }}</div>
+          <div style="display:flex;gap:6px;margin-top:auto;align-items:center;flex-wrap:wrap;font:600 10px 'IBM Plex Mono',monospace">
+            <sc-for list="{{ post.reactions }}" as="r" hint-placeholder-count="3"><span onClick="{{ r.tap }}" style="border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};padding:5px 8px;cursor:pointer">{{ r.emoji }} {{ r.n }}</span></sc-for>
+            <span onClick="{{ toggleReactBox }}" style="border:1.5px dashed var(--rule);padding:5px 9px;cursor:pointer;color:var(--dim)">☺</span>
+            <span onClick="{{ post.profile }}" style="margin-left:auto;text-transform:uppercase;letter-spacing:.08em;text-decoration:underline;text-underline-offset:4px;cursor:pointer;font-weight:500">{{ t.profileOf }} {{ post.by }} →</span>
           </div>
-        </sc-for>
-      </div></div>
-    </sc-if>
-
-    <!-- EVENTS -->
-    <sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:34px 48px 18px;border-bottom:1px solid var(--i);flex:none"><div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.92;letter-spacing:-.025em">{{ t.eventsA }} <em>{{ t.eventsB }}</em></div><div style="display:flex;gap:18px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;padding-bottom:8px"><span style="color:var(--dim)">{{ eventCount }} {{ t.planned }} · 1 {{ t.waitsForYou }}</span><span style="cursor:pointer;text-decoration:underline;text-underline-offset:5px">{{ t.planNew }} →</span></div></div>
-      <div class="pscroll" style="flex:1;overflow:auto"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1px;background:var(--rule);border-bottom:1px solid var(--i)">
-        <sc-for list="{{ events }}" as="e" hint-placeholder-count="3">
-          <div style="background:var(--p);display:flex;gap:22px;padding:24px 28px 20px;min-height:190px;box-sizing:border-box">
-            <div style="flex:0 0 72px;display:flex;flex-direction:column;gap:6px"><span style="width:10px;height:10px;background:{{ e.panel }}"></span><span style="font-family:'Instrument Serif',serif;font-size:56px;line-height:.85;letter-spacing:-.03em">{{ e.day }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)">{{ e.month }}</span></div>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
-              <div style="display:flex;justify-content:space-between;gap:8px;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)"><span style="display:flex;gap:8px;align-items:center">{{ e.by }}<sc-if value="{{ e.draft }}" hint-placeholder-val="{{ false }}"><span style="color:var(--i);text-decoration:underline;text-underline-offset:3px">{{ t.draftFrom }} № {{ e.fromNo }}</span></sc-if></span><span>{{ e.time }}</span></div>
-              <div style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.02;letter-spacing:-.015em;text-wrap:balance">{{ e.title }}</div>
-              <div style="font-size:14px;line-height:1.45;color:var(--dim)">{{ e.place }} · {{ e.who }}</div>
-              <div style="display:flex;gap:16px;margin-top:auto;padding-top:12px;border-top:1px solid var(--rule);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em"><span onClick="{{ e.yes }}" style="cursor:pointer;text-decoration:{{ e.yesDeco }};text-underline-offset:4px;color:{{ e.yesColor }}">{{ e.yesMark }}{{ t.imIn }}</span><span onClick="{{ e.maybe }}" style="cursor:pointer;text-decoration:{{ e.maybeDeco }};text-underline-offset:4px;color:{{ e.maybeColor }}">{{ e.maybeMark }}{{ t.maybe }}</span></div>
-            </div>
-          </div>
-        </sc-for>
-      </div></div>
-    </sc-if>
-
-    <!-- JIJ + INSTELLINGEN -->
-    <sc-if value="{{ isJij }}" hint-placeholder-val="{{ false }}">
-      <div class="pscroll" style="flex:1;overflow:auto;padding:34px 48px 40px">
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;max-width:900px;border-bottom:1px solid var(--i);padding-bottom:18px"><div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.92;letter-spacing:-.025em">Jonas <em style="color:var(--dim)">Vermeer</em></div><div style="display:flex;gap:28px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding-bottom:8px"><span><span style="font-family:'Instrument Serif',serif;font-size:22px;color:var(--i);letter-spacing:0;text-transform:none;margin-right:6px">23</span>{{ t.posts }}</span><span><span style="font-family:'Instrument Serif',serif;font-size:22px;color:var(--i);letter-spacing:0;text-transform:none;margin-right:6px">6</span>lincs</span><span><span style="font-family:'Instrument Serif',serif;font-size:22px;color:var(--i);letter-spacing:0;text-transform:none;margin-right:6px">'24</span>{{ t.sinceMar }}</span></div></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:32px;max-width:900px">
-          <sc-for list="{{ settingGroups }}" as="g" hint-placeholder-count="3">
-            <div><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:20px;margin-bottom:6px;border-bottom:1px solid var(--i);padding-bottom:8px">{{ g.title }}</div><div>
-              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
-                <div onClick="{{ r.tap }}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--rule);cursor:pointer">
-                  <div style="min-width:0"><div style="font-size:15px">{{ r.label }}</div><div style="font-size:12px;color:var(--dim)">{{ r.sub }}</div></div>
-                  <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ true }}"><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:{{ r.stateColor }};white-space:nowrap;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border:1px solid var(--i);background:{{ r.dotBg }};display:inline-block"></span>{{ r.stateLabel }}</div></sc-if>
-                  <sc-if value="{{ r.isValue }}" hint-placeholder-val="{{ false }}"><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;text-decoration:underline;text-underline-offset:4px">{{ r.value }}</div></sc-if>
-                  <sc-if value="{{ r.isLang }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:12px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;flex:none"><sc-for list="{{ langs }}" as="l" hint-placeholder-count="3"><span onClick="{{ l.pick }}" style="cursor:pointer;color:{{ l.color }};text-decoration:{{ l.deco }};text-underline-offset:4px">{{ l.code }}</span></sc-for></div></sc-if>
+          <sc-if value="{{ reactBoxOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:4px;border:1.5px solid var(--i);padding:4px;width:max-content;animation:rise .2s ease"><sc-for list="{{ emojiGrid }}" as="e" hint-placeholder-count="8"><span onClick="{{ e.tap }}" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;background:{{ e.bg }}">{{ e.emoji }}</span></sc-for></div></sc-if>
+        </div>
+        <div style="flex:0 0 420px;width:420px;min-width:0;border-left:1px solid var(--rule);display:flex;flex-direction:column;min-height:0">
+          <div style="flex:none;padding:14px 20px 8px;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)">{{ t.comments }} · {{ post.commentCount }}</div>
+          <div class="pscroll" style="flex:1;min-height:0;overflow:auto;padding:0 20px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ post.commentList }}" as="c" hint-placeholder-count="2">
+              <div style="display:flex;gap:10px">
+                <span style="width:26px;height:26px;border-radius:50%;background:{{ c.panel }};color:{{ c.ink }};display:flex;align-items:center;justify-content:center;font:900 11px Archivo;flex:none">{{ c.initial }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;gap:8px"><span style="font:600 11px 'IBM Plex Mono',monospace">{{ c.by }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim)">{{ c.when }}</span></div>
+                  <div style="font-size:14px;line-height:1.4;margin-top:2px;text-wrap:pretty">{{ c.text }}</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+                    <sc-for list="{{ c.reacts }}" as="r" hint-placeholder-count="0"><span onClick="{{ r.tap }}" style="display:flex;align-items:center;gap:4px;height:24px;padding:0 7px;border:1.5px solid var(--i);background:{{ r.bg }};color:{{ r.fg }};font:600 10px 'IBM Plex Mono',monospace;cursor:pointer;box-sizing:border-box"><span style="font-size:12px;line-height:1">{{ r.emoji }}</span>{{ r.n }}</span></sc-for>
+                    <span onClick="{{ c.togglePick }}" style="height:24px;width:28px;border:1.5px dashed var(--rule);display:flex;align-items:center;justify-content:center;background:{{ c.pickBg }};color:{{ c.pickFg }};font:600 12px 'IBM Plex Mono',monospace;cursor:pointer;box-sizing:border-box">☺</span>
+                  </div>
+                  <sc-if value="{{ c.pickOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:4px;margin-top:6px;border:1.5px solid var(--i);padding:4px;width:max-content;background:var(--p)"><sc-for list="{{ c.picks }}" as="e" hint-placeholder-count="6"><span onClick="{{ e.tap }}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;background:{{ e.bg }};cursor:pointer">{{ e.emoji }}</span></sc-for></div></sc-if>
                 </div>
-              </sc-for>
-            </div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:none;padding:12px 20px 18px;display:flex;gap:8px;align-items:stretch;border-top:1px solid var(--rule)"><input value="{{ commentDraft }}" onChange="{{ onCommentDraft }}" onKeyDown="{{ onCommentKey }}" placeholder="{{ t.writeComment }}" style="flex:1;min-width:0;height:40px;border:1.5px solid var(--i);background:transparent;padding:0 12px;font:400 14px Archivo,sans-serif;color:var(--i);outline:none;box-sizing:border-box;border-radius:0"><span onClick="{{ sendComment }}" style="width:40px;height:40px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">↑</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- GESPREKKEN, VOLLE BREEDTE -->
+    <sc-if value="{{ isChats }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr);grid-template-rows:minmax(0,1fr)">
+        <div style="border-right:1.5px solid var(--i);display:flex;flex-direction:column;min-width:0;min-height:0">
+          <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span>{{ t.chats }}</span><span style="color:var(--red)">2 {{ t.unread }}</span></div>
+          <div class="pscroll" style="flex:1;min-height:0;overflow:auto">
+            <sc-for list="{{ chats }}" as="c" hint-placeholder-count="5">
+              <div onClick="{{ c.open }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--rule);cursor:pointer;background:{{ c.rowBg }};color:{{ c.rowInk }}">
+                <span style="width:10px;height:38px;background:{{ c.bar }};flex:none"></span>
+                <span style="flex:1;min-width:0"><span style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.1;display:block">{{ c.name }}</span><span style="font-size:12.5px;color:{{ c.previewInk }};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.preview }}</span></span>
+                <span style="font:500 10px 'IBM Plex Mono',monospace;color:{{ c.timeInk }};flex:none">{{ c.right }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 24px"><span style="display:flex;align-items:baseline;gap:12px"><span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1">{{ threadName }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)">{{ threadSub }}</span></span><span onClick="{{ threadProfile }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;text-decoration:underline;text-underline-offset:4px;cursor:pointer">{{ t.profile }} →</span></div>
+          <sc-if value="{{ hasMentions }}" hint-placeholder-val="{{ false }}"><div style="flex:none;margin:14px 24px 0;border:1.5px solid var(--i);background:var(--p2);display:flex;align-items:center;gap:12px;padding:8px 12px"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)">{{ t.mentioned }}</span><sc-for list="{{ mentions }}" as="mp" hint-placeholder-count="1"><span onClick="{{ mp.open }}" style="width:130px;height:52px;background:{{ mp.panel }};color:{{ mp.ink }};border:1px solid var(--i);padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;cursor:pointer"><span style="font:500 8px 'IBM Plex Mono',monospace;text-transform:uppercase">№ {{ mp.no }} · {{ mp.kind }}</span><span style="font:900 12px Archivo;font-stretch:75%;text-transform:uppercase;line-height:.95;overflow:hidden">{{ mp.title }}</span></span></sc-for></div></sc-if>
+          <div class="pscroll" style="flex:1;min-height:0;overflow:auto;padding:18px 24px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ thread }}" as="m" hint-placeholder-count="4">
+              <sc-if value="{{ m.quote }}" hint-placeholder-val="{{ false }}"><div onClick="{{ m.openQuoted }}" style="align-self:{{ m.side }};border-left:3px solid {{ threadPanel }};padding:4px 10px;font-family:'Instrument Serif',serif;font-style:italic;font-size:15px;color:var(--dim);cursor:pointer">{{ t.about }} «{{ m.quote }}»</div></sc-if>
+              <div style="align-self:{{ m.side }};max-width:620px;border:1.5px solid {{ m.border }};background:{{ m.bg }};color:{{ m.fg }};padding:10px 14px;font-size:15px;line-height:1.35;text-wrap:pretty">{{ m.text }}</div>
+              <div style="align-self:{{ m.side }};font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);margin-top:-6px">{{ m.time }}</div>
+            </sc-for>
+            <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}"><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:15px;color:var(--dim)">{{ threadName }} {{ t.typing }}</div></sc-if>
+            <div ref="{{ endRef }}"></div>
+          </div>
+          <div style="flex:none;border-top:1.5px solid var(--i);padding:12px 24px 18px;display:flex;gap:8px;align-items:stretch"><input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="{{ threadPh }}" style="flex:1;min-width:0;height:44px;border:1.5px solid var(--i);background:transparent;padding:0 12px;font:400 15px Archivo,sans-serif;color:var(--i);outline:none;box-sizing:border-box;border-radius:0"><span onClick="{{ send }}" style="width:44px;height:44px;background:var(--i);color:var(--p);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px">↑</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- PROFIEL -->
+    <sc-if value="{{ isVriend }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;gap:16px;padding:0 22px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span onClick="{{ goFeed }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">← {{ t.backFeed }}</span><span>{{ t.profile }} · {{ vriend.name }}</span></div>
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto;padding:24px">
+        <div style="background:{{ vriend.panel }};color:{{ vriend.ink }};padding:26px 28px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end">
+          <div><div style="font:900 52px Archivo;font-stretch:72%;text-transform:uppercase;line-height:.9">{{ vriend.name }}</div><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:19px;margin-top:8px">{{ vriend.bio }}</div></div>
+          <div style="display:flex;gap:10px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span onClick="{{ vriend.chat }}" style="border:1.5px solid currentColor;padding:10px 14px;cursor:pointer">{{ t.privateMsg }} →</span></div>
+        </div>
+        <div style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin:20px 0 10px">{{ t.allFrom }} {{ vriend.name }} · {{ vriend.count }}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)">
+          <sc-for list="{{ vriend.posts }}" as="p" hint-placeholder-count="2">
+            <div onClick="{{ p.open }}" style="background:var(--p);cursor:pointer;display:flex;flex-direction:column;height:200px">
+              <div style="flex:1;min-height:0;position:relative"><sc-if value="{{ p.isImg }}" hint-placeholder-val="{{ true }}"><image-slot id="{{ p.vSlot }}" shape="rect" placeholder="{{ p.placeholder }}"></image-slot></sc-if><sc-if value="{{ p.notImg }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--p2);display:flex;align-items:center;justify-content:center;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--dim)">{{ p.kind }}</div></sc-if></div>
+              <div style="flex:none;padding:10px 12px;border-top:1px solid var(--rule)"><div style="font:900 15px Archivo;font-stretch:75%;text-transform:uppercase;line-height:1">{{ p.title }}</div><div style="font:500 9px 'IBM Plex Mono',monospace;color:var(--dim);text-transform:uppercase;margin-top:3px">№ {{ p.no }} · {{ p.kind }} · {{ p.when }}</div></div>
+            </div>
           </sc-for>
         </div>
       </div>
     </sc-if>
 
-    <!-- COMPOSE -->
+    <!-- EVENTS -->
+    <sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:none;padding:22px 24px 14px;border-bottom:1.5px solid var(--i);display:flex;align-items:flex-end;justify-content:space-between"><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:.95">{{ t.eventsA }} <em>{{ t.eventsB }}</em></div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding-bottom:6px">{{ eventCount }} {{ t.planned }}</div></div>
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1px;background:var(--rule);border-bottom:1.5px solid var(--i)">
+        <sc-for list="{{ events }}" as="e" hint-placeholder-count="3">
+          <div style="background:var(--p);display:flex;gap:20px;padding:22px 24px;min-height:180px;box-sizing:border-box">
+            <div style="flex:0 0 76px;width:76px;min-width:0;display:flex;flex-direction:column;gap:6px"><span style="width:10px;height:10px;background:{{ e.panel }}"></span><span style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.85">{{ e.day }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)">{{ e.month }}</span></div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);display:flex;justify-content:space-between"><span>{{ e.by }}</span><span>{{ e.time }}</span></div>
+              <div style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1.05;text-wrap:balance">{{ e.title }}</div>
+              <div style="font-size:14px;color:var(--dim)">{{ e.place }} · {{ e.who }}</div>
+              <div style="display:flex;gap:16px;margin-top:auto;padding-top:12px;border-top:1px solid var(--rule);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em"><span onClick="{{ e.yes }}" style="cursor:pointer;color:{{ e.yesColor }};text-decoration:{{ e.yesDeco }};text-underline-offset:4px">{{ e.yesMark }}{{ t.imIn }}</span><span onClick="{{ e.maybe }}" style="cursor:pointer;color:{{ e.maybeColor }};text-decoration:{{ e.maybeDeco }};text-underline-offset:4px">{{ e.maybeMark }}{{ t.maybe }}</span></div>
+            </div>
+          </div>
+        </sc-for>
+      </div></div>
+    </sc-if>
+
+    <!-- JIJ -->
+    <sc-if value="{{ isJij }}" hint-placeholder-val="{{ false }}">
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto;padding:24px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border-bottom:1.5px solid var(--i);padding-bottom:16px;max-width:900px"><div style="font-family:'Instrument Serif',serif;font-size:46px;line-height:.95">Jonas <em style="color:var(--dim)">Vermeer</em></div><div style="display:flex;gap:24px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding-bottom:6px"><span>23 {{ t.posts }}</span><span>6 lincs</span><span>'24</span></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:26px;max-width:900px">
+          <sc-for list="{{ settingGroups }}" as="g" hint-placeholder-count="3">
+            <div><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:20px;border-bottom:1.5px solid var(--i);padding-bottom:8px">{{ g.title }}</div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+                <div onClick="{{ r.tap }}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--rule);cursor:pointer">
+                  <span style="min-width:0"><span style="font-size:15px;display:block">{{ r.label }}</span><span style="font-size:12px;color:var(--dim)">{{ r.sub }}</span></span>
+                  <span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;color:{{ r.valueInk }}">{{ r.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- NIEUWE BIJDRAGE -->
     <sc-if value="{{ isCompose }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:34px 48px 18px;border-bottom:1px solid var(--i);flex:none"><div style="font-family:'Instrument Serif',serif;font-size:52px;line-height:.92;letter-spacing:-.025em">{{ t.newPost }}</div><span onClick="{{ goFeed }}" style="cursor:pointer;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;text-decoration:underline;text-underline-offset:5px;padding-bottom:8px">{{ t.cancel }}</span></div>
-      <div class="pscroll" style="flex:1;overflow:auto;padding:22px 48px 40px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:28px;align-content:start">
-        <div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)"><span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;background:{{ composeBg }};display:inline-block;transition:background .3s"></span>Jonas · {{ kindLabel }}</span><span>№ 24</span></div><div style="height:400px;position:relative;border:1px solid var(--rule)"><image-slot id="desk-compose" shape="rect" placeholder="foto · krabbel · hoes"></image-slot></div></div>
-        <div style="display:flex;flex-direction:column;gap:22px">
-          <input value="{{ composeTitle }}" onChange="{{ onComposeTitle }}" placeholder="{{ t.titlePh }}" style="height:60px;border:0;border-bottom:1px solid var(--i);background:transparent;padding:0;font:400 36px 'Instrument Serif',serif;letter-spacing:-.02em;color:var(--i);outline:none;border-radius:0">
-          <input value="{{ composeCaption }}" onChange="{{ onComposeCaption }}" placeholder="{{ t.captionPh }}" style="height:44px;border:0;border-bottom:1px solid var(--rule);background:transparent;padding:0;font:400 16px Archivo,sans-serif;color:var(--i);outline:none;border-radius:0">
-          <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:6px">{{ t.color }}</div><div style="display:flex;gap:10px"><sc-for list="{{ swatches }}" as="s" hint-placeholder-count="6"><div onClick="{{ s.pick }}" style="width:28px;height:28px;background:{{ s.bg }};cursor:pointer;box-sizing:border-box;border:1px solid var(--i);outline:{{ s.outline }};outline-offset:3px"></div></sc-for></div></div>
-          <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:6px">{{ t.kind }}</div><div style="display:flex;flex-wrap:wrap;gap:14px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><sc-for list="{{ kinds }}" as="k" hint-placeholder-count="8"><span onClick="{{ k.pick }}" style="cursor:pointer;color:{{ k.color }};text-decoration:{{ k.deco }};text-underline-offset:4px">{{ k.label }}</span></sc-for></div></div>
-          <div style="display:flex;gap:24px;margin-top:auto;padding-top:14px;border-top:1px solid var(--i);font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span style="color:var(--dim);text-decoration:underline;text-underline-offset:5px;cursor:pointer">{{ t.draft }}</span><span onClick="{{ publish }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:5px;color:{{ pubColor }}">{{ pubLabel }} →</span></div>
+      <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span>{{ t.newPost }} · № 24</span><span onClick="{{ goFeed }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ t.cancel }}</span></div>
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);gap:26px;align-content:start">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-if value="{{ notPollKind }}" hint-placeholder-val="{{ true }}">
+            <div class="pscroll" onScroll="{{ onComposeCar }}" style="height:420px;border:1.5px solid var(--i);display:flex;overflow-x:auto;scroll-snap-type:x mandatory"><sc-for list="{{ composeShots }}" as="cs" hint-placeholder-count="2"><div style="flex:0 0 100%;position:relative;scroll-snap-align:start"><image-slot id="{{ cs.id }}" shape="rect" placeholder="{{ cs.ph }}"></image-slot></div></sc-for></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)"><span>{{ composeCarLabel }}</span><span style="display:flex;gap:6px"><sc-if value="{{ canRemoveShot }}" hint-placeholder-val="{{ false }}"><span onClick="{{ removeShot }}" style="border:1.5px solid var(--i);padding:3px 8px;cursor:pointer;color:var(--i)">−</span></sc-if><sc-if value="{{ canAddShot }}" hint-placeholder-val="{{ true }}"><span onClick="{{ addShot }}" style="border:1.5px solid var(--i);padding:3px 8px;cursor:pointer;color:var(--i)">+ {{ t.addPhoto }}</span></sc-if></span></div>
+          </sc-if>
+          <sc-if value="{{ isPollKind }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1.5px solid var(--i);padding:18px;display:flex;flex-direction:column;gap:10px;min-height:420px;box-sizing:border-box">
+              <div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)">{{ t.pollOptions }}</div>
+              <sc-for list="{{ pollRows }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:stretch;border:1.5px solid var(--i)"><span style="width:30px;flex:none;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--i);font:600 11px 'IBM Plex Mono',monospace;color:var(--dim)">{{ o.n }}</span><input value="{{ o.value }}" onChange="{{ o.onChange }}" placeholder="{{ o.ph }}" style="flex:1;min-width:0;height:42px;border:0;background:transparent;padding:0 12px;font:400 15px Archivo,sans-serif;color:var(--i);outline:none;box-sizing:border-box"><sc-if value="{{ o.canRemove }}" hint-placeholder-val="{{ false }}"><span onClick="{{ o.remove }}" style="width:38px;flex:none;display:flex;align-items:center;justify-content:center;border-left:1.5px solid var(--i);cursor:pointer;color:var(--dim)">×</span></sc-if></div>
+              </sc-for>
+              <sc-if value="{{ canAddPoll }}" hint-placeholder-val="{{ true }}"><div onClick="{{ addPollOpt }}" style="height:42px;border:1.5px dashed var(--rule);display:flex;align-items:center;justify-content:center;cursor:pointer;font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)">+ {{ t.pollAdd }}</div></sc-if>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <input value="{{ composeTitle }}" onChange="{{ onComposeTitle }}" placeholder="{{ t.titlePh }}" style="height:56px;border:0;border-bottom:1.5px solid var(--i);background:transparent;padding:0;font:900 30px Archivo,sans-serif;font-stretch:75%;text-transform:uppercase;color:var(--i);outline:none;border-radius:0;box-sizing:border-box">
+          <input value="{{ composeCaption }}" onChange="{{ onComposeCaption }}" placeholder="{{ t.captionPh }}" style="height:44px;border:0;border-bottom:1px solid var(--rule);background:transparent;padding:0;font:400 18px 'Instrument Serif',serif;color:var(--i);outline:none;border-radius:0;box-sizing:border-box">
+          <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:8px">{{ t.color }}</div><div style="display:flex;border:1.5px solid var(--i)"><sc-for list="{{ swatches }}" as="s" hint-placeholder-count="6"><span onClick="{{ s.pick }}" style="flex:1;height:38px;background:{{ s.bg }};cursor:pointer;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--i)"><sc-if value="{{ s.active }}" hint-placeholder-val="{{ false }}"><span style="width:10px;height:10px;background:{{ s.fg }}"></span></sc-if></span></sc-for></div></div>
+          <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:8px">{{ t.kind }}</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ kinds }}" as="k" hint-placeholder-count="8"><span onClick="{{ k.pick }}" style="height:32px;padding:0 10px;border:1.5px solid var(--i);background:{{ k.bg }};color:{{ k.fg }};display:flex;align-items:center;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ k.label }}</span></sc-for></div></div>
+          <div style="display:flex;gap:10px;margin-top:auto;padding-top:14px;border-top:1.5px solid var(--i)"><span style="flex:1;height:44px;border:1.5px solid var(--i);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;cursor:pointer">{{ t.draft }}</span><span onClick="{{ publish }}" style="flex:1.6;height:44px;background:{{ pubBg }};color:var(--p);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;cursor:pointer">{{ pubLabel }}</span></div>
         </div>
       </div>
     </sc-if>
   </main>
 
-  <!-- RIGHT PANEL -->
-  <aside style="border-left:1px solid var(--i);background:var(--p);display:flex;flex-direction:column;min-height:0">
-
-    <!-- Post detail -->
-    <sc-if value="{{ panelPost }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:60px;border-bottom:1px solid var(--i);flex:none"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)">{{ t.post }} № {{ post.no }} · {{ post.by }}</span><span onClick="{{ closePost }}" style="width:32px;height:32px;border:1px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer">×</span></div>
-      <div class="pscroll" style="flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px;animation:rise .35s cubic-bezier(.2,.7,.2,1)">
-        <div style="border-bottom:1px solid var(--i);padding-bottom:14px"><div style="height:220px;position:relative;border:1px solid var(--rule)"><image-slot id="{{ post.slotD }}" shape="rect" placeholder="{{ post.placeholder }}"></image-slot><div style="position:absolute;left:0;top:0;bottom:0;width:30px;background:{{ post.panel }};color:{{ post.ink }};border-right:1px solid var(--i);display:flex;align-items:center;justify-content:center"><span style="writing-mode:vertical-rl;transform:rotate(180deg);font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em">{{ post.kind }} · {{ post.when }}</span></div></div><div style="padding:14px 0 0;display:flex;flex-direction:column;gap:8px"><div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1;letter-spacing:-.015em;text-wrap:balance">{{ post.title }}</div><div style="font-family:'Instrument Serif',serif;font-size:18px;line-height:1.25;text-wrap:pretty">{{ post.caption }}</div><div style="font-size:13px;line-height:1.5;color:var(--dim);text-wrap:pretty">{{ post.body }}</div></div></div>
-        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><sc-for list="{{ post.reactions }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.tap }}" style="height:32px;padding:0 6px;color:{{ r.color }};display:flex;align-items:center;gap:5px;font:500 12px 'IBM Plex Mono',monospace;cursor:pointer">{{ r.emoji }} {{ r.n }}</div></sc-for><div style="flex:1"></div><sc-if value="{{ post.canEvent }}" hint-placeholder-val="{{ false }}"><span onClick="{{ makeEvent }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;text-decoration:underline;text-underline-offset:4px;cursor:pointer;color:var(--dim)">◷ {{ t.event }}</span></sc-if><span onClick="{{ post.priv }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;text-decoration:underline;text-underline-offset:4px;cursor:pointer">{{ t.privateMsg }}</span></div>
-        <div><div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px">{{ t.comments }} · {{ post.commentCount }}</div><div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ post.commentList }}" as="c" hint-placeholder-count="2"><div style="display:flex;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:{{ c.panel }};color:{{ c.ink }};display:flex;align-items:center;justify-content:center;font:700 11px Archivo,sans-serif;flex:none">{{ c.initial }}</span><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font:600 12px 'IBM Plex Mono',monospace">{{ c.by }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim)">{{ c.when }}</span></div><div style="font-size:14px;line-height:1.4;margin-top:2px">{{ c.text }}</div></div></div></sc-for></div></div>
-      </div>
-      <div style="flex:none;border-top:1px solid var(--i)">
-        <sc-if value="{{ reactBoxOpen }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 18px 0"><div style="border:1px solid var(--i);border-bottom:0;animation:rise .25s ease"><div style="display:flex;border-bottom:1px solid var(--i);font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase"><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;background:var(--i);color:var(--p)">Emoji</div><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--i)">GIF</div><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--i);color:var(--dim)">Sticker</div></div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:1.5px;background:var(--i)"><sc-for list="{{ emojiGrid }}" as="e" hint-placeholder-count="12"><div onClick="{{ e.tap }}" style="height:44px;background:{{ e.bg }};display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer">{{ e.emoji }}</div></sc-for></div></div></div></sc-if>
-        <div style="padding:10px 18px 14px;display:flex;align-items:stretch"><div onClick="{{ toggleReactBox }}" style="width:44px;height:44px;box-sizing:border-box;border-bottom:1px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:{{ reactBoxFg }};flex:none">☺</div><input value="{{ commentDraft }}" onChange="{{ onCommentDraft }}" onKeyDown="{{ onCommentKey }}" placeholder="{{ t.writeComment }}" style="flex:1;height:44px;border:0;border-bottom:1px solid var(--i);background:transparent;padding:0 12px;margin:0;font:400 15px Archivo,sans-serif;color:var(--i);outline:none;min-width:0;box-sizing:border-box;border-radius:0"><div onClick="{{ sendComment }}" style="width:44px;height:44px;box-sizing:border-box;border-bottom:1px solid var(--i);color:var(--i);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex:none">↑</div></div>
-      </div>
-    </sc-if>
-
-    <!-- Profile -->
-    <sc-if value="{{ panelProfile }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:60px;border-bottom:1px solid var(--i);flex:none"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)">{{ t.profile }}</span><span onClick="{{ closePost }}" style="width:32px;height:32px;border:1px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer">×</span></div>
-      <div class="pscroll" style="flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px;animation:rise .35s cubic-bezier(.2,.7,.2,1)">
-        <div style="border-bottom:1px solid var(--i);padding-bottom:16px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="width:10px;height:40px;background:{{ vriend.panel }}"></span><div style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;text-align:right;line-height:1.5;color:var(--dim)">{{ vriend.sub }}<br>{{ vriend.count }}</div></div><div style="font-family:'Instrument Serif',serif;font-size:44px;line-height:.92;letter-spacing:-.02em">{{ vriend.name }}</div><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;line-height:1.3;color:var(--dim)">{{ vriend.bio }}</div><span onClick="{{ vriend.chat }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;text-decoration:underline;text-underline-offset:5px;cursor:pointer;margin-top:4px">{{ t.privateMsg }} →</span></div>
-        <div style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)">{{ t.allFrom }} {{ vriend.name }}</div>
-        <sc-for list="{{ vriend.posts }}" as="p" hint-placeholder-count="2"><div onClick="{{ p.open }}" style="display:flex;border-bottom:1px solid var(--rule);cursor:pointer;height:72px"><div style="flex:0 0 72px;position:relative;border:1px solid var(--rule);background:var(--p2)"><sc-if value="{{ p.isImg }}" hint-placeholder-val="{{ true }}"><image-slot id="{{ p.slot }}" shape="rect" placeholder="{{ p.kind }}"></image-slot></sc-if></div><div style="flex:1;min-width:0;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:3px"><div style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);text-transform:uppercase">№ {{ p.no }} · {{ p.kind }} · {{ p.when }}</div></div></div></sc-for>
-      </div>
-    </sc-if>
-
-    <!-- Thread -->
-    <sc-if value="{{ panelThread }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;align-items:stretch;height:60px;border-bottom:1px solid var(--i);flex:none">
-        <div class="pscroll" style="flex:1;display:flex;align-items:center;gap:18px;overflow-x:auto;padding:0 18px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><sc-for list="{{ chats }}" as="c" hint-placeholder-count="5"><span onClick="{{ c.open }}" style="flex:none;display:flex;align-items:center;gap:7px;cursor:pointer;color:{{ c.tabColor }};text-decoration:{{ c.tabDeco }};text-underline-offset:5px;white-space:nowrap"><span style="width:8px;height:8px;background:{{ c.panel }};display:inline-block"></span>{{ c.name }}<sc-if value="{{ c.unread }}" hint-placeholder-val="{{ false }}"><span style="color:var(--red)">·{{ c.unread }}</span></sc-if></span></sc-for></div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--rule);flex:none"><div><div style="font-family:'Instrument Serif',serif;font-size:22px;line-height:1">{{ threadName }}</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);margin-top:3px">{{ threadSub }}</div></div><span onClick="{{ threadProfile }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;text-decoration:underline;text-underline-offset:4px;cursor:pointer">{{ t.profile }} →</span></div>
-      <sc-if value="{{ hasMentions }}" hint-placeholder-val="{{ false }}"><div class="pscroll" style="flex:none;margin:10px 18px 0;border:1px solid var(--i);background:var(--p2);padding:8px 10px;display:flex;align-items:center;gap:8px;overflow-x:auto"><span style="font:500 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);writing-mode:vertical-rl;transform:rotate(180deg);flex:none">{{ t.mentioned }}</span><sc-for list="{{ mentions }}" as="mp" hint-placeholder-count="1"><div onClick="{{ mp.open }}" style="flex:none;width:96px;height:56px;background:{{ mp.panel }};color:{{ mp.ink }};border:1px solid var(--i);padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer"><span style="font:500 8px 'IBM Plex Mono',monospace;text-transform:uppercase">№ {{ mp.no }} · {{ mp.kind }}</span><span style="font-weight:900;font-stretch:75%;font-size:12px;line-height:.95;text-transform:uppercase;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ mp.title }}</span></div></sc-for></div></sc-if>
-      <div class="pscroll" style="flex:1;overflow:auto;padding:16px 18px 10px;display:flex;flex-direction:column;gap:8px">
-        <sc-for list="{{ thread }}" as="m" hint-placeholder-count="5">
-          <sc-if value="{{ m.quote }}" hint-placeholder-val="{{ false }}"><div onClick="{{ m.openQuoted }}" style="align-self:{{ m.side }};max-width:84%;border-left:3px solid {{ threadPanel }};padding:6px 10px;font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:var(--dim);cursor:pointer">{{ t.about }} «{{ m.quote }}»</div></sc-if>
-          <sc-if value="{{ m.replyTo }}" hint-placeholder-val="{{ false }}"><div style="align-self:{{ m.side }};max-width:84%;border-left:3px solid var(--rule);padding:4px 10px;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↩ {{ m.replyTo }}</div></sc-if>
-          <div style="align-self:{{ m.side }};max-width:84%;position:relative">
-            <div onClick="{{ m.tap }}" style="background:{{ m.bg }};color:{{ m.fg }};border:1.5px solid {{ m.border }};padding:9px 12px;font-size:{{ m.fontSize }};line-height:1.35;text-wrap:pretty;cursor:pointer">{{ m.text }}</div>
-            <sc-if value="{{ m.reacts }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;bottom:-12px;{{ m.reactSide }}:8px;display:flex;gap:2px"><sc-for list="{{ m.reacts }}" as="r" hint-placeholder-count="1"><span style="height:22px;padding:0 6px;background:var(--p);border:1px solid var(--i);font-size:12px;display:flex;align-items:center">{{ r }}</span></sc-for></div></sc-if>
-            <sc-if value="{{ m.active }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:-44px;{{ m.reactSide }}:0;display:flex;background:var(--p);border:1px solid var(--i);z-index:5;animation:rise .18s ease"><sc-for list="{{ m.quick }}" as="q" hint-placeholder-count="5"><div onClick="{{ q.tap }}" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;border-right:1px solid var(--i)">{{ q.emoji }}</div></sc-for><div onClick="{{ m.reply }}" style="height:38px;padding:0 10px;display:flex;align-items:center;font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase;cursor:pointer;background:var(--i);color:var(--p)">↩ {{ t.reply }}</div></div></sc-if>
+  <!-- GESPREKKENPANEEL (alleen in de feed) -->
+  <sc-if value="{{ showChatPanel }}" hint-placeholder-val="{{ true }}">
+    <aside style="border-left:1.5px solid var(--i);display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--p)">
+      <div style="flex:none;height:56px;border-bottom:1.5px solid var(--i);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em"><span onClick="{{ goChats }}" style="cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ t.chats }}</span><span style="color:var(--red)">2 {{ t.unread }}</span></div>
+      <div class="pscroll" style="flex:1;min-height:0;overflow:auto">
+        <sc-for list="{{ chats }}" as="c" hint-placeholder-count="5">
+          <div onClick="{{ c.open }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--rule);cursor:pointer">
+            <span style="width:10px;height:38px;background:{{ c.bar }};flex:none"></span>
+            <span style="flex:1;min-width:0"><span style="font-family:'Instrument Serif',serif;font-size:19px;line-height:1.1;display:block">{{ c.name }}</span><span style="font-size:12.5px;color:var(--dim);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.preview }}</span></span>
+            <span style="font:500 10px 'IBM Plex Mono',monospace;color:{{ c.timeInk }};flex:none">{{ c.right }}</span>
           </div>
-          <div style="align-self:{{ m.side }};font:500 10px 'IBM Plex Mono',monospace;color:var(--dim);margin-top:{{ m.timeGap }}">{{ m.time }}</div>
         </sc-for>
-        <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}"><div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:var(--dim)">{{ threadName }} {{ t.typing }}</div></sc-if>
-        <div ref="{{ endRef }}"></div>
       </div>
-      <div style="flex:none;border-top:1px solid var(--i)">
-        <sc-if value="{{ replyingTo }}" hint-placeholder-val="{{ false }}"><div style="margin:10px 18px 0;display:flex;align-items:center;gap:10px;border-left:3px solid {{ threadPanel }};padding:6px 10px;background:var(--p2)"><span style="flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↩ {{ replyingTo }}</span><span onClick="{{ cancelReply }}" style="cursor:pointer">×</span></div></sc-if>
-        <sc-if value="{{ chatBoxOpen }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 18px 0"><div style="border:1px solid var(--i);border-bottom:0;animation:rise .25s ease"><div style="display:flex;border-bottom:1px solid var(--i);font:600 10px 'IBM Plex Mono',monospace;text-transform:uppercase"><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;background:var(--i);color:var(--p)">Emoji</div><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--i)">GIF</div><div style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--i);color:var(--dim)">Sticker</div></div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:1.5px;background:var(--i)"><sc-for list="{{ chatEmoji }}" as="e" hint-placeholder-count="12"><div onClick="{{ e.tap }}" style="height:44px;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer">{{ e.emoji }}</div></sc-for></div></div></div></sc-if>
-        <div style="padding:10px 18px 14px;display:flex;align-items:stretch"><div onClick="{{ toggleChatBox }}" style="width:44px;height:44px;box-sizing:border-box;border-bottom:1px solid var(--i);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:{{ chatBoxFg }};flex:none">☺</div><input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="{{ t.writeTo }} {{ threadName }}" style="flex:1;height:44px;border:0;border-bottom:1px solid var(--i);background:transparent;padding:0 12px;margin:0;font:400 15px Archivo,sans-serif;color:var(--i);outline:none;min-width:0;box-sizing:border-box;border-radius:0"><div onClick="{{ send }}" style="width:44px;height:44px;box-sizing:border-box;border-bottom:1px solid var(--i);color:var(--i);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex:none">↑</div></div>
-      </div>
-    </sc-if>
-  </aside>
-
-  <!-- Private sheet (modal) -->
-  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ closeSheet }}" style="position:fixed;inset:0;background:rgba(20,20,20,.35);display:flex;align-items:center;justify-content:center;z-index:40">
-      <div onClick="{{ stop }}" style="width:480px;background:var(--p);color:var(--i);border:1px solid var(--i);padding:24px 26px;animation:rise .3s cubic-bezier(.2,.7,.2,1)">
-        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)">{{ t.privateChatWith }} {{ sheet.by }}</div><span onClick="{{ toggleQuote }}" style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ quoteLabel }}</span></div>
-        <sc-if value="{{ withQuote }}" hint-placeholder-val="{{ true }}"><div style="margin:12px 0 0;padding:10px 12px;border-left:3px solid var(--i);font-family:'Instrument Serif',serif;font-size:17px;line-height:1.25">«{{ sheet.quote }}»</div></sc-if>
-        <div style="display:flex;margin-top:16px"><input value="{{ sheetDraft }}" onChange="{{ onSheetDraft }}" onKeyDown="{{ onSheetKey }}" placeholder="{{ t.sheetPh }}" style="flex:1;height:44px;border:0;border-bottom:1px solid var(--i);background:transparent;padding:0 12px;margin:0;font:400 15px Archivo,sans-serif;color:var(--i);outline:none;min-width:0;box-sizing:border-box;border-radius:0"><div onClick="{{ sendSheet }}" style="width:44px;height:44px;box-sizing:border-box;border-bottom:1px solid var(--i);color:var(--i);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer">↑</div></div>
-      </div>
-    </div>
+      <div style="flex:none;padding:14px 16px 18px;border-top:1px solid var(--rule);font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:var(--dim);line-height:1.4">{{ t.panelNote }}</div>
+    </aside>
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;start&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;feed&quot;,&quot;chats&quot;,&quot;events&quot;,&quot;jij&quot;,&quot;compose&quot;],&quot;default&quot;:&quot;feed&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Scherm&quot;},&quot;stand&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;licht&quot;,&quot;donker&quot;],&quot;default&quot;:&quot;licht&quot;,&quot;tsType&quot;:&quot;'licht'|'donker'&quot;,&quot;section&quot;:&quot;Weergave&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;start&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;feed&quot;,&quot;post&quot;,&quot;chats&quot;,&quot;events&quot;,&quot;jij&quot;,&quot;compose&quot;],&quot;default&quot;:&quot;feed&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Scherm&quot;}}">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { screen: props.start ?? "feed", view: "friends", vriend: null, feedIdx: 0, seen: {}, panel: "thread", post: null, chat: "Noor", sent: {}, draft: "", replyTo: null, activeMsg: null, msgReacts: {}, typing: false,
-      comments: {}, commentDraft: "", extra: {}, reacts: {}, votes: {}, playing: {}, rsvp: {}, draftEvent: null, toggles: { push: true, stil: false, zicht: true, klank: true },
-      lang: localStorage.getItem("lincin-lang") || "nl", stand: localStorage.getItem("lincin-final-stand") || null, reactBoxOpen: false, chatBoxOpen: false, sheet: null, sheetDraft: "", noQuote: false,
-      composeTitle: "", composeCaption: "", swatch: "orange", kind: "foto", published: false };
+    this.state = { screen: props.start ?? "feed", view: "friends", post: null, vriend: null, chat: "Noor", sent: {}, draft: "", typing: false,
+      comments: {}, commentDraft: "", reacts: {}, cReacts: {}, cPick: null, extra: {}, votes: {}, playing: {}, rsvp: {}, carIdx: {}, seen: {},
+      reactBoxOpen: false, lang: localStorage.getItem("lincin-lang") || "nl", mode: localStorage.getItem("lincin-desk-stand") || null,
+      composeTitle: "", composeCaption: "", swatch: "orange", kind: "foto", published: false, nShots: 1, composeIdx: 0, pollOpts: ["", ""] };
   }
+  componentDidMount() { this.mq = window.matchMedia("(prefers-color-scheme: dark)"); this._onMq = () => this.forceUpdate(); this.mq.addEventListener("change", this._onMq); }
+  componentWillUnmount() { if (this.mq) this.mq.removeEventListener("change", this._onMq); }
   componentDidUpdate(_, prev) { if (prev.sent !== this.state.sent && this.end) this.end.parentElement.scrollTop = this.end.parentElement.scrollHeight; }
+  now() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   dict() {
     const D = {
-      nl: { feedA: "Wat je vrienden", feedB: "maken", perFriend: "Per vriend", byTime: "Op tijd", group: "groep", read: "gelezen", new: "nieuw", endLine: "— einde · geen algoritme, geen oneindig scrollen —", endTitle: "Niemand maakte iets nieuws. Jij wel?", endSub: "Je vrienden zien het als eerste.", comment: "Comment", comments: "Comments", privateMsg: "Privaat bericht", post: "Bijdrage", posts: "bijdragen", post1: "bijdrage", event: "Event", writeComment: "Schrijf een comment…", chats: "Gesprekken", unread: "ongelezen", mentioned: "Vermeld", about: "over", typing: "schrijft…", writeTo: "Schrijf aan", eventsA: "Wat er", eventsB: "komt", planned: "gepland", waitsForYou: "wacht op jou", imIn: "Ik kom", maybe: "Misschien", planNew: "Plan iets nieuws", draftFrom: "concept · uit", sinceMar: "sinds mrt", settings: "Instellingen", you: "Jij", cancel: "Annuleer", newPost: "Nieuwe bijdrage", titlePh: "Titel — kort en groot", captionPh: "Eén zin eronder…", color: "Kleur", kind: "Soort", draft: "Klad", privateChatWith: "Privégesprek met", sheetPh: "Schrijf iets over deze bijdrage…", tabFeed: "Feed", tabEvents: "Events", publish: "Deel met je vrienden", published: "Gedeeld ✓", mention: "Bijdrage vermelden", mentioned2: "Vermeld ✓", reply: "Antwoord", profile: "Profiel", lookTitle: "Hoe het eruitziet", lightDark: "Licht of donker", followsDevice: "Volgt je toestel", light: "licht", dark: "donker", tint: "Blad kleurt mee", tintSub: "Achtergrond neemt de kleur van de vriend in beeld", language: "Taal", notifTitle: "Meldingen", newPosts: "Nieuwe bijdragen", newPostsSub: "Eén melding per vriend per dag", quiet: "Stil tussen 23:00 en 08:00", quietSub: "Berichten komen wel binnen", whoTitle: "Wie ziet wat", visible: "Lincs zien mijn bijdragen", visibleSub: "Alleen wie je toevoegde", myLincs: "Mijn lincs", friends6: "6 vrienden", dateLine: "woensdag 16 september · 4 nieuw", todayLine: "4 nieuwe bijdragen vandaag", noAlgo: "geen algoritme · alleen vrienden", threadSub1: "linc sinds mrt '24", threadSubG: "groep · 6 lincs", morning: "Vanochtend", night: "Vannacht", nowWord: "nu", allFrom: "Alles van", on: "aan", off: "uit" },
-      en: { feedA: "What your friends", feedB: "make", perFriend: "By friend", byTime: "By time", group: "group", read: "read", new: "new", endLine: "— the end · no algorithm, no infinite scroll —", endTitle: "Nobody made anything new. Did you?", endSub: "Your friends see it first.", comment: "Comment", comments: "Comments", privateMsg: "Private message", post: "Post", posts: "posts", post1: "post", event: "Event", writeComment: "Write a comment…", chats: "Chats", unread: "unread", mentioned: "Mentioned", about: "about", typing: "is typing…", writeTo: "Write to", eventsA: "What's", eventsB: "coming", planned: "planned", waitsForYou: "waits for you", imIn: "I'm in", maybe: "Maybe", planNew: "Plan something new", draftFrom: "draft · from", sinceMar: "since Mar", settings: "Settings", you: "You", cancel: "Cancel", newPost: "New post", titlePh: "Title — short and loud", captionPh: "One line below…", color: "Colour", kind: "Kind", draft: "Draft", privateChatWith: "Private chat with", sheetPh: "Write something about this post…", tabFeed: "Feed", tabEvents: "Events", publish: "Share with your friends", published: "Shared ✓", mention: "Mention post", mentioned2: "Mentioned ✓", reply: "Reply", profile: "Profile", lookTitle: "Appearance", lightDark: "Light or dark", followsDevice: "Follows your device", light: "light", dark: "dark", tint: "Page takes the colour", tintSub: "Background tints with the friend in view", language: "Language", notifTitle: "Notifications", newPosts: "New posts", newPostsSub: "One notification per friend per day", quiet: "Quiet between 23:00 and 08:00", quietSub: "Messages still arrive", whoTitle: "Who sees what", visible: "Lincs see my posts", visibleSub: "Only people you added", myLincs: "My lincs", friends6: "6 friends", dateLine: "Wednesday 16 September · 4 new", todayLine: "4 new posts today", noAlgo: "no algorithm · friends only", threadSub1: "linc since Mar '24", threadSubG: "group · 6 lincs", morning: "This morning", night: "Last night", nowWord: "now", allFrom: "Everything from", on: "on", off: "off" },
-      de: { feedA: "Was deine Freunde", feedB: "machen", perFriend: "Nach Freund", byTime: "Nach Zeit", group: "Gruppe", read: "gelesen", new: "neu", endLine: "— Ende · kein Algorithmus, kein endloses Scrollen —", endTitle: "Niemand hat etwas Neues gemacht. Du?", endSub: "Deine Freunde sehen es zuerst.", comment: "Kommentar", comments: "Kommentare", privateMsg: "Private Nachricht", post: "Beitrag", posts: "Beiträge", post1: "Beitrag", event: "Event", writeComment: "Kommentar schreiben…", chats: "Gespräche", unread: "ungelesen", mentioned: "Erwähnt", about: "über", typing: "schreibt…", writeTo: "Schreib an", eventsA: "Was", eventsB: "kommt", planned: "geplant", waitsForYou: "wartet auf dich", imIn: "Ich komme", maybe: "Vielleicht", planNew: "Etwas Neues planen", draftFrom: "Entwurf · aus", sinceMar: "seit März", settings: "Einstellungen", you: "Du", cancel: "Abbrechen", newPost: "Neuer Beitrag", titlePh: "Titel — kurz und groß", captionPh: "Ein Satz darunter…", color: "Farbe", kind: "Art", draft: "Entwurf", privateChatWith: "Privates Gespräch mit", sheetPh: "Schreib etwas über diesen Beitrag…", tabFeed: "Feed", tabEvents: "Events", publish: "Mit Freunden teilen", published: "Geteilt ✓", mention: "Beitrag erwähnen", mentioned2: "Erwähnt ✓", reply: "Antworten", profile: "Profil", lookTitle: "Aussehen", lightDark: "Hell oder dunkel", followsDevice: "Folgt deinem Gerät", light: "hell", dark: "dunkel", tint: "Seite färbt sich mit", tintSub: "Hintergrund nimmt die Farbe des Freundes im Bild", language: "Sprache", notifTitle: "Mitteilungen", newPosts: "Neue Beiträge", newPostsSub: "Eine Mitteilung pro Freund pro Tag", quiet: "Ruhe zwischen 23:00 und 08:00", quietSub: "Nachrichten kommen trotzdem an", whoTitle: "Wer sieht was", visible: "Lincs sehen meine Beiträge", visibleSub: "Nur wer du hinzugefügt hast", myLincs: "Meine Lincs", friends6: "6 Freunde", dateLine: "Mittwoch, 16. September · 4 neu", todayLine: "4 neue Beiträge heute", noAlgo: "kein Algorithmus · nur Freunde", threadSub1: "Linc seit März '24", threadSubG: "Gruppe · 6 Lincs", morning: "Heute Morgen", night: "Letzte Nacht", nowWord: "jetzt", allFrom: "Alles von", on: "an", off: "aus" },
+      nl: { dateLine: "wo 16 sep · 4 nieuw", feedA: "Wat je vrienden", feedB: "maken", perFriend: "Per vriend", byTime: "Op tijd", group: "groep", new: "nieuw", read: "gelezen", posts: "bijdragen", post1: "bijdrage",
+        post: "Bijdrage", comment: "Comment", comments: "Comments", privateMsg: "Privaat bericht", chats: "Gesprekken", unread: "ongelezen", mentioned: "Vermeld", about: "over", typing: "schrijft…", writeTo: "Schrijf aan",
+        writeComment: "Schrijf een comment…", backFeed: "Feed", profile: "Profiel", profileOf: "Profiel van", allFrom: "Alles van", newPost: "Nieuwe bijdrage", cancel: "Annuleer", titlePh: "Titel — kort en groot",
+        captionPh: "Eén zin eronder…", color: "Kleur", kind: "Soort", draft: "Klad", publish: "Deel met je vrienden", published: "Gedeeld ✓", addPhoto: "foto erbij", dropMany: "sleep meerdere foto's — tot 6",
+        pollOptions: "Keuzes", pollAdd: "Keuze erbij", pollPh1: "Tent", pollPh2: "Geen tent, auto", pollPhN: "Nog een keuze…", eventsA: "Wat er", eventsB: "komt", planned: "gepland", imIn: "Ik kom", maybe: "Misschien",
+        endLine: "— einde · geen algoritme, geen oneindig scrollen —", endTitle: "Niemand maakte iets nieuws. Jij wel?", noAlgo: "geen algoritme · alleen vrienden", panelNote: "een gesprek opent op volle breedte",
+        tabs: ["Feed", "Gesprekken", "Events", "Jij"], look: "Hoe het eruitziet", lightDark: "Licht of donker", follows: "Volgt je toestel", language: "Taal", notif: "Meldingen", newPosts: "Nieuwe bijdragen",
+        perDay: "Eén melding per vriend per dag", who: "Wie ziet wat", visible: "Lincs zien mijn bijdragen", onlyAdded: "Alleen wie je toevoegde", myLincs: "Mijn lincs", six: "6 vrienden", on: "aan", off: "uit", device: "toestel", light: "licht", dark: "donker", sinceMar: "linc sinds mrt '24", groupSub: "groep · 6 lincs", votes: "stemmen · klik om te stemmen" },
+      en: { dateLine: "Wed 16 Sep · 4 new", feedA: "What your friends", feedB: "make", perFriend: "By friend", byTime: "By time", group: "group", new: "new", read: "read", posts: "posts", post1: "post",
+        post: "Post", comment: "Comment", comments: "Comments", privateMsg: "Private message", chats: "Chats", unread: "unread", mentioned: "Mentioned", about: "about", typing: "is typing…", writeTo: "Write to",
+        writeComment: "Write a comment…", backFeed: "Feed", profile: "Profile", profileOf: "Profile of", allFrom: "All from", newPost: "New post", cancel: "Cancel", titlePh: "Title — short and loud",
+        captionPh: "One line below…", color: "Colour", kind: "Kind", draft: "Draft", publish: "Share with your friends", published: "Shared ✓", addPhoto: "add photo", dropMany: "drop several photos — up to 6",
+        pollOptions: "Choices", pollAdd: "Add choice", pollPh1: "Tent", pollPh2: "No tent, car", pollPhN: "Another choice…", eventsA: "What's", eventsB: "coming", planned: "planned", imIn: "I'm in", maybe: "Maybe",
+        endLine: "— the end · no algorithm, no infinite scroll —", endTitle: "Nobody made anything new. Did you?", noAlgo: "no algorithm · friends only", panelNote: "a chat opens full width",
+        tabs: ["Feed", "Chats", "Events", "You"], look: "Appearance", lightDark: "Light or dark", follows: "Follows your device", language: "Language", notif: "Notifications", newPosts: "New posts",
+        perDay: "One notification per friend per day", who: "Who sees what", visible: "Lincs see my posts", onlyAdded: "Only people you added", myLincs: "My lincs", six: "6 friends", on: "on", off: "off", device: "device", light: "light", dark: "dark", sinceMar: "linc since Mar '24", groupSub: "group · 6 lincs", votes: "votes · click to vote" },
+      de: { dateLine: "Mi 16. Sep · 4 neu", feedA: "Was deine Freunde", feedB: "machen", perFriend: "Nach Freund", byTime: "Nach Zeit", group: "Gruppe", new: "neu", read: "gelesen", posts: "Beiträge", post1: "Beitrag",
+        post: "Beitrag", comment: "Kommentar", comments: "Kommentare", privateMsg: "Private Nachricht", chats: "Gespräche", unread: "ungelesen", mentioned: "Erwähnt", about: "über", typing: "schreibt…", writeTo: "Schreib an",
+        writeComment: "Kommentar schreiben…", backFeed: "Feed", profile: "Profil", profileOf: "Profil von", allFrom: "Alles von", newPost: "Neuer Beitrag", cancel: "Abbrechen", titlePh: "Titel — kurz und groß",
+        captionPh: "Ein Satz darunter…", color: "Farbe", kind: "Art", draft: "Entwurf", publish: "Mit Freunden teilen", published: "Geteilt ✓", addPhoto: "Foto hinzufügen", dropMany: "mehrere Fotos ablegen — bis 6",
+        pollOptions: "Auswahl", pollAdd: "Auswahl hinzufügen", pollPh1: "Zelt", pollPh2: "Kein Zelt, Auto", pollPhN: "Noch eine Auswahl…", eventsA: "Was", eventsB: "kommt", planned: "geplant", imIn: "Ich komme", maybe: "Vielleicht",
+        endLine: "— Ende · kein Algorithmus, kein endloses Scrollen —", endTitle: "Niemand hat etwas Neues gemacht. Du?", noAlgo: "kein Algorithmus · nur Freunde", panelNote: "ein Gespräch öffnet in voller Breite",
+        tabs: ["Feed", "Gespräche", "Events", "Du"], look: "Aussehen", lightDark: "Hell oder dunkel", follows: "Folgt deinem Gerät", language: "Sprache", notif: "Mitteilungen", newPosts: "Neue Beiträge",
+        perDay: "Eine Mitteilung pro Freund pro Tag", who: "Wer sieht was", visible: "Lincs sehen meine Beiträge", onlyAdded: "Nur wen du hinzugefügt hast", myLincs: "Meine Lincs", six: "6 Freunde", on: "an", off: "aus", device: "Gerät", light: "hell", dark: "dunkel", sinceMar: "Linc seit März '24", groupSub: "Gruppe · 6 Lincs", votes: "Stimmen · klicken zum Abstimmen" },
     };
     return D[this.state.lang] ?? D.nl;
   }
-  now() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
-  reactions(key, list) { return list.map(([emoji, n], i) => { const on = !!this.state.reacts[key + i]; return { emoji, n: n + (on ? 1 : 0), color: on ? "var(--i)" : "var(--dim)", bg: on ? "var(--i)" : "transparent", fg: on ? "var(--p)" : "var(--i)", tap: (e) => { e.stopPropagation(); this.setState(s => ({ reacts: { ...s.reacts, [key + i]: !on } })); } }; }); }
-  send() { const text = this.state.draft.trim(); if (!text) return; const name = this.state.chat; this.setState(s => ({ sent: { ...s.sent, [name]: (s.sent[name] ?? []).concat({ side: "flex-end", text, time: this.now(), replyTo: s.replyTo }) }, draft: "", replyTo: null, typing: true })); setTimeout(() => this.setState({ typing: false }), 2000); }
-  sendComment() { const text = this.state.commentDraft.trim(), p = this.state.post; if (!text || !p) return; this.setState(s => ({ comments: { ...s.comments, [p.no]: (s.comments[p.no] ?? []).concat({ by: "Jij", text, when: this.now() }) }, commentDraft: "" })); }
+  reactions(key, list) { return (list ?? []).map(([emoji, n], i) => { const on = !!this.state.reacts[key + i]; return { emoji, n: n + (on ? 1 : 0), color: on ? "var(--i)" : "var(--dim)", bg: on ? "var(--i)" : "transparent", fg: on ? "var(--p)" : "var(--i)", tap: (e) => { e.stopPropagation(); this.setState(s => ({ reacts: { ...s.reacts, [key + i]: !on } })); } }; }); }
+  send() { const text = this.state.draft.trim(); if (!text) return; const name = this.state.chat;
+    this.setState(s => ({ sent: { ...s.sent, [name]: (s.sent[name] ?? []).concat({ side: "flex-end", text, time: this.now() }) }, draft: "", typing: true }));
+    setTimeout(() => this.setState({ typing: false }), 1800); }
+  sendComment() { const text = this.state.commentDraft.trim(), p = this.state.post; if (!text || !p) return;
+    this.setState(s => ({ comments: { ...s.comments, [p.no]: (s.comments[p.no] ?? []).concat({ by: "Jij", text, when: this.now() }) }, commentDraft: "" })); }
+  openPost(p) { this.setState({ post: p, screen: "post", reactBoxOpen: false }); }
   renderVals() {
     const t = this.dict();
-    const stand = this.state.stand ?? this.props.stand ?? "licht", isDark = stand === "donker";
-    const tint = (panel) => isDark ? "color-mix(in oklch, " + panel + " 18%, #1A1917)" : "color-mix(in oklch, " + panel + " 42%, #F2EFE8)";
+    const mode = this.state.mode ?? "toestel";
+    const deviceDark = !!(this.mq && this.mq.matches);
+    const stand = mode === "toestel" ? (deviceDark ? "donker" : "licht") : mode, isDark = stand === "donker";
     const C = isDark
       ? { orange: ["#D9764A", "#1A1917"], blue: ["#5F7FE6", "#1A1917"], ochre: ["#C9A94F", "#1A1917"], green: ["#5E9C72", "#1A1917"], red: ["#CF5442", "#1A1917"], acid: ["#D2E85A", "#1A1917"] }
       : { orange: ["#F06A2B", "#141414"], blue: ["#2F5BFF", "#F2EFE8"], ochre: ["#E0B64A", "#141414"], green: ["#4C9A63", "#F2EFE8"], red: ["#D8321F", "#F2EFE8"], acid: ["#E5FF3A", "#141414"] };
     const people = { Noor: "orange", Sem: "blue", Lotte: "ochre", Daan: "green", Yusuf: "red" };
-    const groups = { "Kamp '26": { color: "green", members: "6 lincs" } };
-    const col = (name) => groups[name] ? C[groups[name].color] : C[people[name] ?? "orange"];
+    const groupsDef = { "Kamp '26": "green" };
+    const col = (name) => groupsDef[name] ? C[groupsDef[name]] : C[people[name] ?? "orange"];
+    const tint = (panel) => isDark ? "color-mix(in oklch, " + panel + " 14%, #1A1917)" : "color-mix(in oklch, " + panel + " 26%, #F2EFE8)";
+
     const posts = [
-      { no: "01", by: "Noor", when: "22:41", kind: "foto", title: "Het licht om 22:19", caption: "Marken, net voor het donker werd. Zondag hierheen?", body: "Ze stond twintig minuten op de dijk voor deze ene. De wind was zo hard dat de telefoon trilde.", placeholder: "foto · dijk bij zonsondergang", reacts: [["🔥", 3], ["🌊", 1], ["🧡", 2]], baseComments: [{ by: "Sem", text: "dit is echt de dijk? ziet eruit als IJsland", when: "22:50" }, { by: "Lotte", text: "zondag ben ik erbij", when: "07:58" }] },
+      { no: "01", by: "Noor", when: "22:41", kind: "foto", shots: 3, title: "Het licht om 22:19", caption: "Marken, net voor het donker werd. Zondag hierheen?", body: "Ze stond twintig minuten op de dijk voor deze ene. De wind was zo hard dat de telefoon trilde.", placeholder: "foto · dijk bij zonsondergang", reacts: [["🔥", 3], ["🌊", 1], ["🧡", 2]], baseComments: [{ by: "Sem", text: "dit is echt de dijk? ziet eruit als IJsland", when: "22:50", reacts: [["😂", 2]] }, { by: "Lotte", text: "zondag ben ik erbij", when: "07:58", reacts: [["🧡", 1]] }] },
       { no: "02", by: "Noor", when: "22:58", kind: "plek", place: "Marken", title: "Hier stond ik", caption: "De kop van de dijk, waar de bank weg is.", body: "", placeholder: "kaartje", reacts: [["📍", 2], ["👀", 1]] },
-      { no: "03", by: "Sem", when: "23:10", kind: "spraak", dur: "0:41", group: "Kamp '26", title: "Idee voor het kamp", caption: "41 seconden waarin hij zichzelf drie keer tegenspreekt.", body: "", placeholder: "spraak", reacts: [["😂", 4], ["🛶", 2], ["👀", 1]] },
-      { no: "04", by: "Lotte", when: "07:55", kind: "krabbel", title: "Ochtend, in potlood", caption: "Getekend in de trein. Ze zegt dat het een hond is.", body: "", placeholder: "krabbel · potloodtekening", reacts: [["✏️", 2], ["🐕", 5], ["❤️", 3]] },
-      { no: "05", by: "Lotte", when: "08:20", kind: "tekst", textBody: "De trein rook naar sinaasappel en iemand huilde zacht. Buiten liep een man met een ladder.", title: "Drie regels", caption: "Geschreven tussen Weesp en Amsterdam.", body: "", placeholder: "tekst", reacts: [["🍊", 3], ["📝", 1]] },
-      { no: "06", by: "Daan", when: "09:12", kind: "poll", group: "Kamp '26", pollOptions: [["Tent", 3], ["Geen tent, auto", 1]], title: "Tent of geen tent", caption: "Poll: 3 tegen 1. Daan is de 1.", body: "", placeholder: "poll", reacts: [["⛺", 3], ["🚗", 1], ["😤", 2]] },
-      { no: "07", by: "Yusuf", when: "10:30", kind: "muziek", track: "Space Song", artist: "Beach House · Depression Cherry", dur: "5:20", title: "Space Song, weer", caption: "Beach House, op repeat sinds dinsdag.", body: "", placeholder: "hoes", reacts: [["🎧", 2], ["🌌", 4], ["🔁", 1]] },
-      { no: "08", by: "Daan", when: "11:02", kind: "foto", title: "Achterbank, 6:40", caption: "Toch maar geslapen in de auto. Voor de oefening.", body: "", placeholder: "foto · achterbank in ochtendlicht", reacts: [["🚗", 2], ["😴", 3]] },
+      { no: "03", by: "Sem", when: "23:10", kind: "spraak", dur: "0:41", group: "Kamp '26", title: "Idee voor het kamp", caption: "41 seconden waarin hij zichzelf drie keer tegenspreekt.", body: "", placeholder: "spraak", reacts: [["😂", 4], ["🛶", 2]] },
+      { no: "06", by: "Daan", when: "09:12", kind: "poll", group: "Kamp '26", pollOptions: [["Tent", 3], ["Geen tent, auto", 1]], title: "Tent of geen tent", caption: "Poll: 3 tegen 1. Daan is de 1.", body: "", placeholder: "poll", reacts: [["⛺", 3], ["🚗", 1]] },
+      { no: "04", by: "Lotte", when: "07:55", kind: "krabbel", title: "Ochtend, in potlood", caption: "Getekend in de trein. Ze zegt dat het een hond is.", body: "", placeholder: "krabbel · potloodtekening", reacts: [["✏️", 2], ["🐕", 5]] },
+      { no: "05", by: "Lotte", when: "08:20", kind: "tekst", textBody: "De trein rook naar sinaasappel en iemand huilde zacht. Buiten liep een man met een ladder.", title: "Drie regels", caption: "Geschreven tussen Weesp en Amsterdam.", body: "", placeholder: "tekst", reacts: [["🍊", 3]] },
+      { no: "07", by: "Yusuf", when: "10:30", kind: "muziek", track: "Space Song", artist: "Beach House · Depression Cherry", dur: "5:20", title: "Space Song, weer", caption: "Beach House, op repeat sinds dinsdag.", body: "", placeholder: "hoes", reacts: [["🎧", 2], ["🌌", 4]] },
+      { no: "08", by: "Daan", when: "11:02", kind: "foto", shots: 2, title: "Achterbank, 6:40", caption: "Toch maar geslapen in de auto. Voor de oefening.", body: "", placeholder: "foto · achterbank in ochtendlicht", reacts: [["🚗", 2], ["😴", 3]] },
     ];
-    const sheet = (by, quote) => (e) => { e.stopPropagation(); this.setState({ sheet: { by, quote } }); };
-    const openChat = (name) => this.setState({ chat: name, panel: "thread" });
+
     const decorate = (p, key) => {
-      const [panel, ink] = col(p.by); const k = p.kind, playing = !!this.state.playing[p.no], seed = parseInt(p.no, 10);
+      const [panel, ink] = col(p.by), k = p.kind, playing = !!this.state.playing[p.no], seed = parseInt(p.no, 10);
       const n = (this.state.comments[p.no] ?? []).length + (p.baseComments ?? []).length;
-      const myVote = this.state.votes[p.no]; const total = (p.pollOptions ?? []).reduce((s, o) => s + o[1], 0) + (myVote != null ? 1 : 0);
-      const isOpen = this.state.panel === "post" && this.state.post?.no === p.no;
-      return { ...p, panel, ink, initial: p.by[0], border: isOpen ? panel : "var(--i)", cardBg: isOpen ? "var(--p2)" : "var(--p)", slot: "desk-" + key + p.no, slotD: "desk-d-" + p.no, isImg: k === "foto" || k === "krabbel", isPlek: k === "plek", isSpraak: k === "spraak", isTekst: k === "tekst", isPoll: k === "poll", isMuziek: k === "muziek",
-        bars: Array.from({ length: 28 }, (_, i) => ({ h: (20 + Math.abs(Math.sin(i * 1.7 + seed) * 70 + Math.cos(i * .6) * 10)) + "%", bg: playing && i > 10 ? "var(--dim)" : "var(--i)" })), dur: p.dur ?? "", playGlyph: playing ? "❚❚" : "▶", togglePlay: (e) => { e.stopPropagation(); this.setState(s => ({ playing: { ...s.playing, [p.no]: !playing } })); },
+      const nShots = Math.max(1, p.shots ?? 1), base = "desk-" + key + p.no;
+      const carIdx = Math.min(nShots - 1, this.state.carIdx[p.no] ?? 0);
+      const myVote = this.state.votes[p.no], total = (p.pollOptions ?? []).reduce((s, o) => s + o[1], 0) + (myVote != null ? 1 : 0);
+      const isImg = k === "foto" || k === "krabbel";
+      return { ...p, panel, ink, initial: p.by[0], isImg, notImg: !isImg, isPlek: k === "plek", isSpraak: k === "spraak", isTekst: k === "tekst", isPoll: k === "poll", isMuziek: k === "muziek",
+        coverId: base + "-cover", vSlot: base + "-v", placeholder: p.placeholder,
+        shots: Array.from({ length: nShots }, (_, i) => ({ id: base + "-i" + i, ph: p.placeholder + (nShots > 1 ? " · " + (i + 1) + "/" + nShots : "") })),
+        multi: nShots > 1, carLabel: nShots > 1 ? String(carIdx + 1).padStart(2, "0") + " / " + String(nShots).padStart(2, "0") : "",
+        dots: Array.from({ length: nShots }, (_, i) => ({ w: i === carIdx ? "20px" : "7px", bg: i === carIdx ? "#F2EFE8" : "rgba(242,239,232,.45)" })),
+        onCar: (e) => { const el = e.currentTarget, i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== carIdx) this.setState(s => ({ carIdx: { ...s.carIdx, [p.no]: i } })); },
+        prev: (e) => { e.stopPropagation(); this.setState(s => ({ carIdx: { ...s.carIdx, [p.no]: (carIdx - 1 + nShots) % nShots } })); },
+        next: (e) => { e.stopPropagation(); this.setState(s => ({ carIdx: { ...s.carIdx, [p.no]: (carIdx + 1) % nShots } })); },
+        stop: (e) => e.stopPropagation(),
+        bars: Array.from({ length: 26 }, (_, i) => ({ h: (20 + Math.abs(Math.sin(i * 1.7 + seed) * 66 + Math.cos(i * .6) * 10)) + "%", bg: playing && i > 10 ? "var(--dim)" : "var(--i)" })),
+        dur: p.dur ?? "", playGlyph: playing ? "❚❚" : "▶", togglePlay: (e) => { e.stopPropagation(); this.setState(s => ({ playing: { ...s.playing, [p.no]: !playing } })); },
         pollOpts: (p.pollOptions ?? []).map(([label, n0], i) => { const cnt = n0 + (myVote === i ? 1 : 0); return { label, n: cnt, mark: myVote === i ? " ✓" : "", pct: total ? Math.round(cnt / total * 100) + "%" : "0%", bg: myVote === i ? panel : "var(--rule)", vote: (e) => { e.stopPropagation(); this.setState(s => ({ votes: { ...s.votes, [p.no]: myVote === i ? null : i } })); } }; }),
-        reactions: this.reactions(key + p.no, p.reacts), commentsLabel: n ? " · " + n : "", commentCount: n, canEvent: /\?/.test(p.caption) || k === "plek",
-        commentList: (p.baseComments ?? []).concat(this.state.comments[p.no] ?? []).map(c => ({ ...c, initial: c.by[0], panel: c.by === "Jij" ? "var(--i)" : col(c.by)[0], ink: c.by === "Jij" ? "var(--p)" : col(c.by)[1] })),
-        priv: sheet(p.by, p.caption), open: (e) => { if (e) e.stopPropagation(); this.setState(s => ({ post: p, panel: "post", seen: { ...s.seen, [p.group ?? p.by]: true } })); } };
+        reactions: this.reactions(key + p.no, p.reacts), commentsLabel: n ? " · " + n : "", commentCount: n,
+        commentList: (p.baseComments ?? []).concat(this.state.comments[p.no] ?? []).map((c, ci) => {
+          const ckey = p.no + ":" + ci, mine = this.state.cReacts[ckey] ?? {}, pickOpen = this.state.cPick === ckey;
+          const b = c.reacts ?? [];
+          const all = b.map(([em, cnt]) => [em, cnt + (mine[em] ? 1 : 0), !!mine[em]]).concat(Object.keys(mine).filter(em => mine[em] && !b.some(x => x[0] === em)).map(em => [em, 1, true]));
+          return { ...c, initial: c.by[0], panel: c.by === "Jij" ? "var(--i)" : col(c.by)[0], ink: c.by === "Jij" ? "var(--p)" : col(c.by)[1],
+            reacts: all.map(([emoji, cnt, on]) => ({ emoji, n: cnt, bg: on ? "var(--acid)" : "transparent", fg: on ? "#141414" : "var(--i)", tap: (e) => { e.stopPropagation(); this.setState(s => ({ cReacts: { ...s.cReacts, [ckey]: { ...mine, [emoji]: !on } } })); } })),
+            pickOpen, pickBg: pickOpen ? "var(--i)" : "transparent", pickFg: pickOpen ? "var(--p)" : "var(--dim)",
+            togglePick: (e) => { e.stopPropagation(); this.setState({ cPick: pickOpen ? null : ckey }); },
+            picks: ["❤️", "😂", "🔥", "😮", "👏", "🥹"].map(em => ({ emoji: em, bg: mine[em] ? "var(--acid)" : "var(--p)", tap: (e) => { e.stopPropagation(); this.setState(s => ({ cReacts: { ...s.cReacts, [ckey]: { ...mine, [em]: !mine[em] } }, cPick: null })); } })) };
+        }),
+        profile: () => this.setState({ vriend: p.by, screen: "vriend" }),
+        priv: (e) => { if (e) e.stopPropagation(); this.setState({ chat: p.group ?? p.by, screen: "chats" }); },
+        open: (e) => { if (e) e.stopPropagation(); this.openPost(p); } };
     };
-    const byFriend = {}; posts.forEach(p => { const k = p.group ?? p.by; (byFriend[k] = byFriend[k] || []).push(p); });
-    const friends = Object.keys(byFriend).map((name, i) => {
-      const list = byFriend[name], isGroup = !!groups[name], [panel, ink] = col(name), seen = !!this.state.seen[name];
-      return { name, initial: name[0], panel, ink, z: i + 1, count: list.length + " " + (list.length === 1 ? t.post1 : t.posts), last: list[list.length - 1].when, isGroup, members: isGroup ? groups[name].members : "", seen, fresh: seen ? 0 : (i < 2 ? list.length : 0),
-        blockOpacity: seen ? .35 : 1, nameColor: seen ? "var(--dim)" : "var(--i)",
-        profile: () => openProfile(name), chat: (e) => { e.stopPropagation(); openChat(name); }, posts: list.map(p => decorate(p, "f" + i)) };
+
+    const byGroup = {}; posts.forEach(p => { const k = p.group ?? p.by; (byGroup[k] = byGroup[k] || []).push(p); });
+    const groups = Object.keys(byGroup).map((name, i) => {
+      const list = byGroup[name], [panel, ink] = col(name), isGroup = !!groupsDef[name], fresh = i < 2 ? list.length : 0;
+      const sub = isGroup ? t.group + " · 6 lincs" : fresh ? fresh + " " + t.new + " · " + list.map(p => p.kind + " " + p.when).join(" · ") : t.read;
+      return { name, z: Object.keys(byGroup).length - i, bandBg: panel, bandInk: ink, sub, count: list.length + " " + (list.length === 1 ? t.post1 : t.posts),
+        profile: (e) => { e.stopPropagation(); this.setState({ vriend: name, screen: "vriend" }); },
+        chat: (e) => { e.stopPropagation(); this.setState({ chat: name, screen: "chats" }); },
+        posts: list.map((p, j) => decorate(p, "g" + i + j)) };
     });
-    const cur = friends[this.state.feedIdx] ?? friends[0];
-    const timeline = [[t.morning, "07:00 – " + t.nowWord, p => parseInt(p.no) >= 4], [t.night, "22:00 – 00:00", p => parseInt(p.no) < 4]].map(([label, range, fn], gi) => { const list = posts.filter(fn).reverse(); return { label, range, z: gi + 1, count: list.length + " " + t.posts, posts: list.map(p => ({ ...decorate(p, "t" + gi), isOther: !["foto", "krabbel", "tekst"].includes(p.kind) })) }; });
+    const timeGroups = [["Vanochtend", p => parseInt(p.no, 10) >= 4], ["Vannacht", p => parseInt(p.no, 10) < 4]].map(([label, fn], gi) => {
+      const list = posts.filter(fn);
+      return { name: label, z: 2 - gi, bandBg: "var(--i)", bandInk: "var(--p)", sub: "", count: list.length + " " + t.posts, profile: () => {}, chat: () => {}, posts: list.map((p, j) => decorate(p, "t" + gi + j)) };
+    });
+
+    const postSt = this.state.post ? decorate(posts.find(p => p.no === this.state.post.no) ?? this.state.post, "post") : null;
+    const vName = this.state.vriend ?? "Noor", [vPanel, vInk] = col(vName);
+    const vList = posts.filter(p => (groupsDef[vName] ? p.group === vName : p.by === vName));
     const bios = { Noor: "Fotografeert licht, niet dingen.", Sem: "Praat sneller dan hij denkt. Plant kampen.", Lotte: "Eén tekening per ochtend, ogen dicht.", Daan: "Slaapt liever in de auto.", Yusuf: "Eén nummer per week, op repeat.", "Kamp '26": "Zes lincs, één tent, veel discussie." };
-    const vName = this.state.vriend ?? "Noor"; const [vP, vI] = col(vName); const vList = posts.filter(p => (groups[vName] ? p.group === vName : p.by === vName));
-    const vriend = { name: vName, initial: vName[0], panel: vP, ink: vI, radius: groups[vName] ? "0" : "50%", sub: groups[vName] ? t.threadSubG : t.threadSub1, count: vList.length + " " + t.posts, bio: bios[vName] ?? "", chat: () => openChat(vName), posts: vList.map(p => decorate(p, "v")) };
-    const openProfile = (name) => this.setState({ vriend: name, panel: "profile" });
-    const post = this.state.post ? decorate(this.state.post, "post") : null;
-    const chatName = this.state.chat; const [tPanel, tInk] = col(chatName);
-    const chatsData = [{ name: "Noor", time: "2m", preview: "kijk № 01 even — zondag?", unread: 2 }, { name: "Kamp '26", time: "38m", preview: "Daan: wie neemt de tent", unread: 1 }, { name: "Sem", time: "3u", preview: "Jij: haha ja precies", unread: 0 }, { name: "Lotte", time: "1d", preview: "Lotte: 🎧 spraakbericht", unread: 0 }, { name: "Yusuf", time: "4d", preview: "Nog geen berichten", unread: 0 }]
-      .map(c => { const [panel, ink] = col(c.name); const active = c.name === chatName; return { ...c, panel, ink, initial: c.name[0], timeColor: c.unread ? "var(--red)" : "var(--dim)", rowBg: active ? "var(--p2)" : "transparent", tabColor: active ? "var(--i)" : "var(--dim)", tabDeco: active ? "underline" : "none", open: () => openChat(c.name) }; });
-    const findQuoted = (q) => posts.find(p => p.title === q || p.caption === q);
-    const base = chatName === "Noor" ? [{ side: "flex-start", text: "ben net terug van de dijk, het licht was gek mooi", time: "22:41" }, { side: "flex-end", text: "foto of het is niet gebeurd", time: "22:42" }, { side: "flex-start", quote: "Het licht om 22:19", text: "zo dus. № 01. zondag hierheen?", time: "22:45" }, { side: "flex-end", text: "deal. ik neem de thermos", time: "22:47" }]
+    const vriend = { name: vName, panel: vPanel, ink: vInk, bio: bios[vName] ?? "", count: vList.length + " " + t.posts, chat: () => this.setState({ chat: vName, screen: "chats" }), posts: vList.map((p, j) => decorate(p, "v" + j)) };
+
+    const chatName = this.state.chat, [tPanel] = col(chatName);
+    const chats = [{ name: "Noor", time: "2m", preview: "kijk № 01 even — zondag?", unread: 2 }, { name: "Kamp '26", time: "38m", preview: "Daan: wie neemt de tent", unread: 1 }, { name: "Sem", time: "3u", preview: "Jij: haha ja precies", unread: 0 }, { name: "Lotte", time: "1d", preview: "Lotte: 🎧 spraakbericht", unread: 0 }, { name: "Yusuf", time: "4d", preview: "Nog geen berichten", unread: 0 }]
+      .map(c => { const [panel, ink] = col(c.name), active = c.name === chatName && this.state.screen === "chats";
+        return { ...c, bar: active ? (isDark ? "#1A1917" : "#141414") : panel, rowBg: active ? panel : "transparent", rowInk: active ? ink : "var(--i)", previewInk: active ? ink : "var(--dim)",
+          timeInk: active ? ink : (c.unread ? "var(--red)" : "var(--dim)"), right: c.unread ? String(c.unread) : c.time, open: () => this.setState({ chat: c.name, screen: "chats" }) }; });
+
+    const findQuoted = (q) => posts.find(p => p.title === q);
+    const baseThread = chatName === "Noor"
+      ? [{ side: "flex-start", text: "ben net terug van de dijk, het licht was gek mooi", time: "22:41" }, { side: "flex-end", text: "foto of het is niet gebeurd", time: "22:42" }, { side: "flex-start", quote: "Het licht om 22:19", text: "zo dus. № 01. zondag hierheen?", time: "22:45" }, { side: "flex-end", text: "deal. ik neem de thermos", time: "22:47" }]
       : chatName === "Kamp '26" ? [{ side: "flex-start", text: "Daan: wie neemt de tent", time: "09:14" }, { side: "flex-start", quote: "Tent of geen tent", text: "Sem: stem eerst even, № 06", time: "09:20" }] : [];
-    const thread = base.concat(this.state.sent[chatName] ?? []).map((m, mi) => { const key = chatName + mi, active = this.state.activeMsg === key, rs = Object.keys(this.state.msgReacts[key] ?? {}).filter(k => this.state.msgReacts[key][k]); const qp = m.quote ? findQuoted(m.quote) : null;
-      return { ...m, fontSize: /^[\p{Extended_Pictographic}\s]{1,3}$/u.test(m.text ?? "") ? "34px" : "15px", bg: m.side === "flex-end" ? "var(--p2)" : "var(--p)", fg: "var(--i)", border: active ? tPanel : (m.side === "flex-end" ? "var(--p2)" : "var(--rule)"), active, reacts: rs.length ? rs : null, reactSide: m.side === "flex-end" ? "right" : "left", timeGap: rs.length ? "10px" : "-4px",
-        tap: () => this.setState({ activeMsg: active ? null : key }), quick: ["❤️", "😂", "🔥", "👀", "👏"].map(em => ({ emoji: em, tap: (e) => { e.stopPropagation(); this.setState(s => ({ msgReacts: { ...s.msgReacts, [key]: { ...(s.msgReacts[key] ?? {}), [em]: !(s.msgReacts[key] ?? {})[em] } }, activeMsg: null })); } })),
-        reply: (e) => { e.stopPropagation(); this.setState({ replyTo: m.text, activeMsg: null }); }, openQuoted: () => { if (qp) decorate(qp, "q").open(); } }; });
-    const mSet = {}; thread.forEach(m => { const qp = m.quote ? findQuoted(m.quote) : null; if (qp) mSet[qp.no] = qp; }); const mentions = Object.values(mSet).map(qp => decorate(qp, "m"));
-    const de = this.state.draftEvent;
-    const events = (de ? [de] : []).concat([{ day: "21", month: "sep", by: "Noor", time: "zo 14:00", title: "Naar de dijk bij Marken", place: "Marken", who: "jij, Noor, Sem", name: "Noor" }, { day: "04", month: "okt", by: "Daan", time: "vr — zo", title: "Kamp '26, de generale", place: "Twiske", who: "6 lincs", name: "Daan" }, { day: "12", month: "okt", by: "Yusuf", time: "do 20:30", title: "Beach House, Paradiso", place: "Amsterdam", who: "jij, Yusuf", name: "Yusuf" }])
-      .map((e, i) => { const [panel, ink] = col(e.name); const r = this.state.rsvp[i]; return { ...e, panel, ink, yesDeco: r === "yes" ? "none" : "underline", yesColor: r === "yes" ? "var(--i)" : "var(--dim)", yesMark: r === "yes" ? "✓ " : "", maybeDeco: r === "maybe" ? "none" : "underline", maybeColor: r === "maybe" ? "var(--i)" : "var(--dim)", maybeMark: r === "maybe" ? "✓ " : "", yes: () => this.setState(s => ({ rsvp: { ...s.rsvp, [i]: r === "yes" ? null : "yes" } })), maybe: () => this.setState(s => ({ rsvp: { ...s.rsvp, [i]: r === "maybe" ? null : "maybe" } })) }; });
-    const langs = [["nl", "NL"], ["en", "EN"], ["de", "DE"]].map(([code, label], i) => { const on = this.state.lang === code; return { code: label, bg: on ? "var(--i)" : "transparent", fg: on ? "var(--p)" : "var(--i)", border: i ? "1.5px solid var(--i)" : "0", color: on ? "var(--i)" : "var(--dim)", deco: on ? "underline" : "none", pick: (e) => { e.stopPropagation(); localStorage.setItem("lincin-lang", code); this.setState({ lang: code }); } }; });
-    const tg = (key, label, sub) => { const on = !!this.state.toggles[key]; return { isToggle: true, label, sub, stateLabel: on ? t.on : t.off, stateColor: on ? "var(--i)" : "var(--dim)", dotBg: on ? "var(--i)" : "transparent", tap: () => this.setState(s => ({ toggles: { ...s.toggles, [key]: !on } })) }; };
-    const toggleStand = () => { const v = isDark ? "licht" : "donker"; localStorage.setItem("lincin-final-stand", v); this.setState({ stand: v }); };
-    const settingGroups = [
-      { title: t.lookTitle, rows: [{ isLang: true, label: t.language, sub: "Nederlands · English · Deutsch", tap: () => {} }, { isValue: true, label: t.lightDark, sub: t.followsDevice, value: isDark ? t.dark : t.light, tap: toggleStand }, tg("klank", t.tint, t.tintSub)] },
-      { title: t.notifTitle, rows: [tg("push", t.newPosts, t.newPostsSub), tg("stil", t.quiet, t.quietSub)] },
-      { title: t.whoTitle, rows: [tg("zicht", t.visible, t.visibleSub), { isValue: true, label: t.myLincs, sub: t.friends6, value: "6", tap: () => {} }] },
-    ];
+    const thread = baseThread.concat(this.state.sent[chatName] ?? []).map(m => ({ ...m,
+      bg: m.side === "flex-end" ? "var(--i)" : "var(--p)", fg: m.side === "flex-end" ? "var(--p)" : "var(--i)", border: m.side === "flex-end" ? "var(--i)" : "var(--rule)",
+      openQuoted: () => { const qp = m.quote ? findQuoted(m.quote) : null; if (qp) this.openPost(qp); } }));
+    const mSet = {}; thread.forEach(m => { const qp = m.quote ? findQuoted(m.quote) : null; if (qp) mSet[qp.no] = qp; });
+    const mentions = Object.values(mSet).map((qp, j) => decorate(qp, "m" + j));
+
+    const events = [{ day: "21", month: "sep", by: "Noor", time: "zo 14:00", title: "Naar de dijk bij Marken", place: "Marken", who: "jij, Noor, Sem", name: "Noor" }, { day: "04", month: "okt", by: "Daan", time: "vr — zo", title: "Kamp '26, de generale", place: "Twiske", who: "6 lincs", name: "Daan" }, { day: "12", month: "okt", by: "Yusuf", time: "do 20:30", title: "Beach House, Paradiso", place: "Amsterdam", who: "jij, Yusuf", name: "Yusuf" }]
+      .map((e, i) => { const [panel] = col(e.name), r = this.state.rsvp[i];
+        return { ...e, panel, yesDeco: r === "yes" ? "none" : "underline", yesColor: r === "yes" ? "var(--i)" : "var(--dim)", yesMark: r === "yes" ? "✓ " : "",
+          maybeDeco: r === "maybe" ? "none" : "underline", maybeColor: r === "maybe" ? "var(--i)" : "var(--dim)", maybeMark: r === "maybe" ? "✓ " : "",
+          yes: () => this.setState(s => ({ rsvp: { ...s.rsvp, [i]: r === "yes" ? null : "yes" } })), maybe: () => this.setState(s => ({ rsvp: { ...s.rsvp, [i]: r === "maybe" ? null : "maybe" } })) }; });
+
     const sc = this.state.screen;
-    const nav = [["feed", t.tabFeed, "01", 0], ["chats", t.chats, "02", 2], ["events", t.tabEvents, "03", 0], ["jij", t.you, "04", 0]].map(([id, label, num, badge]) => ({ label, num, badge, go: () => this.setState({ screen: id }), style: sc === id ? "italic" : "normal" }));
+    const full = sc === "post" || sc === "chats";
+    const nav = t.tabs.map((label, i) => { const id = ["feed", "chats", "events", "jij"][i], on = sc === id || (id === "feed" && (sc === "post" || sc === "vriend"));
+      return { label, num: String(i + 1).padStart(2, "0"), badge: id === "chats" && sc !== "chats" ? 2 : 0, bg: on ? "var(--i)" : "transparent", fg: on ? "var(--p)" : "var(--dim)",
+        border: on ? "1.5px solid var(--i)" : "1px solid var(--rule)", go: () => this.setState({ screen: id }) }; });
+    const langs = [["nl", "NL"], ["en", "EN"], ["de", "DE"]].map(([code, label]) => { const on = this.state.lang === code;
+      return { code: label, color: on ? "var(--i)" : "var(--dim)", deco: on ? "underline" : "none", pick: (e) => { e.stopPropagation(); localStorage.setItem("lincin-lang", code); this.setState({ lang: code }); } }; });
+    const cycleStand = () => { const next = mode === "toestel" ? "licht" : mode === "licht" ? "donker" : "toestel";
+      if (next === "toestel") localStorage.removeItem("lincin-desk-stand"); else localStorage.setItem("lincin-desk-stand", next); this.setState({ mode: next }); };
     const sw = C[this.state.swatch];
-    const bgPanel = null;
+    const bgPanel = sc === "feed" ? (this.state.view === "friends" ? col(Object.keys(byGroup)[0])[0] : null) : sc === "post" ? postSt?.panel : sc === "vriend" ? vPanel : sc === "chats" ? tPanel : null;
+
     return {
-      t, stand, bg: bgPanel ? tint(bgPanel) : "var(--p)", navLabel: sc, nav, langs, toggleStand, standLabel: isDark ? t.dark : t.light,
-      isFeed: sc === "feed", isChats: sc === "chats", isEvents: sc === "events", isJij: sc === "jij", isCompose: sc === "compose", goFeed: () => this.setState({ screen: "feed" }), goCompose: () => this.setState({ screen: "compose" }), goJij: () => this.setState({ screen: "jij" }),
-      friends, timeline, byFriendView: this.state.view === "friends", byTimeView: this.state.view === "time", viewFriends: () => this.setState({ view: "friends", feedIdx: 0 }), viewTime: () => this.setState({ view: "time", feedIdx: 0 }), vfColor: this.state.view === "friends" ? "var(--i)" : "var(--dim)", vfDeco: this.state.view === "friends" ? "underline" : "none", vtColor: this.state.view === "time" ? "var(--i)" : "var(--dim)", vtDeco: this.state.view === "time" ? "underline" : "none",
-      onFeedScroll: (e) => { const tt = e.currentTarget, els = tt.querySelectorAll("[data-group]"), mid = tt.scrollTop + 120; let idx = 0; els.forEach((el, i) => { if (el.offsetTop - tt.offsetTop <= mid) idx = i; }); if (idx !== this.state.feedIdx) { const newly = {}; if (this.state.view === "friends") friends.forEach((f, i) => { if (i < idx && !this.state.seen[f.name]) newly[f.name] = true; }); this.setState(s => ({ feedIdx: idx, seen: { ...s.seen, ...newly } })); } },
-      chats: chatsData, events, eventCount: events.length, settingGroups,
-      panelPost: this.state.panel === "post" && !!post, panelProfile: this.state.panel === "profile", panelThread: (this.state.panel === "thread") || (this.state.panel === "post" && !post), post, vriend, closePost: () => this.setState({ panel: "thread" }),
-      makeEvent: () => { const p = this.state.post; if (!p) return; this.setState({ draftEvent: { day: "zo", month: "?", by: "Jij", time: "—", title: p.caption.split(/[.?!]/)[0].trim() || p.title, place: p.place ?? "№ " + p.no, who: "jij, " + p.by, name: p.by, draft: true, fromNo: p.no }, screen: "events" }); },
-      reactBoxOpen: this.state.reactBoxOpen, toggleReactBox: () => this.setState(s => ({ reactBoxOpen: !s.reactBoxOpen })), reactBoxBg: this.state.reactBoxOpen ? "var(--i)" : "transparent", reactBoxFg: this.state.reactBoxOpen ? "var(--i)" : "var(--dim)",
-      emojiGrid: ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "🌅", "☕", "🛶", "🎧", "✨"].map(em => { const p = this.state.post; const on = p && this.state.extra[p.no]?.[em]; return { emoji: em, bg: on ? "var(--acid)" : "var(--p)", tap: () => { if (!p) return; this.setState(s => ({ extra: { ...s.extra, [p.no]: { ...(s.extra[p.no] ?? {}), [em]: !on } } })); } }; }),
+      t, stand, bg: bgPanel ? tint(bgPanel) : "var(--p)", cols: full ? "64px minmax(0,1fr)" : (sc === "feed" ? "196px minmax(0,1fr) minmax(240px,300px)" : "196px minmax(0,1fr)"),
+      threadPh: t.writeTo + " " + chatName,
+      railWide: !full, railNarrow: full, showChatPanel: sc === "feed", scrLabel: sc,
+      nav, langs, cycleStand, standLabel: mode === "toestel" ? t.device : (isDark ? t.dark : t.light),
+      isFeed: sc === "feed", isPost: sc === "post" && !!postSt, isChats: sc === "chats", isVriend: sc === "vriend", isEvents: sc === "events", isJij: sc === "jij", isCompose: sc === "compose",
+      goFeed: () => this.setState({ screen: "feed" }), goChats: () => this.setState({ screen: "chats" }), goCompose: () => this.setState({ screen: "compose" }), goJij: () => this.setState({ screen: "jij" }),
+      groups: this.state.view === "friends" ? groups : timeGroups,
+      viewFriends: () => this.setState({ view: "friends" }), viewTime: () => this.setState({ view: "time" }),
+      vfColor: this.state.view === "friends" ? "var(--i)" : "var(--dim)", vfDeco: this.state.view === "friends" ? "underline" : "none",
+      vtColor: this.state.view === "time" ? "var(--i)" : "var(--dim)", vtDeco: this.state.view === "time" ? "underline" : "none",
+      post: postSt, vriend, chats, events, eventCount: events.length,
+      reactBoxOpen: this.state.reactBoxOpen, toggleReactBox: () => this.setState(s => ({ reactBoxOpen: !s.reactBoxOpen })),
+      emojiGrid: ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "✨"].map(em => { const p = this.state.post, on = p && this.state.extra[p.no]?.[em];
+        return { emoji: em, bg: on ? "var(--acid)" : "var(--p)", tap: () => { if (!p) return; this.setState(s => ({ extra: { ...s.extra, [p.no]: { ...(s.extra[p.no] ?? {}), [em]: !on } } })); } }; }),
       commentDraft: this.state.commentDraft, onCommentDraft: (e) => this.setState({ commentDraft: e.target.value }), onCommentKey: (e) => { if (e.key === "Enter") this.sendComment(); }, sendComment: () => this.sendComment(),
-      threadName: chatName, threadSub: groups[chatName] ? t.threadSubG : t.threadSub1, threadPanel: tPanel, threadProfile: () => openProfile(chatName), thread, mentions, hasMentions: mentions.length > 0, typing: this.state.typing, endRef: (el) => { this.end = el; },
-      draft: this.state.draft, onDraft: (e) => this.setState({ draft: e.target.value }), onDraftKey: (e) => { if (e.key === "Enter") this.send(); }, send: () => this.send(), replyingTo: this.state.replyTo, cancelReply: () => this.setState({ replyTo: null }),
-      chatBoxOpen: this.state.chatBoxOpen, toggleChatBox: () => this.setState(s => ({ chatBoxOpen: !s.chatBoxOpen })), chatBoxBg: this.state.chatBoxOpen ? "var(--i)" : "transparent", chatBoxFg: this.state.chatBoxOpen ? "var(--i)" : "var(--dim)",
-      chatEmoji: ["❤️", "😂", "🔥", "😮", "🥹", "👏", "🌊", "☕", "🛶", "🎧", "✨", "👀"].map(em => ({ emoji: em, tap: () => this.setState(s => ({ draft: s.draft + em })) })),
-      sheet: this.state.sheet, closeSheet: () => this.setState({ sheet: null, sheetDraft: "", noQuote: false }), stop: (e) => e.stopPropagation(), withQuote: !this.state.noQuote, toggleQuote: () => this.setState(s => ({ noQuote: !s.noQuote })), quoteLabel: this.state.noQuote ? t.mention : t.mentioned2, quoteBg: this.state.noQuote ? "transparent" : "var(--i)", quoteFg: this.state.noQuote ? "var(--i)" : "var(--p)",
-      sheetDraft: this.state.sheetDraft, onSheetDraft: (e) => this.setState({ sheetDraft: e.target.value }), onSheetKey: (e) => { if (e.key === "Enter") this.sendSheetMsg(); }, sendSheet: () => this.sendSheetMsg(),
-      composeBg: sw[0], composeFg: sw[1], kindLabel: this.state.kind, composeTitle: this.state.composeTitle, onComposeTitle: (e) => this.setState({ composeTitle: e.target.value }), composeCaption: this.state.composeCaption, onComposeCaption: (e) => this.setState({ composeCaption: e.target.value }),
-      swatches: Object.keys(C).map(k => ({ bg: C[k][0], fg: C[k][1], active: this.state.swatch === k, outline: this.state.swatch === k ? "1px solid var(--i)" : "none", pick: () => this.setState({ swatch: k }) })),
-      kinds: ["foto", "krabbel", "tekst", "spraak", "poll", "link", "plek", "muziek"].map(k => { const a = this.state.kind === k; return { label: k, color: a ? "var(--i)" : "var(--dim)", deco: a ? "underline" : "none", pick: () => this.setState({ kind: k }) }; }),
-      pubColor: this.state.published ? "#4C9A63" : "var(--i)", pubLabel: this.state.published ? t.published : t.publish, publish: () => { this.setState({ published: true }); setTimeout(() => this.setState({ published: false, composeTitle: "", composeCaption: "", screen: "feed" }), 1200); },
+      threadName: chatName, threadSub: groupsDef[chatName] ? t.groupSub : t.sinceMar, threadPanel: tPanel, threadProfile: () => this.setState({ vriend: chatName, screen: "vriend" }),
+      thread, mentions, hasMentions: mentions.length > 0, typing: this.state.typing, endRef: (el) => { this.end = el; },
+      draft: this.state.draft, onDraft: (e) => this.setState({ draft: e.target.value }), onDraftKey: (e) => { if (e.key === "Enter") this.send(); }, send: () => this.send(),
+      settingGroups: [
+        { title: t.look, rows: [{ label: t.language, sub: "NL · EN · DE", value: this.state.lang.toUpperCase(), valueInk: "var(--i)", tap: () => {} }, { label: t.lightDark, sub: t.follows, value: mode === "toestel" ? t.device : (isDark ? t.dark : t.light), valueInk: "var(--i)", tap: cycleStand }] },
+        { title: t.notif, rows: [{ label: t.newPosts, sub: t.perDay, value: t.on, valueInk: "var(--i)", tap: () => {} }] },
+        { title: t.who, rows: [{ label: t.visible, sub: t.onlyAdded, value: t.on, valueInk: "var(--i)", tap: () => {} }, { label: t.myLincs, sub: t.six, value: "6", valueInk: "var(--dim)", tap: () => {} }] },
+      ],
+      composeShots: Array.from({ length: this.state.nShots }, (_, i) => ({ id: "desk-compose-" + i, ph: this.state.nShots > 1 ? "foto " + (i + 1) + " van " + this.state.nShots : "foto · krabbel · hoes" })),
+      composeCarLabel: this.state.nShots > 1 ? String(Math.min(this.state.nShots - 1, this.state.composeIdx) + 1).padStart(2, "0") + " / " + String(this.state.nShots).padStart(2, "0") + " · " + t.dropMany : t.dropMany,
+      onComposeCar: (e) => { const el = e.currentTarget, i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== this.state.composeIdx) this.setState({ composeIdx: i }); },
+      canAddShot: this.state.nShots < 6, addShot: () => this.setState(s => ({ nShots: Math.min(6, s.nShots + 1) })),
+      canRemoveShot: this.state.nShots > 1, removeShot: () => this.setState(s => ({ nShots: Math.max(1, s.nShots - 1), composeIdx: 0 })),
+      isPollKind: this.state.kind === "poll", notPollKind: this.state.kind !== "poll",
+      pollRows: this.state.pollOpts.map((v, i) => ({ n: String(i + 1).padStart(2, "0"), value: v, ph: i === 0 ? t.pollPh1 : i === 1 ? t.pollPh2 : t.pollPhN, canRemove: this.state.pollOpts.length > 2,
+        onChange: (e) => { const next = [...this.state.pollOpts]; next[i] = e.target.value; this.setState({ pollOpts: next }); },
+        remove: () => this.setState(s => ({ pollOpts: s.pollOpts.filter((_, j) => j !== i) })) })),
+      canAddPoll: this.state.pollOpts.length < 4, addPollOpt: () => this.setState(s => ({ pollOpts: [...s.pollOpts, ""] })),
+      composeTitle: this.state.composeTitle, onComposeTitle: (e) => this.setState({ composeTitle: e.target.value }),
+      composeCaption: this.state.composeCaption, onComposeCaption: (e) => this.setState({ composeCaption: e.target.value }),
+      swatches: Object.keys(C).map(k => ({ bg: C[k][0], fg: C[k][1], active: this.state.swatch === k, pick: () => this.setState({ swatch: k }) })),
+      kinds: ["foto", "krabbel", "tekst", "spraak", "poll", "link", "plek", "muziek"].map(k => { const on = this.state.kind === k;
+        return { label: k, bg: on ? "var(--i)" : "transparent", fg: on ? "var(--p)" : "var(--i)", pick: () => this.setState({ kind: k }) }; }),
+      pubBg: this.state.published ? "#4C9A63" : "var(--i)", pubLabel: this.state.published ? t.published : t.publish,
+      publish: () => { this.setState({ published: true }); setTimeout(() => this.setState({ published: false, composeTitle: "", composeCaption: "", screen: "feed" }), 1200); },
     };
   }
-  sendSheetMsg() { const s = this.state.sheet; if (!s) return; const text = this.state.sheetDraft.trim() || "hey, over deze bijdrage…"; const msg = { side: "flex-end", quote: this.state.noQuote ? null : s.quote, text, time: this.now() }; this.setState(st => ({ sent: { ...st.sent, [s.by]: (st.sent[s.by] ?? []).concat(msg) }, sheet: null, sheetDraft: "", noQuote: false, chat: s.by, panel: "thread" })); }
 }
 </script>
 </body>

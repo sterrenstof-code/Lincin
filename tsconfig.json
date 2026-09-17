@@ -19,6 +19,7 @@
     "node_modules",
     "dist",
     ".expo/web-build",
-    "supabase/functions"
+    "supabase/functions",
+    "design_handoff_lincin_mobile"
   ]
 }

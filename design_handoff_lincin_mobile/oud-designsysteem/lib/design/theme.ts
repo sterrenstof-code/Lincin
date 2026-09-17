@@ -1,0 +1,863 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSyncExternalStore } from "react";
+import { Appearance, Platform } from "react-native";
+
+/**
+ * ===============================================================
+ * LINCIN v2 — papier en inkt, één kleur per vriend, en drie thema's
+ * ===============================================================
+ *
+ * Het palet uit `design_handoff_lincin_mobile/HANDOFF.md`. Twee standen,
+ * "licht" en "donker", en drie thema's die de héle app veranderen:
+ *
+ *   KLEUR     (standaard) papier #F2EFE8 / inkt #141414, kaders 1.5px
+ *             inkt, koppen Archivo 900 smal kapitaal, geen ronding,
+ *             vriendbanden gevuld, actieve tab = inktvlak, het blad tint
+ *             mee met de vriend in beeld.
+ *   MAGAZINE  papier #F7F4EE, haarlijnen 1px inkt, koppen Instrument
+ *             Serif (geen kapitaal), geen tint, accent #F06A2B.
+ *   MODERN    warm donker verloop (#8A3A1E → #3A1A10 → #1A1210) met korrel,
+ *             inkt #F2EFE8, kaders 1px op 18%, koppen Instrument Serif,
+ *             ronding 10 op kaarten en tabs, accent #FF8A65, glazen vlakken.
+ *
+ * Wat een thema vastlegt staat in `THEME_SPEC` (maten, stijlen) en in
+ * `paletteFor()` (kleuren). Magazine en modern kennen, net als in het
+ * prototype, maar één stand: magazine is altijd licht, modern altijd
+ * donker. Alleen kleur schakelt tussen licht en donker.
+ *
+ *   PAPER    het blad         #F2EFE8 / #1A1917
+ *   PAPER 2  tweede vlak      #E7E3D8 / #232220   (media, metakolom)
+ *   INK      de inkt          #141414 / #EDE8DD
+ *   DIM      inkt op 58%/62%  — bijschriften, meta
+ *   RULE     inkt op 20%      — haarlijnen bínnen een kaart
+ *   LINE     de kaderlijn     — inkt, behalve in modern: papier op 18%
+ *   ACID     #E5FF3A / #D9F04A — de oproep-kaart, actieve tab in een blad
+ *   RED      #D8321F / #E4553F — ongelezen, nieuw
+ *
+ * En zes vriendkleuren. Elke vriend (of groep) bezit er één; die kleur
+ * draagt zijn band in de feed, de titelstrook van zijn kaart, zijn
+ * avatar, en tint het hele blad zodra hij in beeld is (`pageTint`).
+ *
+ * ---------------------------------------------------------------
+ * DE OUDE NAMEN BESTAAN NOG
+ * ---------------------------------------------------------------
+ * Zo'n duizend klassen en props in de rest van de app wijzen naar `page`,
+ * `panel`, `shell`, `cream`, `flame`, `announce`… Die namen blijven
+ * bestaan en krijgen hier de v2-waarden — dezelfde zet als bij de v3- en
+ * v4-uitrol: de namen houden, de waarden verplaatsen. Zo kleurt élk
+ * scherm meteen mee, ook wat nog niet herbouwd is.
+ *
+ * ---------------------------------------------------------------
+ * WAAROM TRIPLETS EN GEEN HEX
+ * ---------------------------------------------------------------
+ * De waarden staan als `"R G B"`. Dat is de vorm die CSS nodig heeft om
+ * `rgb(var(--c-ink) / 0.58)` te kunnen schrijven — één variabele die zowel
+ * dekkend als doorzichtig gebruikt kan worden. Native leest dezelfde
+ * triplets en zet ze zelf om naar `rgba(...)`.
+ */
+
+export type Scheme = "light" | "dark";
+
+/** Wat de gebruiker koos. `system` volgt het besturingssysteem. */
+export type ThemePreference = "system" | "light" | "dark";
+
+/** Het thema: kleur (standaard), magazine of modern. Per gebruiker bewaard. */
+export type LincinTheme = "kleur" | "magazine" | "modern";
+
+export const THEMES: LincinTheme[] = ["kleur", "magazine", "modern"];
+
+export function isLincinTheme(v: unknown): v is LincinTheme {
+  return v === "kleur" || v === "magazine" || v === "modern";
+}
+
+export type Token =
+  // ---- v2 ----
+  | "paper"
+  | "paper2"
+  | "acid"
+  | "red"
+  | "line"
+  // ---- de oude namen, met v2-waarden ----
+  | "page"
+  | "panel"
+  | "paperWarm"
+  | "paperLight"
+  | "shell"
+  | "shellSoft"
+  | "desk"
+  | "deskInk"
+  | "deskSoft"
+  | "deskMuted"
+  | "deskPanel"
+  | "ink"
+  | "inkSoft"
+  | "inkMuted"
+  | "cream"
+  | "creamSoft"
+  | "creamMuted"
+  | "post"
+  | "postText"
+  | "postFill"
+  | "flame"
+  | "flameDeep"
+  | "announce"
+  | "announceDeep"
+  | "teal"
+  | "gold"
+  | "brand";
+
+/** Doorzichtigheden die per stand of thema verschillen. */
+export type AlphaToken =
+  | "postDim"
+  | "postRule"
+  | "linePaper"
+  | "inkDim"
+  | "onDark"
+  | "pill"
+  | "pillSoft"
+  | "cardEdge"
+  | "lineA";
+
+type Palette = Record<Token, string>;
+type Alphas = Record<AlphaToken, number>;
+
+/**
+ * Alle tokennamen, in volgorde. `app/+html.tsx` loopt hier doorheen om de
+ * `--p-*`-variabelen uit te schrijven; zie `color()` onderaan.
+ */
+export const TOKENS: Token[] = [
+  "paper", "paper2", "acid", "red", "line",
+  "page", "panel", "paperWarm", "paperLight",
+  "shell", "shellSoft",
+  "desk", "deskInk", "deskSoft", "deskMuted", "deskPanel",
+  "ink", "inkSoft", "inkMuted",
+  "cream", "creamSoft", "creamMuted",
+  "post", "postText", "postFill",
+  "flame", "flameDeep", "announce", "announceDeep",
+  "teal", "gold", "brand",
+];
+
+export const ALPHA_TOKENS: AlphaToken[] = [
+  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge", "lineA",
+];
+
+/**
+ * LICHT.
+ *
+ * `inkMuted` is de "dim" (inkt op 58%) plat op papier gelegd, voor de
+ * plekken die een dekkende kleur nodig hebben. `shellSoft` en
+ * `announceDeep` zijn de inkt "ingedrukt": één stap lichter.
+ */
+const LIGHT: Palette = {
+  paper: "242 239 232", // #F2EFE8
+  paper2: "231 227 216", // #E7E3D8
+  acid: "229 255 58", // #E5FF3A
+  red: "216 50 31", // #D8321F
+  line: "20 20 20", // = ink
+
+  page: "242 239 232", // = paper
+  panel: "242 239 232", // = paper — een kaart heeft geen eigen vulling
+  paperWarm: "231 227 216", // = paper2
+  paperLight: "242 239 232", // = paper
+  shell: "20 20 20", // = ink — een gevuld vlak
+  shellSoft: "43 43 43", // ink, ingedrukt
+  desk: "242 239 232",
+  deskInk: "20 20 20",
+  deskSoft: "58 58 58",
+  deskMuted: "113 113 112",
+  deskPanel: "231 227 216",
+  ink: "20 20 20", // #141414
+  inkSoft: "58 58 58", // #3A3A3A
+  inkMuted: "113 113 112", // dim op papier
+  cream: "242 239 232", // = paper — tekst óp inkt
+  creamSoft: "231 227 216",
+  creamMuted: "184 180 170",
+  post: "242 239 232",
+  postText: "20 20 20",
+  postFill: "231 227 216", // = paper2
+  flame: "216 50 31", // = red
+  flameDeep: "181 41 26", // rood voor kleine tekst
+  announce: "20 20 20", // de primaire actie is een inktvlak
+  announceDeep: "43 43 43",
+  teal: "76 154 99", // = vriendgroen
+  gold: "224 182 74", // = oker
+  brand: "47 91 255", // = blauw
+};
+
+const LIGHT_ALPHA: Alphas = {
+  postDim: 0.58,
+  postRule: 0.2,
+  linePaper: 0.2,
+  inkDim: 0.58,
+  onDark: 0.22,
+  pill: 0.35,
+  pillSoft: 0.28,
+  // Elk kader is inkt, dekkend. Geen zachte afsluitlijn meer.
+  cardEdge: 1,
+  lineA: 1,
+};
+
+/** DONKER. */
+const DARK: Palette = {
+  paper: "26 25 23", // #1A1917
+  paper2: "35 34 32", // #232220
+  acid: "217 240 74", // #D9F04A
+  red: "228 85 63", // #E4553F
+  line: "237 232 221",
+
+  page: "26 25 23",
+  panel: "26 25 23",
+  paperWarm: "35 34 32",
+  paperLight: "26 25 23",
+  shell: "237 232 221", // = ink
+  shellSoft: "214 209 198",
+  desk: "26 25 23",
+  deskInk: "237 232 221",
+  deskSoft: "201 196 185",
+  deskMuted: "157 153 146",
+  deskPanel: "35 34 32",
+  ink: "237 232 221", // #EDE8DD
+  inkSoft: "201 196 185",
+  inkMuted: "157 153 146", // dim op donker papier
+  cream: "26 25 23", // = paper
+  creamSoft: "35 34 32",
+  creamMuted: "110 106 98",
+  post: "26 25 23",
+  postText: "237 232 221",
+  postFill: "35 34 32",
+  flame: "228 85 63",
+  flameDeep: "228 85 63",
+  announce: "237 232 221",
+  announceDeep: "214 209 198",
+  teal: "94 156 114",
+  gold: "201 169 79",
+  brand: "95 127 230",
+};
+
+const DARK_ALPHA: Alphas = {
+  postDim: 0.62,
+  postRule: 0.2,
+  linePaper: 0.2,
+  inkDim: 0.62,
+  onDark: 0.22,
+  pill: 0.35,
+  pillSoft: 0.28,
+  cardEdge: 1,
+  lineA: 1,
+};
+
+export const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };
+export const ALPHA: Record<Scheme, Alphas> = { dark: DARK_ALPHA, light: LIGHT_ALPHA };
+
+// ===============================================================
+// DE THEMA'S — wat magazine en modern anders doen
+// ===============================================================
+
+/**
+ * Wat een thema aan maten en stijlen vastlegt. De kleuren staan in
+ * `paletteFor()`; dit is de rest: kaderdikte, ronding, de letter van de
+ * koppen, en de dingen die de feed en de omlijsting anders tekenen.
+ */
+export type ThemeSpec = {
+  id: LincinTheme;
+  /** Kaderdikte: 1.5 (kleur) of 1 (magazine, modern). */
+  border: number;
+  /** Ronding op kaarten en de tabbalk: 0, of 10 in modern. */
+  radius: number;
+  /** Koppen in Instrument Serif (regular, geen kapitaal) in plaats van Archivo. */
+  serifHeads: boolean;
+  /** Het blad kleurt mee met de vriend in beeld. Alleen kleur. */
+  tint: boolean;
+  /** Actieve tab = inktvlak met papier erop. Anders: inkt-tekst, de rest gedempt. */
+  tabFill: boolean;
+  /** De vriendband in de feed gevuld met zijn kleur. Anders papier met kleurbalk. */
+  bandFilled: boolean;
+  /** Titelstrook van een kaart gevuld met de vriendkleur; anders papier met 6px balk. */
+  stripFilled: boolean;
+  /** De kop "Lincin · teller · ◉ · +" boven de feed. Magazine draagt zijn eigen. */
+  feedHeader: boolean;
+  /** Glazen vlakken (papier op 8% + vervaging) en een korrel over het blad. */
+  glass: boolean;
+  /** Het blad is een radiaal verloop in plaats van papier. */
+  gradient: boolean;
+  /** Maat van de kaarttitel: 22 (Archivo) of 24 (serif). */
+  cardTitle: number;
+  /** Het blad is donker — voor de statusbalk en de navigatie. */
+  dark: boolean;
+};
+
+const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
+  kleur: {
+    id: "kleur",
+    border: 1.5,
+    radius: 0,
+    serifHeads: false,
+    tint: true,
+    tabFill: true,
+    bandFilled: true,
+    stripFilled: true,
+    feedHeader: true,
+    glass: false,
+    gradient: false,
+    cardTitle: 22,
+  },
+  magazine: {
+    id: "magazine",
+    border: 1,
+    radius: 0,
+    serifHeads: true,
+    tint: false,
+    tabFill: false,
+    bandFilled: false,
+    stripFilled: false,
+    feedHeader: false,
+    glass: false,
+    gradient: false,
+    cardTitle: 24,
+  },
+  modern: {
+    id: "modern",
+    border: 1,
+    radius: 10,
+    serifHeads: true,
+    tint: false,
+    tabFill: false,
+    bandFilled: false,
+    stripFilled: false,
+    feedHeader: true,
+    glass: true,
+    gradient: true,
+    cardTitle: 24,
+  },
+};
+
+/** Het verloop van modern: `radial-gradient(700px 500px at 70% 20%, …)`. */
+export const MODERN_GRADIENT = {
+  cx: 0.7,
+  cy: 0.2,
+  rx: 700,
+  ry: 500,
+  stops: [
+    { offset: 0, color: "#8A3A1E" },
+    { offset: 0.6, color: "#3A1A10" },
+    { offset: 1, color: "#1A1210" },
+  ],
+  /** De platte kleur waar het verloop niet komt; ook de kleur van de balk. */
+  base: "#1A1210",
+};
+
+/** Het glas van modern: papier op 8%, een rand op 18%. */
+export const GLASS = {
+  fill: "rgba(242,239,232,.08)",
+  edge: "rgba(242,239,232,.18)",
+  strong: "rgba(242,239,232,.12)",
+};
+
+function mix(a: string, b: string, wA: number): string {
+  const A = a.split(" ").map(Number);
+  const B = b.split(" ").map(Number);
+  return A.map((v, i) => Math.round(v * wA + B[i] * (1 - wA))).join(" ");
+}
+
+/**
+ * Het palet van een thema, afgeleid van een basisstand.
+ *
+ * Magazine zet papier, inkt en accent; modern zet alles. De oude namen
+ * volgen de v2-tokens (papier → page, panel, cream…; inkt → shell,
+ * deskInk…), en de tussenwaarden (inkSoft, inkMuted, shellSoft…) zijn de
+ * inkt op het papier gelegd, net als in de basisstand.
+ */
+function derive(
+  base: Palette,
+  o: { paper: string; paper2: string; ink: string; acid: string; red: string; line: string },
+): Palette {
+  return {
+    ...base,
+    paper: o.paper,
+    paper2: o.paper2,
+    acid: o.acid,
+    red: o.red,
+    line: o.line,
+    page: o.paper,
+    panel: o.paper,
+    paperWarm: o.paper2,
+    paperLight: o.paper,
+    shell: o.ink,
+    shellSoft: mix(o.ink, o.paper, 0.9),
+    desk: o.paper,
+    deskInk: o.ink,
+    deskSoft: mix(o.ink, o.paper, 0.83),
+    deskMuted: mix(o.ink, o.paper, 0.58),
+    deskPanel: o.paper2,
+    ink: o.ink,
+    inkSoft: mix(o.ink, o.paper, 0.83),
+    inkMuted: mix(o.ink, o.paper, 0.58),
+    cream: o.paper,
+    creamSoft: o.paper2,
+    creamMuted: mix(o.paper, o.ink, 0.72),
+    post: o.paper,
+    postText: o.ink,
+    postFill: o.paper2,
+    flame: o.red,
+    flameDeep: o.red,
+    announce: o.ink,
+    announceDeep: mix(o.ink, o.paper, 0.9),
+  };
+}
+
+const MAGAZINE: Palette = derive(LIGHT, {
+  paper: "247 244 238", // #F7F4EE
+  paper2: "236 232 224", // #ECE8E0
+  ink: "20 20 20",
+  acid: "240 106 43", // #F06A2B — het accent van magazine
+  red: "216 50 31",
+  line: "20 20 20",
+});
+const MAGAZINE_ALPHA: Alphas = { ...LIGHT_ALPHA, postRule: 0.16, linePaper: 0.16, lineA: 1 };
+
+const MODERN: Palette = derive(DARK, {
+  paper: "42 24 18", // #2A1812
+  paper2: "58 36 28", // #3A241C
+  ink: "242 239 232", // #F2EFE8
+  acid: "255 138 101", // #FF8A65
+  red: "255 138 101",
+  line: "242 239 232", // op 18%, zie lineA
+});
+const MODERN_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.65, inkDim: 0.65, postRule: 0.2, linePaper: 0.2, lineA: 0.18 };
+
+/** De kleuren die gelden voor een stand én een thema. */
+export function paletteFor(s: Scheme, t: LincinTheme): Palette {
+  if (t === "magazine") return MAGAZINE;
+  if (t === "modern") return MODERN;
+  return PALETTE[s];
+}
+
+export function alphaFor(s: Scheme, t: LincinTheme): Alphas {
+  if (t === "magazine") return MAGAZINE_ALPHA;
+  if (t === "modern") return MODERN_ALPHA;
+  return ALPHA[s];
+}
+
+/** De per-thema-overschrijvingen als CSS, voor `global.css`-achtig gebruik in `+html.tsx`. */
+export function themeVarCss(): string {
+  const block = (t: LincinTheme, p: Palette, a: Alphas) => {
+    const lines: string[] = [];
+    for (const token of TOKENS) lines.push(`  ${varName(token)}: ${p[token]};`);
+    for (const al of ALPHA_TOKENS) lines.push(`  ${alphaVarName(al)}: ${a[al]};`);
+    return `:root[data-lincin-theme="${t}"] {\n${lines.join("\n")}\n}`;
+  };
+  return [block("magazine", MAGAZINE, MAGAZINE_ALPHA), block("modern", MODERN, MODERN_ALPHA)].join("\n");
+}
+
+// ===============================================================
+// VRIENDKLEUREN
+// ===============================================================
+
+export type Hue = "orange" | "blue" | "ochre" | "green" | "red" | "acid";
+
+export const HUES: Hue[] = ["orange", "blue", "ochre", "green", "red", "acid"];
+
+/** Het vlak en de inkt erop. */
+export type FriendColor = { fill: string; ink: string };
+
+export const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
+  light: {
+    orange: { fill: "#F06A2B", ink: "#141414" },
+    blue: { fill: "#2F5BFF", ink: "#F2EFE8" },
+    ochre: { fill: "#E0B64A", ink: "#141414" },
+    green: { fill: "#4C9A63", ink: "#F2EFE8" },
+    red: { fill: "#D8321F", ink: "#F2EFE8" },
+    acid: { fill: "#E5FF3A", ink: "#141414" },
+  },
+  dark: {
+    orange: { fill: "#D9764A", ink: "#1A1917" },
+    blue: { fill: "#5F7FE6", ink: "#1A1917" },
+    ochre: { fill: "#C9A94F", ink: "#1A1917" },
+    green: { fill: "#5E9C72", ink: "#1A1917" },
+    red: { fill: "#CF5442", ink: "#1A1917" },
+    acid: { fill: "#D2E85A", ink: "#1A1917" },
+  },
+};
+
+/**
+ * Welke kleur een vriend bezit.
+ *
+ * De backend kent geen kleur per profiel; die komt uit het id zelf, zodat
+ * hij op élk toestel en in élke sessie dezelfde is. Groepen zijn altijd
+ * groen (README §01). Wil een vriend ooit zelf kiezen, dan komt hier een
+ * kolom in `profiles` en wint die.
+ */
+export function hueFor(id: string | null | undefined): Hue {
+  if (!id) return "orange";
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  // Zuur is de kleur van de oproep; als vriendkleur is hij de zesde en
+  // komt hij het minst vaak voor.
+  return HUES[h % 5];
+}
+
+/**
+ * De vriendkleuren volgen de stand (licht of donker), ook in de thema's:
+ * dat is wat het prototype doet — modern met stand "licht" toont de
+ * lichte vriendkleuren op zijn donkere blad.
+ */
+export function friendColor(hue: Hue, s: Scheme = getScheme()): FriendColor {
+  return FRIEND[s][hue];
+}
+
+// ---------------------------------------------------------------
+// De tint van het blad: color-mix(in oklch, vriend 42%, papier)
+// ---------------------------------------------------------------
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function toLinear(c: number): number {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+function fromLinear(v: number): number {
+  const c = v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+  return Math.max(0, Math.min(255, Math.round(c * 255)));
+}
+
+/** sRGB → OKLCH. */
+function toOklch(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgb(hex).map(toLinear);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  const C = Math.sqrt(A * A + B * B);
+  const H = ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return [L, C, H];
+}
+
+/** OKLCH → sRGB hex. */
+function fromOklch(L: number, C: number, H: number): string {
+  const a = C * Math.cos((H * Math.PI) / 180);
+  const b = C * Math.sin((H * Math.PI) / 180);
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+  const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+  const [R, G, B] = [r, g, bl].map(fromLinear);
+  return "#" + [R, G, B].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+function tripletToHex(triplet: string): string {
+  return "#" + triplet.split(" ").map((v) => Number(v).toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Het blad in de kleur van de vriend in beeld.
+ *
+ * Licht: 42% vriendkleur op papier; donker: 18%. Gemengd in OKLCH, zoals
+ * de CSS `color-mix(in oklch, …)` uit het ontwerp, zodat de tint dezelfde
+ * is als in het prototype. Een bijna-grijs papier heeft geen tint van
+ * zichzelf; dan neemt het de tint van de vriend over (dat is ook wat CSS
+ * doet met een "powerless" hue).
+ */
+export function pageTint(fill: string, s: Scheme = getScheme()): string {
+  const w = s === "dark" ? 0.18 : 0.42;
+  const [Lf, Cf, Hf] = toOklch(fill);
+  const [Lp, Cp, Hp0] = toOklch(paperHex(s));
+  const Hp = Cp < 0.004 ? Hf : Hp0;
+  let dH = Hp - Hf;
+  if (dH > 180) dH -= 360;
+  if (dH < -180) dH += 360;
+  const L = Lf * w + Lp * (1 - w);
+  const C = Cf * w + Cp * (1 - w);
+  const H = (Hf + dH * (1 - w) + 360) % 360;
+  return fromOklch(L, C, H);
+}
+
+/** Het papier als hex, voor wie een echte waarde nodig heeft. */
+export function paperHex(s: Scheme = getScheme()): string {
+  return tripletToHex(paletteFor(s, theme).paper);
+}
+
+export function inkHex(s: Scheme = getScheme()): string {
+  return tripletToHex(paletteFor(s, theme).ink);
+}
+
+// ===============================================================
+// VARIABELEN
+// ===============================================================
+
+/** `paperWarm` → `--c-paper-warm`. */
+export function varName(token: Token): string {
+  return `--c-${token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`).replace(/([a-z])(\d)/g, "$1-$2")}`;
+}
+
+export function alphaVarName(token: AlphaToken): string {
+  return `--a-${token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
+}
+
+/**
+ * De naam van de kant-en-klare kleurvariabele voor een prop.
+ *
+ * react-native-web haalt élke kleur-prop door `normalizeColor`, en dat
+ * laat maar één soort CSS-uitdrukking ongemoeid: een waarde die letterlijk
+ * met `var(` begínt. `--p-ink` is gedefinieerd áls `rgb(var(--c-ink) / 1)`
+ * en een prop leest `var(--p-ink)`. De definities staan in `app/+html.tsx`.
+ */
+export function propVarName(token: Token, alpha?: AlphaToken): string {
+  const base = token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`).replace(/([a-z])(\d)/g, "$1-$2");
+  if (!alpha) return `--p-${base}`;
+  return `--p-${base}--${alpha.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
+}
+
+// ===============================================================
+// DE STAND EN HET THEMA — waar ze vandaan komen en wie het hoort
+// ===============================================================
+
+const STORAGE_KEY = "lincin.theme";
+/** Dezelfde sleutel als het prototype, zodat een export ervan overeenkomt. */
+const THEME_KEY = "lincin-thema";
+
+const isWeb = Platform.OS === "web";
+
+function systemScheme(): Scheme {
+  return Appearance.getColorScheme() === "dark" ? "dark" : "light";
+}
+
+function readLocal(key: string): string | null {
+  if (isWeb && typeof localStorage !== "undefined") {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      // Private mode of een browser die opslag blokkeert.
+    }
+  }
+  return null;
+}
+
+function writeLocal(key: string, value: string) {
+  AsyncStorage.setItem(key, value).catch(() => {});
+  if (isWeb && typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Opslag mag falen; de keuze werkt dan alleen niet meer na een herlaad.
+    }
+  }
+}
+
+/**
+ * De voorkeur bij het allereerste beeld.
+ *
+ * Op web staat hij in `localStorage` en lezen we hem synchroon, want het
+ * script in `app/+html.tsx` heeft dezelfde waarde al gelezen en de klasse
+ * al gezet vóórdat de browser iets tekende.
+ */
+function initialPreference(): ThemePreference {
+  const raw = readLocal(STORAGE_KEY);
+  if (raw === "light" || raw === "dark" || raw === "system") return raw;
+  return "system";
+}
+
+function initialTheme(): LincinTheme {
+  const raw = readLocal(THEME_KEY);
+  return isLincinTheme(raw) ? raw : "kleur";
+}
+
+let preference: ThemePreference = initialPreference();
+let scheme: Scheme = preference === "system" ? systemScheme() : preference;
+let theme: LincinTheme = initialTheme();
+
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const fn of listeners) fn();
+}
+
+/** Wat de browserbalk en de statusbalk als kleur van het blad krijgen. */
+function surfaceHex(): string {
+  if (theme === "modern") return MODERN_GRADIENT.base;
+  return paperHex(scheme);
+}
+
+/**
+ * Zet de klasse en het thema op `<html>`. De variabelen onder `.dark:root`
+ * en `[data-lincin-theme]` in `global.css` nemen het over en élke klasse
+ * en élke prop die eruit leest schuift mee.
+ */
+function applyWeb() {
+  if (!isWeb || typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.toggle("dark", scheme === "dark");
+  root.dataset.theme = scheme;
+  root.dataset.lincinTheme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", surfaceHex());
+}
+
+function resolve() {
+  const next: Scheme = preference === "system" ? systemScheme() : preference;
+  if (next === scheme) return;
+  scheme = next;
+  applyWeb();
+  emit();
+}
+
+Appearance.addChangeListener(() => {
+  if (preference === "system") resolve();
+});
+
+/** Wat er nú op het scherm staat. */
+export function getScheme(): Scheme {
+  return scheme;
+}
+
+export function getPreference(): ThemePreference {
+  return preference;
+}
+
+export function setPreference(next: ThemePreference) {
+  if (next === preference) return;
+  preference = next;
+  writeLocal(STORAGE_KEY, next);
+  const before = scheme;
+  scheme = next === "system" ? systemScheme() : next;
+  if (scheme !== before) applyWeb();
+  emit();
+}
+
+/** Het thema dat nu geldt. */
+export function getTheme(): LincinTheme {
+  return theme;
+}
+
+/**
+ * Wissel van thema. Lokaal bewaard; `components/lincin/ThemeProvider.tsx`
+ * schrijft hem daarnaast naar het profiel, zodat een tweede toestel hem
+ * ook kent. Geen herlaad: de schermen hertekenen zich (zie `app/_layout.tsx`).
+ */
+export function setTheme(next: LincinTheme) {
+  if (next === theme) return;
+  theme = next;
+  writeLocal(THEME_KEY, next);
+  applyWeb();
+  emit();
+}
+
+/** De maten en stijlen van het thema dat nu geldt. */
+export function themeSpec(t: LincinTheme = theme): ThemeSpec {
+  const s = SPEC[t];
+  return { ...s, dark: t === "modern" || (t === "kleur" && scheme === "dark") };
+}
+
+/** Of het blad donker is: modern, of kleur in de donkere stand. */
+export function isDarkSurface(): boolean {
+  return themeSpec().dark;
+}
+
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+/** Meeluisteren op de wissel van stand óf thema, buiten React om. */
+export const subscribeScheme = subscribe;
+export const subscribeTheme = subscribe;
+
+/** De stand zoals hij nu is — `light` of `dark`. */
+export function useScheme(): Scheme {
+  return useSyncExternalStore(subscribe, getScheme, getScheme);
+}
+
+/** Wat de gebruiker koos — `system`, `light` of `dark`. */
+export function usePreference(): ThemePreference {
+  return useSyncExternalStore(subscribe, getPreference, getPreference);
+}
+
+/** Het thema — `kleur`, `magazine` of `modern`. */
+export function useTheme(): LincinTheme {
+  return useSyncExternalStore(subscribe, getTheme, getTheme);
+}
+
+/** De maten en stijlen van het thema, meebewegend. */
+export function useThemeSpec(): ThemeSpec {
+  const t = useTheme();
+  const s = useScheme();
+  return { ...SPEC[t], dark: t === "modern" || (t === "kleur" && s === "dark") };
+}
+
+/**
+ * Native heeft geen localStorage, dus daar komen de bewaarde voorkeuren
+ * één tel later binnen. Roep dit één keer aan bij het opstarten.
+ */
+export function loadStoredPreference() {
+  if (isWeb) {
+    applyWeb();
+    return;
+  }
+  AsyncStorage.getItem(STORAGE_KEY)
+    .then((raw) => {
+      if (raw === "light" || raw === "dark" || raw === "system") setPreference(raw);
+    })
+    .catch(() => {});
+  AsyncStorage.getItem(THEME_KEY)
+    .then((raw) => {
+      if (isLincinTheme(raw)) setTheme(raw);
+    })
+    .catch(() => {});
+}
+
+// ===============================================================
+// KLEUR ALS PROP
+// ===============================================================
+
+/**
+ * Eén kleur, klaar om in een style-object te zetten.
+ *
+ * Web krijgt de variabele zelf, zodat een prop meewisselt met de klasse en
+ * het thema op `<html>` zónder dat React iets hertekent. Native kent geen
+ * variabelen en krijgt de waarde van de stand en het thema die nú gelden —
+ * daar is de wissel een hertekening (zie `app/_layout.tsx`).
+ */
+export function color(token: Token, alpha?: AlphaToken): string {
+  if (isWeb) return `var(${propVarName(token, alpha)})`;
+  const [r, g, b] = paletteFor(scheme, theme)[token].split(" ");
+  const a = alpha === undefined ? 1 : alphaFor(scheme, theme)[alpha];
+  return a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/**
+ * De kaderlijn: inkt, behalve in modern (papier op 18%). Voor élk
+ * `borderColor` in de v2-onderdelen.
+ */
+export function line(): string {
+  return color("line", "lineA");
+}
+
+/**
+ * De `--p-*`-definities als één stuk CSS; `app/+html.tsx` zet dit in de
+ * <head>. Ze verwijzen naar `--c-*`, en díe wisselen — één lijst dus.
+ */
+export function propVarCss(): string {
+  const lines: string[] = [];
+  for (const token of TOKENS) {
+    lines.push(`  ${propVarName(token)}: rgb(var(${varName(token)}) / 1);`);
+    for (const a of ALPHA_TOKENS) {
+      lines.push(
+        `  ${propVarName(token, a)}: rgb(var(${varName(token)}) / var(${alphaVarName(a)}));`,
+      );
+    }
+  }
+  return `:root {\n${lines.join("\n")}\n}`;
+}

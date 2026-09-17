@@ -51,7 +51,8 @@ import { QueryError } from "@/components/QueryError";
 import { plural } from "@/lib/plural";
 import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
-import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
+import { DesktopChats } from "@/components/lincin/desktop/DesktopChats";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { useToast } from "@/lib/toast";
 import {
@@ -193,22 +194,25 @@ function ComposerInset({
   );
 }
 
-export default function ChatDetail({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+/**
+ * Op desktop (model 3e) is een gesprek Gesprekken op volle breedte, met
+ * dit gesprek open (`DesktopChats`); die tekent de draad hieronder
+ * `embedded`. Op een telefoon het scherm zelf, onveranderd.
+ */
+export default function ChatRoute(props: { id?: string; embedded?: boolean } = {}) {
   const params = useLocalSearchParams<{ id: string }>();
-  // In het desktoppaneel komt het id als prop; als scherm uit de route.
-  const id = idProp ?? params.id;
   const desktop = useIsDesktop();
+  if (desktop && !props.embedded) return <DesktopChats chatId={props.id ?? params.id} />;
+  return <ChatDetail {...props} />;
+}
+
+export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+  const params = useLocalSearchParams<{ id: string }>();
+  // Ingebed (desktop) komt het id als prop; als scherm uit de route.
+  const id = idProp ?? params.id;
   // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
   const { width: windowWidth } = useWindowDimensions();
   const railVisible = !embedded && windowWidth >= CHAT_RAIL_BREAKPOINT;
-  // Op desktop is een gesprek geen scherm maar het paneel rechts.
-  useEffect(() => {
-    if (desktop && !embedded && id) {
-      openThread(String(id));
-      router.replace("/chats" as never);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desktop, embedded, id]);
   // De chat scrollt in een eigen omgekeerde lijst, dus de kop klapt hier
   // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
   // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
@@ -1194,7 +1198,44 @@ export default function ChatDetail({ id: idProp, embedded = false }: { id?: stri
           </Pressable>
         </View>
 
-        {mentioned.length > 0 && (
+        {mentioned.length > 0 && embedded ? (
+          // Desktop (Lincin Desktop.dc.html, GESPREKKEN): de strook ligt
+          // horizontaal met "VERMELD" ervoor en kaartjes van 130×52.
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, marginTop: 14, marginHorizontal: 24, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }}
+            contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 12, alignItems: "center", gap: 12 }}
+          >
+            <Text style={[lincinType.tiny, { letterSpacing: 0.9, color: color("ink", "inkDim") }]}>{t2.mentioned}</Text>
+            {mentioned.map((ref) => (
+              <Pressable
+                key={ref.id}
+                accessibilityRole="button"
+                accessibilityLabel={ref.title}
+                onPress={() => router.push(`/post/${ref.id}` as never)}
+                style={{
+                  width: 130,
+                  height: 52,
+                  backgroundColor: partner.fill,
+                  borderWidth: 1,
+                  borderColor: line(),
+                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text style={[lincinType.tiny, { color: partner.ink, fontSize: 8, lineHeight: 10 }]} numberOfLines={1}>
+                  {t2.post}
+                </Text>
+                <Head variant="mini" color={partner.ink} numberOfLines={2} style={{ lineHeight: 11.5 }}>
+                  {ref.title}
+                </Head>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+        {mentioned.length > 0 && !embedded && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1281,14 +1322,20 @@ export default function ChatDetail({ id: idProp, embedded = false }: { id?: stri
                  * ze bij elkaar hoorden. Een gesprek is tekst, en tekst
                  * heeft een maat — dezelfde als elders in de app.
                  */
-              contentContainerStyle={{
-                padding: space.lg,
-                paddingTop: 28,
-                gap: space.sm,
-                width: "100%",
-                maxWidth: THREAD_WIDTH,
-                alignSelf: "center",
-              }}
+              contentContainerStyle={
+                embedded
+                  ? // Desktop (model 3e): de draad over de hele kolom, 18/24
+                    // rondom; de bubbels houden zelf hun leesmaat.
+                    { paddingVertical: 18, paddingHorizontal: 24, gap: 10, width: "100%" }
+                  : {
+                      padding: space.lg,
+                      paddingTop: 28,
+                      gap: space.sm,
+                      width: "100%",
+                      maxWidth: THREAD_WIDTH,
+                      alignSelf: "center",
+                    }
+              }
               keyboardShouldPersistTaps="handled"
               onScrollBeginDrag={() => setSelectedMsgId(null)}
               onScroll={(e) => {

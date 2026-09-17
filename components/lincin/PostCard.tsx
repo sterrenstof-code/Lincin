@@ -8,7 +8,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 
 import { Media } from "./Media";
-import { BORDER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
+import { BORDER, GUTTER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
 
 /**
  * De post-kaart, variant "7h" (README §Post card).
@@ -26,6 +26,11 @@ import { BORDER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
  * is de titelstrook gevuld met de vriendkleur en de titel Archivo 22; in
  * magazine en modern is de strook papier met een kleurbalk van 6px links
  * en de titel serif 24. Het kader is 1px en (modern) afgerond op 10.
+ *
+ * Foto's zoals Instagram: hun eigen verhouding (4:5–1.91:1) in plaats van
+ * een strook van 150. In een verticale lijst (`bleed`) staat de foto
+ * bóven de kaart, rand tot rand over het scherm; in een rij van 340 vult
+ * hij de hoofdkolom van de kaart.
  */
 
 export const CARD_W = 340;
@@ -45,8 +50,17 @@ export const PostCard = memo(function PostCard({
   onOpen,
   onPrivate,
   onProfile,
+  number,
+  bleed = false,
 }: {
   post: CardPost;
+  /**
+   * In een verticale lijst met zijmarge GUTTER: de foto loopt rand tot rand
+   * over het scherm, boven de kaart. Alleen voor foto's.
+   */
+  bleed?: boolean;
+  /** "01" — voor de lichtbak (`№ 01 · Noor · foto · 22:41`). */
+  number?: string | null;
   hue: Hue;
   /** Vast (340 in een rij) of ongezet (de volle breedte). */
   width?: number;
@@ -54,7 +68,8 @@ export const PostCard = memo(function PostCard({
   reactions: GroupedPostReaction[];
   onReact: (emoji: string) => void;
   onOpen: () => void;
-  onPrivate: () => void;
+  /** Weggelaten bij je eigen bijdrage: geen PRIVAAT BERICHT aan jezelf. */
+  onPrivate?: () => void;
   onProfile: () => void;
 }) {
   const t = useT();
@@ -69,8 +84,11 @@ export const PostCard = memo(function PostCard({
     ? { backgroundColor: fc.fill, borderLeftWidth: 0, borderLeftColor: fc.fill }
     : { backgroundColor: color("paper"), borderLeftWidth: 6, borderLeftColor: fc.fill };
   const stripInk = spec.stripFilled ? fc.ink : ink;
+  const zoom = { number, author: post.authorName, kind: post.kind, time: timeLabel(post.createdAt, t, lang), title: post.title };
+  const photo = post.media.kind === "foto";
+  const lifted = bleed && photo;
 
-  return (
+  const card = (
     // Bewust géén `accessibilityRole="button"`: op web wordt dat een
     // <button>, en daar mogen de reacties, COMMENT, PRIVAAT en de avatar
     // (zelf knoppen) niet in.
@@ -79,6 +97,7 @@ export const PostCard = memo(function PostCard({
       onPress={canOpen ? onOpen : undefined}
       style={{
         width: width ?? "100%",
+        ...(lifted ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : null),
         borderWidth: BORDER,
         borderColor: edge,
         borderRadius: RADIUS,
@@ -89,8 +108,18 @@ export const PostCard = memo(function PostCard({
       <View style={{ flexDirection: "row" }}>
         {/* hoofdkolom */}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} />
-          <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: BORDER, borderTopColor: edge, overflow: "hidden" }}>
+          {lifted ? null : (
+            <Media
+              media={post.media}
+              height={MEDIA_H}
+              hue={hue}
+              postId={post.id}
+              myUserId={myUserId}
+              photoFit="ratio"
+              zoom={zoom}
+            />
+          )}
+          <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: lifted ? 0 : BORDER, borderTopColor: edge, overflow: "hidden" }}>
             <Head variant="cardTitle" color={stripInk} numberOfLines={3} style={{ height: TITLE_H }}>
               {post.title}
             </Head>
@@ -162,17 +191,29 @@ export const PostCard = memo(function PostCard({
             </Mono>
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={onPrivate}
-          style={{ paddingHorizontal: 10, justifyContent: "center", backgroundColor: ink }}
-        >
-          <Mono variant="action" tone="paper" numberOfLines={1}>
-            {t.privateMsg}
-          </Mono>
-        </Pressable>
+        {onPrivate ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onPrivate}
+            style={{ paddingHorizontal: 10, justifyContent: "center", backgroundColor: ink }}
+          >
+            <Mono variant="action" tone="paper" numberOfLines={1}>
+              {t.privateMsg}
+            </Mono>
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
+  );
+
+  if (!lifted) return card;
+  return (
+    <View>
+      <View style={{ marginHorizontal: -GUTTER }}>
+        <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" zoom={zoom} />
+      </View>
+      {card}
+    </View>
   );
 });
 

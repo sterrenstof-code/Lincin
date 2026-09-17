@@ -1,22 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
-import { PANEL_W, RAIL_W } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
 
 import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
 
 /**
- * Events op desktop (Lincin Desktop.dc.html, EVENTS): een raster van
- * kaarten van minstens 340 breed met haarlijnen ertussen. Links de dag in
- * serif 56 onder een kleurblokje, rechts wie · wanneer, de titel in serif
- * 28, plek · gezelschap, en onderaan de handelingen als mono-links.
+ * Events op desktop (Lincin Desktop.dc.html, EVENTS): titel serif 40 met
+ * "n gepland" rechts, dan een raster van kaarten (minstens 340 breed, 180
+ * hoog) met haarlijnen ertussen. Links een kleurblokje van 10, de dag in
+ * serif 52 en de maand; rechts wie · wanneer, de titel in serif 26, plek ·
+ * gezelschap, en onderaan de handelingen als mono-links.
+ *
+ * Het ontwerp heeft IK KOM / MISSCHIEN; de backend kent geen rsvp, dus
+ * staan hier — zoals op de telefoon — OPEN → en, voor de gastheer, DEEL CODE.
  */
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
@@ -27,10 +31,10 @@ export function DesktopEvents() {
   const myUserId = session!.user.id;
   const router = useRouter();
   const t = useT();
-  const { width } = useWindowDimensions();
-  const mainW = width - RAIL_W - PANEL_W;
-  const cols = Math.max(1, Math.floor(mainW / MIN));
-  const cardW = (mainW - (cols - 1)) / cols;
+  const spec = useThemeSpec();
+  const [gridW, setGridW] = useState(0);
+  const cols = Math.max(1, Math.floor((gridW + 1) / (MIN + 1)));
+  const cardW = gridW ? (gridW - (cols - 1)) / cols : MIN;
 
   const events = useQuery({ queryKey: ["events", myUserId], queryFn: () => listMyEvents(myUserId), refetchOnWindowFocus: true });
   const data = events.data ?? [];
@@ -38,30 +42,32 @@ export function DesktopEvents() {
   const active = data.filter((e) => e.is_active);
   const upcoming = data.filter((e) => !e.is_active && new Date(e.starts_at).getTime() > now).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const past = data.filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
-  const waiting = data.reduce((n, e) => n + (e.is_host ? e.pending_requests_count : 0), 0);
 
   return (
     <DesktopShell active="events">
       <DesktopTitle
         right={
           <>
-            <MonoLink label={`${upcoming.length + active.length} ${t.planned}${waiting ? ` · ${waiting} ${t.waitsForYou}` : ""}`} on={false} />
+            <MonoLink label={`${upcoming.length + active.length} ${t.planned}`} on={false} />
             <MonoLink label={`${t.planNew} →`} active onPress={() => router.push("/event-create")} />
           </>
         }
       >
         {t.eventsA} <Text style={serif(true)}>{t.eventsB}</Text>
       </DesktopTitle>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: color("ink", "postRule"), borderBottomWidth: 1, borderBottomColor: color("ink") }}>
-          {[...active, ...upcoming, ...past].map((e) => (
-            <Card key={e.id} event={e} width={cardW} past={!e.is_active && new Date(e.ends_at).getTime() <= now} />
-          ))}
-        </View>
-        {events.isLoading ? (
-          <Text style={[mono(500), { fontSize: 10, color: color("ink", "inkDim"), padding: 48, textTransform: "uppercase", letterSpacing: 0.8 }]}>{t.loading}</Text>
-        ) : null}
-      </ScrollView>
+      <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {events.isLoading ? (
+            <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: color("ink", "inkDim"), padding: 24, textTransform: "uppercase", letterSpacing: 1 }]}>{t.loading}</Text>
+          ) : (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+              {[...active, ...upcoming, ...past].map((e) => (
+                <Card key={e.id} event={e} width={cardW} past={!e.is_active && new Date(e.ends_at).getTime() <= now} />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </View>
     </DesktopShell>
   );
 }
@@ -80,36 +86,37 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
   const who = `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  const rule = color("ink", "postRule");
+  const meta = [mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase" as const, color: dim }];
   return (
     <Pressable
       accessibilityLabel={e.name}
       onPress={() => router.push(`/event/${e.id}` as never)}
-      style={{ width, backgroundColor: color("paper"), flexDirection: "row", gap: 22, paddingTop: 24, paddingHorizontal: 28, paddingBottom: 20, minHeight: 190, opacity: past ? 0.6 : 1 }}
+      style={{ width, minHeight: 180, backgroundColor: color("paper"), flexDirection: "row", gap: 20, paddingVertical: 22, paddingHorizontal: 24, opacity: past ? 0.6 : 1 }}
     >
-      <View style={{ width: 72, gap: 6 }}>
+      <View style={{ width: 76, gap: 6 }}>
         <View style={{ width: 10, height: 10, backgroundColor: fc.fill }} />
-        <Text style={[serif(), { fontSize: 56, lineHeight: 48, letterSpacing: -1.68, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
+        <Text style={[serif(), { fontSize: 52, lineHeight: 44, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: dim }]}>
           {start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")}
         </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-          <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>
+          <Text numberOfLines={1} style={[...meta, { flexShrink: 1 }]}>
             {e.is_host ? t.me : "linc"}
-            {e.is_active ? `  ·  nu bezig` : ""}
+            {e.is_active ? "  ·  nu bezig" : ""}
+            {e.is_host && e.pending_requests_count > 0 ? `  ·  ${e.pending_requests_count} ${t.waitsForYou}` : ""}
           </Text>
-          <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>{when}</Text>
+          <Text style={meta}>{when}</Text>
         </View>
-        <Text numberOfLines={2} style={[serif(), { fontSize: 28, lineHeight: 28.5, letterSpacing: -0.42, color: ink }]}>
+        <Text numberOfLines={2} style={[serif(), { fontSize: 26, lineHeight: 27, color: ink }]}>
           {e.name}
         </Text>
-        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 20, color: dim }]}>
+        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 19, color: dim }]}>
           {e.description ? `${e.description.split("\n")[0]} · ` : ""}
           {who}
         </Text>
-        <View style={{ flexDirection: "row", gap: 16, marginTop: "auto", paddingTop: 12, borderTopWidth: 1, borderTopColor: rule }}>
+        <View style={{ flexDirection: "row", gap: 16, marginTop: "auto", paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}>
           <MonoLink label="Open →" active onPress={() => router.push(`/event/${e.id}` as never)} />
           {e.is_host && !past ? <MonoLink label="Deel code" on={false} active onPress={() => router.push(`/event-link/${e.id}` as never)} /> : null}
         </View>

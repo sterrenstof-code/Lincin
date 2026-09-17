@@ -17,12 +17,17 @@ export type PollRow = {
   question: string;
   ends_at: string | null;
   created_at: string;
+  /** 0060 — meerdere keuzes per linc. `false` zolang de migratie niet draaide. */
+  allow_multiple: boolean;
 };
 
 export type PollWithDetails = PollRow & {
   author: Profile | null;
   options: PollOption[];
+  /** De eerste eigen stem; bij één stem per linc de enige. */
   my_vote_option_id: string | null;
+  /** Alle eigen stemmen — meer dan één alleen bij `allow_multiple`. */
+  my_vote_option_ids: string[];
   total_votes: number;
 };
 
@@ -31,17 +36,25 @@ export async function createPoll(args: {
   question: string;
   options: string[];       // minimaal 2 labels
   endsAt?: Date | null;
+  /** `meerdere keuzes` in de keuze-editor (HANDOFF 2.1). */
+  allowMultiple?: boolean;
 }): Promise<PollRow> {
-  const { data: poll, error: pollErr } = await supabase
-    .from("polls")
-    .insert({
-      user_id: args.userId,
-      question: args.question.trim(),
-      ends_at: args.endsAt?.toISOString() ?? null,
-    })
-    .select("id, user_id, question, ends_at, created_at")
-    .single();
-  if (pollErr) throw pollErr;
+  const row: { user_id: string; question: string; ends_at: string | null; allow_multiple?: boolean } = {
+    user_id: args.userId,
+    question: args.question.trim(),
+    ends_at: args.endsAt?.toISOString() ?? null,
+  };
+  const insert = (withMultiple: boolean) =>
+    supabase
+      .from("polls")
+      .insert(withMultiple ? { ...row, allow_multiple: true } : row)
+      .select(POLL_COLUMNS_BASE)
+      .single();
+  // Alleen een meerkeuzepoll schrijft de kolom; zonder migratie 0060 valt
+  // hij terug op één stem in plaats van niet gedeeld te worden.
+  let { data: poll, error: pollErr } = await insert(!!args.allowMultiple);
+  if (pollErr && args.allowMultiple) ({ data: poll, error: pollErr } = await insert(false));
+  if (pollErr || !poll) throw pollErr;
 
   const optionRows = args.options.map((label, i) => ({
     poll_id: poll.id,
@@ -51,19 +64,25 @@ export async function createPoll(args: {
   const { error: optErr } = await supabase.from("poll_options").insert(optionRows);
   if (optErr) throw optErr;
 
-  return poll as PollRow;
+  return { ...(poll as Omit<PollRow, "allow_multiple">), allow_multiple: !!args.allowMultiple } as PollRow;
+}
+
+const POLL_COLUMNS_BASE = "id, user_id, question, ends_at, created_at";
+
+/** Leest `allow_multiple` als de kolom er is (0060), anders `false`. */
+async function selectPoll(pollId: string) {
+  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple`).eq("id", pollId).single();
+  if (!withCol.error) return { data: withCol.data as unknown as PollRow, error: null };
+  const base = await supabase.from("polls").select(POLL_COLUMNS_BASE).eq("id", pollId).single();
+  return { data: base.data ? ({ ...base.data, allow_multiple: false } as PollRow) : null, error: base.error };
 }
 
 export async function getPollWithDetails(
   pollId: string,
   myUserId: string
 ): Promise<PollWithDetails | null> {
-  const { data: poll, error: pErr } = await supabase
-    .from("polls")
-    .select("id, user_id, question, ends_at, created_at")
-    .eq("id", pollId)
-    .single();
-  if (pErr) return null;
+  const { data: poll, error: pErr } = await selectPoll(pollId);
+  if (pErr || !poll) return null;
 
   const { data: options, error: oErr } = await supabase
     .from("poll_options")
@@ -72,12 +91,12 @@ export async function getPollWithDetails(
     .order("position");
   if (oErr) throw oErr;
 
-  const { data: myVote } = await supabase
+  const { data: myVotes } = await supabase
     .from("poll_votes")
     .select("poll_option_id")
     .eq("user_id", myUserId)
-    .in("poll_option_id", (options ?? []).map((o: any) => o.id))
-    .maybeSingle();
+    .in("poll_option_id", (options ?? []).map((o: any) => o.id));
+  const myIds = (myVotes ?? []).map((v: { poll_option_id: string }) => v.poll_option_id);
 
   // Collect all voter ids across all options
   const allVoterIds = Array.from(new Set(
@@ -110,7 +129,9 @@ export async function getPollWithDetails(
     ...(poll as PollRow),
     author: authors[0] ?? null,
     options: mappedOptions,
-    my_vote_option_id: myVote?.poll_option_id ?? null,
+    allow_multiple: !!(poll as { allow_multiple?: boolean }).allow_multiple,
+    my_vote_option_id: myIds[0] ?? null,
+    my_vote_option_ids: myIds,
     total_votes: totalVotes,
   };
 }
@@ -142,9 +163,25 @@ export async function votePoll(args: {
   optionId: string;
   userId: string;
   pollId: string;
+  /**
+   * Meerkeuze: de tik zet déze keuze aan of uit en laat de andere staan.
+   * Zonder: de vorige stem gaat weg en deze komt ervoor in de plaats.
+   */
+  multiple?: boolean;
+  /** Bij `multiple`: of deze keuze al aangevinkt was (dan gaat hij weg). */
+  wasOn?: boolean;
 }): Promise<void> {
+  if (args.multiple && args.wasOn) {
+    const { error } = await supabase
+      .from("poll_votes")
+      .delete()
+      .eq("user_id", args.userId)
+      .eq("poll_option_id", args.optionId);
+    if (error) throw error;
+    return;
+  }
   // Verwijder eventuele vorige stem op dezelfde poll
-  const { data: existingOptions } = await supabase
+  const { data: existingOptions } = args.multiple ? { data: null } : await supabase
     .from("poll_options")
     .select("id")
     .eq("poll_id", args.pollId);

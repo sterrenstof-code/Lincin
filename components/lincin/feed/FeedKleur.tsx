@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  Platform,
   Pressable,
   ScrollView,
+  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
 import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
 import { color, friendColor, useScheme } from "@/lib/design/theme";
+import { mono } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, two, type FriendGroup, type TimeGroup } from "@/lib/lincin/model";
 import { usePrefs } from "@/lib/lincin/prefs";
@@ -111,7 +119,11 @@ export function FeedKleur() {
 
   // ---- de bladzijde ----
   const current = view === "friends" ? groups[idx] : undefined;
-  const tint = current && prefs.tint ? friendColor(current.hue, scheme).fill : null;
+  const next = view === "friends" ? groups[idx + 1] : undefined;
+  const currentFill = current ? friendColor(current.hue, scheme).fill : null;
+  const tint = prefs.tint ? currentFill : null;
+  // Het verloop kijkt vooruit: onderaan de tint van wie hierna komt.
+  const tintNext = tint && next ? friendColor(next.hue, scheme).fill : null;
   const counter = view === "friends" && groups.length ? `${two(Math.min(idx + 1, groups.length))} / ${two(groups.length)}` : t.tabFeed;
 
   const children: ReactNode[] = [];
@@ -181,19 +193,22 @@ export function FeedKleur() {
               <PostCard
                 key={p.id}
                 post={p}
+                number={f.numberOf(p.id)}
                 hue={g.hue}
                 width={CARD_W}
                 myUserId={myUserId}
                 reactions={reactions.grouped(p.id)}
                 onReact={(emoji) => reactions.toggle(p.id, emoji)}
                 onOpen={() => f.openPost(p)}
-                onPrivate={() => f.privateAbout(g, p)}
+                onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g, p)}
                 onProfile={() => f.openProfile(g)}
               />
             ))}
-            <DashedCard width={120} onPress={() => f.privateAbout(g)}>
-              {t.sayTo} {g.name} →
-            </DashedCard>
+            {f.isMine(g.authorId) ? null : (
+              <DashedCard width={120} onPress={() => f.privateAbout(g)}>
+                {t.sayTo} {g.name} →
+              </DashedCard>
+            )}
           </ScrollView>,
         );
       } else {
@@ -223,13 +238,15 @@ export function FeedKleur() {
             <PostCard
               key={p.id}
               post={p}
+              number={f.numberOf(p.id)}
+              bleed
               hue={groups.find((x) => x.key === p.authorId)?.hue ?? "orange"}
               myUserId={myUserId}
               reactions={reactions.grouped(p.id)}
               onReact={(emoji) => reactions.toggle(p.id, emoji)}
               onOpen={() => f.openPost(p)}
-              onPrivate={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
-              onProfile={() => f.openProfile({ username: p.authorUsername })}
+              onPrivate={f.isMine(p.authorId) ? undefined : () => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
+              onProfile={() => f.openProfile({ username: p.authorUsername, authorId: p.authorId })}
             />
           ))}
         </View>,
@@ -242,7 +259,7 @@ export function FeedKleur() {
   }
 
   return (
-    <LincinScreen tab="feed" tint={tint} counter={counter}>
+    <LincinScreen tab="feed" tint={tint} tintNext={tintNext} tabTint={currentFill} counter={counter}>
       <View
         style={{
           paddingTop: 8,
@@ -307,6 +324,9 @@ function Band({
   const bandBg = seen ? color("paper") : fc.fill;
   const bandInk = seen ? color("ink") : fc.ink;
   const n = g.posts.length;
+  // 2.1: een band met iets ongelezens draagt geen rode chip en geen
+  // telling meer, maar een lopende regel van wat er nieuw is.
+  const ticker = fresh > 0;
   return (
     <View
       style={{
@@ -339,22 +359,30 @@ function Band({
           variant="band"
           color={bandInk}
           numberOfLines={1}
-          style={{ flexShrink: 1, textDecorationLine: "underline" }}
+          style={ticker ? { flexShrink: 0, maxWidth: 150, textDecorationLine: "underline" } : { flexShrink: 1, textDecorationLine: "underline" }}
         >
           {g.name}
         </Head>
         {g.isGroup ? <Chip label={t.group} tone="outline" inkColor={bandInk} /> : null}
         {seen ? <Chip label={t.read} tone="plain" inkColor={bandInk} /> : null}
-        {fresh > 0 ? <Chip label={`${fresh} ${t.new}`} tone="red" /> : null}
+        {ticker ? (
+          <Ticker
+            text={`${fresh} ${t.new} · ${g.posts.map((p) => `${p.kind} ${timeLabel(p.createdAt, t, lang)}`).join(" · ")} · \u00a0\u00a0 `}
+            ink={bandInk}
+            bg={bandBg}
+          />
+        ) : null}
       </Pressable>
-      <View style={{ alignItems: "flex-end", opacity: 0.8 }}>
-        <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
-          {n} {n === 1 ? t.post1 : t.posts}
-        </Mono>
-        <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
-          {timeLabel(g.latest, t, lang)}
-        </Mono>
-      </View>
+      {ticker ? null : (
+        <View style={{ alignItems: "flex-end", opacity: 0.8 }}>
+          <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
+            {n} {n === 1 ? t.post1 : t.posts}
+          </Mono>
+          <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
+            {timeLabel(g.latest, t, lang)}
+          </Mono>
+        </View>
+      )}
       <SquareBtn
         glyph="+"
         size={30}
@@ -363,6 +391,91 @@ function Band({
         accessibilityLabel={open ? "Inklappen" : "Uitklappen"}
         style={{ borderWidth: 1.5, borderColor: bandInk, transform: [{ rotate: open ? "45deg" : "0deg" }] }}
       />
+    </View>
+  );
+}
+
+/**
+ * De lopende regel in een ongelezen band (HANDOFF 2.1 §Motion — Ticker).
+ *
+ * Mono 600 9px kapitaal op .1em, aan beide kanten 10% uitgevaagd:
+ * `2 NIEUW · FOTO 22:41 · PLEK 22:58 ·` twee keer achter elkaar, die
+ * lineair van 0 naar −50% schuift, dus naadloos rondloopt. Duur:
+ * max(7s, 0.28s × tekens). Staat stil als "beweging verminderen" aan is.
+ */
+function Ticker({ text, ink, bg }: { text: string; ink: string; bg: string }) {
+  const [w, setW] = useState(0);
+  const [still, setStill] = useState(false);
+  const x = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => alive && setStill(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setStill);
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    x.setValue(0);
+    if (!w || still) return;
+    const loop = Animated.loop(
+      Animated.timing(x, {
+        toValue: -w / 2,
+        duration: Math.max(7, text.length * 0.28) * 1000,
+        easing: Easing.linear,
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [w, still, text, x]);
+
+  const style = { ...mono(600), fontSize: 9, lineHeight: 12, letterSpacing: 0.9, textTransform: "uppercase" as const, color: ink };
+  const fadeWeb =
+    Platform.OS === "web"
+      ? ({
+          maskImage: "linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)",
+        } as object)
+      : null;
+
+  return (
+    <View style={[{ flex: 1, minWidth: 0, height: 12, overflow: "hidden" }, fadeWeb]}>
+      {/* Een ruim spoor, zodat de regel nergens afbreekt; gemeten wordt de
+          tekst zelf, niet het spoor. */}
+      <Animated.View
+        style={{ position: "absolute", left: 0, top: 0, width: 10000, flexDirection: "row", alignItems: "flex-start", transform: [{ translateX: x }] }}
+      >
+        <Text
+          onLayout={(e) => setW(e.nativeEvent.layout.width)}
+          style={[style, Platform.OS === "web" ? ({ whiteSpace: "pre" } as object) : null]}
+        >
+          {text}
+          {text}
+        </Text>
+      </Animated.View>
+      {Platform.OS === "web" ? null : (
+        // Native kent geen masker: twee verlopen in de kleur van de band erover.
+        <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }} width="100%" height="100%">
+          <Defs>
+            <LinearGradient id="tick-l" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset={0} stopColor={bg} stopOpacity={1} />
+              <Stop offset={1} stopColor={bg} stopOpacity={0} />
+            </LinearGradient>
+            <LinearGradient id="tick-r" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset={0} stopColor={bg} stopOpacity={0} />
+              <Stop offset={1} stopColor={bg} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="10%" height="100%" fill="url(#tick-l)" />
+          <Rect x="90%" y="0" width="10%" height="100%" fill="url(#tick-r)" />
+        </Svg>
+      )}
     </View>
   );
 }

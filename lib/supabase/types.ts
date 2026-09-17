@@ -483,6 +483,8 @@ export type Database = {
           /** `null` = geen deadline. */
           ends_at: string | null;
           created_at: string;
+          /** 0060 — meerdere keuzes per linc. */
+          allow_multiple: boolean;
         };
         Insert: {
           id?: string;
@@ -490,6 +492,7 @@ export type Database = {
           question: string;
           ends_at?: string | null;
           created_at?: string;
+          allow_multiple?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["polls"]["Insert"]>;
         Relationships: [];
@@ -658,6 +661,24 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["post_reactions"]["Insert"]>;
+        Relationships: [];
+      };
+
+      // 0059_comment_reactions
+      comment_reactions: {
+        Row: {
+          comment_id: string;
+          user_id: string;
+          emoji: string;
+          created_at: string;
+        };
+        Insert: {
+          comment_id: string;
+          user_id: string;
+          emoji: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["comment_reactions"]["Insert"]>;
         Relationships: [];
       };
 

@@ -13,12 +13,10 @@ import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
 import { lincinType, mono, serif } from "@/lib/design/type";
 import { useT, type Lang } from "@/lib/i18n";
-import { openThread, usePanel } from "@/lib/lincin/desktop";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useUnread } from "@/lib/lincin/unread";
 
 import { useFeed } from "../feed/useFeed";
-import { Panel } from "./Panel";
 
 /**
  * De feed op desktop, thema magazine (Lincin Desktop Opties #1b): één
@@ -26,8 +24,8 @@ import { Panel } from "./Panel";
  * vriendkleur eroverheen, de titel en het bijschrift links, de lopende
  * tekst in een kolom van 280, "Op spotlight" rechts, en onderaan de
  * reacties als chips. Rechts een kolom van 380 met de inhoudsopgave en,
- * onderaan, de gesprekken. Opent er een bladzijde of profiel, dan neemt
- * het paneel die kolom over.
+ * onderaan, de gesprekken. Een bijdrage of gesprek opent op volle
+ * breedte in de desktopschil (model 3c/3d), net als in kleur.
  */
 
 const ON_IMAGE = "#F2EFE8";
@@ -40,7 +38,6 @@ export function DesktopMagazine() {
   const { t, lang, byTime, groups, reactions, sheet, setSheet, numberOf, friendCount } = f;
   const scheme = useScheme();
   const router = useRouter();
-  const panel = usePanel();
   const unread = useUnread();
   const hero = byTime[0];
   const spotlight = byTime.slice(1, 5);
@@ -142,55 +139,53 @@ export function DesktopMagazine() {
                     {hero.commentCount ? ` · ${hero.commentCount}` : ""}
                   </Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={chip}>
-                  <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE }]}>{t.privateMsg}</Text>
-                </Pressable>
+                {f.isMine(hero.authorId) ? null : (
+                  <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={chip}>
+                    <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE }]}>{t.privateMsg}</Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           </>
         ) : null}
       </View>
 
-      {/* rechts: inhoudsopgave, of het paneel */}
+      {/* rechts: inhoudsopgave en gesprekken */}
       <View style={{ width: SIDE_W, backgroundColor: color("paper") }}>
-        {panel.kind === "thread" ? (
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            <View style={{ paddingTop: 26, paddingHorizontal: 26, paddingBottom: 18, borderBottomWidth: 1.5, borderBottomColor: ink }}>
-              <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: dim }]}>
-                {t.editionA} {t.editionB}
-              </Text>
-              <Text style={[serif(), { fontSize: 34, lineHeight: 34, color: ink, marginTop: 6 }]}>
-                {t.feedA} <Text style={serif(true)}>{t.feedB}</Text>
-              </Text>
-            </View>
-            {toc.map((p, i) => {
-              const fc = friendColor(hueOf(p), scheme);
-              return (
-                <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule }}>
-                  <View style={{ width: 8, backgroundColor: fc.fill }} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>
-                      {p.authorName} · {p.kind} · {timeLabel(p.createdAt, t, lang)}
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <View style={{ paddingTop: 26, paddingHorizontal: 26, paddingBottom: 18, borderBottomWidth: 1.5, borderBottomColor: ink }}>
+            <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: dim }]}>
+              {t.editionA} {t.editionB}
+            </Text>
+            <Text style={[serif(), { fontSize: 34, lineHeight: 34, color: ink, marginTop: 6 }]}>
+              {t.feedA} <Text style={serif(true)}>{t.feedB}</Text>
+            </Text>
+          </View>
+          {toc.map((p, i) => {
+            const fc = friendColor(hueOf(p), scheme);
+            return (
+              <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule }}>
+                <View style={{ width: 8, backgroundColor: fc.fill }} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>
+                    {p.authorName} · {p.kind} · {timeLabel(p.createdAt, t, lang)}
+                  </Text>
+                  {p.untitled && p.media.kind === "foto" ? (
+                    <View style={{ marginTop: 6, width: 88, height: 52, borderWidth: 1, borderColor: rule, backgroundColor: color("paper2"), overflow: "hidden" }}>
+                      <SafeImage uri={p.media.uri} cacheKey={p.media.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
+                    </View>
+                  ) : (
+                    <Text numberOfLines={2} style={[serif(), { fontSize: 22, lineHeight: 23, marginTop: 4, color: ink }]}>
+                      {p.title}
                     </Text>
-                    {p.untitled && p.media.kind === "foto" ? (
-                      <View style={{ marginTop: 6, width: 88, height: 52, borderWidth: 1, borderColor: rule, backgroundColor: color("paper2"), overflow: "hidden" }}>
-                        <SafeImage uri={p.media.uri} cacheKey={p.media.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
-                      </View>
-                    ) : (
-                      <Text numberOfLines={2} style={[serif(), { fontSize: 22, lineHeight: 23, marginTop: 4, color: ink }]}>
-                        {p.title}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: ink }]}>№ {numberOf(p.id)}</Text>
-                </Pressable>
-              );
-            })}
-            <ChatsSummary onOpen={(id) => { openThread(id); router.push("/chats"); }} />
-          </ScrollView>
-        ) : (
-          <Panel />
-        )}
+                  )}
+                </View>
+                <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: ink }]}>№ {numberOf(p.id)}</Text>
+              </Pressable>
+            );
+          })}
+          <ChatsSummary onOpen={(id) => router.push(`/chat/${id}` as never)} />
+        </ScrollView>
       </View>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </View>

@@ -1,15 +1,19 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
-import { votePoll } from "@/lib/api/polls";
+import { usePollVote } from "@/lib/lincin/poll";
 import { color, friendColor, useScheme, type Hue, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { waveform, type CardMedia } from "@/lib/lincin/model";
 
+import { Carousel } from "./Carousel";
+import { openLightbox, type LightboxPayload } from "./Lightbox";
 import { BORDER, Head, Mono, Serif } from "./ui";
+
+/** Wat de lichtbak over een foto vertelt, naast de foto's zelf. */
+export type ZoomMeta = Omit<LightboxPayload, "uris" | "cacheKeys" | "index">;
 
 /**
  * De mediasoorten van een kaart (README §Media kinds).
@@ -23,16 +27,37 @@ export function Media({
   hue,
   postId,
   myUserId,
+  size = "card",
+  zoom,
+  photoFit,
 }: {
   media: CardMedia;
   height: number;
   hue: Hue;
   postId: string;
   myUserId: string;
+  /** Kaart (150) of bladzijde (300): de maat van teller en streepjes. */
+  size?: "card" | "page";
+  /** Gegeven: een tik op de foto opent de lichtbak (HANDOFF 2.1). */
+  zoom?: ZoomMeta;
+  /**
+   * `ratio`: een foto krijgt zijn eigen verhouding (Instagram, 4:5–1.91:1)
+   * in plaats van `height`. De andere soorten houden `height`.
+   */
+  photoFit?: "ratio";
 }) {
   switch (media.kind) {
     case "foto":
-      return <Photo uri={media.uri} cacheKey={media.cacheKey} video={media.video} height={height} />;
+      return (
+        <Carousel
+          uris={media.uris}
+          cacheKeys={media.cacheKeys}
+          height={photoFit === "ratio" ? "ratio" : height}
+          size={size}
+          video={media.video}
+          onZoom={zoom ? (index) => openLightbox({ ...zoom, uris: media.uris, cacheKeys: media.cacheKeys, index }) : undefined}
+        />
+      );
     case "tekst":
       return <TextBlock text={media.text} height={height} />;
     case "poll":
@@ -66,36 +91,6 @@ export function Media({
     default:
       return <View style={{ height, backgroundColor: color("paper2") }} />;
   }
-}
-
-function Photo({
-  uri,
-  cacheKey,
-  video,
-  height,
-}: {
-  uri: string | null;
-  cacheKey?: string;
-  video?: boolean;
-  height: number;
-}) {
-  return (
-    <View style={{ height, backgroundColor: color("paper2"), overflow: "hidden" }}>
-      <SafeImage
-        uri={uri}
-        cacheKey={cacheKey}
-        style={{ width: "100%", height: "100%" }}
-        contentFit="cover"
-        fallbackBg="bg-paper2"
-        fallbackColor={color("ink", "inkDim")}
-      />
-      {video ? (
-        <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-          <PlayGlyph size={44} glyph="▶" />
-        </View>
-      ) : null}
-    </View>
-  );
 }
 
 function TextBlock({ text, height }: { text: string; height: number }) {
@@ -192,36 +187,17 @@ function Poll({
   myUserId: string;
 }) {
   const t = useT();
-  const qc = useQueryClient();
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const poll = media.poll;
-  const [mine, setMine] = useState<string | null>(poll.my_vote_option_id);
-  const counts = poll.options.map((o) => {
-    let n = o.vote_count;
-    if (poll.my_vote_option_id === o.id) n -= 1;
-    if (mine === o.id) n += 1;
-    return n;
-  });
-  const total = counts.reduce((a, b) => a + b, 0);
+  const { mine, counts, total, vote } = usePollVote(poll, myUserId);
   const rows = Math.max(1, Math.min(poll.options.length, Math.floor((height - 24 - 14) / 44)));
-
-  async function vote(optionId: string) {
-    if (optionId === mine) return;
-    setMine(optionId);
-    try {
-      await votePoll({ optionId, userId: myUserId, pollId: poll.id });
-      qc.invalidateQueries({ queryKey: ["unified-feed"] });
-    } catch {
-      setMine(poll.my_vote_option_id);
-    }
-  }
 
   return (
     <View style={{ height, backgroundColor: color("paper2"), padding: 12, justifyContent: "center", gap: 8 }}>
       {poll.options.slice(0, rows).map((o, i) => {
         const pct = total ? Math.round((counts[i] / total) * 100) : 0;
-        const on = mine === o.id;
+        const on = mine.has(o.id);
         return (
           <Pressable
             key={o.id}

@@ -9,7 +9,7 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, setPreference, THEMES, usePreference, useScheme, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
+import { color, setPreference, THEMES, usePreference, useScheme, useThemeSpec, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
@@ -20,15 +20,15 @@ import { useUnread } from "@/lib/lincin/unread";
 import { DesktopShell, MonoLink } from "./Shell";
 
 /**
- * Jij op desktop (Lincin Desktop.dc.html, JIJ + INSTELLINGEN): je naam in
- * serif 52 (achternaam cursief, gedempt) met rechts de drie cijfers, en
- * daaronder de instellingen als kolommen van minstens 280: elke groep een
- * cursieve serif-kop op een inktlijn, rijen op haarlijnen, schakelaars als
- * "AAN / UIT" met een vierkantje, waarden en talen als onderstreepte
- * mono-links. Instellingen is op desktop geen apart scherm.
+ * Jij op desktop (Lincin Desktop.dc.html, JIJ): je naam in serif 46
+ * (achternaam cursief, gedempt) met rechts de drie cijfers in mono, en
+ * daaronder de instellingen als kolommen van minstens 280 (hoogstens 900
+ * samen): elke groep een cursieve serif-kop van 20 op een inktlijn, rijen
+ * van 13 hoog-en-laag op haarlijnen, rechts de waarde in mono — "AAN",
+ * "TOESTEL", "NL". Instellingen is op desktop geen apart scherm.
  */
 
-const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
+/** toestel → licht → donker, zoals de rail. */
 const THEME_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
 
 export function DesktopYou() {
@@ -38,6 +38,7 @@ export function DesktopYou() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  const spec = useThemeSpec();
   const pref = usePreference();
   const prefs = usePrefs(myUserId);
   const lincin = useLincinTheme();
@@ -53,43 +54,37 @@ export function DesktopYou() {
   const pendingIn = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId).length;
   const since = new Date(session!.user.created_at);
   const yy = `'${String(since.getFullYear()).slice(2)}`;
-  const mon = since.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "");
 
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
   const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
-  const standLabel = pref === "system" ? t.followsDevice : pref === "light" ? t.light : t.dark;
+  const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
 
   async function logout() {
     const ok = await confirm("Uitloggen?", "Je berichten blijven versleuteld op dit toestel staan tot je weer inlogt.", { affirmativeLabel: "Uitloggen", destructive: true });
     if (ok) signOut();
   }
 
-  const stat = (n: string, label: string) => (
-    <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
-      <Text style={[serif(), { fontSize: 22, lineHeight: 24, letterSpacing: 0, textTransform: "none", color: ink }]}>{n} </Text>
-      {label}
-    </Text>
-  );
+  const stat = (label: string) => <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>{label}</Text>;
 
   return (
     <DesktopShell active="you">
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 34, paddingHorizontal: 48, paddingBottom: 40 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: 1, borderBottomColor: ink, paddingBottom: 18 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")}>
-            <Text style={[serif(), { fontSize: 52, lineHeight: 48, letterSpacing: -1.3, color: ink }]}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 16 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")} style={{ flexShrink: 1 }}>
+            <Text style={[serif(), { fontSize: 46, lineHeight: 44, color: ink }]}>
               {first} {last ? <Text style={[serif(true), { color: dim }]}>{last}</Text> : null}
             </Text>
           </Pressable>
-          <View style={{ flexDirection: "row", gap: 28, paddingBottom: 8 }}>
-            {stat(String(posts.data?.length ?? 0), t.posts)}
-            {stat(String(lincs), "lincs")}
-            {stat(yy, `${t.sinceMar} ${mon}`)}
+          <View style={{ flexDirection: "row", gap: 24, paddingBottom: 6 }}>
+            {stat(`${posts.data?.length ?? 0} ${t.posts}`)}
+            {stat(`${lincs} lincs`)}
+            {stat(yy)}
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 24, marginTop: 32, maxWidth: 900 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 24, marginTop: 26, maxWidth: 900 }}>
           <Group title={t.lookTitle}>
             <Row label={t.theme} sub={t.themeSub}>
               <View style={{ flexDirection: "row", gap: 12 }}>
@@ -98,7 +93,7 @@ export function DesktopYou() {
                 ))}
               </View>
             </Row>
-            <Row label={t.language} sub={t.languageSub}>
+            <Row label={t.language} sub="NL · EN · DE">
               <View style={{ flexDirection: "row", gap: 12 }}>
                 {(["nl", "en", "de"] as Lang[]).map((l) => (
                   <MonoLink key={l} label={l} on={lang === l} active={lang === l} onPress={() => setLang(l)} />
@@ -106,7 +101,7 @@ export function DesktopYou() {
               </View>
             </Row>
             <Row label={t.lightDark} sub={t.followsDevice} onPress={() => setPreference(THEME_NEXT[pref])}>
-              <MonoLink label={`${standLabel} · ${scheme === "dark" ? t.dark : t.light}`} active />
+              <MonoLink label={standLabel} />
             </Row>
             <Row label={t.tint} sub={t.tintSub} onPress={toggle("tint")} last>
               <Switch on={prefs.tint} />
@@ -146,7 +141,7 @@ export function DesktopYou() {
             </Row>
           </Group>
         </View>
-        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim, marginTop: 32 }]}>{t.footerNote}</Text>
+        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim, marginTop: 26 }]}>{t.footerNote}</Text>
       </ScrollView>
     </DesktopShell>
   );
@@ -154,7 +149,7 @@ export function DesktopYou() {
   function Group({ title, children }: { title: string; children: ReactNode }) {
     return (
       <View style={{ flexGrow: 1, flexBasis: 280, minWidth: 280 }}>
-        <Text style={[serif(true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: 1, borderBottomColor: ink, paddingBottom: 8, marginBottom: 6 }]}>{title}</Text>
+        <Text style={[serif(true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>{title}</Text>
         <View>{children}</View>
       </View>
     );
@@ -166,7 +161,7 @@ export function DesktopYou() {
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={label}
         onPress={onPress}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
@@ -181,7 +176,7 @@ export function DesktopYou() {
     return (
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 8, height: 8, borderWidth: 1, borderColor: ink, backgroundColor: on ? ink : "transparent" }} />
-        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: on ? ink : dim }]}>{on ? "aan" : "uit"}</Text>
+        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: on ? ink : dim }]}>{on ? t.on : t.off}</Text>
       </View>
     );
   }

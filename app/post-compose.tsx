@@ -8,6 +8,9 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { BackChip, BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
+import { createActivityEvent } from "@/lib/api/activity-events";
+import { MAX_PHOTOS, POLL_MAX, POLL_MIN } from "@/lib/lincin/compose";
+import { createPoll } from "@/lib/api/polls";
 import { createFind, listUserPosts, type FindKind } from "@/lib/api/posts";
 import { findUrl, unfurl, type LinkPreview } from "@/lib/api/unfurl";
 import { useAuth } from "@/lib/auth/provider";
@@ -20,6 +23,8 @@ import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { DesktopCompose } from "@/components/lincin/desktop/DesktopCompose";
+import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
+import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 
 /**
@@ -30,9 +35,13 @@ import { useIsDesktop } from "@/lib/lincin/desktop";
  * de titel (groot, alleen een onderstreep), één zin, de kleur, de soort.
  * Onderaan `KLAD` en `DEEL MET JE VRIENDEN` → "GEDEELD ✓".
  *
- * Wat de backend nu draagt: foto, tekst, link, muziek (een link naar een
- * nummer) en poll (via het bestaande pollscherm). Krabbel, spraak en plek
- * staan er als soort bij maar zijn nog niet aan te zetten.
+ * Wat de backend nu draagt: foto (tot 6, een album), tekst, link, muziek
+ * (een link naar een nummer) en poll. Krabbel, spraak en plek staan er als
+ * soort bij maar zijn nog niet aan te zetten.
+ *
+ * Nieuw in 2.1: `poll` opent geen apart scherm meer maar ruilt het
+ * beeldvak voor een keuze-editor (2–4 keuzes, één stem ↔ meerdere); de
+ * vraag is de titel. En een foto-bijdrage mag meerdere foto's dragen.
  */
 
 type Kind = "foto" | "krabbel" | "tekst" | "spraak" | "poll" | "link" | "plek" | "muziek";
@@ -65,7 +74,11 @@ export function useCompose() {
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
   const [hue, setHue] = useState<Hue>(hueFor(myUserId));
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUris, setImageUris] = useState<string[]>([]);
+  const imageUri = imageUris[0] ?? null;
+  const setImageUri = (uri: string | null) => setImageUris(uri ? [uri] : []);
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollMulti, setPollMulti] = useState(false);
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [published, setPublished] = useState(false);
@@ -124,18 +137,55 @@ export function useCompose() {
       .catch(() => setPreview(null));
   }, [url, kind, title]);
 
-  const dirty = !!(title.trim() || caption.trim() || body.trim() || url.trim() || imageUri);
+  const dirty = !!(
+    title.trim() ||
+    caption.trim() ||
+    body.trim() ||
+    url.trim() ||
+    imageUris.length ||
+    (kind === "poll" && pollOptions.some((o) => o.trim()))
+  );
   useUnsavedGuard(dirty && !submitting && !published && !kept, {
     message: "Je bijdrage is nog niet gedeeld. Weggaan betekent dat je hem kwijt bent — of bewaar hem als klad.",
   });
 
-  async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9, allowsMultipleSelection: false });
-    const uri = result.canceled ? null : result.assets?.[0]?.uri ?? null;
-    if (uri) {
-      setImageUri(uri);
-      if (kind !== "foto") setKind("foto");
+  /**
+   * Foto's kiezen, tot er zes zijn. Een lege bijdrage begint bij de eerste;
+   * `+ foto erbij` vult aan.
+   */
+  async function addPhotos() {
+    const room = MAX_PHOTOS - imageUris.length;
+    if (room <= 0) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+      allowsMultipleSelection: room > 1,
+      selectionLimit: room,
+      orderedSelection: true,
+    });
+    const picked = result.canceled ? [] : (result.assets ?? []).map((a) => a.uri).filter(Boolean);
+    if (picked.length) {
+      // De soort blijft wat hij was: de fotobalk staat bij elke soort.
+      setImageUris((u) => [...u, ...picked].slice(0, MAX_PHOTOS));
     }
+  }
+
+  /** De eerste foto opnieuw kiezen, als het vak nog leeg is. */
+  const pickImage = addPhotos;
+
+  /** `−` haalt de laatste weg, zoals in het prototype. */
+  function removePhoto(index = imageUris.length - 1) {
+    setImageUris((u) => u.filter((_, i) => i !== index));
+  }
+
+  function setPollOption(i: number, text: string) {
+    setPollOptions((o) => o.map((v, j) => (j === i ? text : v)));
+  }
+  function addPollOption() {
+    setPollOptions((o) => (o.length >= POLL_MAX ? o : [...o, ""]));
+  }
+  function removePollOption(i: number) {
+    setPollOptions((o) => (o.length <= POLL_MIN ? o : o.filter((_, j) => j !== i)));
   }
 
   async function keep() {
@@ -145,9 +195,16 @@ export function useCompose() {
     safeBack(router, "/feed");
   }
 
+  const filledOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
   const canSubmit =
     !submitting &&
-    (kind === "foto" ? !!imageUri || !!caption.trim() : kind === "tekst" ? !!(body.trim() || caption.trim() || title.trim()) : !!url.trim());
+    (kind === "foto"
+      ? !!imageUri || !!caption.trim()
+      : kind === "tekst"
+        ? !!(body.trim() || caption.trim() || title.trim())
+        : kind === "poll"
+          ? !!title.trim() && filledOptions.length >= POLL_MIN
+          : !!url.trim());
 
   function findKind(): FindKind {
     switch (kind) {
@@ -169,10 +226,26 @@ export function useCompose() {
     setSubmitting(true);
     setError(null);
     try {
+      if (kind === "poll") {
+        // De vraag is de titel; lege keuzes tellen niet mee.
+        const poll = await createPoll({
+          userId: myUserId,
+          question: title.trim(),
+          options: filledOptions,
+          allowMultiple: pollMulti,
+        });
+        await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
+        await AsyncStorage.removeItem(draftKey).catch(() => {});
+        setPublished(true);
+        await invalidatePostCaches(qc);
+        setTimeout(() => safeBack(router, "/feed"), 1200);
+        return;
+      }
       await createFind({
         userId: myUserId,
         kind: findKind(),
-        imageUri: kind === "foto" ? imageUri ?? undefined : undefined,
+        // Foto's gaan mee bij elke soort die ze kreeg (de balk staat overal).
+        imageUris: imageUris.length ? imageUris : undefined,
         caption: caption.trim() || null,
         bodyText: kind === "tekst" ? body.trim() || null : null,
         linkUrl: kind === "link" || kind === "muziek" ? url.trim() || null : null,
@@ -194,7 +267,7 @@ export function useCompose() {
   const [panelW, setPanelW] = useState(0);
   const green = friendColor("green", scheme).fill;
 
-  return { router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
+  return { router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, imageUris, addPhotos, removePhoto, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
 }
 
 export type Compose = ReturnType<typeof useCompose>;
@@ -203,12 +276,14 @@ export default function ComposeScreen() {
   usePageTitle("Nieuwe bijdrage");
   const desktop = useIsDesktop();
   const c = useCompose();
-  const { router, t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
+  const [panelH, setPanelH] = useState(297);
+  const { router, t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
   if (desktop) return <DesktopCompose c={c} />;
   return (
     <LincinScreen
       tab="feed"
       tint={fc.fill}
+      tabTint={null}
       counter={t.newPost}
       header={
         <TopRow
@@ -223,16 +298,19 @@ export default function ComposeScreen() {
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: 16 }} keyboardShouldPersistTaps="handled">
-          {/* de poster */}
-          <Box style={{ flexDirection: "row", height: 300 }}>
+          {/* de poster — bij een poll met de keuze-editor rechts (2.1) */}
+          <Box style={kind === "poll" ? { flexDirection: "row", minHeight: 300 } : { flexDirection: "row", height: 300 }}>
             <View
-              onLayout={(e) => setPanelW(e.nativeEvent.layout.width)}
+              onLayout={(e) => {
+                setPanelW(e.nativeEvent.layout.width);
+                setPanelH(e.nativeEvent.layout.height - 3);
+              }}
               style={{ width: "36%", backgroundColor: fc.fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}
             >
               <VerticalLabel
                 text={kind}
                 width={panelW}
-                height={297}
+                height={kind === "poll" ? Math.max(297, panelH) : 297}
                 color={fc.ink}
                 style={{ fontFamily: lincinType.cardTitle.fontFamily, fontSize: 26, lineHeight: 14, textTransform: "uppercase", textAlign: "center" }}
               />
@@ -240,24 +318,35 @@ export default function ComposeScreen() {
                 {number}
               </Mono>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Kies een beeld"
-              onPress={kind === "foto" || kind === "krabbel" ? pickImage : undefined}
-              style={{ flex: 1, backgroundColor: color("paper2"), alignItems: "center", justifyContent: "center", padding: 16 }}
-            >
-              {slotImage ? (
-                <SafeImage uri={slotImage} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-              ) : kind === "tekst" && body.trim() ? (
-                <Serif variant="quote" numberOfLines={9}>
-                  {body}
-                </Serif>
-              ) : (
-                <Serif variant="aside" tone="dim" style={{ textAlign: "center" }}>
-                  {kind === "foto" ? "foto · tik om te kiezen" : kind === "tekst" ? "de tekst zelf" : kind === "link" ? "beeld van de link" : "hoes"}
-                </Serif>
-              )}
-            </Pressable>
+            {kind === "poll" ? (
+              <PollEditor c={c} />
+            ) : (
+              // De fotobalk (+ foto erbij / −) staat bij élke soort behalve
+              // poll, zoals in het prototype. Zonder foto's toont het vak wat
+              // bij de soort hoort: de tekst, het beeld van de link, de hoes.
+              <PhotoSlots
+                c={c}
+                placeholder={
+                  kind === "foto" || kind === "krabbel"
+                    ? "foto · tik om te kiezen"
+                    : kind === "tekst"
+                      ? "de tekst zelf"
+                      : kind === "link"
+                        ? "beeld van de link"
+                        : "hoes"
+                }
+                preview={
+                  slotImage && kind !== "foto" ? (
+                    <SafeImage uri={slotImage} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                  ) : kind === "tekst" && body.trim() ? (
+                    <Serif variant="quote" numberOfLines={9} style={{ padding: 16 }}>
+                      {body}
+                    </Serif>
+                  ) : null
+                }
+                emptyPicks={kind === "foto" || kind === "krabbel"}
+              />
+            )}
           </Box>
 
           <TextInput
@@ -348,13 +437,7 @@ export default function ComposeScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected: on, disabled: !ok }}
                     disabled={!ok}
-                    onPress={() => {
-                      if (k === "poll") {
-                        router.push("/poll-compose");
-                        return;
-                      }
-                      setKind(k);
-                    }}
+                    onPress={() => setKind(k)}
                     style={{ height: 32, paddingHorizontal: 10, borderWidth: BORDER, borderColor: line(), backgroundColor: on ? color("ink") : "transparent", justifyContent: "center", opacity: ok ? 1 : 0.4 }}
                   >
                     <Text style={[lincinType.monoBody, { color: on ? color("paper") : color("ink") }]}>{k}</Text>

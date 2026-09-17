@@ -177,11 +177,13 @@ export function FeedMagazine() {
               {commentsLabel}
             </Mono>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={onImageChip}>
-            <Mono variant="action" color={ON_IMAGE} style={{ fontSize: 11, lineHeight: 14 }}>
-              {t.privateShort}
-            </Mono>
-          </Pressable>
+          {f.isMine(hero.authorId) ? null : (
+            <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={onImageChip}>
+              <Mono variant="action" color={ON_IMAGE} style={{ fontSize: 11, lineHeight: 14 }}>
+                {t.privateShort}
+              </Mono>
+            </Pressable>
+          )}
         </View>
       </View>,
     );
@@ -251,11 +253,13 @@ export function FeedMagazine() {
             <Mono variant="tiny" style={{ textTransform: "none", letterSpacing: 0 }}>
               № {numberOf(p.id)}
             </Mono>
-            <Pressable accessibilityRole="button" accessibilityLabel={t.privateMsg} onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)} hitSlop={6}>
-              <Mono variant="tiny" tone="dim" style={{ textDecorationLine: "underline", letterSpacing: 0.54 }}>
-                {t.privateShort}
-              </Mono>
-            </Pressable>
+            {f.isMine(p.authorId) ? null : (
+              <Pressable accessibilityRole="button" accessibilityLabel={t.privateMsg} onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)} hitSlop={6}>
+                <Mono variant="tiny" tone="dim" style={{ textDecorationLine: "underline", letterSpacing: 0.54 }}>
+                  {t.privateShort}
+                </Mono>
+              </Pressable>
+            )}
           </View>
         </Pressable>,
       );

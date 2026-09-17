@@ -22,6 +22,7 @@ import { loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/d
 import { setDesktopNow, useIsDesktop } from "@/lib/lincin/desktop";
 import { desk, FONT_FILES } from "@/lib/design/type";
 import { useFonts } from "expo-font";
+import { LightboxHost } from "@/components/lincin/Lightbox";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
 const queryClient = new QueryClient({
@@ -111,6 +112,8 @@ export default function RootLayout() {
             {/* Blijft staan zolang de toestand duurt — anders dan de toast,
                 die een gebeurtenis meldt en weer weggaat. Zie het onderdeel. */}
             <OfflineNotice />
+            {/* De lichtbak van 2.1: één exemplaar, elke kaart kan hem openen. */}
+            <LightboxHost />
           </ConfirmProvider>
           </ToastProvider>
           {/* De klok volgt het blad: donker op papier, licht op een

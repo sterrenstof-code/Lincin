@@ -8,12 +8,11 @@ import { SafeImage } from "@/components/SafeImage";
 import { friendColor, GLASS, hueFor, useScheme } from "@/lib/design/theme";
 import { mono, serif } from "@/lib/design/type";
 import { type Lang } from "@/lib/i18n";
-import { usePanel } from "@/lib/lincin/desktop";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useUnread } from "@/lib/lincin/unread";
 
 import { useFeed } from "../feed/useFeed";
-import { Panel } from "./Panel";
+import { ChatList, ChatListHead } from "./ChatList";
 
 /**
  * De feed op desktop, thema modern (Lincin Desktop Opties #1c): het warme
@@ -21,7 +20,8 @@ import { Panel } from "./Panel";
  * navigatie in mono eronder, rechtsboven de datum en "n nieuw · n lincs",
  * linksonder de leus, rechtsonder "Nieuwe bijdrage (+)". In het midden het
  * mozaïek (drie kolommen, de eerste tegel 2×2), rechts een glazen paneel
- * van 380 met het gesprek — of de bladzijde die je opent.
+ * van 380 met de gesprekken. Een bijdrage of gesprek opent op volle
+ * breedte in de desktopschil (model 3c/3d).
  */
 
 const INK = "#F2EFE8";
@@ -40,7 +40,6 @@ export function DesktopModern() {
   const scheme = useScheme();
   const router = useRouter();
   const unread = useUnread();
-  const panel = usePanel();
   const { width, height } = useWindowDimensions();
   const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const mosaicW = Math.max(300, width - NAV_W - GLASS_W - MARGIN * 2);
@@ -105,10 +104,10 @@ export function DesktopModern() {
           Platform.OS === "web" ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object) : null,
         ]}
       >
-        <Panel />
+        <ChatListHead link />
+        <ChatList activeId={null} onOpen={(id) => router.push(`/chat/${id}` as never)} />
       </View>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
-      {panel.kind ? null : null}
     </View>
   );
 }

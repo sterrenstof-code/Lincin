@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===============================================================
+   DE TWEE STANDEN — Lincin v2 (papier en inkt)
+   ===============================================================
+
+   Élk kleurtoken in `tailwind.config.js` en élke kleur-prop uit
+   `lib/design/type.ts` leest een van deze variabelen. Wisselt de klasse
+   `dark` op <html>, dan schuift het hele palet mee — geen enkel scherm
+   weet ervan.
+
+   De waarden staan als `R G B` zodat één variabele zowel dekkend als
+   doorzichtig gebruikt kan worden: `rgb(var(--c-ink) / 0.58)`. Ze horen
+   letterlijk gelijk te blijven aan `PALETTE` in `lib/design/theme.ts` —
+   dat bestand is de leesbare versie mét de redenering erbij.
+
+   `:root` is de LICHTE stand en `.dark:root` de donkere. Dat is de
+   volgorde die NativeWind aanhoudt, niet een uitspraak over welke stand
+   de standaard is: die staat in `lib/design/theme.ts` op `system`.
+   =============================================================== */
+
+:root {
+  /* ---- v2 ---- */
+  --c-paper: 242 239 232;
+  --c-paper-2: 231 227 216;
+  --c-acid: 229 255 58;
+  --c-red: 216 50 31;
+  /* De kaderlijn: inkt, behalve in modern (zie lib/design/theme.ts). */
+  --c-line: 20 20 20;
+
+  /* ---- Vlakken (oude namen, v2-waarden) ---- */
+  --c-page: 242 239 232;
+  --c-panel: 242 239 232;
+  --c-paper-warm: 231 227 216;
+  --c-paper-light: 242 239 232;
+  --c-shell: 20 20 20;
+  --c-shell-soft: 43 43 43;
+  --c-post: 242 239 232;
+  --c-post-fill: 231 227 216;
+  --c-desk: 242 239 232;
+  --c-desk-panel: 231 227 216;
+
+  /* ---- Tekst ---- */
+  --c-ink: 20 20 20;
+  --c-ink-soft: 58 58 58;
+  --c-ink-muted: 113 113 112;
+  --c-cream: 242 239 232;
+  --c-cream-soft: 231 227 216;
+  --c-cream-muted: 184 180 170;
+  --c-post-text: 20 20 20;
+  --c-desk-ink: 20 20 20;
+  --c-desk-soft: 58 58 58;
+  --c-desk-muted: 113 113 112;
+
+  /* ---- Accent ---- */
+  --c-flame: 216 50 31;
+  --c-flame-deep: 181 41 26;
+  --c-announce: 20 20 20;
+  --c-announce-deep: 43 43 43;
+  --c-teal: 76 154 99;
+  --c-gold: 224 182 74;
+  --c-brand: 47 91 255;
+
+  /* ---- Doorzichtigheden die per stand verschillen ---- */
+  --a-post-dim: 0.58;
+  --a-post-rule: 0.2;
+  --a-card-edge: 1;
+  --a-line-paper: 0.2;
+  --a-ink-dim: 0.58;
+  --a-on-dark: 0.22;
+  --a-pill: 0.35;
+  --a-pill-soft: 0.28;
+  --a-line-a: 1;
+}
+
+.dark:root {
+  --c-paper: 26 25 23;
+  --c-paper-2: 35 34 32;
+  --c-acid: 217 240 74;
+  --c-red: 228 85 63;
+  --c-line: 237 232 221;
+
+  --c-page: 26 25 23;
+  --c-panel: 26 25 23;
+  --c-paper-warm: 35 34 32;
+  --c-paper-light: 26 25 23;
+  --c-shell: 237 232 221;
+  --c-shell-soft: 214 209 198;
+  --c-post: 26 25 23;
+  --c-post-fill: 35 34 32;
+  --c-desk: 26 25 23;
+  --c-desk-panel: 35 34 32;
+
+  --c-ink: 237 232 221;
+  --c-ink-soft: 201 196 185;
+  --c-ink-muted: 157 153 146;
+  --c-cream: 26 25 23;
+  --c-cream-soft: 35 34 32;
+  --c-cream-muted: 110 106 98;
+  --c-post-text: 237 232 221;
+  --c-desk-ink: 237 232 221;
+  --c-desk-soft: 201 196 185;
+  --c-desk-muted: 157 153 146;
+
+  --c-flame: 228 85 63;
+  --c-flame-deep: 228 85 63;
+  --c-announce: 237 232 221;
+  --c-announce-deep: 214 209 198;
+  --c-teal: 94 156 114;
+  --c-gold: 201 169 79;
+  --c-brand: 95 127 230;
+
+  --a-post-dim: 0.62;
+  --a-post-rule: 0.2;
+  --a-card-edge: 1;
+  --a-line-paper: 0.2;
+  --a-ink-dim: 0.62;
+  --a-on-dark: 0.22;
+  --a-pill: 0.35;
+  --a-pill-soft: 0.28;
+  --a-line-a: 1;
+}
+
+/* De thema's magazine en modern overschrijven dit hele palet; die blokken
+   worden uit dezelfde bron gegenereerd (`themeVarCss()` in
+   lib/design/theme.ts) en staan in de <head> van app/+html.tsx. */
+
+/* ===============================================================
+   WAAR JE BENT ALS JE NIET KLIKT
+   ===============================================================
+
+   Zo'n twintig invoervelden zetten op web `outlineWidth: 0` — en met
+   reden: Chrome tekent daar een blauwe ring die niets met dit palet te
+   maken heeft, en op een veld dat zélf al een kader van 1.5px draagt is
+   dat een tweede rand eromheen.
+
+   Wat ontbrak was het vervolg. De ring ging uit en er kwam niets voor
+   in de plaats, dus je kon met Tab door een heel compose-scherm lopen
+   zonder te zien waar je stond. Web is hier het hoofdplatform; dat is
+   geen randgeval maar de gewone manier waarop iemand met een toetsenbord
+   dit formulier invult.
+
+   `:focus-visible` en niet `:focus`: de browser beslist zelf dat een
+   muisklik geen ring verdient en een Tab wél. Precies het onderscheid
+   waarvoor die `outlineWidth: 0` bedoeld was, maar dan zonder het kind
+   met het badwater.
+
+   De ring staat in `--c-flame` en niet in de inkt: hij moet zichtbaar
+   zijn óp een kader dat al in inkt getekend is. `outline-offset` houdt
+   hem daarbuiten, zodat hij het kader van 1.5px niet overschrijft maar
+   eromheen ligt — hetzelfde onderscheid als tussen de binnenlijn en de
+   afsluitlijn van een kaart (§4).
+
+   Er staat geen `border-radius` bij: alles hier is vierkant (§4), dus
+   de ring is dat ook. Alleen de avatar en de deelknop zijn rond, en die
+   dragen hun eigen `border-radius` die de outline vanzelf volgt.
+   =============================================================== */
+
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="link"]:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="radio"]:focus-visible {
+  outline: 2px solid rgb(var(--c-flame));
+  outline-offset: 2px;
+}
+
+/* Wie met de muis werkt heeft die ring niet nodig; `:focus-visible`
+   hierboven regelt dat al, maar Safari zet bij een klik op een knop nog
+   steeds zijn eigen `:focus`-ring. Die halen we hier weg — en alleen
+   die, want `:focus-visible` staat erboven en wint op specificiteit. */
+:where(a, button, [role="button"], [role="tab"]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ===============================================================
+   BEWEGING UIT
+   ===============================================================
+   DESIGN.md §6: bij `prefers-reduced-motion` gaat alles direct. De
+   keyframes in `app/+html.tsx` respecteren dat al; dit dekt de
+   overgangen die daarbuiten vallen (een `active:`-klasse, een
+   hover-vervaging) zodat er niet één beweging overblijft die zich er
+   niets van aantrekt.
+   =============================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

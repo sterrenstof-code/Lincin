@@ -1,66 +1,63 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
-import { color, friendColor, useScheme } from "@/lib/design/theme";
-import { mono, sans, serif } from "@/lib/design/type";
+import { VerticalLabel } from "@/components/lincin/ui";
+import { color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { head, mono, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
-import { PANEL_W, RAIL_W, usePanel } from "@/lib/lincin/desktop";
-import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
+import { timeLabel, type CardPost } from "@/lib/lincin/model";
 
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed } from "../feed/useFeed";
 import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
 
 /**
- * De feed op desktop, thema kleur (Lincin Desktop.dc.html, MAIN · FEED).
+ * De feed op desktop, model 3c "Prikbord" (Lincin Desktop.dc.html, FEED).
  *
- * Titel van 52 met "Per vriend | Op tijd" als onderstreepte links; per
- * vriend een kleefbalk van 64 (kleurblok 10×36, naam serif 30, GROEP ·
- * n lincs, "n NIEUW" in rood of "GELEZEN"), en daaronder een raster van
- * kaarten (minstens 300 breed) met haarlijnen van 1px ertussen. Een kaart:
- * regel in mono, beeld van 180, titel serif 28 (twee regels), bijschrift
- * 14, en een rij met reacties · COMMENT · PRIVAAT BERICHT. Een tik opent
- * de bladzijde in het paneel rechts.
+ * Titel serif 40 met "Per vriend | Op tijd"; per vriend een kleefband van
+ * 46 over de volle breedte in zijn kleur — de naam in Archivo 900 smal,
+ * een mono-regel met wat er nieuw is, het aantal en PRIVAAT BERICHT —
+ * en daaronder een raster van kaarten (minstens 330 breed, 248 hoog) met
+ * haarlijnen van 1px ertussen. Een kaart: een kleurrug van 34 met het №
+ * boven en "wie · soort · tijd" gedraaid, het beeld (carrousel bij een
+ * album), titel en bijschrift, en een voetregel met de reacties en
+ * COMMENT · n. Een tik opent de bijdrage op volle breedte.
  */
 
-const PAD = 48;
-const MIN_CARD = 300;
+const MIN_CARD = 330;
+const CARD_H = 248;
+const SPINE_W = 34;
 
 export function DesktopFeed() {
   const f = useFeed();
   const { t, lang, view, changeView, feed, groups, timeGroups, reactions, seen, myUserId, sheet, setSheet, numberOf } = f;
   const scheme = useScheme();
-  const panel = usePanel();
-  const { width } = useWindowDimensions();
-  const mainW = width - RAIL_W - PANEL_W;
-  const cols = Math.max(1, Math.floor(mainW / MIN_CARD));
-  const cardW = (mainW - (cols - 1)) / cols;
-  const rule = color("ink", "postRule");
+  const spec = useThemeSpec();
+  const [gridW, setGridW] = useState(0);
+  const cols = Math.max(1, Math.floor((gridW + 1) / (MIN_CARD + 1)));
+  const cardW = gridW ? (gridW - (cols - 1)) / cols : MIN_CARD;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  const openId = panel.kind === "post" ? panel.id : null;
-  const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? "orange";
+  const hueOf = (p: CardPost): Hue => groups.find((g) => g.key === p.authorId)?.hue ?? "orange";
 
   const sticky: number[] = [];
   const children: ReactNode[] = [];
   const noFriends = f.empty && f.friendCount === 0;
 
   const grid = (posts: CardPost[]) => (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: rule, borderBottomWidth: 1, borderBottomColor: ink }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: ink }}>
       {posts.map((p) => (
         <Card
           key={p.id}
           post={p}
           width={cardW}
           number={numberOf(p.id)}
-          fill={friendColor(hueOf(p), scheme).fill}
-          open={p.id === openId}
-          reactions={reactions.grouped(p.id)}
+          hue={hueOf(p)}
+          reactions={p.reactable ? reactions.grouped(p.id) : []}
           onReact={(e) => reactions.toggle(p.id, e)}
           onOpen={() => f.openPost(p)}
-          onPrivate={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
           myUserId={myUserId}
         />
       ))}
@@ -69,7 +66,7 @@ export function DesktopFeed() {
 
   if (feed.isLoading) {
     children.push(
-      <Text key="loading" style={[mono(500), { fontSize: 10, color: dim, textTransform: "uppercase", letterSpacing: 0.8, padding: PAD }]}>
+      <Text key="loading" style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim, textTransform: "uppercase", letterSpacing: 1, padding: 24 }]}>
         {t.loading}
       </Text>,
     );
@@ -81,21 +78,43 @@ export function DesktopFeed() {
     );
   } else if (view === "friends") {
     groups.forEach((g) => {
-      const fresh = g.posts.filter((p) => !seen.has(p.id)).length;
+      const fc = friendColor(g.hue, scheme);
+      const unseen = g.posts.filter((p) => !seen.has(p.id));
+      // "2 nieuw · foto 22:41 · plek 22:58" — of "gelezen".
+      const sub = g.isGroup
+        ? t.group
+        : unseen.length
+          ? [`${unseen.length} ${t.new}`, ...unseen.map((p) => `${p.kind} ${timeLabel(p.createdAt, t, lang)}`)].join(" · ")
+          : t.read;
       sticky.push(children.length);
-      children.push(<Bar key={`bar-${g.key}`} group={g} fresh={fresh} onProfile={() => f.openProfile(g)} onPrivate={() => f.privateAbout(g)} />);
+      children.push(
+        <Band
+          key={`band-${g.key}`}
+          name={g.name}
+          sub={sub}
+          count={`${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}`}
+          bg={spec.bandFilled ? fc.fill : color("paper")}
+          fg={spec.bandFilled ? fc.ink : ink}
+          bar={spec.bandFilled ? null : fc.fill}
+          onName={() => f.openProfile(g)}
+          onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g)}
+        />,
+      );
       children.push(<View key={`grid-${g.key}`}>{grid(g.posts)}</View>);
     });
   } else {
     timeGroups.forEach((g) => {
       sticky.push(children.length);
       children.push(
-        <View key={`tbar-${g.key}`} style={{ height: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: PAD, backgroundColor: color("paper"), borderBottomWidth: 1, borderBottomColor: ink }}>
-          <Text style={[serif(true), { fontSize: 30, lineHeight: 32, color: ink }]}>{g.label}</Text>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim }]}>
-            {g.range} · {g.posts.length} {g.posts.length === 1 ? t.post1 : t.posts}
-          </Text>
-        </View>,
+        <Band
+          key={`tband-${g.key}`}
+          name={g.label}
+          sub=""
+          count={`${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}`}
+          bg={ink}
+          fg={color("paper")}
+          bar={null}
+        />,
       );
       children.push(<View key={`tgrid-${g.key}`}>{grid(g.posts)}</View>);
     });
@@ -103,11 +122,11 @@ export function DesktopFeed() {
 
   if (!feed.isLoading && !noFriends) {
     children.push(
-      <View key="end" style={{ paddingTop: 40, paddingHorizontal: PAD, paddingBottom: 64, gap: 18, alignItems: "flex-start" }}>
+      <View key="end" style={{ paddingTop: 34, paddingHorizontal: 24, paddingBottom: 50, gap: 14, alignItems: "flex-start" }}>
         <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, textTransform: "uppercase", color: dim }]}>{t.endLine}</Text>
         <Pressable accessibilityRole="button" onPress={f.compose} style={{ maxWidth: 560 }}>
-          <Text style={[serif(), { fontSize: 40, lineHeight: 40, letterSpacing: -0.8, color: ink }]}>{t.endTitle}</Text>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: ink, marginTop: 14, textDecorationLine: "underline" }]}>
+          <Text style={[serif(), { fontSize: 34, lineHeight: 34, color: ink }]}>{t.endTitle}</Text>
+          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: ink, marginTop: 12, textDecorationLine: "underline" }]}>
             {t.newPost} →
           </Text>
         </Pressable>
@@ -115,8 +134,11 @@ export function DesktopFeed() {
     );
   }
 
+  // Het blad neemt de tint van de eerste vriend (prototype `bgPanel`).
+  const tint = view === "friends" && groups[0] ? friendColor(groups[0].hue, scheme).fill : null;
+
   return (
-    <DesktopShell active="feed">
+    <DesktopShell active="feed" mode="feed" tint={tint}>
       <DesktopTitle
         right={
           <>
@@ -127,39 +149,60 @@ export function DesktopFeed() {
       >
         {t.feedA} <Text style={serif(true)}>{t.feedB}</Text>
       </DesktopTitle>
-      <ScrollView style={{ flex: 1 }} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
+      <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
+        <ScrollView style={{ flex: 1 }} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+      </View>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
-      {/* lang houdt de hook-volgorde gelijk aan de andere feeds */}
-      {lang ? null : null}
     </DesktopShell>
   );
 }
 
-function Bar({ group: g, fresh, onProfile, onPrivate }: { group: FriendGroup; fresh: number; onProfile: () => void; onPrivate: () => void }) {
+/** De band van 46: naam, wat er nieuw is, het aantal, PRIVAAT BERICHT. */
+function Band({
+  name,
+  sub,
+  count,
+  bg,
+  fg,
+  bar,
+  onName,
+  onPrivate,
+}: {
+  name: string;
+  sub: string;
+  count: string;
+  bg: string;
+  fg: string;
+  /** Magazine en modern: papier met een kleurbalk in plaats van een gevulde band. */
+  bar: string | null;
+  onName?: () => void;
+  onPrivate?: () => void;
+}) {
   const t = useT();
-  const lang = useLang();
-  const scheme = useScheme();
-  const fc = friendColor(g.hue, scheme);
-  const seen = fresh === 0;
-  const ink = color("ink");
-  const dim = color("ink", "inkDim");
-  const label = (s: string, c: string = dim) => (
-    <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 0.9, textTransform: "uppercase", color: c }]}>{s}</Text>
+  const spec = useThemeSpec();
+  const label = (s: string, extra: object = {}) => (
+    <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 0.9, textTransform: "uppercase", color: fg }, extra]}>
+      {s}
+    </Text>
   );
   return (
-    <View style={{ height: 64, flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: PAD, backgroundColor: color("paper"), borderBottomWidth: 1, borderBottomColor: ink }}>
-      <View style={{ width: 10, height: 36, backgroundColor: fc.fill, opacity: seen ? 0.35 : 1 }} />
-      <Pressable accessibilityRole="button" onPress={onProfile}>
-        <Text style={[serif(), { fontSize: 30, lineHeight: 32, letterSpacing: -0.3, color: seen ? dim : ink }]}>{g.name}</Text>
+    <View style={{ height: 46, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 24, backgroundColor: bg, borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+      {bar ? <View style={{ width: 6, alignSelf: "stretch", marginVertical: 8, backgroundColor: bar }} /> : null}
+      <Pressable accessibilityRole={onName ? "link" : undefined} onPress={onName} disabled={!onName}>
+        <Text numberOfLines={1} style={[head(), { fontSize: 17, lineHeight: 19, letterSpacing: spec.serifHeads ? 0 : -0.17, color: fg }]}>
+          {name}
+        </Text>
       </Pressable>
-      {g.isGroup ? label(`${t.group}`) : null}
-      {fresh > 0 ? label(`${fresh} ${t.new}`, color("red")) : label(t.read)}
-      <Text style={[mono(500), { marginLeft: "auto", fontSize: 10, lineHeight: 13, color: dim }]} numberOfLines={1}>
-        {g.posts.length} {g.posts.length === 1 ? t.post1 : t.posts} · {timeLabel(g.latest, t, lang)}
-      </Text>
-      <MonoLink label={t.privateMsg} active onPress={onPrivate} />
+      <View style={{ flexShrink: 1, minWidth: 0 }}>{sub ? label(sub, { opacity: 0.85 }) : null}</View>
+      <View style={{ flex: 1 }} />
+      {label(count, { letterSpacing: 0.54 })}
+      {onPrivate ? (
+        <Pressable accessibilityRole="button" onPress={onPrivate}>
+          {label(t.privateMsg, { letterSpacing: 0.9, textDecorationLine: "underline" })}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -168,28 +211,30 @@ function Card({
   post: p,
   width,
   number,
-  fill,
-  open,
+  hue,
   reactions,
   onReact,
   onOpen,
-  onPrivate,
   myUserId,
 }: {
   post: CardPost;
   width: number;
   number: string;
-  fill: string;
-  open: boolean;
+  hue: Hue;
   reactions: { emoji: string; count: number; mine: boolean }[];
   onReact: (emoji: string) => void;
   onOpen: () => void;
-  onPrivate: () => void;
   myUserId: string;
 }) {
   const t = useT();
   const lang = useLang();
-  const [hover, setHover] = useState(false);
+  const scheme = useScheme();
+  const fc = friendColor(hue, scheme);
+  const [mediaH, setMediaH] = useState(0);
+  // Een foto krijgt zijn eigen verhouding (Instagram, 4:5–1.91:1); de kaart
+  // wordt dan zo hoog als hij moet zijn en de rug meet mee.
+  const photo = p.media.kind === "foto";
+  const [cardH, setCardH] = useState(CARD_H);
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
@@ -197,45 +242,51 @@ function Card({
     <Pressable
       accessibilityLabel={`${p.title}, ${p.authorName}`}
       onPress={onOpen}
-      onHoverIn={() => setHover(true)}
-      onHoverOut={() => setHover(false)}
-      style={{ width, backgroundColor: open || hover ? color("paper2") : color("paper"), paddingTop: 22, paddingHorizontal: 24, paddingBottom: 18, gap: 14 }}
+      onLayout={photo ? (e) => setCardH(Math.round(e.nativeEvent.layout.height)) : undefined}
+      style={{ width, height: photo ? undefined : CARD_H, flexDirection: "row", backgroundColor: color("paper") }}
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
-          <View style={{ width: 8, height: 8, backgroundColor: fill }} />
-          <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>
-            {p.authorName} · {p.kind}
+      {/* de rug: № boven, "wie · soort · tijd" van onder naar boven */}
+      <View style={{ width: SPINE_W, backgroundColor: fc.fill, alignItems: "center", paddingVertical: 8, overflow: "hidden" }}>
+        <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: fc.ink }]}>{number}</Text>
+        <View style={{ position: "absolute", left: 0, top: 27, width: SPINE_W, height: cardH - 27 }}>
+          <VerticalLabel
+            text={`${p.authorName} · ${p.kind} · ${timeLabel(p.createdAt, t, lang)}`}
+            width={SPINE_W}
+            height={cardH - 27}
+            color={fc.ink}
+            style={[mono(600), { fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }]}
+          />
+        </View>
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {photo ? (
+          <Media media={p.media} height={CARD_H} hue={hue} postId={p.id} myUserId={myUserId} photoFit="ratio" />
+        ) : (
+          <View style={{ flex: 1, minHeight: 0, overflow: "hidden" }} onLayout={(e) => setMediaH(Math.round(e.nativeEvent.layout.height))}>
+            {mediaH > 0 ? <Media media={p.media} height={mediaH} hue={hue} postId={p.id} myUserId={myUserId} /> : null}
+          </View>
+        )}
+        <View style={{ paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: rule }}>
+          <Text numberOfLines={2} style={[head(), { fontSize: 18, lineHeight: 18, letterSpacing: -0.09, color: ink }]}>
+            {p.title}
           </Text>
+          {p.caption || p.body ? (
+            <Text numberOfLines={1} style={[serif(), { fontSize: 15, lineHeight: 18, color: dim, marginTop: 4 }]}>
+              {p.caption || p.body}
+            </Text>
+          ) : null}
         </View>
-        <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>
-          № {number} · {timeLabel(p.createdAt, t, lang)}
-        </Text>
-      </View>
-      <View style={{ gap: 12 }}>
-        <View style={{ height: 180, borderWidth: 1, borderColor: rule, overflow: "hidden" }}>
-          <Media media={p.media} height={178} hue="orange" postId={p.id} myUserId={myUserId} />
-        </View>
-        <Text numberOfLines={2} style={[serif(), { fontSize: 28, lineHeight: 28.5, letterSpacing: -0.42, color: ink, minHeight: 57 }]}>
-          {p.title}
-        </Text>
-        <Text numberOfLines={2} style={[sans(), { fontSize: 14, lineHeight: 20, color: dim, height: 40 }]}>
-          {p.caption || p.body}
-        </Text>
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, borderTopWidth: 1, borderTopColor: rule, paddingTop: 12, marginTop: "auto" }}>
-        <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ height: 38, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: rule }}>
           {reactions.map((r) => (
-            <Pressable key={r.emoji} accessibilityRole="button" accessibilityLabel={`${r.emoji} ${r.count}`} onPress={() => onReact(r.emoji)} hitSlop={4}>
+            <Pressable key={r.emoji} accessibilityRole="button" accessibilityLabel={`${r.emoji} ${r.count}`} accessibilityState={{ selected: r.mine }} onPress={() => onReact(r.emoji)} hitSlop={4}>
               <Text style={[mono(500), { fontSize: 12, lineHeight: 15, color: r.mine ? ink : dim }]}>
                 {r.emoji} {r.count}
               </Text>
             </Pressable>
           ))}
+          <View style={{ flex: 1 }} />
+          <MonoLink label={`${t.comment}${p.commentCount ? ` · ${p.commentCount}` : ""}`} active />
         </View>
-        <View style={{ flex: 1 }} />
-        <MonoLink label={`${t.comment}${p.commentCount ? ` · ${p.commentCount}` : ""}`} active onPress={onOpen} />
-        <MonoLink label={t.privateMsg} active onPress={onPrivate} />
       </View>
     </Pressable>
   );
