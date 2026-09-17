@@ -120,15 +120,19 @@ export const PostCard = memo(function PostCard({
             />
           )}
           <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: lifted ? 0 : BORDER, borderTopColor: edge, overflow: "hidden" }}>
-            <Head variant="cardTitle" color={stripInk} numberOfLines={3} style={{ height: TITLE_H }}>
+            {/* Zo hoog als de titel is, hoogstens drie regels: een korte titel
+                laat geen leeg kleurvlak achter. */}
+            <Head variant="cardTitle" color={stripInk} numberOfLines={3} style={{ maxHeight: TITLE_H }}>
               {post.title}
             </Head>
           </View>
-          <View style={{ paddingVertical: 10, paddingHorizontal: 12, flex: 1 }}>
-            <Serif variant="caption" tone="dim" numberOfLines={3} style={{ height: CAPTION_H }}>
-              {post.caption}
-            </Serif>
-          </View>
+          {post.caption ? (
+            <View style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+              <Serif variant="caption" tone="dim" numberOfLines={3} style={{ maxHeight: CAPTION_H }}>
+                {post.caption}
+              </Serif>
+            </View>
+          ) : null}
         </View>
         {/* metakolom */}
         <MetaColumn

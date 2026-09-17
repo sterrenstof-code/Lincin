@@ -26,6 +26,7 @@ import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
+import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
@@ -149,6 +150,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   }
 
   const photo = card?.media.kind === "foto";
+  const [editing, setEditing] = useState(false);
   /** Een tekst krijgt geen vak van 300 maar zijn volle lengte: te lezen tot het eind. */
   const fullText = card?.media.kind === "tekst";
   const { ref: mediaRef, size: mediaSize, onLayout: onMediaLayout } = useMeasure();
@@ -172,6 +174,11 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                 {t.post}
                 {number ? ` № ${number}` : card ? ` · ${card.kind}` : ""}
               </Mono>
+              {own && !editing ? (
+                <Pressable accessibilityRole="button" onPress={() => setEditing(true)} hitSlop={6}>
+                  <Mono variant="micro">{t.editPost}</Mono>
+                </Pressable>
+              ) : null}
               {own ? (
                 <Pressable accessibilityRole="button" onPress={remove} hitSlop={6}>
                   <Mono variant="micro" tone="red">
@@ -259,8 +266,12 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                   </View>
                 </View>
                 )}
-                {/* tekst */}
+                {/* tekst — of, bij je eigen bijdrage, het bewerkvak */}
                 <View style={{ padding: 14, gap: 10, borderTopWidth: photo ? 0 : BORDER, borderTopColor: line() }}>
+                  {editing ? (
+                    <EditPost post={p} onDone={() => setEditing(false)} />
+                  ) : (
+                  <>
                   <Head variant="postTitle">{card.title}</Head>
                   {card.caption ? <Serif variant="quoteLarge">{card.caption}</Serif> : null}
                   {p.body_text && card.media.kind !== "tekst" && p.body_text.trim() !== (p.caption ?? "").trim() ? (
@@ -282,6 +293,8 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                       · {t.viewProfile}
                     </Mono>
                   </Pressable>
+                  </>
+                  )}
                 </View>
               </Box>
 

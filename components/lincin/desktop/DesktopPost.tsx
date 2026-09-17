@@ -5,6 +5,7 @@ import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-na
 
 import { Carousel, Dashes } from "@/components/lincin/Carousel";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
+import { EditPost } from "@/components/lincin/EditPost";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { isLightboxOpen, openLightbox } from "@/components/lincin/Lightbox";
 import { Media } from "@/components/lincin/Media";
@@ -95,6 +96,7 @@ export function DesktopPost({ id }: { id: string }) {
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
   const [slide, setSlide] = useState(0);
   const { ref: stageRef, size: stage, onLayout: onStageLayout } = useMeasure();
+  const [editing, setEditing] = useState(false);
 
   const close = () => safeBack(router, "/feed");
 
@@ -166,6 +168,7 @@ export function DesktopPost({ id }: { id: string }) {
   const right = (
     <>
       {multi ? <MonoLink label={`${two(slide + 1)} / ${two(n)}`} on={false} /> : null}
+      {own && !editing ? <MonoLink label={t.editPost} active onPress={() => setEditing(true)} /> : null}
       {own ? <MonoLink label="Verwijder" tone={color("red")} active onPress={remove} /> : null}
       {p && card && !own ? (
         <MonoLink
@@ -266,13 +269,22 @@ export function DesktopPost({ id }: { id: string }) {
       </View>
 
       {/* de band onderaan: tekst en reacties links, comments rechts */}
-      <View style={{ maxHeight: 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: spec.gradient ? "transparent" : color("paper") }}>
+      <View style={{ maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: spec.gradient ? "transparent" : color("paper") }}>
         <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }} showsVerticalScrollIndicator={false}>
-          {photos ? (
-            <Text style={[head(), { fontSize: 34, lineHeight: 31, letterSpacing: spec.serifHeads ? 0 : -0.34, color: ink }]}>{card.title}</Text>
-          ) : null}
-          {card.caption ? <Text style={[serif(), { fontSize: 19, lineHeight: 24, color: ink }]}>{card.caption}</Text> : null}
-          {card.body && card.body !== card.caption ? <Text style={[sans(), { fontSize: 13.5, lineHeight: 20, color: dim, maxWidth: 640 }]}>{card.body}</Text> : null}
+          {editing ? (
+            // Je eigen bijdrage bewerken: titel, zin, tekst (EditPost).
+            <View style={{ maxWidth: 720 }}>
+              <EditPost post={p} onDone={() => setEditing(false)} />
+            </View>
+          ) : (
+            <>
+              {photos ? (
+                <Text style={[head(), { fontSize: 34, lineHeight: 31, letterSpacing: spec.serifHeads ? 0 : -0.34, color: ink }]}>{card.title}</Text>
+              ) : null}
+              {card.caption ? <Text style={[serif(), { fontSize: 19, lineHeight: 24, color: ink }]}>{card.caption}</Text> : null}
+              {card.body && card.body !== card.caption ? <Text style={[sans(), { fontSize: 13.5, lineHeight: 20, color: dim, maxWidth: 640 }]}>{card.body}</Text> : null}
+            </>
+          )}
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: "auto", paddingTop: 4 }}>
             {grouped.map((r) => (
               <Pressable

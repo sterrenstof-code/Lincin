@@ -822,9 +822,10 @@ export async function listPostsByTag(tag: string, limit = 50): Promise<PostWithA
  */
 export async function updatePost(
   postId: string,
-  fields: { caption?: string | null; body_text?: string | null }
+  fields: { caption?: string | null; body_text?: string | null; source_title?: string | null }
 ): Promise<void> {
-  const patch: { caption?: string | null; body_text?: string | null } = {};
+  const patch: { caption?: string | null; body_text?: string | null; source_title?: string | null } = {};
+  if ("source_title" in fields) patch.source_title = fields.source_title?.trim() || null;
   if ("caption" in fields) patch.caption = fields.caption?.trim() || null;
   if ("body_text" in fields) patch.body_text = fields.body_text?.trim() || null;
   if (Object.keys(patch).length === 0) return;

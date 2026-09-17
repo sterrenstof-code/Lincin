@@ -56,6 +56,30 @@ export function useFeed() {
     [viewKey],
   );
 
+  // ---- ingeklapt: welke vrienden je klein houdt, onthouden per gebruiker ----
+  // Klap je iedereen in, dan is de feed een gekleurde lijst van je vrienden.
+  const collapsedKey = `lincin.feed.collapsed.${myUserId}`;
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    AsyncStorage.getItem(collapsedKey)
+      .then((raw) => {
+        if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>);
+      })
+      .catch(() => {});
+  }, [collapsedKey]);
+  const toggleCollapsed = useCallback(
+    (key: string) => {
+      setCollapsed((c) => {
+        const next = { ...c };
+        if (next[key]) delete next[key];
+        else next[key] = true;
+        AsyncStorage.setItem(collapsedKey, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    },
+    [collapsedKey],
+  );
+
   // ---- gegevens ----
   const feed = useQuery({
     queryKey: ["unified-feed", myUserId],
@@ -165,6 +189,8 @@ export function useFeed() {
     timeGroups,
     byTime,
     heroPost,
+    collapsed,
+    toggleCollapsed,
     numberOf,
     reactions,
     seen,

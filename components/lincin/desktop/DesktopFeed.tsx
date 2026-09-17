@@ -98,9 +98,12 @@ export function DesktopFeed() {
           bar={spec.bandFilled ? null : fc.fill}
           onName={() => f.openProfile(g)}
           onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g)}
+          open={!f.collapsed[g.key]}
+          onToggle={() => f.toggleCollapsed(g.key)}
         />,
       );
-      children.push(<View key={`grid-${g.key}`}>{grid(g.posts)}</View>);
+      // Ingeklapt: alleen de band, zodat je een gekleurde lijst van vrienden ziet.
+      children.push(<View key={`grid-${g.key}`}>{f.collapsed[g.key] ? null : grid(g.posts)}</View>);
     });
   } else {
     timeGroups.forEach((g) => {
@@ -169,6 +172,8 @@ function Band({
   bar,
   onName,
   onPrivate,
+  open,
+  onToggle,
 }: {
   name: string;
   sub: string;
@@ -179,6 +184,9 @@ function Band({
   bar: string | null;
   onName?: () => void;
   onPrivate?: () => void;
+  /** Uit- of ingeklapt; weggelaten (op tijd) staat er geen knop. */
+  open?: boolean;
+  onToggle?: () => void;
 }) {
   const t = useT();
   const spec = useThemeSpec();
@@ -201,6 +209,19 @@ function Band({
       {onPrivate ? (
         <Pressable accessibilityRole="button" onPress={onPrivate}>
           {label(t.privateMsg, { letterSpacing: 0.9, textDecorationLine: "underline" })}
+        </Pressable>
+      ) : null}
+      {onToggle ? (
+        // Zoals de band op de telefoon: + klapt uit, × (45° gedraaid) klapt in.
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={open ? "Inklappen" : "Uitklappen"}
+          accessibilityState={{ expanded: !!open }}
+          onPress={onToggle}
+          hitSlop={6}
+          style={{ width: 28, height: 28, borderWidth: 1.5, borderColor: fg, alignItems: "center", justifyContent: "center", transform: [{ rotate: open ? "45deg" : "0deg" }] }}
+        >
+          <Text style={[mono(500), { fontSize: 16, lineHeight: 18, color: fg }]}>+</Text>
         </Pressable>
       ) : null}
     </View>

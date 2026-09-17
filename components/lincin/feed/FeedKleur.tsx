@@ -57,7 +57,6 @@ export function FeedKleur() {
 
   // ---- gelezen: per bijdrage bewaard, per band afgeleid ----
   const [passed, setPassed] = useState<Set<string>>(() => new Set());
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // ---- scrollen: welke band bovenaan staat, en trekken om te vernieuwen ----
   const scrollRef = useRef<ScrollView>(null);
@@ -162,7 +161,7 @@ export function FeedKleur() {
     groups.forEach((g, i) => {
       const fresh = g.posts.filter((p) => !seen.has(p.id)).length;
       const isSeen = fresh === 0 || passed.has(g.key);
-      const open = !collapsed[g.key];
+      const open = !f.collapsed[g.key];
       sticky.push(children.length);
       children.push(
         <Band
@@ -171,7 +170,7 @@ export function FeedKleur() {
           seen={isSeen}
           fresh={isSeen ? 0 : fresh}
           open={open}
-          onToggle={() => setCollapsed((c) => ({ ...c, [g.key]: open }))}
+          onToggle={() => f.toggleCollapsed(g.key)}
           onProfile={() => f.openProfile(g)}
         />,
       );
@@ -187,7 +186,8 @@ export function FeedKleur() {
             snapToInterval={CARD_W + GAP}
             snapToAlignment="start"
             decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 14, paddingBottom: 16, gap: GAP, alignItems: "stretch" }}
+            // Elke kaart zo hoog als haar inhoud; alleen "Zeg iets tegen" rekt mee.
+            contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 14, paddingBottom: 16, gap: GAP, alignItems: "flex-start" }}
           >
             {g.posts.map((p) => (
               <PostCard
@@ -205,7 +205,7 @@ export function FeedKleur() {
               />
             ))}
             {f.isMine(g.authorId) ? null : (
-              <DashedCard width={120} onPress={() => f.privateAbout(g)}>
+              <DashedCard width={120} style={{ alignSelf: "stretch" }} onPress={() => f.privateAbout(g)}>
                 {t.sayTo} {g.name} →
               </DashedCard>
             )}

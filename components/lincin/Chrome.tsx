@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from "expo-router";
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -160,36 +160,84 @@ export function LincinScreen({
  * vriend op 100% — het blad kijkt vooruit. Elders (gesprek, bladzijde,
  * profiel, nieuw): de tint van 0 tot 30%, dan naar papier.
  *
- * Eén laag, altijd de kleuren van nú. Er stond een overvloeiing van twee
- * lagen met een geanimeerde doorzichtigheid, maar bij snel scrollen bleef
- * die in de browser hangen: het blad hield de kleuren van de vorige vriend.
- * Het prototype vloeit hier ook niet over — een CSS-verloop kan dat niet.
+ * De overgang duurt .7s (`background .7s ease`). Eén laag, en het zijn de
+ * kleuren zelf die schuiven: elke frame een tussenkleur, vanaf wat er nú
+ * staat. Er stond eerst een overvloeiing van twee lagen met een
+ * geanimeerde doorzichtigheid, en die bleef bij snel scrollen in de browser
+ * hangen op de kleuren van de vorige vriend. Een kleur die halverwege een
+ * nieuw doel krijgt, loopt gewoon vanaf daar verder.
  */
+const VERLOOP_MS = 700;
+
+type Stops = { top: [number, number, number]; bottom: [number, number, number]; hold: number };
+
+function rgbOf(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function hexOf([r, g, b]: [number, number, number]): string {
+  return "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+}
+
+function mixRgb(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+/** CSS `ease`, benaderd: traag begin, snel midden, zacht einde. */
+function ease(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 function Verloop({ tint, next, scheme }: { tint: string; next: string | null; scheme: Scheme }) {
-  const top = pageTint(tint, scheme);
-  const bottom = next ? pageTint(next, scheme) : paperHex(scheme);
-  const hold = next ? 0.38 : 0.3;
-  const id = gradientId(`${top}-${bottom}-${hold}`);
+  const target: Stops = {
+    top: rgbOf(pageTint(tint, scheme)),
+    bottom: rgbOf(next ? pageTint(next, scheme) : paperHex(scheme)),
+    hold: next ? 0.38 : 0.3,
+  };
+  const key = `${hexOf(target.top)}${hexOf(target.bottom)}${target.hold}`;
+  const [shown, setShown] = useState<Stops>(target);
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  const id = `verloop-${useId().replace(/[^a-z0-9]/gi, "")}`;
+
+  useEffect(() => {
+    const from = shownRef.current;
+    const start = Date.now();
+    let frame = 0;
+    const step = () => {
+      const t = Math.min(1, (Date.now() - start) / VERLOOP_MS);
+      const k = ease(t);
+      setShown({
+        top: mixRgb(from.top, target.top, k),
+        bottom: mixRgb(from.bottom, target.bottom, k),
+        hold: from.hold + (target.hold - from.hold) * k,
+      });
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+    // Alleen een nieuw doel start een overgang; `target` is elke render een nieuw object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const top = hexOf(shown.top);
   return (
     <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
       <Svg width="100%" height="100%" preserveAspectRatio="none">
         <Defs>
-          {/* Het id draagt de kleuren: op web staan meerdere schermen tegelijk
-              in het document, en `url(#…)` pakt het eerste met die naam. */}
+          {/* Eén id per blad: op web staan meerdere schermen tegelijk in het
+              document, en `url(#…)` pakt het eerste met die naam. */}
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <Stop offset={0} stopColor={top} />
-            <Stop offset={hold} stopColor={top} />
-            <Stop offset={1} stopColor={bottom} />
+            <Stop offset={shown.hold} stopColor={top} />
+            <Stop offset={1} stopColor={hexOf(shown.bottom)} />
           </LinearGradient>
         </Defs>
         <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
       </Svg>
     </View>
   );
-}
-
-function gradientId(key: string): string {
-  return `verloop-${key.replace(/[^a-z0-9]/gi, "")}`;
 }
 
 /**

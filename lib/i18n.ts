@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  editPost: "Bewerk", save: "Bewaar", saving: "Bewaren…", textPh: "De tekst zelf…",
   addPhoto: "foto erbij", dropMany: "sleep meerdere foto's — tot 6", pollOptions: "Keuzes", pollAdd: "Keuze erbij", pollOne: "één stem per linc", pollMulti: "meerdere keuzes", pollPh1: "Tent", pollPh2: "Geen tent, auto", pollPhN: "Nog een keuze…", landscape: "liggend", portrait: "staand", square: "vierkant", noImage: "nog geen afbeelding",
   feedA: "Wat je vrienden", feedB: "maken", perFriend: "Per vriend", byTime: "Op tijd",
   emptyKicker: "Nog niemand hier", emptyTitle: "Je feed is zo leeg als een nieuw schetsboek",
@@ -54,6 +55,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  editPost: "Edit", save: "Save", saving: "Saving…", textPh: "The text itself…",
   addPhoto: "add photo", dropMany: "drop several photos — up to 6", pollOptions: "Choices", pollAdd: "Add choice", pollOne: "one vote per linc", pollMulti: "multiple choices", pollPh1: "Tent", pollPh2: "No tent, car", pollPhN: "Another choice…", landscape: "landscape", portrait: "portrait", square: "square", noImage: "no image yet",
   feedA: "What your friends", feedB: "make", perFriend: "By friend", byTime: "By time",
   emptyKicker: "Nobody here yet", emptyTitle: "Your feed is as empty as a new sketchbook",
@@ -91,6 +93,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  editPost: "Bearbeiten", save: "Speichern", saving: "Speichern…", textPh: "Der Text selbst…",
   addPhoto: "Foto hinzufügen", dropMany: "mehrere Fotos ablegen — bis 6", pollOptions: "Auswahl", pollAdd: "Auswahl hinzufügen", pollOne: "eine Stimme pro Linc", pollMulti: "mehrere Auswahlen", pollPh1: "Zelt", pollPh2: "Kein Zelt, Auto", pollPhN: "Noch eine Auswahl…", landscape: "liegend", portrait: "stehend", square: "quadratisch", noImage: "noch kein Bild",
   feedA: "Was deine Freunde", feedB: "machen", perFriend: "Nach Freund", byTime: "Nach Zeit",
   emptyKicker: "Noch niemand hier", emptyTitle: "Dein Feed ist so leer wie ein neues Skizzenbuch",
