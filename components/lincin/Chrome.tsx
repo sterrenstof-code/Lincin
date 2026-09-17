@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import type { ReactNode } from "react";
+import { Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -160,51 +160,30 @@ export function LincinScreen({
  * vriend op 100% — het blad kijkt vooruit. Elders (gesprek, bladzijde,
  * profiel, nieuw): de tint van 0 tot 30%, dan naar papier.
  *
- * Een CSS-verloop laat zich niet overvloeien, dus de overgang van .7s is
- * een laag die erbovenop invloeit: de vorige blijft eronder liggen tot de
- * nieuwe er helemaal staat.
+ * Eén laag, altijd de kleuren van nú. Er stond een overvloeiing van twee
+ * lagen met een geanimeerde doorzichtigheid, maar bij snel scrollen bleef
+ * die in de browser hangen: het blad hield de kleuren van de vorige vriend.
+ * Het prototype vloeit hier ook niet over — een CSS-verloop kan dat niet.
  */
 function Verloop({ tint, next, scheme }: { tint: string; next: string | null; scheme: Scheme }) {
   const top = pageTint(tint, scheme);
   const bottom = next ? pageTint(next, scheme) : paperHex(scheme);
   const hold = next ? 0.38 : 0.3;
-  const key = `${top}-${bottom}-${hold}`;
-  const [layers, setLayers] = useState<{ key: string; top: string; bottom: string; hold: number }[]>(() => [
-    { key, top, bottom, hold },
-  ]);
-  const fade = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    setLayers((l) => {
-      if (l[l.length - 1]?.key === key) return l;
-      return [l[l.length - 1], { key, top, bottom, hold }].filter(Boolean);
-    });
-    fade.setValue(0);
-    Animated.timing(fade, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== "web" }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
+  const id = gradientId(`${top}-${bottom}-${hold}`);
   return (
     <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
-      {layers.map((l, i) => (
-        <Animated.View
-          key={l.key}
-          style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, opacity: i === layers.length - 1 && layers.length > 1 ? fade : 1 }}
-        >
-          <Svg width="100%" height="100%" preserveAspectRatio="none">
-            <Defs>
-              {/* Het id draagt de kleuren: op web staan meerdere schermen tegelijk
-                  in het document, en `url(#…)` pakt het eerste met die naam. */}
-              <LinearGradient id={gradientId(l.key)} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset={0} stopColor={l.top} />
-                <Stop offset={l.hold} stopColor={l.top} />
-                <Stop offset={1} stopColor={l.bottom} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId(l.key)})`} />
-          </Svg>
-        </Animated.View>
-      ))}
+      <Svg width="100%" height="100%" preserveAspectRatio="none">
+        <Defs>
+          {/* Het id draagt de kleuren: op web staan meerdere schermen tegelijk
+              in het document, en `url(#…)` pakt het eerste met die naam. */}
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset={0} stopColor={top} />
+            <Stop offset={hold} stopColor={top} />
+            <Stop offset={1} stopColor={bottom} />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
     </View>
   );
 }
