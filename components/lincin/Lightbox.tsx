@@ -1,9 +1,11 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SafeImage } from "@/components/SafeImage";
 import { mono, serif } from "@/lib/design/type";
+import { useMeasure } from "@/lib/lincin/measure";
+import { useImageSize } from "@/lib/lincin/ratio";
 import { useT } from "@/lib/i18n";
 
 import { LB_PAPER } from "./Carousel";
@@ -16,12 +18,12 @@ import { LB_PAPER } from "./Carousel";
  * `№ 01 · Noor · foto · 22:41` met een omlijnd ×, in het midden het beeld,
  * onderaan de titel en `3024 × 4032 px · staand`.
  *
- * Het kader is ALTIJD de volle breedte, rand tot rand. Zijn hoogte komt uit
- * de echte pixelverhouding van het beeld, gelezen zodra het geladen is
- * (terugval: 3:2 voor een foto, 3:4 voor een krabbel, 1:1 voor een hoes).
- * Liggend blijft dus laag, staand hoog, en er komt nooit een zwarte rand
- * naast: `cover` in een kader met precies de verhouding van het beeld.
- * Te hoog voor het scherm? Dan scrolt het midden.
+ * De foto staat er HEEL: zo groot als past binnen 90% van de breedte of
+ * 90% van de hoogte van het vlak tussen de bovenbalk en het bijschrift —
+ * wat het eerst bereikt wordt. Het kader heeft de echte pixelverhouding van
+ * het beeld (terugval zolang die onbekend is: 3:2 voor een foto, 3:4 voor
+ * een krabbel, 1:1 voor een hoes), en het beeld staat er `contain` in: er
+ * wordt nooit iets afgesneden. Liggend dus breed, staand hoog.
  *
  * Met meerdere foto's wordt het een diavoorstelling: ‹ › over het beeld,
  * `01 / 03` in de bovenbalk, een filmstrook van 52px onder het bijschrift,
@@ -96,11 +98,11 @@ export function LightboxHost() {
 function LightboxView({ p }: { p: LightboxPayload }) {
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { ref: areaRef, size: area, onLayout: onAreaLayout } = useMeasure();
   const n = Math.max(1, p.uris.length);
   const multi = n > 1;
   const [idx, setIdx] = useState(p.index ?? 0);
-  const [dims, setDims] = useState<Record<number, { w: number; h: number }>>({});
+
 
   const step = (d: number) => setIdx((i) => (i + d + n) % n);
 
@@ -116,7 +118,7 @@ function LightboxView({ p }: { p: LightboxPayload }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multi, n]);
 
-  const d = dims[idx];
+  const d = useImageSize(p.uris[idx], p.cacheKeys?.[idx]);
   const ratio = d && d.w && d.h ? d.w / d.h : fallbackRatio(p.kind);
   const orient = d
     ? d.w > d.h * 1.04
@@ -174,17 +176,14 @@ function LightboxView({ p }: { p: LightboxPayload }) {
           </View>
         </View>
 
-        {/* het beeld: volle breedte, hoogte uit de eigen verhouding */}
-        <View style={{ flex: 1, minHeight: 0 }}>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-            showsVerticalScrollIndicator={false}
-          >
+        {/* het beeld: heel, binnen 90% van de breedte of de hoogte */}
+        <View ref={areaRef} onLayout={onAreaLayout} style={{ flex: 1, minHeight: 0, alignItems: "center", justifyContent: "center" }}>
+          {area.w > 0 && area.h > 0 ? (
             <Pressable
               onPress={() => {}}
               style={[
-                { width, height: width / ratio, backgroundColor: FRAME_BG },
+                fit(area.w * 0.9, area.h * 0.9, ratio),
+                { backgroundColor: FRAME_BG },
                 Platform.OS === "web" ? ({ cursor: "default" } as object) : null,
               ]}
             >
@@ -193,16 +192,12 @@ function LightboxView({ p }: { p: LightboxPayload }) {
                 uri={p.uris[idx]}
                 cacheKey={p.cacheKeys?.[idx]}
                 style={{ width: "100%", height: "100%" }}
-                contentFit="cover"
+                contentFit="contain"
                 fallbackBg="bg-ink"
                 fallbackColor={PAPER_DIM}
-                onLoad={(e) => {
-                  const { width: w, height: h } = e.source ?? { width: 0, height: 0 };
-                  if (w && h) setDims((m) => (m[idx]?.w === w && m[idx]?.h === h ? m : { ...m, [idx]: { w, h } }));
-                }}
               />
             </Pressable>
-          </ScrollView>
+          ) : null}
           {multi ? (
             <View
               pointerEvents="box-none"
@@ -270,6 +265,12 @@ function LightboxView({ p }: { p: LightboxPayload }) {
       </Pressable>
     </Modal>
   );
+}
+
+/** Het grootste kader met verhouding `ratio` dat binnen `maxW` × `maxH` past. */
+function fit(maxW: number, maxH: number, ratio: number): { width: number; height: number } {
+  const byWidth = { width: Math.round(maxW), height: Math.round(maxW / ratio) };
+  return byWidth.height <= maxH ? byWidth : { width: Math.round(maxH * ratio), height: Math.round(maxH) };
 }
 
 function StepBtn({ glyph, label, onPress }: { glyph: string; label: string; onPress: () => void }) {

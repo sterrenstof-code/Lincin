@@ -52,3 +52,40 @@ export function useImageRatio(uri: string | null | undefined, cacheKey?: string)
 
   return ratio;
 }
+
+const sizes = new Map<string, { w: number; h: number }>();
+
+/**
+ * De echte maat van een foto in pixels, onbegrensd — voor de lichtbak, die
+ * de hele foto toont. `null` tot hij gemeten is.
+ */
+export function useImageSize(uri: string | null | undefined, cacheKey?: string): { w: number; h: number } | null {
+  const key = cacheKey ?? uri ?? "";
+  const [size, setSize] = useState(() => sizes.get(key) ?? null);
+
+  useEffect(() => {
+    if (!uri) return;
+    const hit = sizes.get(key);
+    if (hit) {
+      setSize(hit);
+      return;
+    }
+    setSize(null);
+    let alive = true;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (!w || !h) return;
+        const s = { w, h };
+        sizes.set(key, s);
+        if (alive) setSize(s);
+      },
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, [uri, key]);
+
+  return size;
+}
