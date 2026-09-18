@@ -11,7 +11,6 @@
 | `Lincin Desktop.dc.html` | Desktop/web layout — REFERENCE ONLY, navigation model under review. |
 | `Lincin Desktop Opties.dc.html` | Desktop + mobile references for the Magazine and Modern themes. |
 | `Lincin v2.dc.html` | Exploration history, reference only. |
-| `oud-designsysteem/` | The existing 2.0 design system lifted from the codebase — tokens, type scale, ThemeProvider, post card/media/compose components, fonts, `DESIGN.md`. Reference for diffing against 2.1. |
 | `screenshots/` | 66 captures (3 themes × light/dark × 11 screens) + 6 contact sheets. |
 | `ios-frame.jsx`, `image-slot.js`, `support.js` | Prototype runtime helpers — **not** to be ported. |
 
