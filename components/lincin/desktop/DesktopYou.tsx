@@ -120,7 +120,16 @@ export function DesktopYou() {
               <Switch on={prefs.quiet} />
             </Row>
             <Row label={t.notifications} sub={unread.notifications ? `${unread.notifications} ${t.new}` : ""} onPress={() => router.push("/notifications")} last>
-              <MonoLink label="→" active on={unread.notifications > 0} />
+              {unread.notifications > 0 ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5 }}>
+                    <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: "#F5F1E8" }]}>{unread.notifications}</Text>
+                  </View>
+                  <MonoLink label="→" active on />
+                </View>
+              ) : (
+                <MonoLink label="→" active />
+              )}
             </Row>
           </Group>
           <Group title={t.whoTitle}>

@@ -7,6 +7,7 @@ import { mono, serif } from "@/lib/design/type";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useImageSize } from "@/lib/lincin/ratio";
 import { useT } from "@/lib/i18n";
+import { hhmm } from "@/lib/lincin/model";
 
 import { LB_PAPER } from "./Carousel";
 
@@ -55,6 +56,26 @@ const listeners = new Set<() => void>();
 export function openLightbox(p: LightboxPayload) {
   current = { ...p, index: Math.max(0, Math.min((p.uris.length || 1) - 1, p.index ?? 0)) };
   listeners.forEach((fn) => fn());
+}
+
+/**
+ * Het beeld onder een comment — een foto of een gif. Geen nummer; de
+ * comment zelf is het bijschrift.
+ */
+export function openCommentImage(
+  c: { image_url?: string | null; image_path?: string | null; body?: string | null; created_at: string },
+  author: string,
+) {
+  if (!c.image_url) return;
+  const gif = /\.gif(\?|$)/i.test(c.image_path ?? c.image_url);
+  openLightbox({
+    uris: [c.image_url],
+    cacheKeys: [c.image_path ?? undefined],
+    author,
+    kind: gif ? "gif" : "foto",
+    time: hhmm(c.created_at),
+    title: c.body ?? "",
+  });
 }
 
 /** Staat de lichtbak open? De desktopbladzijde sluit dan niet mee op Escape. */

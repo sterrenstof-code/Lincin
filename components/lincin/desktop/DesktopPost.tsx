@@ -7,7 +7,7 @@ import { Carousel, Dashes } from "@/components/lincin/Carousel";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
 import { EditPost } from "@/components/lincin/EditPost";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
-import { isLightboxOpen, openLightbox } from "@/components/lincin/Lightbox";
+import { isLightboxOpen, openCommentImage, openLightbox } from "@/components/lincin/Lightbox";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
@@ -430,9 +430,17 @@ function Comment({
           <Text style={[mono(500), { fontSize: 10, lineHeight: 14, color: color("ink", "inkDim") }]}>{timeLabel(c.created_at, t, lang)}</Text>
         </View>
         {c.image_url ? (
-          <View style={{ width: 160, height: 110, marginTop: 4, borderWidth: 1.5, borderColor: color("ink"), backgroundColor: color("paper2") }}>
+          <Pressable
+            accessibilityRole="imagebutton"
+            accessibilityLabel={`${t.gifNote}, ${name}`}
+            onPress={() => openCommentImage(c, name)}
+            style={[
+              { width: 160, height: 110, marginTop: 4, borderWidth: 1.5, borderColor: color("ink"), backgroundColor: color("paper2") },
+              Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null,
+            ]}
+          >
             <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-          </View>
+          </Pressable>
         ) : null}
         {c.body ? <Text style={[sans(), { fontSize: 14, lineHeight: 19.6, marginTop: 2, color: color("ink") }]}>{c.body}</Text> : null}
         <CommentReactions reactions={reactions} onToggle={onToggle} open={open} onOpenChange={onOpenChange} />

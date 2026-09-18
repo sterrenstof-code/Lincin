@@ -7,6 +7,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   Text,
   useWindowDimensions,
@@ -18,6 +19,7 @@ import { ActionSheet } from "@/components/ActionSheet";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
+import { openLightbox } from "@/components/lincin/Lightbox";
 import { useWide } from "@/components/Editorial";
 import {
   approveEventJoinRequest,
@@ -46,6 +48,7 @@ import { copyToClipboard } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
+import { hhmm } from "@/lib/lincin/model";
 import { NL } from "@/lib/locale";
 
 export default function EventDetailScreen() {
@@ -505,12 +508,21 @@ export default function EventDetailScreen() {
               }}
             >
               {ev.cover_url ? (
-                <Image
-                  source={{ uri: ev.cover_url }}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                  transition={150}
-                />
+                <Pressable
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={ev.name}
+                  onPress={() =>
+                    openLightbox({ uris: [ev.cover_url], author: ev.name, kind: "event", time: hhmm(ev.starts_at), title: ev.description ?? "" })
+                  }
+                  style={[{ width: "100%", height: "100%" }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
+                >
+                  <Image
+                    source={{ uri: ev.cover_url }}
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="cover"
+                    transition={150}
+                  />
+                </Pressable>
               ) : null}
             </View>
           </View>
@@ -798,6 +810,19 @@ export default function EventDetailScreen() {
                   contribution={c}
                   canDelete={c.user_id === myUserId || ev.is_host}
                   onDelete={() => onDeleteContribution(c)}
+                  onOpen={() => {
+                    // Alle foto's van het event als diavoorstelling, vanaf deze.
+                    const photos = contribs.filter((x) => x.media_type !== "video" && x.image_url);
+                    openLightbox({
+                      uris: photos.map((x) => x.image_url),
+                      cacheKeys: photos.map((x) => x.image_path ?? undefined),
+                      index: photos.indexOf(c),
+                      author: c.author?.display_name ?? c.author?.username ?? "",
+                      kind: "foto",
+                      time: hhmm(c.created_at),
+                      title: ev.name,
+                    });
+                  }}
                 />
               ))}
             </View>
@@ -924,10 +949,13 @@ function ContributionTile({
   contribution: c,
   canDelete,
   onDelete,
+  onOpen,
 }: {
   contribution: ContributionWithAuthor;
   canDelete: boolean;
   onDelete: () => void;
+  /** Een foto opent in de lichtbak. */
+  onOpen: () => void;
 }) {
   return (
     <View className="w-1/2 p-[3px]">
@@ -948,12 +976,19 @@ function ContributionTile({
             </View>
           </>
         ) : c.image_url ? (
-          <Image
-            source={{ uri: c.image_url }}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-            transition={150}
-          />
+          <Pressable
+            accessibilityRole="imagebutton"
+            accessibilityLabel={c.caption ?? "Foto"}
+            onPress={onOpen}
+            style={[{ width: "100%", height: "100%" }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
+          >
+            <Image
+              source={{ uri: c.image_url }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={150}
+            />
+          </Pressable>
         ) : (
           <View className="flex-1 items-center justify-center p-3">
             <Text className="text-ink text-sm" numberOfLines={4}>

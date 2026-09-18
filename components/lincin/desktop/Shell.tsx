@@ -106,20 +106,25 @@ function ChatsPanel() {
 // De rail
 // ---------------------------------------------------------------
 
-type NavItem = { id: Tab; num: string; label: string; badge: number };
+type NavItem = { id: Tab | "notifications"; num: string; label: string; badge: number; href: string; on: boolean };
 
-function useNav(active: Tab): { nav: NavItem[]; isOn: (id: Tab) => boolean } {
+/**
+ * De vier tabbladen en, als vijfde, de meldingen. Die krijgen een eigen
+ * plek met hun eigen teller: stond de teller op "Jij", dan zag je een 1
+ * zonder te weten waar hij naartoe wees. Op de telefoon is dat de ◉ in de kop.
+ */
+function useNav(active: Tab): NavItem[] {
   const t = useT();
   const unread = useUnread();
   const pathname = usePathname();
-  const nav: NavItem[] = [
-    { id: "feed", num: "01", label: t.tabFeed, badge: 0 },
-    { id: "chats", num: "02", label: t.tabChats, badge: active === "chats" ? 0 : unread.chats },
-    { id: "events", num: "03", label: t.tabEvents, badge: 0 },
-    { id: "you", num: "04", label: t.tabYou, badge: unread.notifications },
+  const onNotes = pathname.startsWith("/notifications");
+  return [
+    { id: "feed", num: "01", label: t.tabFeed, badge: 0, href: TAB_HREF.feed, on: active === "feed" },
+    { id: "chats", num: "02", label: t.tabChats, badge: active === "chats" ? 0 : unread.chats, href: TAB_HREF.chats, on: active === "chats" },
+    { id: "events", num: "03", label: t.tabEvents, badge: 0, href: TAB_HREF.events, on: active === "events" },
+    { id: "you", num: "04", label: t.tabYou, badge: 0, href: TAB_HREF.you, on: !onNotes && (active === "you" || pathname.startsWith("/settings")) },
+    { id: "notifications", num: "05", label: t.notifications, badge: onNotes ? 0 : unread.notifications, href: "/notifications", on: onNotes },
   ];
-  const isOn = (id: Tab) => id === active || (id === "you" && (pathname.startsWith("/settings") || pathname.startsWith("/notifications")));
-  return { nav, isOn };
 }
 
 /** Hoeveel bijdragen van vrienden je nog niet zag — "wo 16 sep · 4 nieuw". */
@@ -144,7 +149,7 @@ function Rail({ active }: { active: Tab }) {
   const spec = useThemeSpec();
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "anon";
-  const { nav, isOn } = useNav(active);
+  const nav = useNav(active);
   const fresh = useFreshCount();
   const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId), enabled: !!session });
   const posts = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 200), enabled: !!session, staleTime: 60_000 });
@@ -169,13 +174,14 @@ function Rail({ active }: { active: Tab }) {
 
       <View style={{ marginTop: 30, gap: 2 }}>
         {nav.map((n) => {
-          const on = isOn(n.id);
+          const on = n.on;
           return (
             <Pressable
               key={n.id}
               accessibilityRole="link"
+              accessibilityLabel={n.badge > 0 ? `${n.label}, ${n.badge} ${t.new}` : n.label}
               accessibilityState={{ selected: on }}
-              onPress={() => router.push(TAB_HREF[n.id] as never)}
+              onPress={() => router.push(n.href as never)}
               style={{ height: 40, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 10, backgroundColor: on ? ink : "transparent" }}
             >
               <Text numberOfLines={1} style={[mono(600), { flexShrink: 1, fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: on ? color("paper") : dim }]}>
@@ -251,12 +257,12 @@ const railLink = (c: string): TextStyle => ({
   ...(Platform.OS === "web" ? ({ textUnderlineOffset: 4 } as object) : null),
 });
 
-/** De smalle rail van 64 op volle breedte: "L", vier genummerde vakjes, en + onderaan. */
+/** De smalle rail van 64 op volle breedte: "L", vijf genummerde vakjes, en + onderaan. */
 function RailNarrow({ active }: { active: Tab }) {
   const t = useT();
   const router = useRouter();
   const spec = useThemeSpec();
-  const { nav, isOn } = useNav(active);
+  const nav = useNav(active);
   const ink = color("ink");
   return (
     <View style={{ width: RAIL_NARROW, minHeight: 0, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", paddingVertical: 18, gap: 14 }}>
@@ -264,14 +270,14 @@ function RailNarrow({ active }: { active: Tab }) {
         <Text style={[serif(), { fontSize: 20, lineHeight: 24, color: ink }]}>L</Text>
       </Pressable>
       {nav.map((n) => {
-        const on = isOn(n.id);
+        const on = n.on;
         return (
           <Pressable
             key={n.id}
             accessibilityRole="link"
-            accessibilityLabel={n.label}
+            accessibilityLabel={n.badge > 0 ? `${n.label}, ${n.badge} ${t.new}` : n.label}
             accessibilityState={{ selected: on }}
-            onPress={() => router.push(TAB_HREF[n.id] as never)}
+            onPress={() => router.push(n.href as never)}
             style={{
               width: 34,
               height: 34,

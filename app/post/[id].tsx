@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
+import { openCommentImage } from "@/components/lincin/Lightbox";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
@@ -441,14 +442,22 @@ function CommentRow({
           </Mono>
         </View>
         {c.image_url ? (
-          <View style={{ width: 160, height: 110, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }}>
+          <Pressable
+            accessibilityRole="imagebutton"
+            accessibilityLabel={`${t.gifNote}, ${name}`}
+            onPress={() => openCommentImage(c, name)}
+            style={[
+              { width: 160, height: 110, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") },
+              Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null,
+            ]}
+          >
             <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             <View style={{ position: "absolute", left: 6, bottom: 6, backgroundColor: color("ink"), paddingHorizontal: 5, paddingVertical: 2 }}>
               <Mono variant="tiny" tone="paper">
                 {t.gifNote}
               </Mono>
             </View>
-          </View>
+          </Pressable>
         ) : null}
         {c.body ? (
           <Body small style={{ fontSize: 14, lineHeight: 19 }}>
