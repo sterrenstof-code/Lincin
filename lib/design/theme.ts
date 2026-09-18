@@ -4,11 +4,11 @@ import { Appearance, Platform } from "react-native";
 
 /**
  * ===============================================================
- * LINCIN v2 — papier en inkt, één kleur per vriend, en drie thema's
+ * LINCIN v2 — papier en inkt, één kleur per vriend, en twee thema's
  * ===============================================================
  *
  * Het palet uit `design_handoff_lincin_mobile/HANDOFF.md`. Twee standen,
- * "licht" en "donker", en drie thema's die de héle app veranderen:
+ * "licht" en "donker", en twee thema's die de héle app veranderen:
  *
  *   KLEUR     (standaard) papier #F2EFE8 / inkt #141414, kaders 1.5px
  *             inkt, koppen Archivo 900 smal kapitaal, geen ronding,
@@ -16,21 +16,18 @@ import { Appearance, Platform } from "react-native";
  *             mee met de vriend in beeld.
  *   MAGAZINE  papier #F7F4EE, haarlijnen 1px inkt, koppen Instrument
  *             Serif (geen kapitaal), geen tint, accent #F06A2B.
- *   MODERN    warm donker verloop (#8A3A1E → #3A1A10 → #1A1210) met korrel,
- *             inkt #F2EFE8, kaders 1px op 18%, koppen Instrument Serif,
- *             ronding 10 op kaarten en tabs, accent #FF8A65, glazen vlakken.
  *
  * Wat een thema vastlegt staat in `THEME_SPEC` (maten, stijlen) en in
- * `paletteFor()` (kleuren). Magazine en modern kennen, net als in het
- * prototype, maar één stand: magazine is altijd licht, modern altijd
- * donker. Alleen kleur schakelt tussen licht en donker.
+ * `paletteFor()` (kleuren). Magazine kent, net als in het prototype,
+ * maar één stand: altijd licht. Alleen kleur schakelt tussen licht en
+ * donker.
  *
  *   PAPER    het blad         #F2EFE8 / #1A1917
  *   PAPER 2  tweede vlak      #E7E3D8 / #232220   (media, metakolom)
  *   INK      de inkt          #141414 / #EDE8DD
  *   DIM      inkt op 58%/62%  — bijschriften, meta
  *   RULE     inkt op 20%      — haarlijnen bínnen een kaart
- *   LINE     de kaderlijn     — inkt, behalve in modern: papier op 18%
+ *   LINE     de kaderlijn     — inkt
  *   ACID     #E5FF3A / #D9F04A — de oproep-kaart, actieve tab in een blad
  *   RED      #D8321F / #E4553F — ongelezen, nieuw
  *
@@ -61,13 +58,13 @@ export type Scheme = "light" | "dark";
 /** Wat de gebruiker koos. `system` volgt het besturingssysteem. */
 export type ThemePreference = "system" | "light" | "dark";
 
-/** Het thema: kleur (standaard), magazine of modern. Per gebruiker bewaard. */
-export type LincinTheme = "kleur" | "magazine" | "modern";
+/** Het thema: kleur (standaard) of magazine. Per gebruiker bewaard. */
+export type LincinTheme = "kleur" | "magazine";
 
-export const THEMES: LincinTheme[] = ["kleur", "magazine", "modern"];
+export const THEMES: LincinTheme[] = ["kleur", "magazine"];
 
 export function isLincinTheme(v: unknown): v is LincinTheme {
-  return v === "kleur" || v === "magazine" || v === "modern";
+  return v === "kleur" || v === "magazine";
 }
 
 export type Token =
@@ -115,8 +112,7 @@ export type AlphaToken =
   | "onDark"
   | "pill"
   | "pillSoft"
-  | "cardEdge"
-  | "lineA";
+  | "cardEdge";
 
 type Palette = Record<Token, string>;
 type Alphas = Record<AlphaToken, number>;
@@ -138,7 +134,7 @@ export const TOKENS: Token[] = [
 ];
 
 export const ALPHA_TOKENS: AlphaToken[] = [
-  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge", "lineA",
+  "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge",
 ];
 
 /**
@@ -194,7 +190,6 @@ const LIGHT_ALPHA: Alphas = {
   pillSoft: 0.28,
   // Elk kader is inkt, dekkend. Geen zachte afsluitlijn meer.
   cardEdge: 1,
-  lineA: 1,
 };
 
 /** DONKER. */
@@ -243,27 +238,24 @@ const DARK_ALPHA: Alphas = {
   pill: 0.35,
   pillSoft: 0.28,
   cardEdge: 1,
-  lineA: 1,
 };
 
 export const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };
 export const ALPHA: Record<Scheme, Alphas> = { dark: DARK_ALPHA, light: LIGHT_ALPHA };
 
 // ===============================================================
-// DE THEMA'S — wat magazine en modern anders doen
+// DE THEMA'S — wat magazine anders doet
 // ===============================================================
 
 /**
  * Wat een thema aan maten en stijlen vastlegt. De kleuren staan in
- * `paletteFor()`; dit is de rest: kaderdikte, ronding, de letter van de
+ * `paletteFor()`; dit is de rest: kaderdikte, de letter van de
  * koppen, en de dingen die de feed en de omlijsting anders tekenen.
  */
 export type ThemeSpec = {
   id: LincinTheme;
-  /** Kaderdikte: 1.5 (kleur) of 1 (magazine, modern). */
+  /** Kaderdikte: 1.5 (kleur) of 1 (magazine). */
   border: number;
-  /** Ronding op kaarten en de tabbalk: 0, of 10 in modern. */
-  radius: number;
   /** Koppen in Instrument Serif (regular, geen kapitaal) in plaats van Archivo. */
   serifHeads: boolean;
   /** Het blad kleurt mee met de vriend in beeld. Alleen kleur. */
@@ -274,10 +266,6 @@ export type ThemeSpec = {
   stripFilled: boolean;
   /** De kop "Lincin · teller · ◉ · +" boven de feed. Magazine draagt zijn eigen. */
   feedHeader: boolean;
-  /** Glazen vlakken (papier op 8% + vervaging) en een korrel over het blad. */
-  glass: boolean;
-  /** Het blad is een radiaal verloop in plaats van papier. */
-  gradient: boolean;
   /** Maat van de kaarttitel: 22 (Archivo) of 24 (serif). */
   cardTitle: number;
   /** Het blad is donker — voor de statusbalk en de navigatie. */
@@ -288,64 +276,23 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
   kleur: {
     id: "kleur",
     border: 1.5,
-    radius: 0,
     serifHeads: false,
     tint: true,
     bandFilled: true,
     stripFilled: true,
     feedHeader: true,
-    glass: false,
-    gradient: false,
     cardTitle: 22,
   },
   magazine: {
     id: "magazine",
     border: 1,
-    radius: 0,
     serifHeads: true,
     tint: false,
     bandFilled: false,
     stripFilled: false,
     feedHeader: false,
-    glass: false,
-    gradient: false,
     cardTitle: 24,
   },
-  modern: {
-    id: "modern",
-    border: 1,
-    radius: 10,
-    serifHeads: true,
-    tint: false,
-    bandFilled: false,
-    stripFilled: false,
-    feedHeader: true,
-    glass: true,
-    gradient: true,
-    cardTitle: 24,
-  },
-};
-
-/** Het verloop van modern: `radial-gradient(700px 500px at 70% 20%, …)`. */
-export const MODERN_GRADIENT = {
-  cx: 0.7,
-  cy: 0.2,
-  rx: 700,
-  ry: 500,
-  stops: [
-    { offset: 0, color: "#8A3A1E" },
-    { offset: 0.6, color: "#3A1A10" },
-    { offset: 1, color: "#1A1210" },
-  ],
-  /** De platte kleur waar het verloop niet komt; ook de kleur van de balk. */
-  base: "#1A1210",
-};
-
-/** Het glas van modern: papier op 8%, een rand op 18%. */
-export const GLASS = {
-  fill: "rgba(242,239,232,.08)",
-  edge: "rgba(242,239,232,.18)",
-  strong: "rgba(242,239,232,.12)",
 };
 
 function mix(a: string, b: string, wA: number): string {
@@ -357,7 +304,7 @@ function mix(a: string, b: string, wA: number): string {
 /**
  * Het palet van een thema, afgeleid van een basisstand.
  *
- * Magazine zet papier, inkt en accent; modern zet alles. De oude namen
+ * Magazine zet papier, inkt en accent. De oude namen
  * volgen de v2-tokens (papier → page, panel, cream…; inkt → shell,
  * deskInk…), en de tussenwaarden (inkSoft, inkMuted, shellSoft…) zijn de
  * inkt op het papier gelegd, net als in de basisstand.
@@ -408,28 +355,16 @@ const MAGAZINE: Palette = derive(LIGHT, {
   red: "216 50 31",
   line: "20 20 20",
 });
-const MAGAZINE_ALPHA: Alphas = { ...LIGHT_ALPHA, postRule: 0.16, linePaper: 0.16, lineA: 1 };
-
-const MODERN: Palette = derive(DARK, {
-  paper: "42 24 18", // #2A1812
-  paper2: "58 36 28", // #3A241C
-  ink: "242 239 232", // #F2EFE8
-  acid: "255 138 101", // #FF8A65
-  red: "255 138 101",
-  line: "242 239 232", // op 18%, zie lineA
-});
-const MODERN_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.65, inkDim: 0.65, postRule: 0.2, linePaper: 0.2, lineA: 0.18 };
+const MAGAZINE_ALPHA: Alphas = { ...LIGHT_ALPHA, postRule: 0.16, linePaper: 0.16 };
 
 /** De kleuren die gelden voor een stand én een thema. */
 export function paletteFor(s: Scheme, t: LincinTheme): Palette {
   if (t === "magazine") return MAGAZINE;
-  if (t === "modern") return MODERN;
   return PALETTE[s];
 }
 
 export function alphaFor(s: Scheme, t: LincinTheme): Alphas {
   if (t === "magazine") return MAGAZINE_ALPHA;
-  if (t === "modern") return MODERN_ALPHA;
   return ALPHA[s];
 }
 
@@ -441,7 +376,7 @@ export function themeVarCss(): string {
     for (const al of ALPHA_TOKENS) lines.push(`  ${alphaVarName(al)}: ${a[al]};`);
     return `:root[data-lincin-theme="${t}"] {\n${lines.join("\n")}\n}`;
   };
-  return [block("magazine", MAGAZINE, MAGAZINE_ALPHA), block("modern", MODERN, MODERN_ALPHA)].join("\n");
+  return block("magazine", MAGAZINE, MAGAZINE_ALPHA);
 }
 
 // ===============================================================
@@ -507,9 +442,7 @@ export function inkOn(fill: string, s: Scheme = getScheme()): string {
 }
 
 /**
- * De vriendkleuren volgen de stand (licht of donker), ook in de thema's:
- * dat is wat het prototype doet — modern met stand "licht" toont de
- * lichte vriendkleuren op zijn donkere blad.
+ * De vriendkleuren volgen de stand (licht of donker), ook in magazine.
  */
 export function friendColor(hue: Hue, s: Scheme = getScheme()): FriendColor {
   return FRIEND[s][hue];
@@ -694,11 +627,6 @@ function emit() {
   for (const fn of listeners) fn();
 }
 
-/** Wat de browserbalk en de statusbalk als kleur van het blad krijgen. */
-function surfaceHex(): string {
-  if (theme === "modern") return MODERN_GRADIENT.base;
-  return paperHex(scheme);
-}
 
 /**
  * Zet de klasse en het thema op `<html>`. De variabelen onder `.dark:root`
@@ -712,7 +640,7 @@ function applyWeb() {
   root.dataset.theme = scheme;
   root.dataset.lincinTheme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", surfaceHex());
+  if (meta) meta.setAttribute("content", paperHex(scheme));
 }
 
 function resolve() {
@@ -767,10 +695,10 @@ export function setTheme(next: LincinTheme) {
 /** De maten en stijlen van het thema dat nu geldt. */
 export function themeSpec(t: LincinTheme = theme): ThemeSpec {
   const s = SPEC[t];
-  return { ...s, dark: t === "modern" || (t === "kleur" && scheme === "dark") };
+  return { ...s, dark: t === "kleur" && scheme === "dark" };
 }
 
-/** Of het blad donker is: modern, of kleur in de donkere stand. */
+/** Of het blad donker is: kleur in de donkere stand. */
 export function isDarkSurface(): boolean {
   return themeSpec().dark;
 }
@@ -796,7 +724,7 @@ export function usePreference(): ThemePreference {
   return useSyncExternalStore(subscribe, getPreference, getPreference);
 }
 
-/** Het thema — `kleur`, `magazine` of `modern`. */
+/** Het thema — `kleur` of `magazine`. */
 export function useTheme(): LincinTheme {
   return useSyncExternalStore(subscribe, getTheme, getTheme);
 }
@@ -805,7 +733,7 @@ export function useTheme(): LincinTheme {
 export function useThemeSpec(): ThemeSpec {
   const t = useTheme();
   const s = useScheme();
-  return { ...SPEC[t], dark: t === "modern" || (t === "kleur" && s === "dark") };
+  return { ...SPEC[t], dark: t === "kleur" && s === "dark" };
 }
 
 /**
@@ -849,11 +777,10 @@ export function color(token: Token, alpha?: AlphaToken): string {
 }
 
 /**
- * De kaderlijn: inkt, behalve in modern (papier op 18%). Voor élk
- * `borderColor` in de v2-onderdelen.
+ * De kaderlijn: inkt. Voor élk `borderColor` in de v2-onderdelen.
  */
 export function line(): string {
-  return color("line", "lineA");
+  return color("line");
 }
 
 /**

@@ -38,7 +38,7 @@ import { useFeed } from "./useFeed";
  *
  * Wat de kaart draagt staat in `lib/lincin/model.ts`; wat er níet in zit
  * (belafspraken, lijsten, activiteit, je eigen bijdragen) staat daar ook.
- * De gegevens en handelingen deelt hij met magazine en modern (`useFeed`).
+ * De gegevens en handelingen deelt hij met magazine (`useFeed`).
  */
 
 const PULL_H = 56;

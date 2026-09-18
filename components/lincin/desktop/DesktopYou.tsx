@@ -94,7 +94,7 @@ export function DesktopYou() {
             <Row label={t.theme} sub={t.themeSub}>
               <View style={{ flexDirection: "row", gap: 12 }}>
                 {THEMES.map((th) => (
-                  <MonoLink key={th} label={th === "kleur" ? t.themeKleur : th === "magazine" ? t.themeMagazine : t.themeModern} on={lincin.theme === th} active={lincin.theme === th} onPress={() => lincin.choose(th as LincinTheme)} />
+                  <MonoLink key={th} label={th === "kleur" ? t.themeKleur : t.themeMagazine} on={lincin.theme === th} active={lincin.theme === th} onPress={() => lincin.choose(th as LincinTheme)} />
                 ))}
               </View>
             </Row>

@@ -50,13 +50,13 @@ export default function Root({ children }: PropsWithChildren) {
     p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   var t = localStorage.getItem('lincin-thema');
-  if (t !== 'magazine' && t !== 'modern') t = 'kleur';
+  if (t !== 'magazine') t = 'kleur';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
   r.dataset.lincinTheme = t;
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', t === 'modern' ? '#1A1210' : t === 'magazine' ? '#F7F4EE' : p === 'dark' ? '#1A1917' : '#F2EFE8');
+  if (m) m.setAttribute('content', t === 'magazine' ? '#F7F4EE' : p === 'dark' ? '#1A1917' : '#F2EFE8');
 }catch(e){}})();`,
           }}
         />
@@ -305,7 +305,7 @@ html, body {
             --------------------------------------------------------------- */}
         <style dangerouslySetInnerHTML={{ __html: propVarCss() }} />
 
-        {/* De thema's magazine en modern: hetzelfde palet, andere waarden,
+        {/* Het thema magazine: hetzelfde palet, andere waarden,
             gekoppeld aan `data-lincin-theme` op <html>. Uit dezelfde bron
             als native (lib/design/theme.ts), zodat de twee niet uit elkaar
             kunnen lopen. `html:root[…]` wint op specificiteit van

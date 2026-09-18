@@ -3,7 +3,6 @@ import { usePathname, useRouter } from "expo-router";
 import { useMemo, type ReactNode } from "react";
 import { Platform, Pressable, Text, useWindowDimensions, View, type TextStyle } from "react-native";
 
-import { ModernBackdrop } from "@/components/lincin/Chrome";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
@@ -11,7 +10,6 @@ import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import {
   color,
-  MODERN_GRADIENT,
   pageTint,
   setPreference,
   usePreference,
@@ -67,8 +65,8 @@ export function DesktopShell({
 }) {
   const spec = useThemeSpec();
   const scheme = useScheme();
-  const { width, height } = useWindowDimensions();
-  const bg = spec.gradient ? MODERN_GRADIENT.base : tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
+  const { width } = useWindowDimensions();
+  const bg = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
   // grid-template-columns: 196px minmax(0,1fr) minmax(240px,300px)
   const chatsW = Math.max(CHATS_MIN, Math.min(CHATS_W, width - RAIL_W - 600));
   return (
@@ -78,11 +76,10 @@ export function DesktopShell({
         Platform.OS === "web" ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object) : null,
       ]}
     >
-      {spec.gradient ? <ModernBackdrop width={width} height={height} /> : null}
       {mode === "full" ? <RailNarrow active={active} /> : <Rail active={active} />}
       <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
       {mode === "feed" ? (
-        <View style={{ width: chatsW, minHeight: 0, borderLeftWidth: spec.border, borderLeftColor: color("ink"), backgroundColor: spec.gradient ? "transparent" : color("paper") }}>
+        <View style={{ width: chatsW, minHeight: 0, borderLeftWidth: spec.border, borderLeftColor: color("ink"), backgroundColor: color("paper") }}>
           <ChatsPanel />
         </View>
       ) : null}

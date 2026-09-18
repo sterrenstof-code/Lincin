@@ -1,10 +1,10 @@
 import { usePathname, useRouter } from "expo-router";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
-import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
+import { Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { color, inkOn, MODERN_GRADIENT, pageTint, paperHex, useScheme, useThemeSpec, type Scheme } from "@/lib/design/theme";
+import { color, inkOn, pageTint, paperHex, useScheme, useThemeSpec, type Scheme } from "@/lib/design/theme";
 import { FONT, lincinType, mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { useIsDesktop } from "@/lib/lincin/desktop";
@@ -13,7 +13,7 @@ import { scrollActiveToTop } from "@/lib/scroll-top";
 
 import { DesktopShell } from "./desktop/Shell";
 
-import { BORDER, GUTTER, line, RADIUS, SquareBtn } from "./ui";
+import { BORDER, GUTTER, line, SquareBtn } from "./ui";
 
 /**
  * De omlijsting van élk v2-scherm (README §Global chrome).
@@ -48,8 +48,8 @@ export const COLUMN_MAX = 640;
 /**
  * Hoe breed het blad nú is, gegeven de vensterbreedte: het venster zelf,
  * of de kolom als het venster ruim breder is. Wie iets moet verdelen over
- * die breedte (het mozaïek van modern) rekent hiermee in plaats van te
- * meten — een `onLayout` op de ScrollView blijft op web wel eens uit.
+ * die breedte rekent hiermee in plaats van te meten — een `onLayout` op de
+ * ScrollView blijft op web wel eens uit.
  */
 export function columnWidth(windowWidth: number): number {
   return windowWidth > COLUMN_MAX + 40 ? COLUMN_MAX : windowWidth;
@@ -104,7 +104,7 @@ export function LincinScreen({
   const scheme = useScheme();
   const spec = useThemeSpec();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const desktop = useIsDesktop();
   if (embedded) return <View style={{ flex: 1, minHeight: 0 }}>{children}</View>;
   if (desktop && !ownDesktop) {
@@ -122,8 +122,8 @@ export function LincinScreen({
       </DesktopShell>
     );
   }
-  const verloop = !spec.gradient && spec.tint && !!tint;
-  const bg = spec.gradient ? MODERN_GRADIENT.base : color("paper");
+  const verloop = spec.tint && !!tint;
+  const bg = color("paper");
   const wide = !full && columnWidth(width) !== width;
   const activeTint = spec.tint ? (tabTint === undefined ? tint : tabTint) ?? null : null;
 
@@ -133,7 +133,6 @@ export function LincinScreen({
         { flex: 1, backgroundColor: bg, paddingTop: bleed ? 0 : insets.top },
       ]}
     >
-      {spec.gradient ? <ModernBackdrop width={width} height={height} /> : null}
       {verloop ? <Verloop tint={tint!} next={tintNext} scheme={scheme} /> : null}
       <View
         style={{
@@ -240,55 +239,6 @@ function Verloop({ tint, next, scheme }: { tint: string; next: string | null; sc
   );
 }
 
-/**
- * Het blad van modern: een radiaal verloop (700×500 op 70%/20%) van
- * #8A3A1E via #3A1A10 naar #1A1210, met een korrel van 3px op 18%
- * erover (HANDOFF §modern). Het verloop is een SVG zodat het op web en
- * native hetzelfde is; de korrel is op web de radial-gradient uit het
- * prototype en op native een herhaalde tegel van dezelfde stippen.
- */
-export function ModernBackdrop({ width, height }: { width: number; height: number }) {
-  const g = MODERN_GRADIENT;
-  return (
-    <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" }}>
-      <Svg width={width} height={height}>
-        <Defs>
-          <RadialGradient id="lincin-modern" cx={width * g.cx} cy={height * g.cy} rx={g.rx} ry={g.ry} gradientUnits="userSpaceOnUse">
-            {g.stops.map((s) => (
-              <Stop key={s.offset} offset={s.offset} stopColor={s.color} />
-            ))}
-          </RadialGradient>
-        </Defs>
-        <Rect x={0} y={0} width={width} height={height} fill={g.base} />
-        <Ellipse cx={width * g.cx} cy={height * g.cy} rx={g.rx} ry={g.ry} fill="url(#lincin-modern)" />
-      </Svg>
-      {Platform.OS === "web" ? (
-        <View
-          style={
-            {
-              position: "absolute",
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
-              opacity: 0.18,
-              backgroundImage: "radial-gradient(rgba(255,255,255,.7) .6px, transparent .6px)",
-              backgroundSize: "3px 3px",
-              mixBlendMode: "overlay",
-            } as object
-          }
-        />
-      ) : (
-        <Image
-          source={require("../../assets/images/grain-dots.png")}
-          resizeMode="repeat"
-          style={{ position: "absolute", left: 0, top: 0, width, height, opacity: 0.18 }}
-        />
-      )}
-    </View>
-  );
-}
-
 /** "Lincin" · teller · ◉ · + */
 export function Header({ counter }: { counter?: string }) {
   const router = useRouter();
@@ -343,7 +293,7 @@ export function Header({ counter }: { counter?: string }) {
  *
  * Het actieve vak is gevuld: in kleur met de vriendkleur van het moment
  * (de vriend in beeld, de gesprekspartner, de maker) en de inkt die daarop
- * hoort; zonder vriend in beeld — en in magazine en modern — met inkt en
+ * hoort; zonder vriend in beeld — en in magazine — met inkt en
  * papier erop. De andere drie zijn gedempt.
  */
 export function FooterTabs({
@@ -378,7 +328,6 @@ export function FooterTabs({
         marginBottom: bottomInset,
         borderWidth: BORDER,
         borderColor: line(),
-        borderRadius: RADIUS,
         overflow: "hidden",
         backgroundColor: color("paper"),
       }}

@@ -269,7 +269,7 @@ export function DesktopPost({ id }: { id: string }) {
       </View>
 
       {/* de band onderaan: tekst en reacties links, comments rechts */}
-      <View style={{ maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: spec.gradient ? "transparent" : color("paper") }}>
+      <View style={{ maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: color("paper") }}>
         <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }} showsVerticalScrollIndicator={false}>
           {editing ? (
             // Je eigen bijdrage bewerken: titel, zin, tekst (EditPost).

@@ -180,7 +180,7 @@ function Band({
   count: string;
   bg: string;
   fg: string;
-  /** Magazine en modern: papier met een kleurbalk in plaats van een gevulde band. */
+  /** Magazine: papier met een kleurbalk in plaats van een gevulde band. */
   bar: string | null;
   onName?: () => void;
   onPrivate?: () => void;

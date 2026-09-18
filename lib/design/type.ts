@@ -82,8 +82,8 @@ export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
 }
 
 /**
- * De kop. In kleur: Archivo 900, 75% breed, altijd kapitaal. In magazine
- * en modern: Instrument Serif regular, geen kapitaal (`--tf/--tw/--tt` in
+ * De kop. In kleur: Archivo 900, 75% breed, altijd kapitaal. In magazine:
+ * Instrument Serif regular, geen kapitaal (`--tf/--tw/--tt` in
  * het prototype). Leest het thema op het moment van bouwen; `lincinType`
  * wordt bij een wissel opnieuw gebouwd.
  */

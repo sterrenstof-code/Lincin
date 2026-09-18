@@ -8,7 +8,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 
 import { Media } from "./Media";
-import { BORDER, GUTTER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
+import { BORDER, GUTTER, Head, Initial, Mono, Serif } from "./ui";
 
 /**
  * De post-kaart, variant "7h" (README §Post card).
@@ -22,10 +22,10 @@ import { BORDER, GUTTER, Head, Initial, Mono, RADIUS, Serif } from "./ui";
  * vlak met de avatar boven en "NAAM · SOORT · TIJD" gedraaid onderaan.
  * Een tik op de kaart opent de bladzijde.
  *
- * Gedeeld door de drie thema's (HANDOFF §Themes). Wat verschilt: in kleur
+ * Gedeeld door de twee thema's (HANDOFF §Themes). Wat verschilt: in kleur
  * is de titelstrook gevuld met de vriendkleur en de titel Archivo 22; in
- * magazine en modern is de strook papier met een kleurbalk van 6px links
- * en de titel serif 24. Het kader is 1px en (modern) afgerond op 10.
+ * magazine is de strook papier met een kleurbalk van 6px links en de
+ * titel serif 24, en het kader is 1px.
  *
  * Foto's zoals Instagram: hun eigen verhouding (4:5–1.91:1) in plaats van
  * een strook van 150. In een verticale lijst (`bleed`) staat de foto
@@ -99,7 +99,6 @@ export const PostCard = memo(function PostCard({
         ...(lifted ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : null),
         borderWidth: BORDER,
         borderColor: edge,
-        borderRadius: RADIUS,
         overflow: "hidden",
         backgroundColor: color("paper"),
       }}

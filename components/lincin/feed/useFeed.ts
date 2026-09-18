@@ -24,7 +24,7 @@ import { markSeen, useSeenPosts } from "@/lib/read-state";
  *   - de weergave (per vriend | op tijd), per gebruiker onthouden
  *   - de handelingen: openen, naar een profiel, een privé-bericht
  *
- * De drie lay-outs — `FeedKleur`, `FeedMagazine`, `FeedModern` — tekenen
+ * De twee lay-outs — `FeedKleur` en `FeedMagazine` — tekenen
  * hier elk hun eigen blad omheen.
  */
 

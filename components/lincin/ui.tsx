@@ -22,26 +22,21 @@ import { lincinType } from "@/lib/design/type";
  * Kleuren komen uit `color()` op het moment van tekenen: op web is dat
  * een variabele die met de stand meeschuift, op native de waarde van nu.
  *
- * De thema's (HANDOFF.md §Themes) zetten hier aan: magazine en modern
- * tekenen haarlijnen van 1px, modern rondt kaarten en tabs af op 10 en
- * zet de kaderlijn op papier-18%. `BORDER` en `RADIUS` zijn daarom een
- * `let`: een import is een levende verwijzing, en bij een wissel
+ * Het thema magazine (HANDOFF.md §Themes) tekent haarlijnen van 1px.
+ * `BORDER` is daarom een `let`: een import is een levende verwijzing, en bij een wissel
  * hertekent elk scherm (zie `app/_layout.tsx`).
  */
 
 export let BORDER = themeSpec().border;
-/** Ronding op kaarten en de tabbalk. 0, behalve modern (10). */
-export let RADIUS = themeSpec().radius;
 export const GUTTER = 18;
 export const GAP = 12;
 export const CONTROL = 44;
 
 subscribeTheme(() => {
   BORDER = themeSpec().border;
-  RADIUS = themeSpec().radius;
 });
 
-/** De kaderlijn: inkt, of papier-18% in modern. Zie `line()` in theme.ts. */
+/** De kaderlijn: inkt. Zie `line()` in theme.ts. */
 export { line };
 
 // ---------------------------------------------------------------

@@ -108,8 +108,8 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
-  // De ongelezen-tint volgt het blad, niet de stand: modern is altijd
-  // donker, ook als de stand licht is.
+  // De ongelezen-tint volgt het blad, niet de stand: magazine is altijd
+  // licht, ook als de stand donker is.
   const darkPaper = useThemeSpec().dark;
   const fc = friendColor(hueFor(item.actor_id), scheme);
   const name = item.actor?.display_name ?? item.actor?.username ?? "Iemand";

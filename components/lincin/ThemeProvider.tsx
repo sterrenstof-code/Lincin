@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { getTheme, setTheme, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
 
 /**
- * Het thema van de app: kleur, magazine of modern (HANDOFF.md §Themes).
+ * Het thema van de app: kleur of magazine (HANDOFF.md §Themes).
  *
  * De waarde zelf leeft buiten React, in `lib/design/theme.ts`, zodat
  * `color()`, `lincinType` en `BORDER` hem kunnen lezen zonder context.

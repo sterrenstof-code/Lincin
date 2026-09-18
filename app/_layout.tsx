@@ -117,7 +117,7 @@ export default function RootLayout() {
           </ConfirmProvider>
           </ToastProvider>
           {/* De klok volgt het blad: donker op papier, licht op een
-              donker blad (kleur-donker, modern). */}
+              donker blad (kleur-donker). */}
           <StatusBar style={spec.dark ? "light" : "dark"} />
           <WebAnalytics />
         </ThemeProvider>
