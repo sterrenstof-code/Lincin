@@ -225,6 +225,7 @@ function RootStack() {
         */}
         <Stack.Screen name="chat/[id]" options={{ animation: "slide_from_right", gestureEnabled: true }} />
         <Stack.Screen name="post/[id]" options={{ animation: "slide_from_right", gestureEnabled: true }} />
+        <Stack.Screen name="poll/[id]" options={{ animation: "slide_from_right", gestureEnabled: true }} />
         <Stack.Screen name="user/[username]" />
         <Stack.Screen name="group/[id]" />
         <Stack.Screen name="event/[id]" />

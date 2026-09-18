@@ -154,8 +154,10 @@ export function useFeed() {
   const openPost = useCallback((p: CardPost) => {
     if (!p.href) return;
     markSeen(p.id);
-    openPostAnywhere(p.id);
-  }, []);
+    // Een poll heeft zijn eigen bladzijde (app/poll/[id].tsx).
+    if (p.kind === "poll") router.push(p.href as never);
+    else openPostAnywhere(p.id);
+  }, [router]);
   const openProfile = useCallback(
     (g: { username: string | null; authorId?: string }) => {
       // Ook je eigen naam opent je profiel — de pagina die je vrienden zien,
@@ -171,7 +173,8 @@ export function useFeed() {
       friendId: g.authorId,
       friendName: g.name,
       quote: p ? p.caption || p.title : undefined,
-      postId: p?.href ? p.id : undefined,
+      // Alleen een bijdrage kan als verwijzing mee; een poll niet.
+      postId: p?.href && p.kind !== "poll" ? p.id : undefined,
       postTitle: p?.title,
     });
   }, [myUserId]);

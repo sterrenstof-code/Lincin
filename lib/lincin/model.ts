@@ -203,7 +203,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
   const name = displayName(p.author);
   return {
     id: p.id,
-    href: "",
+    href: `/poll/${p.id}`,
     kind: "poll",
     authorId: p.user_id,
     authorName: name,
