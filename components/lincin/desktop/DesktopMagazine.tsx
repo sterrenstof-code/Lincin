@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
 import { VerticalLabel } from "@/components/lincin/ui";
@@ -33,7 +33,6 @@ import { useFeed } from "../feed/useFeed";
 const ON_IMAGE = "#F2EFE8";
 const SIDE_W = 380;
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
-const BLEND: ViewStyle = { mixBlendMode: "difference" } as ViewStyle;
 
 export function DesktopMagazine() {
   const f = useFeed();
@@ -71,22 +70,13 @@ export function DesktopMagazine() {
       {/* het hero */}
       <View style={{ flex: 1, minWidth: 0, borderRightWidth: 1.5, borderRightColor: ink, overflow: "hidden", backgroundColor: heroColor.fill }}>
         {heroImg ? <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" /> : null}
-        <Svg width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-          <Defs>
-            <LinearGradient id="lincin-mag-d" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={heroColor.fill} stopOpacity={0.15} />
-              <Stop offset="0.4" stopColor={heroColor.fill} stopOpacity={0} />
-              <Stop offset="1" stopColor="#141414" stopOpacity={0.08} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#lincin-mag-d)" />
-        </Svg>
-        <View style={[{ position: "absolute", top: 22, left: 32, right: 32, flexDirection: "row", justifyContent: "space-between", zIndex: 2 }, BLEND]}>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE }]}>{edition}</Text>
+        <HeroScrim />
+        <View style={[{ position: "absolute", top: 22, left: 32, right: 32, flexDirection: "row", justifyContent: "space-between", zIndex: 2 }]}>
+          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{edition}</Text>
           <View style={{ flexDirection: "row", gap: 0 }}>
             {nav.map((n, i) => (
               <Pressable key={n.href} accessibilityRole="link" onPress={() => router.push(n.href as never)}>
-                <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE, textDecorationLine: i === 0 ? "underline" : "none" }]}>
+                <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE, textDecorationLine: i === 0 ? "underline" : "none" }]}>
                   {i ? " · " : ""}
                   {n.label}
                 </Text>
@@ -99,32 +89,32 @@ export function DesktopMagazine() {
         </Text>
         {hero ? (
           <>
-            <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: 262, left: 32, maxWidth: 300 }, BLEND]}>
-              <Text style={[lincinType.cardTitle, { fontSize: 30, lineHeight: 29, letterSpacing: 0, color: ON_IMAGE }]}>{hero.title}</Text>
-              {hero.caption ? <Text style={[serif(true), { fontSize: 18, lineHeight: 22, marginTop: 8, color: ON_IMAGE }]}>{hero.caption}</Text> : null}
+            <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: 262, left: 32, maxWidth: 300 }]}>
+              <Text style={[lincinType.cardTitle, { fontSize: 30, lineHeight: 29, letterSpacing: 0, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{hero.title}</Text>
+              {hero.caption ? <Text style={[serif(true), { fontSize: 18, lineHeight: 22, marginTop: 8, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{hero.caption}</Text> : null}
             </Pressable>
             {hero.body ? (
-              <View style={[{ position: "absolute", top: 380, left: 32, width: 280 }, BLEND]}>
-                <Text numberOfLines={8} style={[serif(), { fontSize: 15, lineHeight: 21, color: ON_IMAGE }]}>
+              <View style={[{ position: "absolute", top: 380, left: 32, width: 280 }]}>
+                <Text numberOfLines={8} style={[serif(), { fontSize: 15, lineHeight: 21, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                   {hero.body}
                 </Text>
               </View>
             ) : null}
-            <View style={[{ position: "absolute", right: 32, top: 300, width: 200, alignItems: "flex-end" }, BLEND]}>
-              <Text style={[serif(), { fontSize: 44, lineHeight: 44, color: ON_IMAGE, textAlign: "right" }]}>
+            <View style={[{ position: "absolute", right: 32, top: 300, width: 200, alignItems: "flex-end" }]}>
+              <Text style={[serif(), { fontSize: 44, lineHeight: 44, color: ON_IMAGE, ...ON_IMAGE_SHADE, textAlign: "right" }]}>
                 {t.spotA} <Text style={serif(true)}>{t.spotB}</Text>
               </Text>
               <View style={{ marginTop: 14, alignItems: "flex-end" }}>
                 {spotlight.map((p) => (
                   <Pressable key={p.id} accessibilityRole="button" onPress={() => f.openPost(p)}>
-                    <Text numberOfLines={1} style={[mono(500), { fontSize: 11, lineHeight: 22, letterSpacing: 1.1, textTransform: "uppercase", color: ON_IMAGE }]}>
+                    <Text numberOfLines={1} style={[mono(500), { fontSize: 11, lineHeight: 22, letterSpacing: 1.1, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                       {p.authorName} · {p.untitled ? p.kind : p.title}
                     </Text>
                   </Pressable>
                 ))}
               </View>
             </View>
-            <View style={[{ position: "absolute", left: 32, right: 32, bottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }, BLEND]}>
+            <View style={[{ position: "absolute", left: 32, right: 32, bottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }]}>
               {/* Prototype #1b: `writing-mode: vertical-rl; rotate(180deg);
                   height: 150px` — te lezen van onder naar boven. Een gedraaide
                   Text van 150 breed in een doosje van 14 mat 13 × 14; de
@@ -136,20 +126,20 @@ export function DesktopMagazine() {
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {grouped.map((r) => (
                   <Pressable key={r.emoji} accessibilityRole="button" {...who.chip(r)} onPress={() => reactions.toggle(hero.id, r.emoji)} style={[chip, { backgroundColor: r.mine ? "rgba(242,239,232,.25)" : "transparent" }]}>
-                    <Text style={[mono(600), { fontSize: 12, lineHeight: 15, color: ON_IMAGE }]}>
+                    <Text style={[mono(600), { fontSize: 12, lineHeight: 15, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                       {r.emoji} {r.count}
                     </Text>
                   </Pressable>
                 ))}
                 <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={chip}>
-                  <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE }]}>
+                  <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                     {t.comment}
                     {hero.commentCount ? ` · ${hero.commentCount}` : ""}
                   </Text>
                 </Pressable>
                 {f.isMine(hero.authorId) ? null : (
                   <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={chip}>
-                    <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE }]}>{t.privateMsg}</Text>
+                    <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{t.privateMsg}</Text>
                   </Pressable>
                 )}
               </View>

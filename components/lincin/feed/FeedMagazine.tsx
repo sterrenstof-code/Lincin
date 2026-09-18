@@ -1,9 +1,9 @@
 import { useMemo, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
+import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, GUTTER, line, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
@@ -97,30 +97,20 @@ export function FeedMagazine() {
         {heroImg ? (
           <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         ) : null}
-        {/* de sluier: 25% inkt boven, niets in het midden, 15% onder */}
-        <Svg width="100%" height="100%" style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-          <Defs>
-            <LinearGradient id="lincin-mag" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#141414" stopOpacity={0.25} />
-              <Stop offset="0.45" stopColor="#141414" stopOpacity={0} />
-              <Stop offset="1" stopColor="#141414" stopOpacity={0.15} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#lincin-mag)" />
-        </Svg>
+        <HeroScrim />
 
         {/* de bovenregel: editie · ◉ + */}
-        <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }, BLEND]}>
-          <Mono variant="tiny" color={ON_IMAGE} style={{ letterSpacing: 1.26 }}>
+        <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }]}>
+          <Mono variant="tiny" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, letterSpacing: 1.26 }}>
             {edition}
           </Mono>
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
             <Pressable accessibilityRole="button" accessibilityLabel={t.notifications} onPress={() => router.push("/notifications")} style={onImageBtn}>
-              <Text style={{ color: ON_IMAGE, fontSize: 13, lineHeight: 15 }}>◉</Text>
+              <Text style={{ color: ON_IMAGE, ...ON_IMAGE_SHADE, fontSize: 13, lineHeight: 15 }}>◉</Text>
               {unread.notifications > 0 ? <View style={{ position: "absolute", top: -4, right: -4, width: 9, height: 9, backgroundColor: color("red") }} /> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={t.newPost} onPress={f.compose} style={onImageBtn}>
-              <Text style={{ color: ON_IMAGE, fontSize: 17, lineHeight: 19 }}>+</Text>
+              <Text style={{ color: ON_IMAGE, ...ON_IMAGE_SHADE, fontSize: 17, lineHeight: 19 }}>+</Text>
             </Pressable>
           </View>
         </View>
@@ -131,22 +121,22 @@ export function FeedMagazine() {
         </Text>
 
         {/* links: titel en bijschrift */}
-        <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: top + 136, left: PAD, maxWidth: 220 }, BLEND]}>
-          <Text style={[lincinType.cardTitle, { fontSize: 26, lineHeight: 25, letterSpacing: 0, color: ON_IMAGE }]}>{hero.title}</Text>
+        <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[{ position: "absolute", top: top + 136, left: PAD, maxWidth: 220 }]}>
+          <Text style={[lincinType.cardTitle, { fontSize: 26, lineHeight: 25, letterSpacing: 0, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{hero.title}</Text>
           {hero.caption ? (
-            <Text style={[lincinType.asideSmall, { fontSize: 15, lineHeight: 19, marginTop: 8, color: ON_IMAGE }]}>{hero.caption}</Text>
+            <Text style={[lincinType.asideSmall, { fontSize: 15, lineHeight: 19, marginTop: 8, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{hero.caption}</Text>
           ) : null}
         </Pressable>
 
         {/* rechts: op spotlight */}
-        <View style={[{ position: "absolute", right: PAD, top: top + 146, width: 120, alignItems: "flex-end" }, BLEND]}>
-          <Text style={[lincinType.eventTitle, { fontSize: 24, lineHeight: 24, letterSpacing: 0, color: ON_IMAGE, textAlign: "right" }]}>
+        <View style={[{ position: "absolute", right: PAD, top: top + 146, width: 120, alignItems: "flex-end" }]}>
+          <Text style={[lincinType.eventTitle, { fontSize: 24, lineHeight: 24, letterSpacing: 0, color: ON_IMAGE, ...ON_IMAGE_SHADE, textAlign: "right" }]}>
             {t.spotA} <Text style={lincinType.asideSmall}>{t.spotB}</Text>
           </Text>
           <View style={{ marginTop: 10, alignItems: "flex-end" }}>
             {spotlight.map((p) => (
               <Pressable key={p.id} accessibilityRole="button" onPress={() => f.openPost(p)}>
-                <Mono variant="tiny" color={ON_IMAGE} numberOfLines={1} style={{ lineHeight: 17, letterSpacing: 0.72 }}>
+                <Mono variant="tiny" color={ON_IMAGE} numberOfLines={1} style={{ ...ON_IMAGE_SHADE, lineHeight: 17, letterSpacing: 0.72 }}>
                   {p.authorName} · {p.kind}
                 </Mono>
               </Pressable>
@@ -156,17 +146,15 @@ export function FeedMagazine() {
 
         {/* de lopende tekst */}
         {hero.body ? (
-          // De mengmodus zit op de View, niet op de Text: native kent hem
-          // alleen op View en Image.
-          <View style={[{ position: "absolute", left: PAD, top: top + 276, maxWidth: 250 }, BLEND]}>
-            <Text numberOfLines={5} style={[lincinType.caption, { fontSize: 14, lineHeight: 20, color: ON_IMAGE }]}>
+          <View style={[{ position: "absolute", left: PAD, top: top + 276, maxWidth: 250 }]}>
+            <Text numberOfLines={5} style={[lincinType.caption, { fontSize: 14, lineHeight: 20, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
               {hero.body}
             </Text>
           </View>
         ) : null}
 
         {/* onderaan: reacties · comment · privaat */}
-        <View style={[{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "center" }, BLEND]}>
+        <View style={[{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "center" }]}>
           {grouped.map((r) => (
             <Pressable
               key={r.emoji}
@@ -176,21 +164,21 @@ export function FeedMagazine() {
               onPress={() => reactions.toggle(hero.id, r.emoji)}
               style={[onImageChip, { backgroundColor: r.mine ? "rgba(242,239,232,.25)" : "transparent" }]}
             >
-              <Text style={[lincinType.monoBody, { fontSize: 11, lineHeight: 14, color: ON_IMAGE }]}>
+              <Text style={[lincinType.monoBody, { fontSize: 11, lineHeight: 14, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                 {r.emoji} {r.count}
               </Text>
             </Pressable>
           ))}
           <View style={{ flex: 1 }} />
           <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={onImageChip}>
-            <Mono variant="action" color={ON_IMAGE} style={{ fontSize: 11, lineHeight: 14 }}>
+            <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
               {t.comment}
               {commentsLabel}
             </Mono>
           </Pressable>
           {f.isMine(hero.authorId) ? null : (
             <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={onImageChip}>
-              <Mono variant="action" color={ON_IMAGE} style={{ fontSize: 11, lineHeight: 14 }}>
+              <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
                 {t.privateShort}
               </Mono>
             </Pressable>
@@ -293,13 +281,6 @@ export function FeedMagazine() {
     </LincinScreen>
   );
 }
-
-/**
- * Tekst op het beeld: papier, gemengd met `difference` zodat hij op licht
- * én donker leest. Alleen op een omhullende View — RN kent `mixBlendMode`
- * op View en Image, niet op Text.
- */
-const BLEND: ViewStyle = { mixBlendMode: "difference" };
 
 const onImageBtn = {
   width: 30,
