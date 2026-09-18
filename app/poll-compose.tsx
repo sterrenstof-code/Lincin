@@ -77,6 +77,7 @@ export default function PollComposeScreen() {
         userId: myUserId,
         question: question.trim(),
         options: options.filter((o) => o.trim().length > 0),
+        chatId: chatId ?? null,
       });
 
       if (chatId) {

@@ -485,6 +485,8 @@ export type Database = {
           created_at: string;
           /** 0060 — meerdere keuzes per linc. */
           allow_multiple: boolean;
+          /** 0063 — het gesprek waarin hij gestuurd werd; `null` = feedpoll. */
+          chat_id: string | null;
         };
         Insert: {
           id?: string;
@@ -493,6 +495,7 @@ export type Database = {
           ends_at?: string | null;
           created_at?: string;
           allow_multiple?: boolean;
+          chat_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["polls"]["Insert"]>;
         Relationships: [];

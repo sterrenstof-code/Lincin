@@ -38,11 +38,17 @@ export async function createPoll(args: {
   endsAt?: Date | null;
   /** `meerdere keuzes` in de keuze-editor (HANDOFF 2.1). */
   allowMultiple?: boolean;
+  /**
+   * Gestuurd in een gesprek: dan zien alleen de leden hem (0063). Zonder
+   * is het een feedpoll, voor jou en je lincs.
+   */
+  chatId?: string | null;
 }): Promise<PollRow> {
-  const row: { user_id: string; question: string; ends_at: string | null; allow_multiple?: boolean } = {
+  const row: { user_id: string; question: string; ends_at: string | null; chat_id: string | null; allow_multiple?: boolean } = {
     user_id: args.userId,
     question: args.question.trim(),
     ends_at: args.endsAt?.toISOString() ?? null,
+    chat_id: args.chatId ?? null,
   };
   const insert = (withMultiple: boolean) =>
     supabase
@@ -137,9 +143,12 @@ export async function getPollWithDetails(
 }
 
 export async function listFeedPolls(limit = 30): Promise<PollWithDetails[]> {
+  // Een poll uit een gesprek hoort in dat gesprek, nooit in de feed —
+  // ook niet in die van de leden zelf.
   const { data: polls, error } = await supabase
     .from("polls")
     .select("id, user_id, question, ends_at, created_at")
+    .is("chat_id", null)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
