@@ -750,6 +750,66 @@ export async function updatePost(
   }
 }
 
+/** Een foto bij het bewerken: één die er al stond (pad), of een nieuw gekozen (uri). */
+export type EditPhoto = { path: string; uri: string } | { path: null; uri: string };
+
+/**
+ * De foto's van je eigen bijdrage vervangen door `photos`, in die volgorde.
+ *
+ * Nieuwe foto's gaan eerst omhoog; pas als dat gelukt is verandert de
+ * bijdrage. De eerste wordt de omslag (`posts.image_path`), en bij meer dan
+ * één staat de hele lijst opnieuw in `post_images` — net als bij
+ * `createFind`. Foto's die eruit zijn gehaald verdwijnen als laatste uit de
+ * opslag: mislukt dat, dan blijft er hooguit een los bestand achter, geen
+ * kapotte bijdrage.
+ */
+export async function updatePostPhotos(
+  post: { id: string; user_id: string; image_path: string | null; album_paths?: string[] },
+  photos: EditPhoto[]
+): Promise<void> {
+  if (photos.length === 0) throw new Error("Een foto-bijdrage houdt minstens één foto.");
+  const before = post.album_paths?.length ? post.album_paths : post.image_path ? [post.image_path] : [];
+
+  const uploaded: string[] = [];
+  const paths: string[] = [];
+  try {
+    for (const photo of photos) {
+      if (photo.path) {
+        paths.push(photo.path);
+        continue;
+      }
+      const ext = extFromUri(photo.uri);
+      const path = `${post.user_id}/${post.id}-${cryptoRandomId().slice(0, 8)}.${ext}`;
+      const contentType = contentTypeForExt(ext);
+      const bytes = await uriToBytes(photo.uri);
+      const blob = new Blob([bytes as any], { type: contentType });
+      const { error } = await supabase.storage.from(POSTS_BUCKET).upload(path, blob, { contentType, upsert: false });
+      if (error) throw error;
+      uploaded.push(path);
+      paths.push(path);
+    }
+
+    const { data, error } = await supabase.from("posts").update({ image_path: paths[0] }).eq("id", post.id).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error("Deze vondst kon niet bijgewerkt worden — is hij van jou?");
+  } catch (e) {
+    if (uploaded.length) await supabase.storage.from(POSTS_BUCKET).remove(uploaded).catch(() => {});
+    throw e;
+  }
+
+  const { error: delErr } = await supabase.from("post_images").delete().eq("post_id", post.id);
+  if (delErr) throw delErr;
+  if (paths.length > 1) {
+    const { error: insErr } = await supabase
+      .from("post_images")
+      .insert(paths.map((image_path, position) => ({ post_id: post.id, image_path, position })));
+    if (insErr) throw insErr;
+  }
+
+  const gone = before.filter((p) => !paths.includes(p));
+  if (gone.length) await supabase.storage.from(POSTS_BUCKET).remove(gone).catch(() => {});
+}
+
 /** Accepteert elk object met minstens id + image_path — callers geven vaak een hele rij mee. */
 export async function deletePost(post: {
   id: string;
