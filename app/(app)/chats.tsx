@@ -8,7 +8,7 @@ import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/com
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme, type Hue } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, type Hue } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
@@ -42,6 +42,8 @@ function ChatsMobile() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const toast = useToast();
   const previews = useChatPreviews();
 

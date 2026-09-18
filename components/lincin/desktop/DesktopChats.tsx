@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { ChatDetail } from "@/app/chat/[id]";
 import { chatTitle, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
-import { color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { LIST_W, pickThread } from "@/lib/lincin/desktop";
@@ -30,6 +30,8 @@ const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 export function DesktopChats({ chatId }: { chatId?: string | null }) {
   const router = useRouter();
   const scheme = useScheme();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const spec = useThemeSpec();
   const { myUserId, list, chats } = useSortedChats();
   const current = pickThread(chatId ?? null, list);

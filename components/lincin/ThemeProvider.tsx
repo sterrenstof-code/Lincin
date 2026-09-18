@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 
+import { listFriendColors } from "@/lib/api/friend-colors";
 import { getProfileTheme, setProfileTheme } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { getTheme, setTheme, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
+import { getTheme, setHueChoices, setTheme, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
 
 /**
  * Het thema van de app: kleur of magazine (HANDOFF.md §Themes).
@@ -14,6 +15,7 @@ import { getTheme, setTheme, useTheme, useThemeSpec, type LincinTheme, type Them
  *   1. Zodra er een sessie is, haalt hij `profiles.theme` op en past die
  *      toe als hij afwijkt van wat lokaal bewaard was — het profiel wint,
  *      want dat is wat een tweede toestel ook ziet.
+ *      Hetzelfde voor de kleuren die je zelf aan mensen gaf.
  *   2. `choose()` zet het thema meteen (geen herlaad; de schermen
  *      hertekenen zich, zie `app/_layout.tsx`) en schrijft hem daarna
  *      naar het profiel.
@@ -38,6 +40,10 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
     let alive = true;
     getProfileTheme(userId).then((remote) => {
       if (alive && remote && remote !== getTheme()) setTheme(remote);
+    });
+    // Jouw kleur per persoon (0062): de database wint van de lokale kopie.
+    listFriendColors(userId).then((choices) => {
+      if (alive && choices) setHueChoices(choices);
     });
     return () => {
       alive = false;

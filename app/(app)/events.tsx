@@ -6,7 +6,7 @@ import { LincinScreen } from "@/components/lincin/Chrome";
 import { Body, BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
 import { DesktopEvents } from "@/components/lincin/desktop/DesktopEvents";
@@ -105,6 +105,8 @@ function EventCard({ event: e, live = false, past = false }: { event: EventWithM
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = friendColor(hueFor(e.host_user_id), scheme);
   const start = new Date(e.starts_at);
   const end = new Date(e.ends_at);

@@ -7,7 +7,7 @@ import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWi
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
@@ -65,6 +65,8 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();

@@ -11,7 +11,7 @@ import {
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { shortAgo } from "@/lib/lincin/model";
@@ -111,6 +111,8 @@ function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => 
   // De ongelezen-tint volgt het blad, niet de stand: magazine is altijd
   // licht, ook als de stand donker is.
   const darkPaper = useThemeSpec().dark;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = friendColor(hueFor(item.actor_id), scheme);
   const name = item.actor?.display_name ?? item.actor?.username ?? "Iemand";
   const { text } = describe(item);

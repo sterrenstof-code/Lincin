@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { chatTitle, listMyChats } from "@/lib/api/chats";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType, mono, serif } from "@/lib/design/type";
 import { useT, type Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
@@ -46,6 +46,8 @@ export function DesktopMagazine() {
   const spotlight = rest.slice(0, 4);
   // De inhoudsopgave van nieuw naar oud; wat je al zag staat gedempt.
   const toc = rest;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const heroColor = hero ? friendColor(hueOf(hero), scheme) : friendColor("orange", scheme);
   const heroImg = hero && hero.media.kind === "foto" ? hero.media : null;

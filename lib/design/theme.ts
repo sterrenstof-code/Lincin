@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { Appearance, Platform } from "react-native";
 
 /**
@@ -410,15 +410,23 @@ export const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
 };
 
 /**
- * Welke kleur een vriend bezit.
+ * Welke kleur een vriend bezit — in jouw app.
  *
- * De backend kent geen kleur per profiel; die komt uit het id zelf, zodat
- * hij op élk toestel en in élke sessie dezelfde is. Groepen zijn altijd
- * groen (README §01). Wil een vriend ooit zelf kiezen, dan komt hier een
- * kolom in `profiles` en wint die.
+ * Heb je zelf een kleur voor iemand gekozen (op zijn profiel), dan wint
+ * die; zie `setHueChoice` hieronder. Anders komt de kleur uit het id zelf,
+ * zodat hij op élk toestel en in élke sessie dezelfde is. Groepen zijn
+ * altijd groen (README §01).
+ *
+ * Een scherm dat hiermee tekent roept `useHueFor()` aan, zodat het
+ * hertekent zodra je een kleur verandert.
  */
 export function hueFor(id: string | null | undefined): Hue {
   if (!id) return "orange";
+  return hueChoices[id] ?? defaultHueFor(id);
+}
+
+/** De kleur die iemand krijgt als je zelf niets koos. */
+export function defaultHueFor(id: string): Hue {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   // Zuur is de kleur van de oproep; als vriendkleur is hij de zesde en
@@ -755,6 +763,85 @@ export function loadStoredPreference() {
       if (isLincinTheme(raw)) setTheme(raw);
     })
     .catch(() => {});
+  AsyncStorage.getItem(HUE_KEY)
+    .then((raw) => {
+      // De database kan intussen al geantwoord hebben; die wint.
+      if (raw && !hueChoicesSynced) setHueChoices(parseChoices(raw), false);
+    })
+    .catch(() => {});
+}
+
+// ===============================================================
+// JOUW KLEUR PER PERSOON
+// ===============================================================
+
+/**
+ * De kleuren die je zelf aan mensen gaf: id → kleur. Van jou alleen —
+ * een ander ziet ze niet. De bron is de tabel `friend_colors`
+ * (lib/api/friend-colors.ts); hier staat een kopie, lokaal bewaard, zodat
+ * het eerste beeld al klopt.
+ */
+const HUE_KEY = "lincin-kleuren";
+
+function parseChoices(raw: string | null): Record<string, Hue> {
+  if (!raw) return {};
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<string, Hue> = {};
+    for (const [id, h] of Object.entries(o)) if (HUES.includes(h as Hue)) out[id] = h as Hue;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+let hueChoices: Record<string, Hue> = parseChoices(readLocal(HUE_KEY));
+/** Heeft de database al geantwoord? Dan wint die van de lokale kopie. */
+let hueChoicesSynced = false;
+const hueListeners = new Set<() => void>();
+
+function emitHues() {
+  for (const fn of hueListeners) fn();
+}
+
+function subscribeHues(fn: () => void) {
+  hueListeners.add(fn);
+  return () => {
+    hueListeners.delete(fn);
+  };
+}
+
+const getHueChoices = () => hueChoices;
+
+/** Alle keuzes tegelijk — zo komen ze binnen uit de database. */
+export function setHueChoices(next: Record<string, Hue>, fromServer = true) {
+  if (fromServer) hueChoicesSynced = true;
+  hueChoices = next;
+  writeLocal(HUE_KEY, JSON.stringify(next));
+  emitHues();
+}
+
+/** Eén keuze; `null` geeft iemand zijn eigen kleur terug. */
+export function setHueChoice(id: string, hue: Hue | null) {
+  const next = { ...hueChoices };
+  if (hue) next[id] = hue;
+  else delete next[id];
+  setHueChoices(next);
+}
+
+/** Jouw keuzes, meebewegend. */
+export function useHueChoices(): Record<string, Hue> {
+  return useSyncExternalStore(subscribeHues, getHueChoices, getHueChoices);
+}
+
+/**
+ * `hueFor`, maar als hook: het scherm hertekent als je een kleur kiest.
+ * De functie wisselt mee met de keuzes, dus hij mag in een `useMemo`-lijst.
+ */
+export function useHueFor(): (id: string | null | undefined) => Hue {
+  const choices = useHueChoices();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => (id: string | null | undefined) => hueFor(id), [choices]);
 }
 
 // ===============================================================

@@ -20,7 +20,7 @@ import {
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
@@ -101,6 +101,8 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   /** "№ 07": hetzelfde nummer als in de feed, ook bij een rechtstreekse URL. */
   const { number } = useFeedCard(id);
   usePageTitle(card?.title ?? null);
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const hue = hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
   const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
@@ -423,6 +425,8 @@ function CommentRow({
   const lang = useLang();
   const scheme = useScheme();
   const own = c.user_id === myUserId;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
   const name = own ? t.me : displayName(c.author);
   // Een naam opent een profiel — ook "Jij" het jouwe.

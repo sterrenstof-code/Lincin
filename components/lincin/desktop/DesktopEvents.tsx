@@ -5,7 +5,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
@@ -77,6 +77,8 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = friendColor(hueFor(e.host_user_id), scheme);
   const start = new Date(e.starts_at);
   const end = new Date(e.ends_at);

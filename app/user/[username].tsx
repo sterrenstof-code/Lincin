@@ -6,6 +6,7 @@ import { ScrollView, View } from "react-native";
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
+import { HuePicker } from "@/components/lincin/HuePicker";
 import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
@@ -18,7 +19,7 @@ import {
 import { listUserPosts } from "@/lib/api/posts";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortDate, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
@@ -107,6 +108,8 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const reactions = usePostReactions(postIds, myUserId);
 
   const p = profile.data;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const hue = hueFor(p?.id);
   const fc = friendColor(hue, scheme);
   const name = p ? displayName(p) : username;
@@ -245,6 +248,11 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
               </Serif>
             ) : null}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>{buttons}</View>
+            {p && relation.kind !== "self" ? (
+              <View style={{ marginTop: 4 }}>
+                <HuePicker personId={p.id} ink={fc.ink} />
+              </View>
+            ) : null}
           </Box>
         )}
 

@@ -10,6 +10,7 @@ import { listUnifiedFeed, type FeedItem } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { useLang, useT, type Dict } from "@/lib/i18n";
 import { openPost as openPostAnywhere, openProfile as openProfileAnywhere } from "@/lib/lincin/desktop";
+import { useHueChoices } from "@/lib/design/theme";
 import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
@@ -103,7 +104,10 @@ export function useFeed() {
   // en elk thema. Ze tellen nooit als nieuw en je stuurt jezelf geen bericht.
   const cards = useMemo(() => ownCards(feed.data, t, myUserId), [feed.data, t, myUserId]);
   const isMine = useCallback((authorId: string) => authorId === myUserId, [myUserId]);
-  const groups = useMemo(() => groupByFriend(cards), [cards]);
+  // De kleur van een groep volgt jouw keuze per persoon (hueFor).
+  const hueChoices = useHueChoices();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const groups = useMemo(() => groupByFriend(cards), [cards, hueChoices]);
   const timeGroups = useMemo(() => groupByTime(cards, t, lang), [cards, t, lang]);
   /** Nieuwste eerst, over alle vrienden heen. */
   const byTime = useMemo(() => [...cards].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), [cards]);

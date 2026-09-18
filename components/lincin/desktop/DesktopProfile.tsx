@@ -3,13 +3,14 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { HuePicker } from "@/components/lincin/HuePicker";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
 import { acceptFriendRequest, deleteFriendship, listMyFriendships, sendFriendRequest } from "@/lib/api/friends";
 import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, numberMap, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
@@ -57,6 +58,8 @@ export function DesktopProfile({ username }: { username: string }) {
   const cards = useMemo(() => (posts.data ?? []).map(fromPost), [posts.data]);
 
   const p = profile.data;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = friendColor(hueFor(p?.id), scheme);
   const name = p ? displayName(p) : username;
   const relation = useMemo(() => {
@@ -126,6 +129,11 @@ export function DesktopProfile({ username }: { username: string }) {
                   <Text numberOfLines={3} style={[serif(true), { fontSize: 19, lineHeight: 24, marginTop: 8, color: fc.ink }]}>
                     {p.bio.split("\n")[0]}
                   </Text>
+                ) : null}
+                {relation && relation.kind !== "self" ? (
+                  <View style={{ marginTop: 14 }}>
+                    <HuePicker personId={p.id} ink={fc.ink} />
+                  </View>
                 ) : null}
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>{buttons}</View>

@@ -9,7 +9,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
@@ -52,6 +52,8 @@ function YouMobile() {
   const name = displayName(p ?? { username: session!.user.email ?? "" });
   const [first, ...rest] = name.split(" ");
   const last = rest.join(" ");
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = friendColor(hueFor(myUserId), scheme);
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
   const pendingIn = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId).length;

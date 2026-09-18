@@ -682,6 +682,24 @@ export type Database = {
         Relationships: [];
       };
 
+      // 0062_friend_colors — jouw kleur per persoon.
+      friend_colors: {
+        Row: {
+          owner_id: string;
+          friend_id: string;
+          hue: "orange" | "blue" | "ochre" | "green" | "red" | "acid";
+          updated_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          friend_id: string;
+          hue: "orange" | "blue" | "ochre" | "green" | "red" | "acid";
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["friend_colors"]["Insert"]>;
+        Relationships: [];
+      };
+
       // 0044_bio_follows_boosts
       post_follows: {
         Row: {

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { setHueChoices } from "../design/theme";
 import { supabase } from "../supabase/client";
 
 type AuthError = { error: Error | null };
@@ -175,6 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         await supabase.auth.signOut();
+        // Je kleuren per persoon horen bij jou, niet bij het toestel.
+        setHueChoices({}, false);
       },
     }),
     [session, loading, hasPassword]

@@ -7,7 +7,7 @@ import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, GUTTER, line, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import type { Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
@@ -57,6 +57,8 @@ export function FeedMagazine() {
   const spotlight = rest.slice(0, 4);
   // De inhoudsopgave van nieuw naar oud; wat je al zag staat gedempt.
   const toc = rest;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const heroColor = hero ? friendColor(hueOf(hero), scheme) : friendColor("orange", scheme);
   const heroImg = hero && hero.media.kind === "foto" ? hero.media : null;

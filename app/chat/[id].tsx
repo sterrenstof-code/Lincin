@@ -106,7 +106,7 @@ import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, space } from "@/lib/design/type";
-import { color, friendColor, hueFor, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
   rememberChatPreview,
@@ -1055,6 +1055,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   const t2 = useT();
   const schemeNow = useScheme();
   /** De kleur van de ander (groepen zijn groen), voor de kopcel en het blad. */
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const partner =
     chat?.type === "group"
       ? friendColor("green", schemeNow)

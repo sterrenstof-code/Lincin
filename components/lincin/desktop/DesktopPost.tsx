@@ -15,7 +15,7 @@ import { addEntityComment, listEntityComments, subscribeToEntityComments, type E
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
@@ -82,6 +82,8 @@ export function DesktopPost({ id }: { id: string }) {
   const card = useMemo(() => (p ? fromPost(p) : null), [p]);
   const { number } = useFeedCard(id);
   usePageTitle(card?.title ?? null);
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const hue = hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
   const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
@@ -406,6 +408,8 @@ function Comment({
   const lang = useLang();
   const scheme = useScheme();
   const own = c.user_id === myUserId;
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
   const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
   const name = own ? t.me : displayName(c.author);
   const router = useRouter();
