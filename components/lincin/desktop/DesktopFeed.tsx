@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
+import { useReadCursor } from "@/components/lincin/ReadCursor";
 import { VerticalLabel } from "@/components/lincin/ui";
 import { WhoReacted } from "@/components/lincin/WhoReacted";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
@@ -252,6 +253,7 @@ function Card({
 }) {
   const t = useT();
   const who = useReactionWho(reactions);
+  const read = useReadCursor();
   const lang = useLang();
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
@@ -285,7 +287,11 @@ function Card({
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         {photo ? (
-          <Media media={p.media} height={CARD_H} hue={hue} postId={p.id} myUserId={myUserId} photoFit="ratio" />
+          // De muis wordt hier "post lezen": de hele kaart opent de bijdrage.
+          <View ref={read.ref as never}>
+            <Media media={p.media} height={CARD_H} hue={hue} postId={p.id} myUserId={myUserId} photoFit="ratio" />
+            {read.label}
+          </View>
         ) : (
           <View style={{ flex: 1, minHeight: 0, overflow: "hidden" }} onLayout={(e) => setMediaH(Math.round(e.nativeEvent.layout.height))}>
             {mediaH > 0 ? <Media media={p.media} height={mediaH} hue={hue} postId={p.id} myUserId={myUserId} /> : null}

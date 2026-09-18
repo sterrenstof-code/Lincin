@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
+import { useReadCursor } from "@/components/lincin/ReadCursor";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
 import { VerticalLabel } from "@/components/lincin/ui";
@@ -55,6 +56,7 @@ export function DesktopMagazine() {
   const edition = `${t.edition} ${today.toLocaleDateString(LOCALE[lang], { weekday: "long", day: "numeric", month: "long" })} · № ${isoWeek(today)}`;
   const grouped = hero ? reactions.grouped(hero.id) : [];
   const who = useReactionWho(grouped);
+  const read = useReadCursor();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
@@ -71,6 +73,16 @@ export function DesktopMagazine() {
       <View style={{ flex: 1, minWidth: 0, borderRightWidth: 1.5, borderRightColor: ink, overflow: "hidden", backgroundColor: heroColor.fill }}>
         {heroImg ? <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" /> : null}
         <HeroScrim />
+        {/* De hele foto opent de bijdrage; de muis wordt er "post lezen". */}
+        {hero ? (
+          <Pressable
+            ref={read.ref as never}
+            accessibilityRole="button"
+            accessibilityLabel={`${t.readPost}: ${hero.title}`}
+            onPress={() => f.openPost(hero)}
+            style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}
+          />
+        ) : null}
         <View style={[{ position: "absolute", top: 22, left: 32, right: 32, flexDirection: "row", justifyContent: "space-between", zIndex: 2 }]}>
           <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>{edition}</Text>
           <View style={{ flexDirection: "row", gap: 0 }}>
@@ -146,6 +158,8 @@ export function DesktopMagazine() {
             </View>
           </>
         ) : null}
+        {/* Boven alles, ook boven het masthead; de plek komt van het vlak eronder. */}
+        {read.label}
       </View>
 
       {/* rechts: inhoudsopgave en gesprekken */}
