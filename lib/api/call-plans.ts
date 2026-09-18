@@ -34,6 +34,8 @@ export async function createCallPlan(args: {
   description?: string | null;
   slots: { starts_at: Date; ends_at: Date }[];
   inviteeIds?: string[];
+  /** Gestuurd in een gesprek: dan zien alleen de leden hem (0064). */
+  chatId?: string | null;
 }): Promise<CallPlanRow> {
   const { data: plan, error: planErr } = await supabase
     .from("call_plans")
@@ -41,6 +43,7 @@ export async function createCallPlan(args: {
       user_id: args.userId,
       title: args.title.trim(),
       description: args.description?.trim() ?? null,
+      chat_id: args.chatId ?? null,
     })
     .select("id, user_id, title, description, created_at")
     .single();
@@ -129,10 +132,12 @@ export async function getCallPlanWithDetails(
 }
 
 export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails[]> {
-  // RLS already filters to creator + friends + invitees — just fetch all visible
+  // RLS (0064) laat zien wat je mag zien. Een afspraak uit een gesprek
+  // hoort in dat gesprek, niet in de feed.
   const { data: plans, error } = await supabase
     .from("call_plans")
     .select("id, user_id, title, description, created_at")
+    .is("chat_id", null)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

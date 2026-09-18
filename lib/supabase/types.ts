@@ -542,6 +542,8 @@ export type Database = {
           title: string;
           description: string | null;
           created_at: string;
+          /** 0064 — het gesprek waarin hij gestuurd werd; `null` = feed. */
+          chat_id: string | null;
         };
         Insert: {
           id?: string;
@@ -549,6 +551,7 @@ export type Database = {
           title: string;
           description?: string | null;
           created_at?: string;
+          chat_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["call_plans"]["Insert"]>;
         Relationships: [];

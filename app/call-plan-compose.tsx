@@ -123,6 +123,7 @@ export default function CallPlanComposeScreen() {
         description: description.trim() || null,
         slots: slots.map(slotToDateTimes),
         inviteeIds: invitedIds.length > 0 ? invitedIds : undefined,
+        chatId: chatId ?? null,
       });
       if (chatId) {
         await sendMessage({ chatId, senderId: myUserId, call_plan_id: plan.id, text: `📅 ${plan.title}` });
