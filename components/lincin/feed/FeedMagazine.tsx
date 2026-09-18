@@ -161,7 +161,7 @@ export function FeedMagazine() {
         ) : null}
 
         {/* onderaan: reacties · comment · privaat */}
-        <View style={[{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "center" }]}>
+        <View style={{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "flex-end" }}>
           {grouped.map((r) => (
             <Pressable
               key={r.emoji}
@@ -176,26 +176,29 @@ export function FeedMagazine() {
               </Text>
             </Pressable>
           ))}
-          <View style={{ flex: 1 }} />
-          {/* Wat de muis op desktop zegt, staat hier als knop: "post lezen". */}
-          <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[onImageChip, { backgroundColor: ON_IMAGE }]}>
-            <Mono variant="action" color="#141414" style={{ fontSize: 11, lineHeight: 14 }}>
-              {t.readPost} →
-            </Mono>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={onImageChip}>
-            <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
-              {t.comment}
-              {commentsLabel}
-            </Mono>
-          </Pressable>
-          {f.isMine(hero.authorId) ? null : (
-            <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={onImageChip}>
-              <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
-                {t.privateShort}
+          {/* Rechts, als groep: past het niet op één regel (vier knoppen op
+              een smalle telefoon), dan loopt de groep netjes door op een tweede. */}
+          <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 }}>
+            {/* Wat de muis op desktop zegt, staat hier als knop: "post lezen". */}
+            <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[onImageChip, { backgroundColor: ON_IMAGE }]}>
+              <Mono variant="action" color="#141414" style={{ fontSize: 11, lineHeight: 14 }}>
+                {t.readPost} →
               </Mono>
             </Pressable>
-          )}
+            <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={onImageChip}>
+              <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
+                {t.comment}
+                {commentsLabel}
+              </Mono>
+            </Pressable>
+            {f.isMine(hero.authorId) ? null : (
+              <Pressable accessibilityRole="button" onPress={() => f.privateAbout({ authorId: hero.authorId, name: hero.authorName }, hero)} style={onImageChip}>
+                <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
+                  {t.privateShort}
+                </Mono>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>,
     );
