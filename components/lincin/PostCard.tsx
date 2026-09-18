@@ -6,9 +6,11 @@ import { color, friendColor, line, useScheme, useThemeSpec, type Hue } from "@/l
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
+import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { Media } from "./Media";
 import { BORDER, GUTTER, Head, Initial, Mono, Serif } from "./ui";
+import { WhoReacted } from "./WhoReacted";
 
 /**
  * De post-kaart, variant "7h" (README §Post card).
@@ -80,6 +82,7 @@ export const PostCard = memo(function PostCard({
   const ink = color("ink");
   const edge = line();
   const canOpen = !!post.href;
+  const who = useReactionWho(post.reactable ? reactions : []);
   const strip = spec.stripFilled
     ? { backgroundColor: fc.fill, borderLeftWidth: 0, borderLeftColor: fc.fill }
     : { backgroundColor: color("paper"), borderLeftWidth: 6, borderLeftColor: fc.fill };
@@ -141,6 +144,13 @@ export const PostCard = memo(function PostCard({
         />
       </View>
 
+      {/* wie er reageerde, zoals bij Facebook: "❤️😂 Jij, Johanna en 2 anderen" */}
+      {who.line ? (
+        <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: BORDER, borderTopColor: edge }}>
+          <WhoReacted line={who.line} />
+        </View>
+      ) : null}
+
       {/* actiebalk */}
       <View style={{ flexDirection: "row", height: BAR_H + BORDER, borderTopWidth: BORDER, borderTopColor: edge }}>
         <View
@@ -161,7 +171,7 @@ export const PostCard = memo(function PostCard({
                 <Pressable
                   key={r.emoji}
                   accessibilityRole="button"
-                  accessibilityLabel={`${r.emoji} ${r.count}`}
+                  {...who.chip(r)}
                   accessibilityState={{ selected: r.mine }}
                   onPress={() => onReact(r.emoji)}
                   hitSlop={4}

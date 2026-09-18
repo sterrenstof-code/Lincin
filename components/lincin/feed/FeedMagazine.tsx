@@ -11,6 +11,7 @@ import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/desi
 import { lincinType } from "@/lib/design/type";
 import type { Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
+import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { EmptyFeed } from "./EmptyFeed";
 import { useFeed } from "./useFeed";
@@ -69,6 +70,7 @@ export function FeedMagazine() {
 
   const noFriends = f.empty && f.friendCount === 0;
   const grouped = hero ? reactions.grouped(hero.id) : [];
+  const who = useReactionWho(grouped);
   const commentsLabel = hero?.commentCount ? ` · ${hero.commentCount}` : "";
 
   const sticky: number[] = [];
@@ -169,6 +171,7 @@ export function FeedMagazine() {
             <Pressable
               key={r.emoji}
               accessibilityRole="button"
+              {...who.chip(r)}
               accessibilityState={{ selected: r.mine }}
               onPress={() => reactions.toggle(hero.id, r.emoji)}
               style={[onImageChip, { backgroundColor: r.mine ? "rgba(242,239,232,.25)" : "transparent" }]}

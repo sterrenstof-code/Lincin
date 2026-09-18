@@ -4,10 +4,13 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { VerticalLabel } from "@/components/lincin/ui";
+import { WhoReacted } from "@/components/lincin/WhoReacted";
+import type { GroupedPostReaction } from "@/lib/api/post-reactions";
 import { color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { head, mono, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
+import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed } from "../feed/useFeed";
@@ -242,12 +245,13 @@ function Card({
   width: number;
   number: string;
   hue: Hue;
-  reactions: { emoji: string; count: number; mine: boolean }[];
+  reactions: GroupedPostReaction[];
   onReact: (emoji: string) => void;
   onOpen: () => void;
   myUserId: string;
 }) {
   const t = useT();
+  const who = useReactionWho(reactions);
   const lang = useLang();
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
@@ -297,9 +301,14 @@ function Card({
             </Text>
           ) : null}
         </View>
+        {who.line ? (
+          <View style={{ paddingVertical: 6, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: rule }}>
+            <WhoReacted line={who.line} />
+          </View>
+        ) : null}
         <View style={{ height: 38, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: rule }}>
           {reactions.map((r) => (
-            <Pressable key={r.emoji} accessibilityRole="button" accessibilityLabel={`${r.emoji} ${r.count}`} accessibilityState={{ selected: r.mine }} onPress={() => onReact(r.emoji)} hitSlop={4}>
+            <Pressable key={r.emoji} accessibilityRole="button" {...who.chip(r)} accessibilityState={{ selected: r.mine }} onPress={() => onReact(r.emoji)} hitSlop={4}>
               <Text style={[mono(500), { fontSize: 12, lineHeight: 15, color: r.mine ? ink : dim }]}>
                 {r.emoji} {r.count}
               </Text>

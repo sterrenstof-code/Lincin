@@ -14,6 +14,7 @@ import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/desi
 import { lincinType, mono, serif } from "@/lib/design/type";
 import { useT, type Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
+import { useReactionWho } from "@/lib/lincin/reactors";
 import { useUnread } from "@/lib/lincin/unread";
 
 import { SEEN_OPACITY } from "../feed/FeedMagazine";
@@ -54,6 +55,7 @@ export function DesktopMagazine() {
   const today = new Date();
   const edition = `${t.edition} ${today.toLocaleDateString(LOCALE[lang], { weekday: "long", day: "numeric", month: "long" })} · № ${isoWeek(today)}`;
   const grouped = hero ? reactions.grouped(hero.id) : [];
+  const who = useReactionWho(grouped);
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
@@ -133,7 +135,7 @@ export function DesktopMagazine() {
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {grouped.map((r) => (
-                  <Pressable key={r.emoji} accessibilityRole="button" onPress={() => reactions.toggle(hero.id, r.emoji)} style={[chip, { backgroundColor: r.mine ? "rgba(242,239,232,.25)" : "transparent" }]}>
+                  <Pressable key={r.emoji} accessibilityRole="button" {...who.chip(r)} onPress={() => reactions.toggle(hero.id, r.emoji)} style={[chip, { backgroundColor: r.mine ? "rgba(242,239,232,.25)" : "transparent" }]}>
                     <Text style={[mono(600), { fontSize: 12, lineHeight: 15, color: ON_IMAGE }]}>
                       {r.emoji} {r.count}
                     </Text>

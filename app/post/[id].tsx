@@ -23,8 +23,10 @@ import { useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm } from "@/lib/lincin/model";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
+import { useReactionWho } from "@/lib/lincin/reactors";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
 import { CommentRow } from "@/components/lincin/CommentRow";
+import { WhoReacted } from "@/components/lincin/WhoReacted";
 import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
@@ -106,6 +108,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
   const grouped = reactions.grouped(id);
   const mine = useMemo(() => new Set(grouped.filter((g) => g.mine).map((g) => g.emoji)), [grouped]);
+  const who = useReactionWho(grouped);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -306,7 +309,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                     <Pressable
                       key={g.emoji}
                       accessibilityRole="button"
-                      accessibilityLabel={`${g.emoji} ${g.count}`}
+                      {...who.chip(g)}
                       accessibilityState={{ selected: g.mine }}
                       onPress={() => reactions.toggle(id, g.emoji)}
                       style={{
@@ -360,6 +363,8 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                     </Pressable>
                   ) : null}
               </View>
+
+              <WhoReacted line={who.line} />
 
               {/* comments */}
               <Mono variant="micro" tone="dim" style={{ marginTop: 6 }}>

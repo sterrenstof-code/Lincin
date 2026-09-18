@@ -10,6 +10,7 @@ import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { isLightboxOpen, openCommentImage, openLightbox } from "@/components/lincin/Lightbox";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
+import { WhoReacted } from "@/components/lincin/WhoReacted";
 import { SafeImage } from "@/components/SafeImage";
 import { addEntityComment, listEntityComments, subscribeToEntityComments, type EntityComment } from "@/lib/api/entity-comments";
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
@@ -23,6 +24,7 @@ import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useImageRatio } from "@/lib/lincin/ratio";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
+import { useReactionWho } from "@/lib/lincin/reactors";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
@@ -88,6 +90,7 @@ export function DesktopPost({ id }: { id: string }) {
   const fc = friendColor(hue, scheme);
   const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
   const grouped = reactions.grouped(id);
+  const who = useReactionWho(grouped);
   const commentIds = useMemo(() => (comments.data ?? []).map((c) => c.id), [comments.data]);
   const commentReactions = useCommentReactions(commentIds, myUserId);
 
@@ -292,7 +295,7 @@ export function DesktopPost({ id }: { id: string }) {
               <Pressable
                 key={r.emoji}
                 accessibilityRole="button"
-                accessibilityLabel={`${r.emoji} ${r.count}`}
+                {...who.chip(r)}
                 accessibilityState={{ selected: r.mine }}
                 onPress={() => reactions.toggle(id, r.emoji)}
                 style={{ height: 34, justifyContent: "center", borderWidth: 1.5, borderColor: ink, backgroundColor: r.mine ? ink : "transparent", paddingHorizontal: 10 }}
@@ -317,6 +320,7 @@ export function DesktopPost({ id }: { id: string }) {
               <MonoLink label={`${t.profileOf} ${authorName} →`} active onPress={() => router.push(`/user/${p.author!.username}` as never)} />
             ) : null}
           </View>
+          <WhoReacted line={who.line} />
           {boxOpen ? (
             <View style={{ flexDirection: "row", gap: 4, borderWidth: 1.5, borderColor: ink, padding: 4, alignSelf: "flex-start" }}>
               {POST_EMOJI.map((e) => {

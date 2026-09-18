@@ -5,6 +5,9 @@ import { COMMENT_REACTIONS } from "@/lib/api/comment-reactions";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
 import { color } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
+import { useReactionWho } from "@/lib/lincin/reactors";
+
+import { WhoReacted } from "./WhoReacted";
 
 /**
  * Reacties onder één comment (HANDOFF 2.1 §Comment reactions).
@@ -34,6 +37,7 @@ export function CommentReactions({
   const setOpen = onOpenChange ?? setOwnOpen;
   const ink = color("ink");
   const mine = new Set(reactions.filter((r) => r.mine).map((r) => r.emoji));
+  const who = useReactionWho(reactions);
 
   return (
     <View>
@@ -42,7 +46,7 @@ export function CommentReactions({
           <Pressable
             key={r.emoji}
             accessibilityRole="button"
-            accessibilityLabel={`${r.emoji} ${r.count}`}
+            {...who.chip(r)}
             accessibilityState={{ selected: r.mine }}
             onPress={() => onToggle(r.emoji)}
             style={{
@@ -80,6 +84,7 @@ export function CommentReactions({
           <Text style={{ ...mono(600), fontSize: 15, lineHeight: 18, color: isOpen ? color("paper") : ink }}>☺ +</Text>
         </Pressable>
       </View>
+      <WhoReacted line={who.line} style={{ marginTop: 4 }} />
       {isOpen ? (
         <View
           style={{
