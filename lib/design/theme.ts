@@ -413,7 +413,8 @@ export const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
  * Welke kleur een vriend bezit — in jouw app.
  *
  * Heb je zelf een kleur voor iemand gekozen (op zijn profiel), dan wint
- * die; zie `setHueChoice` hieronder. Anders komt de kleur uit het id zelf,
+ * die in het thema kleur; zie `setHueChoice` hieronder. Magazine kent
+ * alleen de kleurbalk en houdt de eigen kleur van iedereen. Anders komt de kleur uit het id zelf,
  * zodat hij op élk toestel en in élke sessie dezelfde is. Groepen zijn
  * altijd groen (README §01).
  *
@@ -422,7 +423,7 @@ export const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
  */
 export function hueFor(id: string | null | undefined): Hue {
   if (!id) return "orange";
-  return hueChoices[id] ?? defaultHueFor(id);
+  return (theme === "kleur" ? hueChoices[id] : undefined) ?? defaultHueFor(id);
 }
 
 /** De kleur die iemand krijgt als je zelf niets koos. */
