@@ -2,12 +2,7 @@ import { randomBytes } from "@stablelib/random";
 import { generateKeyPair } from "@stablelib/x25519";
 import { XChaCha20Poly1305 } from "@stablelib/xchacha20poly1305";
 
-import {
-  base64ToBytes,
-  bytesToBase64,
-  bytesToString,
-  stringToBytes,
-} from "./base64";
+import { base64ToBytes, bytesToBase64 } from "./base64";
 import { deriveSharedSecret } from "./keys";
 import { initCryptoRandom } from "./random";
 
@@ -73,23 +68,6 @@ export function decryptFromSender(
   const plaintext = aead.open(nonce, ciphertext);
   sharedSecret.fill(0);
   return plaintext;
-}
-
-/** Convenience: encrypt a UTF-8 string for one recipient. */
-export function encryptTextForRecipient(
-  text: string,
-  recipientPublicKey: Uint8Array
-): EncryptedPayload {
-  return encryptForRecipient(stringToBytes(text), recipientPublicKey);
-}
-
-/** Convenience: decrypt and return a UTF-8 string, or null if auth fails. */
-export function decryptTextFromSender(
-  payload: EncryptedPayload,
-  ourSecretKey: Uint8Array
-): string | null {
-  const bytes = decryptFromSender(payload, ourSecretKey);
-  return bytes ? bytesToString(bytes) : null;
 }
 
 /**

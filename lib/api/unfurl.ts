@@ -44,21 +44,6 @@ export function findUrl(text: string): string | null {
   return raw.length > 4 ? raw : null;
 }
 
-/** Is deze tekst in essentie *alleen* een URL? Dan is het een link-vondst. */
-export function isBareUrl(text: string): boolean {
-  const trimmed = text.trim();
-  if (/\s/.test(trimmed)) return false;
-  return /^(https?:\/\/|www\.)/i.test(trimmed);
-}
-
-export function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
 /**
  * Haalt metadata op voor een URL. Faalt zacht: bij een fout krijg je null
  * terug en kan de vondst alsnog geplaatst worden als kale link.
@@ -79,22 +64,4 @@ export async function unfurl(url: string): Promise<LinkPreview | null> {
     console.warn("unfurl", e?.message ?? e);
     return null;
   }
-}
-
-/** "4 min" / "1 u 12" — speelduur voor de badge op een videokaart. */
-export function formatDuration(seconds: number | null | undefined): string | null {
-  if (!seconds || seconds <= 0) return null;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h} u ${String(m).padStart(2, "0")}`;
-  if (m > 0) return `${m}:${String(s).padStart(2, "0")}`;
-  return `0:${String(s).padStart(2, "0")}`;
-}
-
-/** Leestijd op basis van de ruwe woordentelling — 200 wpm. */
-export function formatReadingTime(wordCount: number | null | undefined): string | null {
-  if (!wordCount || wordCount < 120) return null;
-  const minutes = Math.max(1, Math.round(wordCount / 200));
-  return `${minutes} min lezen`;
 }

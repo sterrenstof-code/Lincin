@@ -61,14 +61,3 @@ function b64Value(c: string | undefined): number {
   const idx = B64_CHARS.indexOf(c);
   return idx < 0 ? 0 : idx;
 }
-
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
-
-export function stringToBytes(s: string): Uint8Array {
-  return textEncoder.encode(s);
-}
-
-export function bytesToString(b: Uint8Array): string {
-  return textDecoder.decode(b);
-}

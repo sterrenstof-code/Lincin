@@ -63,7 +63,7 @@ const MEDIA_THUMB = 84;
 
 export const CHAT_RAIL_BREAKPOINT = 900;
 /** Breekpunt waarboven ook de optiekolom rechts meekomt. */
-export const CHAT_OPTIONS_BREAKPOINT = 1280;
+const CHAT_OPTIONS_BREAKPOINT = 1280;
 
 export function ChatWorkspace({
   chatId,

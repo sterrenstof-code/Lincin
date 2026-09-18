@@ -29,7 +29,7 @@ import { markSeen, useSeenPosts } from "@/lib/read-state";
  * hier elk hun eigen blad omheen.
  */
 
-export type FeedView = "friends" | "time";
+type FeedView = "friends" | "time";
 
 export function useFeed() {
   const { session } = useAuth();

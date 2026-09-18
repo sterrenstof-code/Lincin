@@ -13,7 +13,7 @@ import { useWindowDimensions } from "react-native";
  * staat: de URL is waar je bent, en de terugknop van de browser werkt.
  */
 
-export const DESKTOP_MIN = 1100;
+const DESKTOP_MIN = 1100;
 /** De rail in rust. */
 export const RAIL_W = 196;
 /** De rail op volle breedte (bijdrage, gesprek). */
@@ -26,22 +26,13 @@ export const LIST_W = 280;
 /** De commentkolom op een bijdrage. */
 export const COMMENTS_W = 420;
 
-export function isDesktopWidth(width: number): boolean {
+function isDesktopWidth(width: number): boolean {
   return width >= DESKTOP_MIN;
 }
 
 export function useIsDesktop(): boolean {
   const { width } = useWindowDimensions();
   return isDesktopWidth(width);
-}
-
-let desktopNow = false;
-/** De root meldt hier of het venster desktopbreed is. */
-export function setDesktopNow(v: boolean) {
-  desktopNow = v;
-}
-export function isDesktopNow(): boolean {
-  return desktopNow;
 }
 
 /** Een bijdrage: op een telefoon het scherm, op desktop dat scherm op volle breedte. */

@@ -6,9 +6,8 @@ import { secureStorage } from "./storage";
 
 const IDENTITY_PRIVATE_KEY = "identity_private_key_v1";
 const IDENTITY_PUBLIC_KEY = "identity_public_key_v1";
-const DEVICE_ID_KEY = "device_id_v1";
 
-export type IdentityKeyPair = {
+type IdentityKeyPair = {
   publicKey: Uint8Array;
   secretKey: Uint8Array;
 };
@@ -39,13 +38,6 @@ export async function storeIdentity(kp: IdentityKeyPair): Promise<void> {
   await secureStorage.setItem(IDENTITY_PUBLIC_KEY, bytesToBase64(kp.publicKey));
 }
 
-export async function wipeIdentity(): Promise<void> {
-  await secureStorage.removeItem(IDENTITY_PRIVATE_KEY);
-  await secureStorage.removeItem(IDENTITY_PUBLIC_KEY);
-  // We bewaren device_id zodat deze browser dezelfde identity-slot houdt
-  // wanneer iemand later opnieuw reset (geen wildgroei van losse devices).
-}
-
 export function deriveSharedSecret(
   ourSecret: Uint8Array,
   theirPublic: Uint8Array
@@ -69,42 +61,4 @@ export function deriveSharedSecret(
  */
 export function derivePublicFromPrivate(secretKey: Uint8Array): Uint8Array {
   return generateKeyPairFromSeed(secretKey).publicKey;
-}
-
-// ---------- device id ----------
-
-/**
- * Stabiele identifier voor deze browser/toestel. Wordt één keer gegenereerd
- * en bewaard in secureStorage. Wordt gebruikt als sleutel in
- * `recipient_payloads` en als primary key in `profile_devices`.
- */
-export async function getOrCreateDeviceId(): Promise<string> {
-  const existing = await secureStorage.getItem(DEVICE_ID_KEY);
-  if (existing) return existing;
-  const fresh = generateDeviceId();
-  await secureStorage.setItem(DEVICE_ID_KEY, fresh);
-  return fresh;
-}
-
-export async function getDeviceId(): Promise<string | null> {
-  return secureStorage.getItem(DEVICE_ID_KEY);
-}
-
-export async function wipeDeviceId(): Promise<void> {
-  await secureStorage.removeItem(DEVICE_ID_KEY);
-}
-
-function generateDeviceId(): string {
-  if (typeof (globalThis.crypto as any)?.randomUUID === "function") {
-    return (globalThis.crypto as any).randomUUID();
-  }
-  const bytes = new Uint8Array(16);
-  (globalThis.crypto as any).getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  return (
-    hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) +
-    "-" + hex.slice(16, 20) + "-" + hex.slice(20)
-  );
 }

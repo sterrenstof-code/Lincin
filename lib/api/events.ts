@@ -75,7 +75,7 @@ export type EventJoinRequest = {
 };
 
 /** Wat er gebeurde toen je op een join-link tikte. */
-export type JoinEventResult = {
+type JoinEventResult = {
   eventId: string;
   /**
    * joined   je staat in de gastenlijst (open event)
@@ -109,7 +109,7 @@ function randomId(): string {
 const VIDEO_EXTS = new Set(["mp4", "mov", "m4v", "webm", "qt"]);
 
 /** Guess whether a stored path points at a video, from its extension. */
-export function isVideoPath(path: string | null | undefined): boolean {
+function isVideoPath(path: string | null | undefined): boolean {
   if (!path) return false;
   const m = path.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
   return m ? VIDEO_EXTS.has(m[1].toLowerCase()) : false;

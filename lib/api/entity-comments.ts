@@ -188,14 +188,6 @@ export async function addEntityComment(args: {
   } as EntityComment;
 }
 
-export async function deleteEntityComment(commentId: string): Promise<void> {
-  const { error } = await supabase
-    .from("entity_comments")
-    .delete()
-    .eq("id", commentId);
-  if (error) throw error;
-}
-
 export function subscribeToEntityComments(
   entityType: EntityType,
   entityId: string,

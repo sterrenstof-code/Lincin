@@ -39,7 +39,7 @@ import { initCryptoRandom } from "./random";
 const NONCE_BYTES = 24;
 const KEY_BYTES = 32;
 
-export type EncryptedFile = {
+type EncryptedFile = {
   ciphertext: Uint8Array;
   key: Uint8Array;
   nonce: Uint8Array;

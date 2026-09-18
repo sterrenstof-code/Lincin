@@ -171,9 +171,3 @@ const render = ({ children }: { children: ReactNode }) => (
  * server en client heen; de capability-check niet.
  */
 export const stackScreenLayout = Platform.OS === "web" ? render : undefined;
-
-/**
- * Voor de Tabs-navigator. Een tabwissel heeft op native géén enkele
- * animatie, dus hier geldt hij op elk platform.
- */
-export const tabScreenLayout = render;

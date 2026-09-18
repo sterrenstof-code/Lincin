@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { Appearance, Platform } from "react-native";
 
 /**
@@ -67,7 +67,7 @@ export function isLincinTheme(v: unknown): v is LincinTheme {
   return v === "kleur" || v === "magazine";
 }
 
-export type Token =
+type Token =
   // ---- v2 ----
   | "paper"
   | "paper2"
@@ -104,7 +104,7 @@ export type Token =
   | "brand";
 
 /** Doorzichtigheden die per stand of thema verschillen. */
-export type AlphaToken =
+type AlphaToken =
   | "postDim"
   | "postRule"
   | "linePaper"
@@ -121,7 +121,7 @@ type Alphas = Record<AlphaToken, number>;
  * Alle tokennamen, in volgorde. `app/+html.tsx` loopt hier doorheen om de
  * `--p-*`-variabelen uit te schrijven; zie `color()` onderaan.
  */
-export const TOKENS: Token[] = [
+const TOKENS: Token[] = [
   "paper", "paper2", "acid", "red", "line",
   "page", "panel", "paperWarm", "paperLight",
   "shell", "shellSoft",
@@ -133,7 +133,7 @@ export const TOKENS: Token[] = [
   "teal", "gold", "brand",
 ];
 
-export const ALPHA_TOKENS: AlphaToken[] = [
+const ALPHA_TOKENS: AlphaToken[] = [
   "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge",
 ];
 
@@ -240,8 +240,8 @@ const DARK_ALPHA: Alphas = {
   cardEdge: 1,
 };
 
-export const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };
-export const ALPHA: Record<Scheme, Alphas> = { dark: DARK_ALPHA, light: LIGHT_ALPHA };
+const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };
+const ALPHA: Record<Scheme, Alphas> = { dark: DARK_ALPHA, light: LIGHT_ALPHA };
 
 // ===============================================================
 // DE THEMA'S — wat magazine anders doet
@@ -358,12 +358,12 @@ const MAGAZINE: Palette = derive(LIGHT, {
 const MAGAZINE_ALPHA: Alphas = { ...LIGHT_ALPHA, postRule: 0.16, linePaper: 0.16 };
 
 /** De kleuren die gelden voor een stand én een thema. */
-export function paletteFor(s: Scheme, t: LincinTheme): Palette {
+function paletteFor(s: Scheme, t: LincinTheme): Palette {
   if (t === "magazine") return MAGAZINE;
   return PALETTE[s];
 }
 
-export function alphaFor(s: Scheme, t: LincinTheme): Alphas {
+function alphaFor(s: Scheme, t: LincinTheme): Alphas {
   if (t === "magazine") return MAGAZINE_ALPHA;
   return ALPHA[s];
 }
@@ -388,9 +388,9 @@ export type Hue = "orange" | "blue" | "ochre" | "green" | "red" | "acid";
 export const HUES: Hue[] = ["orange", "blue", "ochre", "green", "red", "acid"];
 
 /** Het vlak en de inkt erop. */
-export type FriendColor = { fill: string; ink: string };
+type FriendColor = { fill: string; ink: string };
 
-export const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
+const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
   light: {
     orange: { fill: "#F06A2B", ink: "#141414" },
     blue: { fill: "#2F5BFF", ink: "#F2EFE8" },
@@ -541,7 +541,7 @@ export function paperHex(s: Scheme = getScheme()): string {
   return tripletToHex(paletteFor(s, theme).paper);
 }
 
-export function inkHex(s: Scheme = getScheme()): string {
+function inkHex(s: Scheme = getScheme()): string {
   return tripletToHex(paletteFor(s, theme).ink);
 }
 
@@ -550,11 +550,11 @@ export function inkHex(s: Scheme = getScheme()): string {
 // ===============================================================
 
 /** `paperWarm` → `--c-paper-warm`. */
-export function varName(token: Token): string {
+function varName(token: Token): string {
   return `--c-${token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`).replace(/([a-z])(\d)/g, "$1-$2")}`;
 }
 
-export function alphaVarName(token: AlphaToken): string {
+function alphaVarName(token: AlphaToken): string {
   return `--a-${token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
 }
 
@@ -566,7 +566,7 @@ export function alphaVarName(token: AlphaToken): string {
  * met `var(` begínt. `--p-ink` is gedefinieerd áls `rgb(var(--c-ink) / 1)`
  * en een prop leest `var(--p-ink)`. De definities staan in `app/+html.tsx`.
  */
-export function propVarName(token: Token, alpha?: AlphaToken): string {
+function propVarName(token: Token, alpha?: AlphaToken): string {
   const base = token.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`).replace(/([a-z])(\d)/g, "$1-$2");
   if (!alpha) return `--p-${base}`;
   return `--p-${base}--${alpha.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
@@ -665,11 +665,11 @@ Appearance.addChangeListener(() => {
 });
 
 /** Wat er nú op het scherm staat. */
-export function getScheme(): Scheme {
+function getScheme(): Scheme {
   return scheme;
 }
 
-export function getPreference(): ThemePreference {
+function getPreference(): ThemePreference {
   return preference;
 }
 
@@ -705,11 +705,6 @@ export function setTheme(next: LincinTheme) {
 export function themeSpec(t: LincinTheme = theme): ThemeSpec {
   const s = SPEC[t];
   return { ...s, dark: t === "kleur" && scheme === "dark" };
-}
-
-/** Of het blad donker is: kleur in de donkere stand. */
-export function isDarkSurface(): boolean {
-  return themeSpec().dark;
 }
 
 function subscribe(fn: () => void) {
@@ -833,16 +828,6 @@ export function setHueChoice(id: string, hue: Hue | null) {
 /** Jouw keuzes, meebewegend. */
 export function useHueChoices(): Record<string, Hue> {
   return useSyncExternalStore(subscribeHues, getHueChoices, getHueChoices);
-}
-
-/**
- * `hueFor`, maar als hook: het scherm hertekent als je een kleur kiest.
- * De functie wisselt mee met de keuzes, dus hij mag in een `useMemo`-lijst.
- */
-export function useHueFor(): (id: string | null | undefined) => Hue {
-  const choices = useHueChoices();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => (id: string | null | undefined) => hueFor(id), [choices]);
 }
 
 // ===============================================================

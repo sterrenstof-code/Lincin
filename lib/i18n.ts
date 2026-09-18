@@ -173,16 +173,6 @@ export function setLang(next: Lang) {
   for (const fn of listeners) fn();
 }
 
-/** Native leest de bewaarde taal één tel later; roep dit bij het opstarten. */
-export function loadStoredLang() {
-  if (Platform.OS === "web") return;
-  AsyncStorage.getItem(STORAGE_KEY)
-    .then((raw) => {
-      if (isLang(raw)) setLang(raw);
-    })
-    .catch(() => {});
-}
-
 function subscribe(fn: () => void) {
   listeners.add(fn);
   return () => {

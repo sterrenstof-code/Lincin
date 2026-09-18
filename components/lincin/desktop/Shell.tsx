@@ -43,13 +43,13 @@ import { ChatList, ChatListHead } from "./ChatList";
  * vriendkleur op papier, 14% in donker.
  */
 
-export type ShellMode = "rest" | "feed" | "full";
+type ShellMode = "rest" | "feed" | "full";
 
 const TAB_HREF: Record<Tab, string> = { feed: "/feed", chats: "/chats", events: "/events", you: "/profile" };
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 /** De rail wisselt toestel → licht → donker (prototype `cycleStand`). */
 const STAND_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
-export const DESKTOP_TINT = { light: 0.26, dark: 0.14 };
+const DESKTOP_TINT = { light: 0.26, dark: 0.14 };
 
 export function DesktopShell({
   active,

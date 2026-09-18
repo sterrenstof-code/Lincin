@@ -1,8 +1,6 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
 import { createNotification } from "./notifications";
-import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type CallPlanSlot = {
   id: string;
@@ -147,44 +145,6 @@ export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails
     (plans as CallPlanRow[]).map((p) => getCallPlanWithDetails(p.id))
   );
   return results.filter((p): p is CallPlanWithDetails => p !== null);
-}
-
-/** Realtime: luister op stemwijzigingen voor een call plan. */
-export function subscribeToCallPlanVotes(
-  planId: string,
-  onChange: () => void
-): RealtimeChannel {
-  return supabase
-    .channel(uniqueTopic(`call-plan-votes:${planId}`))
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "call_plan_votes" },
-      onChange
-    )
-    .subscribe();
-}
-
-export async function inviteToCallPlan(args: {
-  callPlanId: string;
-  inviterUserId: string;
-  inviteeIds: string[];
-}): Promise<void> {
-  const rows = args.inviteeIds.map((uid) => ({
-    call_plan_id: args.callPlanId,
-    user_id: uid,
-  }));
-  await supabase
-    .from("call_plan_invites")
-    .upsert(rows, { ignoreDuplicates: true });
-
-  for (const uid of args.inviteeIds) {
-    createNotification({
-      userId: uid,
-      actorId: args.inviterUserId,
-      type: "invited_to_call",
-      postId: args.callPlanId,
-    });
-  }
 }
 
 export async function voteCallPlanSlot(args: {

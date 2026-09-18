@@ -85,7 +85,7 @@ const TITLE_MAX = 56;
  * Bronvermelding wint. Anders is de titel de eerste zin (of regel) van het
  * bijschrift, afgekapt op een woordgrens, en is de rest het bijschrift.
  */
-export function splitTitle(p: PostWithAuthor): { title: string; caption: string; untitled?: boolean } {
+function splitTitle(p: PostWithAuthor): { title: string; caption: string; untitled?: boolean } {
   const caption = (p.caption ?? "").trim();
   const body = (p.body_text ?? "").trim();
   if (p.source_title) {

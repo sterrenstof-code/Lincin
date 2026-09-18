@@ -166,7 +166,7 @@ export async function fetchEarlierMessages(
   return { messages, hasMore: rows.length === limit };
 }
 
-export async function decryptRows(
+async function decryptRows(
   rows: MessageRow[],
   myUserId: string
 ): Promise<DecryptedMessage[]> {

@@ -13,7 +13,7 @@ import { openLightbox, type LightboxPayload } from "./Lightbox";
 import { BORDER, Head, Mono, Serif } from "./ui";
 
 /** Wat de lichtbak over een foto vertelt, naast de foto's zelf. */
-export type ZoomMeta = Omit<LightboxPayload, "uris" | "cacheKeys" | "index">;
+type ZoomMeta = Omit<LightboxPayload, "uris" | "cacheKeys" | "index">;
 
 /**
  * De mediasoorten van een kaart (README §Media kinds).

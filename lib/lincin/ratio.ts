@@ -11,14 +11,14 @@ import { Image } from "react-native";
  * sleutel is het pad als dat er is (zie lib/media.ts).
  */
 
-export const RATIO_MIN = 4 / 5;
-export const RATIO_MAX = 1.91;
+const RATIO_MIN = 4 / 5;
+const RATIO_MAX = 1.91;
 /** Zolang de maat onbekend is: vierkant, het midden van het bereik. */
-export const RATIO_FALLBACK = 1;
+const RATIO_FALLBACK = 1;
 
 const cache = new Map<string, number>();
 
-export function clampRatio(r: number): number {
+function clampRatio(r: number): number {
   if (!r || !isFinite(r)) return RATIO_FALLBACK;
   return Math.max(RATIO_MIN, Math.min(RATIO_MAX, r));
 }

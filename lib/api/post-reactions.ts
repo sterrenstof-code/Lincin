@@ -1,8 +1,4 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
-import { uniqueTopic } from "@/lib/supabase/channel";
-
-export const QUICK_REACTIONS = ["❤️", "👍", "😂", "🔥", "😮", "🎉", "😢"];
 
 export type PostReactionRow = {
   post_id: string;
@@ -16,15 +12,6 @@ export type GroupedPostReaction = {
   userIds: string[];
   mine: boolean;
 };
-
-export async function listReactionsForPost(postId: string): Promise<PostReactionRow[]> {
-  const { data, error } = await supabase
-    .from("post_reactions")
-    .select("post_id, user_id, emoji")
-    .eq("post_id", postId);
-  if (error) throw error;
-  return (data ?? []) as PostReactionRow[];
-}
 
 export async function listReactionsForPosts(postIds: string[]): Promise<PostReactionRow[]> {
   if (postIds.length === 0) return [];
@@ -81,14 +68,4 @@ export function groupPostReactions(
     byEmoji.set(r.emoji, g);
   }
   return Array.from(byEmoji.values()).sort((a, b) => b.count - a.count);
-}
-
-export function subscribeToPostReactions(
-  postId: string,
-  onChange: () => void
-): RealtimeChannel {
-  return supabase
-    .channel(uniqueTopic(`post-reactions:${postId}`))
-    .on("postgres_changes", { event: "*", schema: "public", table: "post_reactions", filter: `post_id=eq.${postId}` }, onChange)
-    .subscribe();
 }

@@ -214,15 +214,15 @@ subscribeTheme(() => {
 // nagemaakt vet — aanvaardbaar voor schermen die nog aan de beurt komen.
 
 /** Alleen voor de grootste maten. */
-export const DISPLAY_FAMILY = FONT.serif;
+const DISPLAY_FAMILY = FONT.serif;
 
 /** Koppen en citaten op leesmaat. */
-export const SERIF_FAMILY = FONT.serif;
+const SERIF_FAMILY = FONT.serif;
 
-export const SERIF_FAMILY_ITALIC = FONT.serifItalic;
+const SERIF_FAMILY_ITALIC = FONT.serifItalic;
 
 /** Neutrale grotesk voor alles wat geen inhoud is. */
-export const SANS_FAMILY = FONT.sans;
+const SANS_FAMILY = FONT.sans;
 
 /** De grotesk van het feed-systeem. */
 export const INTER_FAMILY = FONT.sans;
@@ -684,23 +684,6 @@ export let creamOnDark = {
   muted: color("creamMuted"),
   rule: color("cream", "onDark"),
 };
-
-/**
- * Breekpunt waarop de feed van twee kolommen (zijbalk + hoofdkolom)
- * naar één gestapelde kolom valt. Lager dan `WIDE_BREAKPOINT`, want
- * de zijbalk is smal genoeg om al vanaf 800px naast de inhoud te passen.
- */
-export const FEED_BREAKPOINT = 800;
-
-/**
- * De leesmaat van een kolom tekst.
- *
- * Stond als los getal 760 op drie plekken: de gesprekskolom in de chat, de
- * inhoudskolom van een vondst, en nergens in de kopbalk erboven — waardoor
- * die balk doorliep tot de vensterrand terwijl de tekst eronder al ophield.
- * Een kop die breder is dan zijn eigen pagina leest als een fout.
- */
-export const READING_WIDTH = 760;
 
 /**
  * De bladspiegel: waar een pagina begint en ophoudt.

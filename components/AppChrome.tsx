@@ -35,7 +35,6 @@ import {
 import {
   announce,
   announceDeep,
-  carbon,
   creamOnDark,
   feed,
   FEED_BORDER,
@@ -45,52 +44,6 @@ import {
   sheetWidth,
   space,
 } from "@/lib/design/type";
-
-/**
- * De chrome die boven élke pagina staat.
- *
- * Er zijn **twee standen**, en ze zijn bewust verschillend van vorm — niet
- * dezelfde kop die alleen krimpt:
- *
- *   GROOT     aankondigingsbalk · micro-utilityregel · tabstrip ·
- *             taglinekop · brede woordmerk-plaat
- *   COMPACT   één zwarte balk: klein LINCIN links, de navigatie erín,
- *             en rechts de primaire actie
- *
- * De grote stand hoort bij **de thuispagina** (`/feed`) en nergens anders.
- * Daar is het merk het onderwerp; op elke andere pagina is het onderwerp de
- * pagina zelf, en dan is een affiche van drie rijen boven de inhoud alleen
- * maar ruimte die je van het onderwerp afpakt. Op de feed klapt hij bij het
- * scrollen alsnog dicht naar de compacte balk; alle andere pagina's — de
- * andere tabbladen én de detailpagina's — geven `compact` mee en beginnen
- * én blijven in de balk.
- *
- * Wat hier niet meer **uitgeschreven** staat: alles wat over jou gaat.
- * Meldingen, instellingen, je profiel, iets delen stonden eerder als losse
- * regels en tabs in de kop; ze wonen nu in het persoonlijke blok van de
- * zijbalk (`FeedRail`), en zitten in de balk opgevouwen achter je avatar
- * rechts (`PersonalMenu`). De kop navigeert tussen de rubrieken van de
- * uitgave — die zijn voor iedereen hetzelfde; je meldingen zijn dat niet.
- *
- * De tabs dragen wél een teller, maar alleen waar die eerlijk is: zie
- * `useTabBadges`.
- *
- * Beide standen dragen op web dezelfde `view-transition-name` (zie
- * `chromeTag`). Bij een navigatie morpht de browser de ene kop dus naar de
- * andere, net zoals hij dat met een hero-beeld doet: de grote kop krimpt
- * naar de balk in plaats van eronder weg te vallen.
- *
- * Waar de kop precies hangt — sticky ín de scroller op web, absoluut
- * verankerd op native — staat in PageScroll, met de reden erbij.
- */
-
-/**
- * De bladspiegel loopt tot de schermrand. Er is bewust geen maximum meer:
- * dit ontwerp is een affiche, geen leeskolom, en een cap van 1280 liet op
- * een breed scherm alleen lavendel goot over. Losse tekstblokken houden hun
- * eigen leesmaat via `maxWidth` op de tekst zelf — daar hoort regellengte.
- */
-export const PAGE_MAX: number | undefined = undefined;
 
 /**
  * Hoogte van de balk.
@@ -112,7 +65,7 @@ const BAR_H = 50;
  * anders schuift het achter de kop weg. Vandaar dat deze maat geëxporteerd
  * wordt in plaats van dat elke pagina hem raadt.
  */
-export const CHROME_COMPACT_H = BAR_H + 18;
+const CHROME_COMPACT_H = BAR_H + 18;
 
 /** De échte routes uit `app/(app)/_layout.tsx` — geen verzonnen navigatie. */
 // `as const satisfies`: de literals blijven behouden (nodig als React-key
@@ -320,94 +273,6 @@ export function useChromeScroll() {
   );
 
   return { progress, onScroll, scrollEventThrottle: 16 };
-}
-
-// ---------------------------------------------------------------
-// Aankondigingsbalk
-// ---------------------------------------------------------------
-
-/**
- * De oranje balk bovenaan — de énige plek waar het warme oranje
- * (`announce`) nog voorkomt. Alle andere accenten staan in het rood
- * (`flame`). Twee tokennamen, zodat een zoek-vervang op het rood deze balk
- * niet meeneemt.
- */
-const DEFAULT_ANNOUNCEMENT = "Nieuw: deel een vondst rechtstreeks vanuit een andere app ↗";
-
-export function AnnouncementBar({
-  message = DEFAULT_ANNOUNCEMENT,
-  onPress,
-  wide = true,
-}: {
-  message?: string | null;
-  onPress?: () => void;
-  /** Voor de bladspiegel; zie hieronder. */
-  wide?: boolean;
-}) {
-  const [dismissed, setDismissed] = useState(false);
-  if (!message || dismissed) return null;
-
-  return (
-    <View
-      style={{
-        /**
-         * Ook deze strook staat op de bladspiegel.
-         *
-         * Hij liep van vensterrand tot vensterrand terwijl de kop eronder
-         * bij 1250 ophield — en juist omdat hij fel oranje is, was hij het
-         * eerste wat je zag afwijken. Een blad heeft één kolom; een strook
-         * die daarbuiten valt hoort bij een andere pagina.
-         */
-        width: "100%",
-        maxWidth: sheetWidth(wide),
-        alignSelf: "center",
-        backgroundColor: announce,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 9,
-        paddingHorizontal: 12,
-      }}
-    >
-      <Pressable onPress={onPress} style={{ flex: 1 }} disabled={!onPress}>
-        <Text
-          style={[
-            feedType.label,
-            {
-              fontSize: 12,
-              fontWeight: "700",
-              letterSpacing: 0.35,
-              /**
-               * Inkt op oranje, en bewust niet de `text-cream` die §2's
-               * tabel bij `bg-announce` noemt.
-               *
-               * Die tabel gaat over gevúlde knoppen: crème op `announce`
-               * haalt ongeveer 3:1, en dat is genoeg voor een label van 15
-               * punten in een knop. Dit is een strook van 12 punten vet over
-               * de volle breedte, en daar haalt inkt ruim 5:1 waar crème
-               * blijft steken. Precies dezelfde afweging als `flame` tegen
-               * `flameDeep`: onder een bepaalde maat wint het contrast van
-               * de tabel.
-               *
-               * `carbon` en geen `#1A0A05`: die waarde is in béide standen
-               * hetzelfde, dus er verandert niets aan het beeld — behalve
-               * dat hij nu uit §2 komt en niet uit een regel code.
-               */
-              color: carbon.DEFAULT,
-              textAlign: "center",
-            },
-          ]}
-          numberOfLines={2}
-        >
-          {message}
-        </Text>
-      </Pressable>
-      <Pressable onPress={() => setDismissed(true)} hitSlop={10} style={{ paddingLeft: 10 }}>
-        <Text style={[feedType.label, { fontSize: 13, fontWeight: "700", color: carbon.DEFAULT }]}>
-          ✕
-        </Text>
-      </Pressable>
-    </View>
-  );
 }
 
 // ---------------------------------------------------------------

@@ -59,7 +59,7 @@ import {
  * lelijke vraag nog altijd beter dan een vraag die niet gesteld wordt.
  */
 
-export type ConfirmOptions = {
+type ConfirmOptions = {
   affirmativeLabel?: string;
   destructive?: boolean;
 };

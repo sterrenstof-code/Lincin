@@ -55,7 +55,7 @@ export function Skeleton({
 // ----- Preset shapes -----
 
 /** Single skeleton row matching a friend / chat list item. */
-export function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
+function SkeletonListRow({ isLast = false }: { isLast?: boolean }) {
   return (
     <View
       style={{
@@ -90,39 +90,6 @@ export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
     <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonListRow key={i} isLast={i === rows - 1} />
-      ))}
-    </View>
-  );
-}
-
-/** Skeleton for one full feed post card. */
-export function SkeletonPostCard() {
-  return (
-    <View style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}>
-      <View className="flex-row items-center px-4 py-3">
-        <Skeleton className="w-11 h-11" />
-        <View className="flex-1 ml-3">
-          <Skeleton className="w-32 h-3.5" />
-          <View className="h-1.5" />
-          <Skeleton className="w-20 h-3" />
-        </View>
-      </View>
-      <Skeleton style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} />
-      <View className="px-4 py-3">
-        <Skeleton className="w-3/4 h-3.5" />
-      </View>
-    </View>
-  );
-}
-
-/** 3-column gallery skeleton for the user profile page. */
-export function SkeletonGallery({ tiles = 6 }: { tiles?: number }) {
-  return (
-    <View className="flex-row flex-wrap" style={{ marginHorizontal: -3 }}>
-      {Array.from({ length: tiles }).map((_, i) => (
-        <View key={i} className="w-1/3 p-[3px]">
-          <Skeleton style={{ aspectRatio: 1 }} />
-        </View>
       ))}
     </View>
   );

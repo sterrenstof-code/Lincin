@@ -61,35 +61,6 @@ export async function leaveChat(chatId: string, myUserId: string): Promise<void>
   if (error) throw error;
 }
 
-/**
- * Verberg een chat voor mij — WhatsApp-archive stijl. De chat verdwijnt uit
- * mijn lijst maar verschijnt opnieuw zodra de andere persoon iets stuurt
- * (filter in listMyChats vergelijkt hidden_at met chat.last_message_at).
- *
- * Niets wordt verwijderd, voor de andere partij verandert er niets.
- */
-export async function hideChat(chatId: string, myUserId: string): Promise<void> {
-  const { error } = await supabase
-    .from("chat_members")
-    .update({ hidden_at: new Date().toISOString() })
-    .eq("chat_id", chatId)
-    .eq("user_id", myUserId);
-  if (error) throw error;
-}
-
-/**
- * Verwijder een 1:1 chat hard voor alle deelnemers. De delete-policy op
- * `chats` checkt dat type='direct' en dat ik member ben. CASCADE-FK's
- * ruimen messages en chat_members op.
- *
- * Werkt NIET op groepen — daar moet je leaveChat() gebruiken. Server-side
- * RLS blokkeert het anders ook.
- */
-export async function deleteChatForEveryone(chatId: string): Promise<void> {
-  const { error } = await supabase.from("chats").delete().eq("id", chatId);
-  if (error) throw error;
-}
-
 /** Mark a chat as read up to "now" for the current user. */
 export async function markChatRead(chatId: string): Promise<void> {
   const { error } = await supabase.rpc("mark_chat_read", { p_chat_id: chatId });

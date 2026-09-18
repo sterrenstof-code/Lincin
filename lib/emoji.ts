@@ -1,4 +1,4 @@
-export const EMOTICON_MAP: [RegExp, string][] = [
+const EMOTICON_MAP: [RegExp, string][] = [
   [/:-?\)/g,  "😊"], [/:-?D/g,   "😄"], [/:-?\(/g,  "😔"],
   [/;-?\)/g,  "😉"], [/:-?P/gi,  "😛"], [/:-?\*/g,  "😘"],
   [/:-?O/gi,  "😮"], [/:-?\|/g,  "😐"], [/>:-?\(/g, "😠"],
@@ -7,7 +7,7 @@ export const EMOTICON_MAP: [RegExp, string][] = [
   [/:-?X/gi,  "🤐"], [/O:-?\)/g, "😇"], [/:-?S/gi,  "😖"],
 ];
 
-export const EMOJI_SHORTCODES: { name: string; emoji: string }[] = [
+const EMOJI_SHORTCODES: { name: string; emoji: string }[] = [
   { name: "thumbsup", emoji: "👍" }, { name: "+1", emoji: "👍" },
   { name: "thumbsdown", emoji: "👎" }, { name: "-1", emoji: "👎" },
   { name: "heart", emoji: "❤️" }, { name: "red_heart", emoji: "❤️" },

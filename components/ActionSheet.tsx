@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { ModalShell } from "@/components/ModalShell";
 import { feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 
-export type ActionSheetAction = {
+type ActionSheetAction = {
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
   destructive?: boolean;

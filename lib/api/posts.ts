@@ -31,21 +31,7 @@ export type FindKind =
   | "fact"      // weetje
   | "idea"      // bouw-/ontwerpidee
   | "quote"     // 0056 — een zin, groot gezet
-  | "swatch";   // 0056 — een kleur, en verder niets
-
-/** Labels voor de kicker-regel boven elke vondst. */
-export const KIND_LABELS: Record<FindKind, string> = {
-  note: "Tekst",
-  image: "Beeld",
-  link: "Artikel",
-  video: "Video",
-  music: "Muziek",
-  fragment: "Fragment",
-  fact: "Weetje",
-  idea: "Idee",
-  quote: "Citaat",
-  swatch: "Kleur",
-};
+  | "swatch";
 
 export type PostRow = {
   id: string;
@@ -78,7 +64,7 @@ export type PostRow = {
 };
 
 /** Waar een vondst terechtkomt. Zie `visibility` hierboven. */
-export type PostVisibility = "feed" | "profile";
+type PostVisibility = "feed" | "profile";
 
 /**
  * De vier maten die een tegel op het moodboard kan hebben.
@@ -88,13 +74,7 @@ export type PostVisibility = "feed" | "profile";
  * maat heeft. Dezelfde afweging als de twee beeldverhoudingen van de tegel
  * in de feed.
  */
-export type TileSpan = "1x1" | "2x1" | "1x2" | "2x2";
-
-/** Breedte en hoogte in cellen, uit de opgeslagen tekst. */
-export function spanCells(span: TileSpan): { w: number; h: number } {
-  const [w, h] = span.split("x").map((n) => Number(n) || 1);
-  return { w, h };
-}
+type TileSpan = "1x1" | "2x1" | "1x2" | "2x2";
 
 export type PostWithAuthor = PostRow & {
   author: Profile | null;
@@ -167,11 +147,11 @@ const POSTS_BUCKET = "posts";
  * niet op; sinds notities opmaak kregen en naar `body_text` schrijven, was
  * de pagina leeg. Precies waar de zin hierboven voor waarschuwde.
  */
-export const POST_COLUMNS =
+const POST_COLUMNS =
   "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span, swatch_hex";
 
 /** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
-export function normalizeRow(row: any): PostRow {
+function normalizeRow(row: any): PostRow {
   return {
     ...row,
     kind: (row.kind ?? (row.link_url ? "link" : row.image_path ? "image" : "note")) as FindKind,
@@ -189,7 +169,7 @@ export function normalizeRow(row: any): PostRow {
 }
 
 /** De toegestane maten, als lijst — gelijk aan de check in 0055. */
-export const TILE_SPANS: TileSpan[] = ["1x1", "2x1", "1x2", "2x2"];
+const TILE_SPANS: TileSpan[] = ["1x1", "2x1", "1x2", "2x2"];
 
 function extFromUri(uri: string, fallback = "jpg"): string {
   const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
@@ -218,14 +198,6 @@ function contentTypeForExt(ext: string): string {
     default:
       return "image/jpeg";
   }
-}
-
-/** De extensies die de bucket sinds 0055 als bewegend beeld aanneemt. */
-const VIDEO_EXTS = new Set(["mp4", "m4v", "mov", "webm"]);
-
-export function isVideoUri(uri: string): boolean {
-  const m = uri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
-  return !!m && VIDEO_EXTS.has(m[1].toLowerCase());
 }
 
 /** Normaliseert tags: kleine letters, ontdubbeld, max 6. */
@@ -418,16 +390,6 @@ export async function createFind(args: {
   return normalizeRow(data);
 }
 
-/** @deprecated Gebruik `createFind`. Blijft bestaan voor oudere callers. */
-export async function createPost(args: {
-  userId: string;
-  imageUri?: string;
-  caption?: string | null;
-  linkUrl?: string | null;
-}): Promise<PostRow> {
-  return createFind(args);
-}
-
 // -------------------------------------------------------
 // Lezen
 // -------------------------------------------------------
@@ -531,7 +493,7 @@ async function attachAlbums(
  * carrousel heeft ze nodig als cachesleutel, en zonder die sleutel haalt
  * hij dezelfde foto opnieuw op zodra de ondertekening ververst.
  */
-export async function getAlbumUrls(
+async function getAlbumUrls(
   postId: string
 ): Promise<{ urls: string[]; paths: string[] }> {
   const { data } = await supabase
@@ -673,7 +635,7 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
   }));
 }
 
-export async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
+async function listFeedPosts(limit = 50): Promise<PostWithAuthor[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(POST_COLUMNS)
@@ -745,68 +707,6 @@ export async function listUserPosts(userId: string, limit = 50): Promise<PostWit
 }
 
 /**
- * De drie knoppen van het moodboard.
- *
- * Alle drie hetzelfde patroon: één kolom, `eq("user_id")` erbij zodat de
- * bewerking niet alleen door RLS maar ook door de query zelf begrensd is,
- * en de bijgewerkte rij terug zodat de aanroeper niet hoeft te raden wat
- * er nu staat. De policy uit 0053 maakt dit überhaupt mogelijk — vóór die
- * migratie weigerde RLS élke update op `posts` zonder een fout te geven.
- */
-export async function setPostTileSpan(
-  postId: string,
-  userId: string,
-  span: TileSpan
-): Promise<void> {
-  const { error } = await supabase
-    .from("posts")
-    .update({ tile_span: span })
-    .eq("id", postId)
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
-/** `null` maakt hem los; een tijdstempel prikt hem vast. */
-export async function setPostPinned(
-  postId: string,
-  userId: string,
-  pinned: boolean
-): Promise<void> {
-  const { error } = await supabase
-    .from("posts")
-    .update({ pinned_at: pinned ? new Date().toISOString() : null })
-    .eq("id", postId)
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
-export async function setPostVisibility(
-  postId: string,
-  userId: string,
-  visibility: PostVisibility
-): Promise<void> {
-  const { error } = await supabase
-    .from("posts")
-    .update({ visibility })
-    .eq("id", postId)
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
-/** Vondsten gefilterd op tag — voert de filterchips bovenaan de feed. */
-export async function listPostsByTag(tag: string, limit = 50): Promise<PostWithAuthor[]> {
-  const { data, error } = await supabase
-    .from("posts")
-    .select(POST_COLUMNS)
-    .eq("visibility", "feed")
-    .contains("tags", [tag.toLowerCase()])
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return hydrate((data ?? []).map(normalizeRow));
-}
-
-/**
  * Een vondst bijwerken nadat hij geplaatst is.
  *
  * `updatePostCaption` hiernaast raakt alleen het onderschrift, en dat is
@@ -848,14 +748,6 @@ export async function updatePost(
   if (!data || data.length === 0) {
     throw new Error("Deze vondst kon niet bijgewerkt worden — is hij van jou?");
   }
-}
-
-export async function updatePostCaption(postId: string, caption: string): Promise<void> {
-  const { error } = await supabase
-    .from("posts")
-    .update({ caption: caption.trim() || null })
-    .eq("id", postId);
-  if (error) throw error;
 }
 
 /** Accepteert elk object met minstens id + image_path — callers geven vaak een hele rij mee. */
@@ -963,20 +855,6 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return [...memories, ...rest];
-}
-
-/** Alle tags die in de zichtbare feed voorkomen, op frequentie gesorteerd. */
-export function collectTags(items: FeedItem[]): string[] {
-  const counts = new Map<string, number>();
-  for (const item of items) {
-    if (item.type !== "post" && item.type !== "memory") continue;
-    for (const tag of item.data.tags ?? []) {
-      counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([tag]) => tag);
 }
 
 function cryptoRandomId(): string {

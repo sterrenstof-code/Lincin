@@ -37,10 +37,10 @@ export type Profile = {
  * kloppen en op de zesde niet, en dan is er één scherm waar je plaat het
  * niet doet zonder dat iets dat meldt.
  */
-export const PROFILE_COLUMNS =
+const PROFILE_COLUMNS =
   "id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio, hero_url, links";
 
-export const USERNAME_REGEX = /^[a-z0-9._]+$/;
+const USERNAME_REGEX = /^[a-z0-9._]+$/;
 
 /**
  * Validate a username candidate against client-side rules. Returns null
@@ -74,30 +74,6 @@ export async function searchProfilesByUsername(
 
   const { data, error } = await req;
   if (error) throw error;
-  return data ?? [];
-}
-
-/**
- * Zoek profielen voor de @-suggesties. Anders dan
- * `searchProfilesByUsername` kijkt dit ook in de weergavenaam en ook
- * midden in een woord: je typt zelden de eerste letters van een handle,
- * je typt de naam zoals je die kent.
- */
-export async function searchProfilesForMention(
-  query: string,
-  excludeUserId?: string,
-  limit = 8
-): Promise<Profile[]> {
-  const q = query.trim().toLowerCase();
-  const cols = PROFILE_COLUMNS;
-
-  let req = supabase.from("profiles").select(cols).limit(limit);
-  if (q) req = req.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
-  else req = req.order("last_seen_at", { ascending: false, nullsFirst: false });
-  if (excludeUserId) req = req.neq("id", excludeUserId);
-
-  const { data, error } = await req;
-  if (error) return [];
   return data ?? [];
 }
 
@@ -172,36 +148,6 @@ export async function uploadAvatar(
 
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
   // Voeg een cache-buster toe zodat de nieuwe foto meteen zichtbaar is.
-  return `${data.publicUrl}?t=${Date.now()}`;
-}
-
-/**
- * De plaat bovenaan het profiel.
- *
- * Zelfde bucket als de avatar, ander pad. Dat kan omdat de policies uit
- * 0028 op de *map* staan (`{user_id}/…`) en niet op de bestandsnaam — dus
- * er is geen tweede bucket, geen tweede set rechten, en niets wat uit
- * elkaar kan lopen.
- *
- * Wel een aparte functie en geen `uploadAvatar(..., name)`: de twee hebben
- * een andere bedoeling en een andere maat, en een gedeelde functie met een
- * naam-parameter nodigt uit om er ooit een derde ding doorheen te duwen.
- */
-export async function uploadProfileHero(
-  userId: string,
-  fileBytes: Uint8Array<ArrayBuffer>,
-  mimeType: string
-): Promise<string> {
-  const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
-  const path = `${userId}/hero.${ext}`;
-  const blob = new Blob([fileBytes], { type: mimeType });
-
-  const { error } = await supabase.storage
-    .from("avatars")
-    .upload(path, blob, { contentType: mimeType, upsert: true });
-  if (error) throw error;
-
-  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 

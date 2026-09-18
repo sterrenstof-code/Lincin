@@ -1,5 +1,4 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import type { ReactNode } from "react";
 import {
   Pressable,
@@ -172,84 +171,6 @@ export function Meta({
   );
 }
 
-/**
- * De regel boven (of naast) elke vondst: SOORT · DELER · TIJD.
- * `stacked` zet ze onder elkaar — dat is de labelkolom op desktop.
- */
-export function Kicker({
-  parts,
-  tone = "page",
-  right,
-  stacked = false,
-}: {
-  parts: (string | null | undefined)[];
-  tone?: Tone;
-  right?: ReactNode;
-  stacked?: boolean;
-}) {
-  const visible = parts.filter((p): p is string => !!p && p.length > 0);
-
-  if (stacked) {
-    return (
-      <View>
-        {visible.map((part, i) => (
-          <Meta key={`${part}-${i}`} tone={tone} dim={i > 0} strong={i === 0}>
-            {part}
-          </Meta>
-        ))}
-        {right ? <View className="mt-2">{right}</View> : null}
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-row items-center">
-      <View className="flex-1 flex-row items-center flex-wrap">
-        {visible.map((part, i) => (
-          <View key={`${part}-${i}`} className="flex-row items-center">
-            {i > 0 && (
-              <Meta tone={tone} dim style={{ marginHorizontal: 6 }}>
-                ·
-              </Meta>
-            )}
-            <Meta tone={tone} dim={i > 0} strong={i === 0}>
-              {part}
-            </Meta>
-          </View>
-        ))}
-      </View>
-      {right}
-    </View>
-  );
-}
-
-/** Rubriekkop: label links, zware lijn eronder. */
-export function SectionHead({
-  label,
-  right,
-  tone = "page",
-}: {
-  label: string;
-  right?: string;
-  tone?: Tone;
-}) {
-  return (
-    <View>
-      <View className="flex-row items-end justify-between px-6 pb-2.5 pt-9">
-        <Meta tone={tone} strong>
-          {label}
-        </Meta>
-        {right ? (
-          <Meta tone={tone} dim>
-            {right}
-          </Meta>
-        ) : null}
-      </View>
-      <Rule tone={tone} strong />
-    </View>
-  );
-}
-
 // ---------------------------------------------------------------
 // Interactie
 // ---------------------------------------------------------------
@@ -267,52 +188,6 @@ export function Arrow({
   return (
     <View style={{ transform: [{ rotate: "-45deg" }] }}>
       <Ionicons name="arrow-forward" size={size} color={textColor(tone, dim)} />
-    </View>
-  );
-}
-
-/** Volle-breedte klikbare regel met pijl rechts en haarlijn eronder. */
-export function ArrowRow({
-  title,
-  meta,
-  onPress,
-  tone = "page",
-  serif = true,
-}: {
-  title: string;
-  meta?: string;
-  onPress: () => void;
-  tone?: Tone;
-  serif?: boolean;
-}) {
-  return (
-    <View>
-      <Pressable
-        onPress={onPress}
-        className={`flex-row items-center px-6 py-5 ${
-          tone === "dark" ? "active:bg-carbon-soft" : "active:bg-page-alt"
-        }`}
-      >
-        <View className="flex-1 pr-5">
-          <Text
-            style={[
-              serif ? type.headlineSmall : type.body,
-              { color: tone === "dark" ? page.DEFAULT : carbon.DEFAULT },
-            ]}
-          >
-            {title}
-          </Text>
-          {meta ? (
-            <View className="mt-1">
-              <Meta tone={tone} dim>
-                {meta}
-              </Meta>
-            </View>
-          ) : null}
-        </View>
-        <Arrow tone={tone} dim />
-      </Pressable>
-      <Rule tone={tone} />
     </View>
   );
 }
@@ -388,59 +263,5 @@ export function BoxButton({
         {label}
       </Text>
     </Pressable>
-  );
-}
-
-/** Tags, gescheiden door een schuine streep. */
-export function TagRow({ tags, tone = "page" }: { tags: string[]; tone?: Tone }) {
-  if (!tags || tags.length === 0) return null;
-  return (
-    <View className="flex-row flex-wrap items-center mt-4">
-      {tags.map((t, i) => (
-        <View key={t} className="flex-row items-center">
-          {i > 0 && (
-            <Meta tone={tone} dim style={{ marginHorizontal: 6 }}>
-              /
-            </Meta>
-          )}
-          <Meta tone={tone} dim>
-            {t}
-          </Meta>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------
-// Merk
-// ---------------------------------------------------------------
-
-/**
- * Het merk in de kop: het muntlogo plus het woordmerk in de display-serif.
- * Verder staat er niets bovenaan — geen scherm-titel, geen ondertitel.
- * De inhoud is de titel.
- */
-export function Logo({ tone = "page" }: { tone?: Tone }) {
-  return (
-    <View className="flex-row items-center">
-      <Image
-        source={require("../assets/images/logo-master.png")}
-        style={{ width: 24, height: 24 }}
-        contentFit="contain"
-        transition={0}
-      />
-      <Text
-        style={[
-          type.wordmark,
-          {
-            color: tone === "dark" ? page.DEFAULT : carbon.DEFAULT,
-            marginLeft: 9,
-          },
-        ]}
-      >
-        Lincin
-      </Text>
-    </View>
   );
 }

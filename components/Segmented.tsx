@@ -25,7 +25,7 @@ import {
  * andere en niemand ziet waaróm.
  */
 
-export type SegmentedOption<T extends string> = {
+type SegmentedOption<T extends string> = {
   value: T;
   label: string;
   /** Een icoon uit de set. Gebruik `glyph` als de tekening eigen is. */

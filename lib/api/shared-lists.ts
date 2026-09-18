@@ -168,15 +168,6 @@ export async function deleteListItem(itemId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function deleteSharedList(listId: string): Promise<void> {
-  const { error } = await supabase.from("shared_lists").delete().eq("id", listId);
-  if (error) throw error;
-}
-
-export async function addListMember(listId: string, userId: string): Promise<void> {
-  await supabase.from("list_members").upsert({ list_id: listId, user_id: userId }, { ignoreDuplicates: true });
-}
-
 export function subscribeToListItems(listId: string, onChange: () => void): RealtimeChannel {
   return supabase
     .channel(uniqueTopic(`list-items:${listId}`))

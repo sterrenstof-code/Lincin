@@ -19,7 +19,6 @@ import { installPageTransitions } from "@/lib/page-transition";
 import { ConfirmProvider } from "@/lib/confirm";
 import { ToastProvider } from "@/lib/toast";
 import { loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/design/theme";
-import { setDesktopNow, useIsDesktop } from "@/lib/lincin/desktop";
 import { desk, FONT_FILES } from "@/lib/design/type";
 import { useFonts } from "expo-font";
 import { LightboxHost } from "@/components/lincin/Lightbox";
@@ -66,8 +65,6 @@ const themedScreenLayout = ({ children }: { children: ReactNode }) => <ThemedScr
 export default function RootLayout() {
   const scheme = useScheme();
   const spec = useThemeSpec();
-  // Boven 1100px opent een kaart het paneel rechts in plaats van een scherm.
-  setDesktopNow(useIsDesktop());
   /**
    * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
    * (`app/+html.tsx`) en is dit meteen klaar; op native laden ze hier, en

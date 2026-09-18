@@ -44,7 +44,7 @@ const KEY = "lincin.chat-previews.v1";
 /** Zoveel gesprekken onthouden we; de rest valt terug op het aantal. */
 const MAX = 100;
 
-export type ChatPreview = {
+type ChatPreview = {
   /** Wat er staat. Al ingekort tot iets dat op één regel past. */
   text: string;
   /** Wie het zei — leeg als jij het was; de lijst zet er dan "Jij:" voor. */
@@ -101,14 +101,6 @@ export async function rememberChatPreview(chatId: string, preview: ChatPreview) 
     const oldestFirst = ids.sort((a, b) => (store[a].at < store[b].at ? -1 : 1));
     for (const id of oldestFirst.slice(0, ids.length - MAX)) delete store[id];
   }
-  await persist(store);
-}
-
-/** Weghalen zodra een gesprek verdwijnt, zodat er geen wees achterblijft. */
-export async function forgetChatPreview(chatId: string) {
-  const store = { ...(await load()) };
-  if (!(chatId in store)) return;
-  delete store[chatId];
   await persist(store);
 }
 

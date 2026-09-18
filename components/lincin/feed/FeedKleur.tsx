@@ -523,7 +523,7 @@ function TimeBand({ group: g }: { group: TimeGroup }) {
 // Het einde, en de lege staat
 // ---------------------------------------------------------------
 
-export function EndCard({ onCompose }: { onCompose: () => void }) {
+function EndCard({ onCompose }: { onCompose: () => void }) {
   const t = useT();
   return (
     <View style={{ paddingHorizontal: GUTTER, paddingTop: 18, paddingBottom: 20, gap: 12, borderTopWidth: BORDER, borderTopColor: line() }}>

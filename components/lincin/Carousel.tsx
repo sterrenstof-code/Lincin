@@ -40,7 +40,7 @@ import { PlayGlyph } from "./Media";
  * en streepjes weg omdat de bladzijde ze zelf tekent.
  */
 
-export const CHIP_BG = "rgba(10,10,9,.74)";
+const CHIP_BG = "rgba(10,10,9,.74)";
 export const LB_PAPER = "#F2EFE8";
 
 export function Carousel({

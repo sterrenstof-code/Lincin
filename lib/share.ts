@@ -5,7 +5,7 @@ import { Platform, Share } from "react-native";
  * Cross-platform share/copy helpers. We try the platform's native share sheet
  * first, then fall back to copying to clipboard.
  */
-export type ShareResult = "shared" | "copied" | "cancelled" | "failed";
+type ShareResult = "shared" | "copied" | "cancelled" | "failed";
 
 export async function shareText(args: {
   title?: string;
@@ -71,15 +71,4 @@ function publicBase(): string {
  */
 export function buildAddFriendUrl(username: string): string {
   return `${publicBase()}/user/${encodeURIComponent(username)}`;
-}
-
-/**
- * De link naar één vondst.
- *
- * De feed had een knop met "Delen ↗" erop en er was in de hele app geen
- * enkele manier om een vondst te delen — die knop deed iets anders. Zie
- * `FindHero` in components/FindBody.tsx.
- */
-export function buildPostUrl(postId: string): string {
-  return `${publicBase()}/post/${encodeURIComponent(postId)}`;
 }

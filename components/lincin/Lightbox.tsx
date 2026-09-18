@@ -83,7 +83,7 @@ export function isLightboxOpen(): boolean {
   return current !== null;
 }
 
-export function closeLightbox() {
+function closeLightbox() {
   current = null;
   listeners.forEach((fn) => fn());
 }

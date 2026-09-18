@@ -17,8 +17,6 @@ export type GroupedReaction = {
   mine: boolean;
 };
 
-export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉", "👀"];
-
 export async function listReactionsForMessages(
   messageIds: string[]
 ): Promise<ReactionRow[]> {

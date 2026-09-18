@@ -32,7 +32,7 @@ const TTL_SECONDS = 60 * 60 * 24 * 7; // 7 dagen
 /** Marge: een URL die bijna verloopt geven we niet meer uit. */
 const REFRESH_MARGIN_MS = 60 * 60 * 1000; // 1 uur
 
-export type ImageSize = {
+type ImageSize = {
   width: number;
   height?: number;
   quality?: number;

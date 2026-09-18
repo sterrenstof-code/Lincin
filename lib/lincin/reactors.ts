@@ -19,7 +19,7 @@ import { useToast } from "@/lib/toast";
  */
 
 /** Namen bij user-ids; jijzelf heet "Jij". Eén vraag per set ids, vijf minuten onthouden. */
-export function useReactorNames(reactions: GroupedPostReaction[]): (id: string) => string {
+function useReactorNames(reactions: GroupedPostReaction[]): (id: string) => string {
   const t = useT();
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "";
@@ -42,7 +42,7 @@ export function useReactorNames(reactions: GroupedPostReaction[]): (id: string) 
 }
 
 /** "Johanna", "Johanna en Tom", "Jij, Johanna en 3 anderen". */
-export function joinNames(names: string[], t: Dict, max = 2): string {
+function joinNames(names: string[], t: Dict, max = 2): string {
   if (names.length === 0) return "";
   if (names.length === 1) return names[0];
   if (names.length <= max + 1) return `${names.slice(0, -1).join(", ")} ${t.andWord} ${names[names.length - 1]}`;
@@ -51,7 +51,7 @@ export function joinNames(names: string[], t: Dict, max = 2): string {
 }
 
 /** Wie deze ene emoji gaf, voluit en jij eerst: "❤️ Jij, Johanna, Tom". */
-export function chipWho(r: GroupedPostReaction, nameOf: (id: string) => string, myUserId: string): string {
+function chipWho(r: GroupedPostReaction, nameOf: (id: string) => string, myUserId: string): string {
   return `${r.emoji} ${selfFirst(r.userIds, myUserId).map(nameOf).join(", ")}`;
 }
 
@@ -63,7 +63,7 @@ function selfFirst(ids: string[], myUserId: string): string[] {
  * De voorvertoning onder de reacties: de emoji, en wie — ieder één keer,
  * jij eerst. Leeg als er niets is.
  */
-export function whoLine(reactions: GroupedPostReaction[], nameOf: (id: string) => string, t: Dict, myUserId: string): string {
+function whoLine(reactions: GroupedPostReaction[], nameOf: (id: string) => string, t: Dict, myUserId: string): string {
   if (reactions.length === 0) return "";
   const ids: string[] = [];
   for (const r of reactions) for (const id of r.userIds) if (!ids.includes(id)) ids.push(id);
@@ -74,7 +74,7 @@ export function whoLine(reactions: GroupedPostReaction[], nameOf: (id: string) =
  * Een tooltip bij hover, op web: de browser zet hem zelf, dus hij valt
  * nooit weg achter een kader met `overflow: hidden`. Geef dit als `ref`.
  */
-export function hoverTitle(text: string) {
+function hoverTitle(text: string) {
   return (node: unknown) => {
     if (Platform.OS !== "web" || !node) return;
     (node as { title?: string }).title = text;

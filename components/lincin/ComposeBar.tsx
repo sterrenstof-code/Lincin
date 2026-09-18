@@ -17,7 +17,7 @@ import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
  * op de bijdrage, in een gesprek gaat hij in het bericht.
  */
 
-export const EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "🌅", "☕", "🛶", "🎧", "✨"];
+const EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "🌅", "☕", "🛶", "🎧", "✨"];
 
 export function ComposeBar({
   value,

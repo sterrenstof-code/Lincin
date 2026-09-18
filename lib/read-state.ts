@@ -67,17 +67,6 @@ export async function markSeen(id: string): Promise<void> {
   }
 }
 
-/** Wis de hele leesgeschiedenis. */
-export async function clearSeen(): Promise<void> {
-  cache = [];
-  notify();
-  try {
-    await AsyncStorage.removeItem(KEY);
-  } catch {
-    /* zie hierboven */
-  }
-}
-
 /**
  * De set met geziene id's, die meebeweegt als er iets bijkomt.
  *

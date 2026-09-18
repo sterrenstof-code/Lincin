@@ -25,7 +25,7 @@ import { IMG, resizedPublicUrl, stableCacheKey } from "@/lib/media";
  * van vorm: nu actief is een gevulde schijf, recent actief een open ring.
  * Vorm draagt de betekenis, kleur bevestigt hem.
  */
-export type AvatarSize = "xs" | "sm" | "md" | "lg" | "hero";
+type AvatarSize = "xs" | "sm" | "md" | "lg" | "hero";
 
 const SIZE: Record<AvatarSize, { box: string; text: string; px: number; dot: number }> = {
   xs:   { box: "w-6 h-6",   text: "text-[9px]", px: 24, dot: 6  },

@@ -43,7 +43,7 @@ const TAB_HREF: Record<Tab, string> = {
 };
 
 /** Hoe breed het blad op een groot scherm mag worden. */
-export const COLUMN_MAX = 640;
+const COLUMN_MAX = 640;
 
 /**
  * Hoe breed het blad nú is, gegeven de vensterbreedte: het venster zelf,
@@ -296,7 +296,7 @@ export function Header({ counter }: { counter?: string }) {
  * hoort; zonder vriend in beeld — en in magazine — met inkt en
  * papier erop. De andere drie zijn gedempt.
  */
-export function FooterTabs({
+function FooterTabs({
   active,
   tint = null,
   bottomInset = 34,

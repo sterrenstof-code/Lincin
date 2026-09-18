@@ -9,12 +9,12 @@ import { supabase } from "../supabase/client";
  * on the receiver side after 4s of inactivity.
  */
 
-export type TypingEvent = {
+type TypingEvent = {
   user_id: string;
   name: string;
 };
 
-export type TypingHandle = {
+type TypingHandle = {
   channel: RealtimeChannel;
   /** Send a typing event from the current user; throttled to once per 2 seconds. */
   sendTyping(name: string): void;

@@ -3,7 +3,6 @@ import {
   Pressable,
   Text,
   View,
-  type PressableProps,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -72,9 +71,6 @@ export function Box({
     </View>
   );
 }
-
-/** Een haarlijn: inkt op 20%. */
-export const RULE = () => color("ink", "postRule");
 
 // ---------------------------------------------------------------
 // Letters
@@ -519,9 +515,6 @@ export function Segment<T extends string>({
     </View>
   );
 }
-
-/** Voor wie een Pressable met de kaderstijl nodig heeft. */
-export type PressProps = PressableProps;
 
 /**
  * Een regel die van onder naar boven leest, in een smalle kolom van
