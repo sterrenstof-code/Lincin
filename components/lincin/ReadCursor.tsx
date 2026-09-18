@@ -5,6 +5,30 @@ import { mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 
 /**
+ * Is er een muis die kan zweven? Op native nooit; op web vraagt het de
+ * browser (een laptop ja, een telefoon of tablet nee).
+ */
+export function canHover(): boolean {
+  return Platform.OS === "web" && typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches;
+}
+
+/**
+ * Zonder muis: een vast labeltje linksboven op de foto, "POST LEZEN →" —
+ * wat de muis op desktop doet, staat hier gewoon op het beeld. Laat de
+ * tik door naar wat eronder ligt.
+ */
+export function ReadTag() {
+  const t = useT();
+  return (
+    <View style={{ pointerEvents: "none", position: "absolute", left: 8, top: 8, zIndex: 3, backgroundColor: "#141414", paddingVertical: 4, paddingHorizontal: 7 }}>
+      <Text numberOfLines={1} style={[mono(600), { fontSize: 9, lineHeight: 12, letterSpacing: 1.1, textTransform: "uppercase", color: "#F2EFE8" }]}>
+        {t.readPost} →
+      </Text>
+    </View>
+  );
+}
+
+/**
  * De muis wordt "POST LEZEN →" boven iets dat een bijdrage opent (web,
  * met een muis). Een inktlabel volgt de pijl; de pijl zelf verdwijnt.
  * Gaat de muis naar een knop of link erbovenop, dan komt de gewone
@@ -23,7 +47,7 @@ export function useReadCursor(): { ref: (node: unknown) => void; label: ReactNod
   useEffect(() => {
     if (Platform.OS !== "web" || !node) return;
     // Alleen voor een echte muis: op aanraakschermen is er niets te zweven.
-    if (typeof window !== "undefined" && !window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) return;
+    if (!canHover()) return;
     const move = (e: MouseEvent) => {
       // Boven een knop of link die erbovenop ligt: de gewone pijl.
       const target = e.target as HTMLElement | null;

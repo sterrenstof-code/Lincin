@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -14,7 +15,7 @@ import {
 
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
-import { LincinScreen } from "@/components/lincin/Chrome";
+import { columnWidth, LincinScreen } from "@/components/lincin/Chrome";
 import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
@@ -49,11 +50,23 @@ const PULL_H = 56;
 const BAND_H = 56;
 const TIME_BAND_H = 44;
 
+/** Hoeveel van de volgende kaart in een rij zichtbaar blijft. */
+const PEEK = 56;
+/**
+ * Een foto in een rij: hoogstens zo hoog als 0,85× de breedte van de kaart
+ * — een staande foto (4:5) maakt de rij anders hoger dan het scherm aankan.
+ */
+const ROW_PHOTO_MAX = 0.85;
+
 export function FeedKleur() {
   const f = useFeed();
   const { t, view, changeView, feed, groups, timeGroups, reactions, seen, myUserId, sheet, setSheet } = f;
   const scheme = useScheme();
   const prefs = usePrefs(myUserId);
+  // Een kaart in een rij laat altijd het begin van de volgende zien (PEEK),
+  // zodat je ziet dat je opzij kunt; nooit breder dan 340.
+  const { width: windowW } = useWindowDimensions();
+  const rowCardW = Math.min(CARD_W, columnWidth(windowW) - GUTTER - GAP - PEEK);
 
   // ---- gelezen: per bijdrage bewaard, per band afgeleid ----
   const [passed, setPassed] = useState<Set<string>>(() => new Set());
@@ -183,7 +196,7 @@ export function FeedKleur() {
             }}
             horizontal
             showsHorizontalScrollIndicator={false}
-            snapToInterval={CARD_W + GAP}
+            snapToInterval={rowCardW + GAP}
             snapToAlignment="start"
             decelerationRate="fast"
             // Elke kaart zo hoog als haar inhoud; alleen "Zeg iets tegen" rekt mee.
@@ -195,7 +208,8 @@ export function FeedKleur() {
                 post={p}
                 number={f.numberOf(p.id)}
                 hue={g.hue}
-                width={CARD_W}
+                width={rowCardW}
+                maxPhotoH={Math.round(rowCardW * ROW_PHOTO_MAX)}
                 myUserId={myUserId}
                 reactions={reactions.grouped(p.id)}
                 onReact={(emoji) => reactions.toggle(p.id, emoji)}

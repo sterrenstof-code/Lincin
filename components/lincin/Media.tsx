@@ -30,6 +30,7 @@ export function Media({
   size = "card",
   zoom,
   photoFit,
+  maxPhotoH,
 }: {
   media: CardMedia;
   height: number;
@@ -45,6 +46,8 @@ export function Media({
    * in plaats van `height`. De andere soorten houden `height`.
    */
   photoFit?: "ratio";
+  /** Met `photoFit`: de foto nooit hoger dan dit. */
+  maxPhotoH?: number;
 }) {
   switch (media.kind) {
     case "foto":
@@ -53,6 +56,7 @@ export function Media({
           uris={media.uris}
           cacheKeys={media.cacheKeys}
           height={photoFit === "ratio" ? "ratio" : height}
+          maxHeight={maxPhotoH}
           size={size}
           video={media.video}
           onZoom={zoom ? (index) => openLightbox({ ...zoom, uris: media.uris, cacheKeys: media.cacheKeys, index }) : undefined}

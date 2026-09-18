@@ -98,6 +98,13 @@ export function FeedMagazine() {
           <SafeImage uri={heroImg.uri} cacheKey={heroImg.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         ) : null}
         <HeroScrim />
+        {/* De hele foto opent de bijdrage, net als op desktop. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t.readPost}: ${hero.title}`}
+          onPress={() => f.openPost(hero)}
+          style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}
+        />
 
         {/* de bovenregel: editie · ◉ + */}
         <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }]}>
@@ -170,6 +177,12 @@ export function FeedMagazine() {
             </Pressable>
           ))}
           <View style={{ flex: 1 }} />
+          {/* Wat de muis op desktop zegt, staat hier als knop: "post lezen". */}
+          <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[onImageChip, { backgroundColor: ON_IMAGE }]}>
+            <Mono variant="action" color="#141414" style={{ fontSize: 11, lineHeight: 14 }}>
+              {t.readPost} →
+            </Mono>
+          </Pressable>
           <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={onImageChip}>
             <Mono variant="action" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, fontSize: 11, lineHeight: 14 }}>
               {t.comment}

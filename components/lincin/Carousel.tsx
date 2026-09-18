@@ -31,7 +31,9 @@ import { PlayGlyph } from "./Media";
  *
  * `height="ratio"` (Instagram): de hoogte volgt uit de breedte en de
  * verhouding van de eerste foto, begrensd tussen 4:5 en 1.91:1; de andere
- * foto's krijgen hetzelfde kader. Zie lib/lincin/ratio.ts.
+ * foto's krijgen hetzelfde kader. Zie lib/lincin/ratio.ts. `maxHeight`
+ * kapt dat af (de foto vult dan `cover`): een staande foto in een rij
+ * kaarten mag de rij niet te hoog maken.
  *
  * Desktop (Lincin Desktop.dc.html, bijdrage op volle breedte) stuurt de
  * carrousel zelf met ‹ ›: `index` scrolt naar die foto, `bare` laat teller
@@ -51,6 +53,7 @@ export function Carousel({
   onIndex,
   index,
   bare = false,
+  maxHeight,
 }: {
   uris: (string | null)[];
   cacheKeys?: (string | undefined)[];
@@ -65,12 +68,15 @@ export function Carousel({
   index?: number;
   /** Geen teller en geen streepjes. */
   bare?: boolean;
+  /** Bij `"ratio"`: nooit hoger dan dit. */
+  maxHeight?: number;
 }) {
   const [w, setW] = useState(0);
   const [idx, setIdx] = useState(0);
   const ratio = useImageRatio(heightProp === "ratio" ? uris[0] : null, cacheKeys?.[0]);
   // Zolang de breedte niet gemeten is: vierkant op wat er is (geen hoogte 0).
-  const height = heightProp === "ratio" ? (w ? Math.round(w / ratio) : undefined) : heightProp;
+  const natural = heightProp === "ratio" ? (w ? Math.round(w / ratio) : undefined) : heightProp;
+  const height = heightProp === "ratio" && natural !== undefined && maxHeight ? Math.min(natural, maxHeight) : natural;
   const n = Math.max(1, uris.length);
   const multi = n > 1;
   const page = size === "page";

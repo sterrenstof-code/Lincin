@@ -10,6 +10,7 @@ import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { Media } from "./Media";
 import { BORDER, GUTTER, Head, Initial, Mono, Serif } from "./ui";
+import { canHover, ReadTag, useReadCursor } from "./ReadCursor";
 import { WhoReacted } from "./WhoReacted";
 
 /**
@@ -54,8 +55,11 @@ export const PostCard = memo(function PostCard({
   onProfile,
   number,
   bleed = false,
+  maxPhotoH,
 }: {
   post: CardPost;
+  /** In een rij: een foto nooit hoger dan dit, zodat de rij niet te hoog wordt. */
+  maxPhotoH?: number;
   /**
    * In een verticale lijst met zijmarge GUTTER: de foto loopt rand tot rand
    * over het scherm, boven de kaart. Alleen voor foto's.
@@ -89,6 +93,11 @@ export const PostCard = memo(function PostCard({
   const stripInk = spec.stripFilled ? fc.ink : ink;
   const photo = post.media.kind === "foto";
   const lifted = bleed && photo;
+  // "Post lezen" op de foto: met een muis volgt het de pijl, zonder staat
+  // het als labeltje op het beeld.
+  const read = useReadCursor();
+  const hover = canHover();
+  const readHint = canOpen && photo ? (hover ? read.label : <ReadTag />) : null;
 
   const card = (
     // Bewust géén `accessibilityRole="button"`: op web wordt dat een
@@ -110,14 +119,18 @@ export const PostCard = memo(function PostCard({
         {/* hoofdkolom */}
         <View style={{ flex: 1, minWidth: 0 }}>
           {lifted ? null : (
-            <Media
-              media={post.media}
-              height={MEDIA_H}
-              hue={hue}
-              postId={post.id}
-              myUserId={myUserId}
-              photoFit="ratio"
-            />
+            <View ref={readHint && hover ? (read.ref as never) : undefined}>
+              <Media
+                media={post.media}
+                height={MEDIA_H}
+                hue={hue}
+                postId={post.id}
+                myUserId={myUserId}
+                photoFit="ratio"
+                maxPhotoH={maxPhotoH}
+              />
+              {readHint}
+            </View>
           )}
           <View style={{ ...strip, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: lifted ? 0 : BORDER, borderTopColor: edge, overflow: "hidden" }}>
             {/* Zo hoog als de titel is, hoogstens drie regels: een korte titel
@@ -221,8 +234,14 @@ export const PostCard = memo(function PostCard({
   return (
     <View>
       {/* Een tik op de foto opent de bijdrage; de lichtbak zit op de bladzijde. */}
-      <Pressable accessibilityLabel={`${post.title}, ${post.authorName}`} onPress={canOpen ? onOpen : undefined} style={{ marginHorizontal: -GUTTER }}>
-        <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" />
+      <Pressable
+        ref={readHint && hover ? (read.ref as never) : undefined}
+        accessibilityLabel={`${post.title}, ${post.authorName}`}
+        onPress={canOpen ? onOpen : undefined}
+        style={{ marginHorizontal: -GUTTER }}
+      >
+        <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" maxPhotoH={maxPhotoH} />
+        {readHint}
       </Pressable>
       {card}
     </View>
