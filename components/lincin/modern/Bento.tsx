@@ -59,9 +59,9 @@ export function Bento({ children }: { children: React.ReactNode }) {
 /**
  * Eén tegel. `span` is 1 (een halve kolom) of 2 (de volle breedte).
  *
- * Een halve tegel krijgt `flexBasis: 0` met `flexGrow: 1`, zodat twee
- * ernaast precies samen de breedte vullen mét de naad ertussen; een hele
- * tegel staat op `100%`.
+ * Een halve tegel krijgt een basis van 46% met `flexGrow: 1`, zodat er
+ * precies twee op een rij passen en de derde wrapt; een hele tegel staat
+ * op `100%`. Zie de noot bij `base` hieronder.
  */
 export function Tile({
   span = 1,
@@ -80,10 +80,18 @@ export function Tile({
   children: React.ReactNode;
 }) {
   const base: ViewStyle = {
-    // Twee halve tegels naast elkaar: samen 100% min de naad ertussen.
+    /**
+     * Twee halve tegels naast elkaar, samen 100% min de naad ertussen.
+     *
+     * De basis is 46% en niet 0: met `flexBasis: 0` heeft een tegel géén
+     * breedte om op te wrappen, en dan komt élke halve tegel op dezelfde
+     * regel te staan in plaats van twee per rij. Met 46% passen er precies
+     * twee (2 × 46% + naad < 100%) en valt de derde naar de volgende regel;
+     * `flexGrow` vult daarna de rest van de rij netjes op.
+     */
     width: span === 2 ? "100%" : undefined,
     flexGrow: span === 2 ? 0 : 1,
-    flexBasis: span === 2 ? undefined : 0,
+    flexBasis: span === 2 ? undefined : "46%",
     minWidth: 0,
     borderRadius: RASTER.tileRadius,
     backgroundColor: color("tile", "tileFill"),
@@ -314,7 +322,7 @@ export function DashedTile({
       style={({ pressed }) => ({
         width: span === 2 ? "100%" : undefined,
         flexGrow: span === 2 ? 0 : 1,
-        flexBasis: span === 2 ? undefined : 0,
+        flexBasis: span === 2 ? undefined : "46%",
         minWidth: 0,
         minHeight: 44,
         borderRadius: RASTER.tileRadius,
