@@ -3,6 +3,8 @@ import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-nat
 import { color, RASTER } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 
+import { VerticalLabel } from "../ui";
+
 /**
  * De poster-spread van magazine (WIJZIGINGEN-2.2 §2).
  *
@@ -91,7 +93,7 @@ export function Spread({
   const height = spreadHeight(page, index);
 
   const railCol = (
-    <View style={{ flexShrink: 0, width: RASTER.rail, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ flexShrink: 0, width: RASTER.rail }}>
       <RailText text={rail} ink={ink} height={height} />
     </View>
   );
@@ -144,34 +146,34 @@ export function Spread({
 /**
  * De verticale rail.
  *
- * Op web draait `writing-mode: vertical-rl` met een halve slag, precies als
- * in het prototype. Native kent geen writing-mode; daar draait één regel
- * tekst 90° met een `rotate`, wat visueel hetzelfde oplevert.
+ * Het prototype draait hem met `writing-mode: vertical-rl` plus een halve
+ * slag; dat leest van onder naar boven. React Native kent geen
+ * writing-mode, dus draait hier één regel tekst een kwartslag.
+ *
+ * Dat draaien moet wél om het midden van de strook gebeuren. Stond er
+ * eerst een `<Text>` met `width: height` in een strook van 26 breed: die
+ * legt zich uit tot ver buiten de strook, draait om zíjn eigen midden, en
+ * valt daarmee naast het zichtbare vlak — er bleef een stukje "№" over.
+ * `VerticalLabel` (components/lincin/ui.tsx) zet hem absoluut neer en
+ * verschuift hem eerst zo dat zijn midden ín de strook valt; die doet het
+ * al goed voor de metakolom van een kaart, dus hij doet het hier ook.
  */
 function RailText({ text, ink, height }: { text: string; ink: string; height: number }) {
-  const type = {
-    ...sans(500),
-    fontSize: 8,
-    lineHeight: 11,
-    letterSpacing: 1.92, // .24em
-    textTransform: "uppercase" as const,
-    color: ink,
-  };
   return (
-    <View style={{ width: RASTER.rail, height, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-      <Text
-        numberOfLines={1}
-        style={[
-          type,
-          {
-            width: height,
-            textAlign: "center",
-            transform: [{ rotate: "90deg" }],
-          },
-        ]}
-      >
-        {text}
-      </Text>
+    <View style={{ width: RASTER.rail, height, overflow: "hidden" }}>
+      <VerticalLabel
+        text={text}
+        width={RASTER.rail}
+        height={height}
+        color={ink}
+        style={{
+          ...sans(500),
+          fontSize: 8,
+          lineHeight: 11,
+          letterSpacing: 1.92, // .24em
+          textTransform: "uppercase",
+        }}
+      />
     </View>
   );
 }
