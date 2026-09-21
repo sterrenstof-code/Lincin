@@ -68,6 +68,22 @@ Kind `poll` in Nieuwe bijdrage heeft een echte keuze-editor: 2–4 genummerde ke
 
 ---
 
+## 9 · Desktop — de drie thema's doorgevoerd
+`Lincin Desktop.dc.html` had één skin; hij draagt nu dezelfde drie thema's als mobiel, schakelbaar in de rail onder taal en licht/donker (`Kleur · Magazine · Modern`).
+
+- **Tokens per thema** staan als CSS-variabelen op de root (`data-thema` × `data-stand`), met dezelfde waarden als mobiel, plus chrome-variabelen: `--bw` (randdikte), `--bc` (randkleur), `--r` (radius), `--gap` (rasternaad), `--card` (kaartvlak), `--cardbd` (kaartrand).
+  - kleur: `--bw 1.5px · --bc ink · --r 0 · --gap 10px · kaart op papier`
+  - magazine: `--bw 1px · --r 0 · --gap 6px · haarlijnkaart op papier`
+  - modern: `--bw 1px · --bc rule · --r 14px · --gap 6px · kaartvlak rgba(255,255,255,.82) / rgba(24,24,26,.9), geen rand`
+- **Kopschaal per thema** via `--h18/--h19/--h34/--h52` + `--hstr` + `--htt`: kleur Archivo 900 condensed uppercase, magazine Instrument Serif in gemengde kast, modern Archivo 500 zonder uppercase.
+- **Vriendenband**: naam volgt het thema (Archivo condensed / serif 22 px / Archivo 500); in Modern krijgt de band radius en 6 px zijmarge zodat hij als tegel leest.
+- **Bento-rooster** bleef intact (12 kolommen, vaste patronen); alleen de naad en de kaartvorm volgen nu het thema.
+- **Paginakleur**: alleen Kleur tint de achtergrond met de vriend in beeld; Magazine en Modern staan op papier.
+- **Kaartrug** 34 px in Kleur/Magazine, 26 px in Modern.
+- Scrollfade van 18 px bovenaan de feed, en "Privaat bericht" → "Bericht" in NL/EN/DE, gelijk aan mobiel.
+
+---
+
 ## Wat is ongewijzigd
 Schermvoorraad (11 schermen), routering, datamodel, sessiestatus, de zeven mediasoorten, feedgroepering, leesstatus, eindkaart, lightbox, reacties op reacties, meerdere foto's per bijdrage, NL/EN/DE-woordenboeken, raakvlakminimum van 44 px, en het hele Kleur-thema buiten punt 4.
 

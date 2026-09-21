@@ -177,47 +177,47 @@ const ALPHA_TOKENS: AlphaToken[] = [
  * `announceDeep` zijn de inkt "ingedrukt": één stap lichter.
  */
 const LIGHT: Palette = {
-  paper: "242 239 232", // #F2EFE8
-  paper2: "231 227 216", // #E7E3D8
+  paper: "246 243 237", // #F6F3ED
+  paper2: "239 235 227", // #EFEBE3
   acid: "229 255 58", // #E5FF3A
   red: "216 50 31", // #D8321F
-  line: "20 20 20", // = ink
+  line: "35 31 26", // = ink
   tile: "255 255 255", // het tegelvlak van modern; kleur gebruikt het niet
 
-  page: "242 239 232", // = paper
-  panel: "242 239 232", // = paper — een kaart heeft geen eigen vulling
-  paperWarm: "231 227 216", // = paper2
-  paperLight: "242 239 232", // = paper
-  shell: "20 20 20", // = ink — een gevuld vlak
-  shellSoft: "43 43 43", // ink, ingedrukt
-  desk: "242 239 232",
-  deskInk: "20 20 20",
-  deskSoft: "58 58 58",
-  deskMuted: "113 113 112",
-  deskPanel: "231 227 216",
-  ink: "20 20 20", // #141414
-  inkSoft: "58 58 58", // #3A3A3A
-  inkMuted: "113 113 112", // dim op papier
-  cream: "242 239 232", // = paper — tekst óp inkt
-  creamSoft: "231 227 216",
-  creamMuted: "184 180 170",
-  post: "242 239 232",
-  postText: "20 20 20",
-  postFill: "231 227 216", // = paper2
+  page: "246 243 237", // = paper
+  panel: "246 243 237", // = paper — een kaart heeft geen eigen vulling
+  paperWarm: "239 235 227", // = paper2
+  paperLight: "246 243 237", // = paper
+  shell: "35 31 26", // = ink — een gevuld vlak
+  shellSoft: "56 52 46", // ink, ingedrukt
+  desk: "246 243 237",
+  deskInk: "35 31 26",
+  deskSoft: "71 67 62",
+  deskMuted: "123 120 115",
+  deskPanel: "239 235 227",
+  ink: "35 31 26", // #231F1A
+  inkSoft: "71 67 62",
+  inkMuted: "123 120 115", // dim op papier
+  cream: "246 243 237", // = paper — tekst óp inkt
+  creamSoft: "239 235 227",
+  creamMuted: "188 184 177",
+  post: "246 243 237",
+  postText: "35 31 26",
+  postFill: "239 235 227", // = paper2
   flame: "216 50 31", // = red
   flameDeep: "181 41 26", // rood voor kleine tekst
-  announce: "20 20 20", // de primaire actie is een inktvlak
-  announceDeep: "43 43 43",
+  announce: "35 31 26", // de primaire actie is een inktvlak
+  announceDeep: "56 52 46",
   teal: "76 154 99", // = vriendgroen
   gold: "224 182 74", // = oker
   brand: "47 91 255", // = blauw
 };
 
 const LIGHT_ALPHA: Alphas = {
-  postDim: 0.58,
-  postRule: 0.2,
-  linePaper: 0.2,
-  inkDim: 0.58,
+  postDim: 0.56,
+  postRule: 0.13,
+  linePaper: 0.13,
+  inkDim: 0.56,
   onDark: 0.22,
   pill: 0.35,
   pillSoft: 0.28,
@@ -231,35 +231,35 @@ const LIGHT_ALPHA: Alphas = {
 /** DONKER. */
 const DARK: Palette = {
   paper: "26 25 23", // #1A1917
-  paper2: "35 34 32", // #232220
+  paper2: "33 31 27", // #211F1B
   acid: "217 240 74", // #D9F04A
   red: "228 85 63", // #E4553F
-  line: "237 232 221",
+  line: "237 232 220",
   tile: "24 24 26",
 
   page: "26 25 23",
   panel: "26 25 23",
-  paperWarm: "35 34 32",
+  paperWarm: "33 31 27",
   paperLight: "26 25 23",
-  shell: "237 232 221", // = ink
+  shell: "237 232 220", // = ink
   shellSoft: "214 209 198",
   desk: "26 25 23",
-  deskInk: "237 232 221",
+  deskInk: "237 232 220",
   deskSoft: "201 196 185",
   deskMuted: "157 153 146",
-  deskPanel: "35 34 32",
-  ink: "237 232 221", // #EDE8DD
+  deskPanel: "33 31 27",
+  ink: "237 232 220", // #EDE8DC
   inkSoft: "201 196 185",
   inkMuted: "157 153 146", // dim op donker papier
   cream: "26 25 23", // = paper
-  creamSoft: "35 34 32",
+  creamSoft: "33 31 27",
   creamMuted: "110 106 98",
   post: "26 25 23",
-  postText: "237 232 221",
-  postFill: "35 34 32",
+  postText: "237 232 220",
+  postFill: "33 31 27",
   flame: "228 85 63",
   flameDeep: "228 85 63",
-  announce: "237 232 221",
+  announce: "237 232 220",
   announceDeep: "214 209 198",
   teal: "94 156 114",
   gold: "201 169 79",
@@ -267,10 +267,10 @@ const DARK: Palette = {
 };
 
 const DARK_ALPHA: Alphas = {
-  postDim: 0.62,
-  postRule: 0.2,
-  linePaper: 0.2,
-  inkDim: 0.62,
+  postDim: 0.56,
+  postRule: 0.13,
+  linePaper: 0.13,
+  inkDim: 0.56,
   onDark: 0.22,
   pill: 0.35,
   pillSoft: 0.28,
@@ -332,6 +332,22 @@ export type ThemeSpec = {
   layout: "lijst" | "spread" | "bento";
   /** De navigatie: het kader van kleur, de rugstrook (1d), of de zwevende pil. */
   nav: "rubrieken" | "rugstrook" | "pil";
+
+  // ---- de vorm, vooral voor desktop (2.2 §9) ----
+  /** De naad in een raster: 10 in kleur, 6 in magazine en modern. */
+  gap: number;
+  /** De ronding van een kaart op desktop: 0, 0, 14. Tegels op de telefoon houden 18. */
+  cardRadius: number;
+  /** Het vlak van een kaart: papier, of het halfdoorzichtige tegelvlak van modern. */
+  cardFill: "paper" | "tile";
+  /** De rand om een kaart: de dikte, of 0 als een kaart er geen heeft. */
+  cardBorder: number;
+  /** De kaderlijn: de inkt zelf (kleur, magazine) of de haarlijn (modern). */
+  borderTone: "ink" | "rule";
+  /** Tussen twee lijstrijen: een haarlijn van 1, of een naad van 6 zonder lijn. */
+  listGap: number;
+  /** De kleurrug naast een kaart op desktop: 34, of 26 in modern. */
+  spine: number;
   /** Het blad is donker — voor de statusbalk en de navigatie. */
   dark: boolean;
 };
@@ -351,6 +367,13 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: 0,
     layout: "lijst",
     nav: "rubrieken",
+    gap: 10,
+    cardRadius: 0,
+    cardFill: "paper",
+    cardBorder: 1.5,
+    borderTone: "ink",
+    listGap: 1,
+    spine: 34,
   },
   magazine: {
     id: "magazine",
@@ -366,6 +389,13 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: 0,
     layout: "spread",
     nav: "rugstrook",
+    gap: 6,
+    cardRadius: 0,
+    cardFill: "paper",
+    cardBorder: 1,
+    borderTone: "ink",
+    listGap: 1,
+    spine: 34,
   },
   modern: {
     id: "modern",
@@ -381,6 +411,13 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     radius: RASTER.tileRadius,
     layout: "bento",
     nav: "pil",
+    gap: 6,
+    cardRadius: 14,
+    cardFill: "tile",
+    cardBorder: 0,
+    borderTone: "rule",
+    listGap: 6,
+    spine: 26,
   },
 };
 
@@ -1079,4 +1116,52 @@ export function propVarCss(): string {
     }
   }
   return `:root {\n${lines.join("\n")}\n}`;
+}
+
+// ===============================================================
+// DE VORM ALS KANT-EN-KLARE STIJL
+// ===============================================================
+
+/**
+ * Een kaart, in de vorm van het thema dat nu geldt (2.2 §9).
+ *
+ *   kleur     papier met een kader van 1.5 inkt, geen ronding
+ *   magazine  papier met een haarlijn van 1 inkt, geen ronding
+ *   modern    het halfdoorzichtige tegelvlak, ronding 14, géén rand
+ *
+ * Eén plek, zodat geen enkel scherm zelf een randdikte of een radius
+ * hoeft te kiezen — dat was precies de fout die 2.2 eruit haalt.
+ */
+export function cardStyle(t: LincinTheme = theme): {
+  backgroundColor: string;
+  borderWidth: number;
+  borderColor: string;
+  borderRadius: number;
+} {
+  const s = SPEC[t];
+  return {
+    backgroundColor: s.cardFill === "tile" ? color("tile", "tileFill") : color("paper"),
+    borderWidth: s.cardBorder,
+    borderColor: s.borderTone === "rule" ? color("ink", "postRule") : color("line"),
+    borderRadius: s.cardRadius,
+  };
+}
+
+/**
+ * Wat er tussen twee lijstrijen staat: in kleur en magazine een haarlijn,
+ * in modern een naad van 6 zonder lijn. Geef `last` mee voor de onderste
+ * rij, die geen scheiding onder zich hoort te hebben.
+ */
+export function listSeam(last = false, t: LincinTheme = theme): {
+  marginBottom: number;
+  borderBottomWidth: number;
+  borderBottomColor: string;
+} {
+  const s = SPEC[t];
+  const naad = s.listGap > 1;
+  return {
+    marginBottom: naad && !last ? s.listGap : 0,
+    borderBottomWidth: naad || last ? 0 : s.listGap,
+    borderBottomColor: color("ink", "postRule"),
+  };
 }

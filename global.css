@@ -23,52 +23,52 @@
 
 :root {
   /* ---- v2 ---- */
-  --c-paper: 242 239 232;
-  --c-paper-2: 231 227 216;
+  --c-paper: 246 243 237;
+  --c-paper-2: 239 235 227;
   --c-acid: 229 255 58;
   --c-red: 216 50 31;
   /* De kaderlijn: inkt (zie lib/design/theme.ts). */
-  --c-line: 20 20 20;
+  --c-line: 35 31 26;
 
   /* ---- Vlakken (oude namen, v2-waarden) ---- */
-  --c-page: 242 239 232;
-  --c-panel: 242 239 232;
-  --c-paper-warm: 231 227 216;
-  --c-paper-light: 242 239 232;
-  --c-shell: 20 20 20;
-  --c-shell-soft: 43 43 43;
-  --c-post: 242 239 232;
-  --c-post-fill: 231 227 216;
-  --c-desk: 242 239 232;
-  --c-desk-panel: 231 227 216;
+  --c-page: 246 243 237;
+  --c-panel: 246 243 237;
+  --c-paper-warm: 239 235 227;
+  --c-paper-light: 246 243 237;
+  --c-shell: 35 31 26;
+  --c-shell-soft: 56 52 46;
+  --c-post: 246 243 237;
+  --c-post-fill: 239 235 227;
+  --c-desk: 246 243 237;
+  --c-desk-panel: 239 235 227;
 
   /* ---- Tekst ---- */
-  --c-ink: 20 20 20;
-  --c-ink-soft: 58 58 58;
-  --c-ink-muted: 113 113 112;
-  --c-cream: 242 239 232;
-  --c-cream-soft: 231 227 216;
-  --c-cream-muted: 184 180 170;
-  --c-post-text: 20 20 20;
-  --c-desk-ink: 20 20 20;
-  --c-desk-soft: 58 58 58;
-  --c-desk-muted: 113 113 112;
+  --c-ink: 35 31 26;
+  --c-ink-soft: 71 67 62;
+  --c-ink-muted: 123 120 115;
+  --c-cream: 246 243 237;
+  --c-cream-soft: 239 235 227;
+  --c-cream-muted: 188 184 177;
+  --c-post-text: 35 31 26;
+  --c-desk-ink: 35 31 26;
+  --c-desk-soft: 71 67 62;
+  --c-desk-muted: 123 120 115;
 
   /* ---- Accent ---- */
   --c-flame: 216 50 31;
   --c-flame-deep: 181 41 26;
-  --c-announce: 20 20 20;
-  --c-announce-deep: 43 43 43;
+  --c-announce: 35 31 26;
+  --c-announce-deep: 56 52 46;
   --c-teal: 76 154 99;
   --c-gold: 224 182 74;
   --c-brand: 47 91 255;
 
   /* ---- Doorzichtigheden die per stand verschillen ---- */
-  --a-post-dim: 0.58;
-  --a-post-rule: 0.2;
+  --a-post-dim: 0.56;
+  --a-post-rule: 0.13;
   --a-card-edge: 1;
-  --a-line-paper: 0.2;
-  --a-ink-dim: 0.58;
+  --a-line-paper: 0.13;
+  --a-ink-dim: 0.56;
   --a-on-dark: 0.22;
   --a-pill: 0.35;
   --a-pill-soft: 0.28;
@@ -76,46 +76,46 @@
 
 .dark:root {
   --c-paper: 26 25 23;
-  --c-paper-2: 35 34 32;
+  --c-paper-2: 33 31 27;
   --c-acid: 217 240 74;
   --c-red: 228 85 63;
-  --c-line: 237 232 221;
+  --c-line: 237 232 220;
 
   --c-page: 26 25 23;
   --c-panel: 26 25 23;
-  --c-paper-warm: 35 34 32;
+  --c-paper-warm: 33 31 27;
   --c-paper-light: 26 25 23;
-  --c-shell: 237 232 221;
+  --c-shell: 237 232 220;
   --c-shell-soft: 214 209 198;
   --c-post: 26 25 23;
-  --c-post-fill: 35 34 32;
+  --c-post-fill: 33 31 27;
   --c-desk: 26 25 23;
-  --c-desk-panel: 35 34 32;
+  --c-desk-panel: 33 31 27;
 
-  --c-ink: 237 232 221;
+  --c-ink: 237 232 220;
   --c-ink-soft: 201 196 185;
   --c-ink-muted: 157 153 146;
   --c-cream: 26 25 23;
-  --c-cream-soft: 35 34 32;
+  --c-cream-soft: 33 31 27;
   --c-cream-muted: 110 106 98;
-  --c-post-text: 237 232 221;
-  --c-desk-ink: 237 232 221;
+  --c-post-text: 237 232 220;
+  --c-desk-ink: 237 232 220;
   --c-desk-soft: 201 196 185;
   --c-desk-muted: 157 153 146;
 
   --c-flame: 228 85 63;
   --c-flame-deep: 228 85 63;
-  --c-announce: 237 232 221;
+  --c-announce: 237 232 220;
   --c-announce-deep: 214 209 198;
   --c-teal: 94 156 114;
   --c-gold: 201 169 79;
   --c-brand: 95 127 230;
 
-  --a-post-dim: 0.62;
-  --a-post-rule: 0.2;
+  --a-post-dim: 0.56;
+  --a-post-rule: 0.13;
   --a-card-edge: 1;
-  --a-line-paper: 0.2;
-  --a-ink-dim: 0.62;
+  --a-line-paper: 0.13;
+  --a-ink-dim: 0.56;
   --a-on-dark: 0.22;
   --a-pill: 0.35;
   --a-pill-soft: 0.28;

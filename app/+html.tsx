@@ -28,7 +28,7 @@ export default function Root({ children }: PropsWithChildren) {
             is de donkere stand; `applyWeb` in lib/design/theme.ts zet hem om
             zodra de lichte stand geldt, en het script hieronder doet dat al
             vóór het eerste beeld. */}
-        <meta name="theme-color" content="#F2EFE8" />
+        <meta name="theme-color" content="#F6F3ED" />
 
         {/* ---------------------------------------------------------------
             De stand, vóór het eerste beeld.
@@ -57,7 +57,7 @@ export default function Root({ children }: PropsWithChildren) {
   r.dataset.lincinTheme = t;
   var m = document.querySelector('meta[name="theme-color"]');
   var paper = {
-    kleur:    { light: '#F2EFE8', dark: '#1A1917' },
+    kleur:    { light: '#F6F3ED', dark: '#1A1917' },
     magazine: { light: '#F7F4EE', dark: '#14120E' },
     modern:   { light: '#F4F1EB', dark: '#0C0C0D' }
   };
