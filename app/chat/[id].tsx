@@ -105,7 +105,7 @@ import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, space } from "@/lib/design/type";
-import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
   rememberChatPreview,
@@ -1038,6 +1038,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
 
   const t2 = useT();
   const schemeNow = useScheme();
+  const spec = useThemeSpec();
   /** De kleur van de ander (groepen zijn groen), voor de kopcel en het blad. */
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
@@ -1210,36 +1211,71 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             ))}
           </ScrollView>
         ) : null}
+        {/* De strook "VERMELD": de bijdragen waar dit gesprek over ging.
+            In modern volgt hij het rastermodel (2.2 §5): geen kader, het
+            label horizontaal in mono, en kaartjes van 130 × 60 met een
+            ronding van 14 en geen kleurrug. In kleur en magazine blijft hij
+            zoals hij was — een kader met een gedraaid label en kaartjes van
+            96 × 56. */}
         {mentioned.length > 0 && !embedded && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0, marginTop: 8, marginHorizontal: 18, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }}
-            contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 10, alignItems: "center", gap: 8 }}
+            style={
+              spec.layout === "bento"
+                ? { flexGrow: 0, marginTop: 8, marginHorizontal: 6 }
+                : { flexGrow: 0, marginTop: 8, marginHorizontal: 18, borderWidth: BORDER, borderColor: line(), backgroundColor: color("paper2") }
+            }
+            contentContainerStyle={
+              spec.layout === "bento"
+                ? { paddingVertical: 4, alignItems: "center", gap: 6 }
+                : { paddingVertical: 8, paddingHorizontal: 10, alignItems: "center", gap: 8 }
+            }
           >
-            <View style={{ width: 14, height: 56, overflow: "hidden" }}>
-              <View style={{ position: "absolute", width: 56, height: 14, left: -21, top: 21, transform: [{ rotate: "-90deg" }] }}>
-                <Text numberOfLines={1} style={[lincinType.tiny, { color: color("ink", "inkDim") }]}>
-                  {t2.mentioned}
-                </Text>
+            {spec.layout === "bento" ? (
+              <Text
+                numberOfLines={1}
+                style={[lincinType.tiny, { color: color("ink", "inkDim"), paddingRight: 6 }]}
+              >
+                {t2.mentioned}
+              </Text>
+            ) : (
+              <View style={{ width: 14, height: 56, overflow: "hidden" }}>
+                <View style={{ position: "absolute", width: 56, height: 14, left: -21, top: 21, transform: [{ rotate: "-90deg" }] }}>
+                  <Text numberOfLines={1} style={[lincinType.tiny, { color: color("ink", "inkDim") }]}>
+                    {t2.mentioned}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
             {mentioned.map((ref) => (
               <Pressable
                 key={ref.id}
                 accessibilityRole="button"
                 accessibilityLabel={ref.title}
                 onPress={() => router.push(`/post/${ref.id}` as never)}
-                style={{
-                  width: 96,
-                  height: 56,
-                  backgroundColor: partner.fill,
-                  borderWidth: BORDER,
-                  borderColor: line(),
-                  paddingVertical: 6,
-                  paddingHorizontal: 8,
-                  justifyContent: "space-between",
-                }}
+                style={
+                  spec.layout === "bento"
+                    ? {
+                        width: 130,
+                        height: 60,
+                        borderRadius: 14,
+                        backgroundColor: partner.fill,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        justifyContent: "space-between",
+                      }
+                    : {
+                        width: 96,
+                        height: 56,
+                        backgroundColor: partner.fill,
+                        borderWidth: BORDER,
+                        borderColor: line(),
+                        paddingVertical: 6,
+                        paddingHorizontal: 8,
+                        justifyContent: "space-between",
+                      }
+                }
               >
                 <Text style={[lincinType.tiny, { color: partner.ink, fontSize: 8, lineHeight: 10 }]} numberOfLines={1}>
                   {t2.post}
