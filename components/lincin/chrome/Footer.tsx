@@ -282,11 +282,22 @@ function FooterPil({ active, bottomInset }: { active: Tab; bottomInset: number }
   const [width, setWidth] = useState(0);
   const cell = width > 0 ? (width - 10) / 4 : 0;
   const x = useRef(new Animated.Value(0)).current;
+  /** Staat de schuiver al ergens? Pas dáárna is bewegen een overgang. */
+  const placed = useRef(false);
 
   useEffect(() => {
     if (!cell) return;
+    const to = 5 + idx * cell;
+    // De eerste keer springt hij op zijn plek. Anders glijdt hij bij élke
+    // paginalading vanaf links binnen, en dat leest als een wissel die je
+    // niet gemaakt hebt.
+    if (!placed.current) {
+      placed.current = true;
+      x.setValue(to);
+      return;
+    }
     Animated.timing(x, {
-      toValue: 5 + idx * cell,
+      toValue: to,
       duration: 420,
       easing: Easing.bezier(0.22, 0.8, 0.2, 1),
       useNativeDriver: Platform.OS !== "web",
@@ -305,8 +316,15 @@ function FooterPil({ active, bottomInset }: { active: Tab; bottomInset: number }
         borderRadius: 999,
         borderWidth: 1,
         borderColor: color("ink", "postRule"),
-        backgroundColor: color("paper", "pill"),
+        // Prototype: `color-mix(in oklch, var(--p) 72%, transparent)` met
+        // `backdrop-filter: blur(18px)`. De pil zweeft over de inhoud, dus
+        // hij moet die dempen — op .35 las de tekst eronder dwars door de
+        // woorden heen.
+        backgroundColor: color("paper", "glass"),
         zIndex: 20,
+        ...(Platform.OS === "web"
+          ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object)
+          : null),
       }}
     >
       {/* De schuiver. Ligt onder de woorden en beweegt als enige. */}

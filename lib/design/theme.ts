@@ -141,7 +141,9 @@ type AlphaToken =
   /** De dekking van een bento-tegel: .82 op licht, .9 op donker. */
   | "tileFill"
   /** Een gestippelde scheiding bínnen een tegel: inkt op 26%. */
-  | "dash";
+  | "dash"
+  /** Het glas van de zwevende navigatie in modern: papier op 72%. */
+  | "glass";
 
 type Palette = Record<Token, string>;
 type Alphas = Record<AlphaToken, number>;
@@ -164,7 +166,7 @@ const TOKENS: Token[] = [
 
 const ALPHA_TOKENS: AlphaToken[] = [
   "postDim", "postRule", "linePaper", "inkDim", "onDark", "pill", "pillSoft", "cardEdge",
-  "tileFill", "dash",
+  "tileFill", "dash", "glass",
 ];
 
 /**
@@ -223,6 +225,7 @@ const LIGHT_ALPHA: Alphas = {
   cardEdge: 1,
   tileFill: 0.82,
   dash: 0.26,
+  glass: 0.72,
 };
 
 /** DONKER. */
@@ -274,6 +277,7 @@ const DARK_ALPHA: Alphas = {
   cardEdge: 1,
   tileFill: 0.9,
   dash: 0.26,
+  glass: 0.72,
 };
 
 const PALETTE: Record<Scheme, Palette> = { dark: DARK, light: LIGHT };

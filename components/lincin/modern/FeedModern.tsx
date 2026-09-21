@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
+import { BellIcon, PlusIcon } from "@/components/lincin/chrome/Header";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
@@ -227,7 +228,7 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
           opacity: pressed ? 0.82 : 1,
         })}
       >
-        <Text style={{ fontSize: 17, lineHeight: 20, color: color("ink") }}>◔</Text>
+        <BellIcon tone={color("ink")} size={17} />
         {unread.notifications > 0 ? (
           <View
             style={{ position: "absolute", top: 12, right: 14, width: 7, height: 7, borderRadius: 3.5, backgroundColor: color("red") }}
@@ -248,7 +249,7 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
           opacity: pressed ? 0.82 : 1,
         })}
       >
-        <Text style={{ fontSize: 20, lineHeight: 24, color: color("paper") }}>+</Text>
+        <PlusIcon tone={color("paper")} size={18} />
       </Pressable>
     </View>
   );

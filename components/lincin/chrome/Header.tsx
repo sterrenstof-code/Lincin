@@ -48,7 +48,7 @@ function BackArrow({ tone, size = 14 }: { tone: string; size?: number }) {
   );
 }
 
-function BellIcon({ tone, size = 16 }: { tone: string; size?: number }) {
+export function BellIcon({ tone, size = 16 }: { tone: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <Circle cx={8} cy={6.6} r={4.3} stroke={tone} strokeWidth={1.3} />
@@ -57,7 +57,7 @@ function BellIcon({ tone, size = 16 }: { tone: string; size?: number }) {
   );
 }
 
-function PlusIcon({ tone, size = 16 }: { tone: string; size?: number }) {
+export function PlusIcon({ tone, size = 16 }: { tone: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <Path d="M8 2.4v11.2M2.4 8h11.2" stroke={tone} strokeWidth={1.5} strokeLinecap="round" />
