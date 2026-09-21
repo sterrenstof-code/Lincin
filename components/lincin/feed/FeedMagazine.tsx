@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
+import { CircleGlyphBtn } from "@/components/lincin/chrome/Header";
 import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, GUTTER, line, Mono, Serif } from "@/components/lincin/ui";
@@ -109,19 +110,36 @@ export function FeedMagazine() {
           style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}
         />
 
-        {/* de bovenregel: editie · ◉ + */}
+        {/* De bovenregel: editie · ✳ · +
+            Dezelfde twee omcirkelde knoppen als in de magazine-kopregel
+            (`chrome/Header.tsx`). De feed heeft hier geen kopregel — het
+            hero loopt tot bovenaan door — maar wel dezelfde handelingen,
+            dus ook dezelfde vorm. Op het beeld staan ze in papierkleur met
+            een schaduw, en de ring om de rode stip volgt de inkt van het
+            hero in plaats van het papier. */}
         <View style={[{ position: "absolute", top: top + 2, left: PAD, right: PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }]}>
           <Mono variant="tiny" color={ON_IMAGE} style={{ ...ON_IMAGE_SHADE, letterSpacing: 1.26 }}>
             {edition}
           </Mono>
-          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-            <Pressable accessibilityRole="button" accessibilityLabel={t.notifications} onPress={() => router.push("/notifications")} style={onImageBtn}>
-              <Text style={{ color: ON_IMAGE, ...ON_IMAGE_SHADE, fontSize: 13, lineHeight: 15 }}>◉</Text>
-              {unread.notifications > 0 ? <View style={{ position: "absolute", top: -4, right: -4, width: 9, height: 9, backgroundColor: color("red") }} /> : null}
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={t.newPost} onPress={f.compose} style={onImageBtn}>
-              <Text style={{ color: ON_IMAGE, ...ON_IMAGE_SHADE, fontSize: 17, lineHeight: 19 }}>+</Text>
-            </Pressable>
+          <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+            <CircleGlyphBtn
+              glyph="✳"
+              fontSize={15}
+              tone={ON_IMAGE}
+              shade={ON_IMAGE_SHADE}
+              ringColor={heroColor.fill}
+              badge={unread.notifications > 0}
+              onPress={() => router.push("/notifications")}
+              label={unread.notifications > 0 ? `${t.notifications}, ${unread.notifications} ${t.new}` : t.notifications}
+            />
+            <CircleGlyphBtn
+              glyph="+"
+              fontSize={19}
+              tone={ON_IMAGE}
+              shade={ON_IMAGE_SHADE}
+              onPress={f.compose}
+              label={t.newPost}
+            />
           </View>
         </View>
 
@@ -315,15 +333,6 @@ export function FeedMagazine() {
     </LincinScreen>
   );
 }
-
-const onImageBtn = {
-  width: 30,
-  height: 30,
-  borderWidth: 1.5,
-  borderColor: ON_IMAGE,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-};
 
 const onImageChip = {
   borderWidth: 1.5,

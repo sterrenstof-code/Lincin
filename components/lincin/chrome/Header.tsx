@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type TextStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { color, useThemeSpec } from "@/lib/design/theme";
@@ -160,14 +160,26 @@ function RoundTileBtn({
   );
 }
 
-/** Een omlijnde cirkel van 30 px met een serifglyph — magazine. */
-function CircleGlyphBtn({
+/**
+ * Een omlijnde cirkel van 30 px met een serifglyph — de vorm van magazine.
+ *
+ * Staat in de kopregel (✳ meldingen, + nieuwe bijdrage) én op het hero van
+ * de feed, want daar heeft de magazine-feed geen kopregel maar dezelfde
+ * twee handelingen. Op het beeld krijgt hij `tone` in papierkleur en een
+ * schaduw mee, zodat de glyph leesbaar blijft.
+ *
+ * Het raakvlak is 44: de zichtbare cirkel is 30, met 7 px padding eromheen
+ * en een compenserende negatieve marge.
+ */
+export function CircleGlyphBtn({
   glyph,
   fontSize,
   onPress,
   label,
   badge = false,
   tone,
+  shade,
+  ringColor,
 }: {
   glyph: string;
   fontSize: number;
@@ -175,6 +187,10 @@ function CircleGlyphBtn({
   label: string;
   badge?: boolean;
   tone?: string;
+  /** Een tekstschaduw voor de glyph, als hij op een foto staat. */
+  shade?: TextStyle;
+  /** De ring om de rode stip; standaard papier. */
+  ringColor?: string;
 }) {
   const fg = tone ?? color("ink");
   return (
@@ -195,7 +211,7 @@ function CircleGlyphBtn({
           justifyContent: "center",
         }}
       >
-        <Text style={{ ...serif(), fontSize, lineHeight: fontSize, color: fg }}>{glyph}</Text>
+        <Text style={{ ...serif(), fontSize, lineHeight: fontSize, color: fg, ...shade }}>{glyph}</Text>
       </View>
       {badge ? (
         <View
@@ -208,7 +224,7 @@ function CircleGlyphBtn({
             borderRadius: 3.5,
             backgroundColor: color("red"),
             borderWidth: 2,
-            borderColor: color("paper"),
+            borderColor: ringColor ?? color("paper"),
           }}
         />
       ) : null}

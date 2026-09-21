@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 
 import type { PrivateTarget } from "@/components/lincin/PrivateSheet";
@@ -57,29 +57,71 @@ export function useFeed() {
     [viewKey],
   );
 
-  // ---- ingeklapt: welke vrienden je klein houdt, onthouden per gebruiker ----
-  // Klap je iedereen in, dan is de feed een gekleurde lijst van je vrienden.
+  /**
+   * Ingeklapt: welke vrienden je klein houdt, onthouden per gebruiker.
+   *
+   * STANDAARD STAAT ALLES UITGEKLAPT. `{}` betekent: niemand ingeklapt.
+   * Alleen een vriend die je zelf dichtklapte staat in de lijst, en die
+   * keuze komt terug bij het volgende bezoek. Klap je iedereen in, dan is
+   * de feed een gekleurde lijst van je vrienden.
+   *
+   * Twee dingen die eerder niet klopten:
+   *
+   * 1. Het bewaren gebeurde ín de `setState`-functie. Die hoort zuiver te
+   *    zijn — React mag hem twee keer aanroepen of zijn uitkomst weggooien,
+   *    en dan schreven we een staat weg die nooit op het scherm kwam. Het
+   *    schrijven staat nu in een effect dat de staat volgt.
+   * 2. Het lezen kon een keuze overschrijven die je net had gemaakt: klapte
+   *    je iets dicht vóórdat de opslag antwoordde, dan won de opslag. Nu
+   *    wint jouw tik — dezelfde regel als bij het thema.
+   */
   const collapsedKey = `lincin.feed.collapsed.${myUserId}`;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  /** Heb je in deze sessie zelf iets in- of uitgeklapt? */
+  const collapseTouched = useRef(false);
+  /** Heeft de opslag geantwoord? Pas daarna mogen we erin schrijven. */
+  const collapseLoaded = useRef(false);
+
   useEffect(() => {
+    let alive = true;
+    collapseTouched.current = false;
+    collapseLoaded.current = false;
     AsyncStorage.getItem(collapsedKey)
       .then((raw) => {
-        if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>);
+        if (!alive) return;
+        if (raw && !collapseTouched.current) {
+          try {
+            setCollapsed(JSON.parse(raw) as Record<string, boolean>);
+          } catch {
+            // Onleesbaar bewaard? Dan begint hij gewoon uitgeklapt.
+          }
+        }
+        collapseLoaded.current = true;
       })
-      .catch(() => {});
-  }, [collapsedKey]);
-  const toggleCollapsed = useCallback(
-    (key: string) => {
-      setCollapsed((c) => {
-        const next = { ...c };
-        if (next[key]) delete next[key];
-        else next[key] = true;
-        AsyncStorage.setItem(collapsedKey, JSON.stringify(next)).catch(() => {});
-        return next;
+      .catch(() => {
+        collapseLoaded.current = true;
       });
-    },
-    [collapsedKey],
-  );
+    return () => {
+      alive = false;
+    };
+  }, [collapsedKey]);
+
+  // Bewaren zodra de staat verandert — maar nooit vóór het lezen klaar is,
+  // anders overschrijft de lege beginstaat wat er al lag.
+  useEffect(() => {
+    if (!collapseLoaded.current) return;
+    AsyncStorage.setItem(collapsedKey, JSON.stringify(collapsed)).catch(() => {});
+  }, [collapsed, collapsedKey]);
+
+  const toggleCollapsed = useCallback((key: string) => {
+    collapseTouched.current = true;
+    setCollapsed((c) => {
+      const next = { ...c };
+      if (next[key]) delete next[key];
+      else next[key] = true;
+      return next;
+    });
+  }, []);
 
   // ---- gegevens ----
   const feed = useQuery({
