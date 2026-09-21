@@ -81,6 +81,7 @@ function SettingsMobile() {
               options={[
                 { value: "kleur", label: t.themeKleur },
                 { value: "magazine", label: t.themeMagazine },
+                { value: "modern", label: t.themeModern },
               ]}
               value={lincin.theme}
               onChange={lincin.choose}

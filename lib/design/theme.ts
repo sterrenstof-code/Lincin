@@ -791,14 +791,27 @@ function initialPreference(): ThemePreference {
   return "system";
 }
 
-function initialTheme(): LincinTheme {
+/**
+ * Het thema dat lokaal bewaard staat, of `null` als er nooit een keuze is
+ * gemaakt. Er schrijft maar één ding naar deze sleutel — `setTheme()` — dus
+ * een waarde hier ís een keuze van de gebruiker, geen standaardwaarde.
+ */
+function storedTheme(): LincinTheme | null {
   const raw = readLocal(THEME_KEY);
-  return isLincinTheme(raw) ? raw : "kleur";
+  return isLincinTheme(raw) ? raw : null;
 }
 
 let preference: ThemePreference = initialPreference();
 let scheme: Scheme = preference === "system" ? systemScheme() : preference;
-let theme: LincinTheme = initialTheme();
+let theme: LincinTheme = storedTheme() ?? "kleur";
+/**
+ * Heeft de gebruiker op dít toestel zelf een thema gekozen? (2.2 §6)
+ *
+ * Zo ja, dan wint die keuze van de waarde uit het profiel. In 2.1 deed hij
+ * dat niet: `ThemeProvider` haalde `profiles.theme` op en zette die zonder
+ * meer, dus wie net gewisseld was zag zijn keuze een tel later terugspringen.
+ */
+let themeChosen = storedTheme() !== null;
 
 const listeners = new Set<() => void>();
 
@@ -859,16 +872,35 @@ export function getTheme(): LincinTheme {
 }
 
 /**
- * Wissel van thema. Lokaal bewaard; `components/lincin/ThemeProvider.tsx`
- * schrijft hem daarnaast naar het profiel, zodat een tweede toestel hem
- * ook kent. Geen herlaad: de schermen hertekenen zich (zie `app/_layout.tsx`).
+ * Wissel van thema, omdat de gebruiker het vroeg. Lokaal bewaard;
+ * `components/lincin/ThemeProvider.tsx` schrijft hem daarnaast naar het
+ * profiel, zodat een tweede toestel hem ook kent. Geen herlaad: de schermen
+ * hertekenen zich (zie `app/_layout.tsx`).
+ *
+ * Vanaf nu wint deze keuze van wat er in het profiel staat — ook als het
+ * antwoord van de database later binnenkomt dan de tik.
  */
 export function setTheme(next: LincinTheme) {
+  themeChosen = true;
+  writeLocal(THEME_KEY, next);
   if (next === theme) return;
   theme = next;
-  writeLocal(THEME_KEY, next);
   applyWeb();
   emit();
+}
+
+/**
+ * Het thema zoals het profiel het kent. Alleen van toepassing zolang de
+ * gebruiker op dit toestel níets koos: een eigen keuze wint altijd (2.2 §6).
+ * Geeft terug of hij is toegepast.
+ */
+export function setThemeFromProfile(next: LincinTheme): boolean {
+  if (themeChosen) return false;
+  if (next === theme) return true;
+  theme = next;
+  applyWeb();
+  emit();
+  return true;
 }
 
 /** De maten en stijlen van het thema dat nu geldt. */
@@ -924,6 +956,8 @@ export function loadStoredPreference() {
       if (raw === "light" || raw === "dark" || raw === "system") setPreference(raw);
     })
     .catch(() => {});
+  // Native heeft geen localStorage, dus de eigen keuze komt hier pas binnen.
+  // Hij wint alsnog van het profiel, ook als dat al geantwoord had.
   AsyncStorage.getItem(THEME_KEY)
     .then((raw) => {
       if (isLincinTheme(raw)) setTheme(raw);
