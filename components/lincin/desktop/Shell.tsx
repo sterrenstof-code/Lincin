@@ -10,7 +10,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { ON_DARK, THEMES, color, pageTint, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
-import { head, mono, serif } from "@/lib/design/type";
+import { capf, head, mono } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { CHATS_MIN, CHATS_W, RAIL_NARROW, RAIL_W } from "@/lib/lincin/desktop";
 import { displayName, toCardPost } from "@/lib/lincin/model";
@@ -94,7 +94,7 @@ function ChatsPanel() {
       <ChatListHead link />
       <ChatList activeId={null} onOpen={(id) => router.push(`/chat/${id}` as never)} />
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}>
-        <Text style={[serif(true), { fontSize: 14, lineHeight: 19.6, color: color("ink", "inkDim") }]}>{t.panelNote}</Text>
+        <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: color("ink", "inkDim") }]}>{t.panelNote}</Text>
       </View>
     </View>
   );
@@ -167,7 +167,7 @@ function Rail({ active }: { active: Tab }) {
   return (
     <View style={{ width: RAIL_W, minHeight: 0, borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 26, paddingHorizontal: 20 }}>
       <Pressable accessibilityRole="link" onPress={() => router.push("/feed")}>
-        <Text style={[serif(), { fontSize: 27, lineHeight: 27, color: ink }]}>Lincin</Text>
+        <Text style={[capf(false, true), { fontSize: 27, lineHeight: 27, color: ink }]}>Lincin</Text>
         <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, textTransform: "uppercase", color: dim, marginTop: 6 }]}>{dateLine}</Text>
       </Pressable>
 
@@ -206,7 +206,7 @@ function Rail({ active }: { active: Tab }) {
       </Pressable>
 
       <View style={{ marginTop: "auto", gap: 12 }}>
-        <Text style={[serif(true), { fontSize: 14, lineHeight: 19.6, color: dim }]}>{t.noAlgo}</Text>
+        <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: dim }]}>{t.noAlgo}</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <View style={{ flexDirection: "row", gap: 10 }}>
             {(["nl", "en", "de"] as Lang[]).map((l) => (
@@ -254,7 +254,7 @@ function Rail({ active }: { active: Tab }) {
             )}
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[serif(), { fontSize: 16, lineHeight: 16, color: ink }]}>
+            <Text numberOfLines={1} style={[capf(false, true), { fontSize: 16, lineHeight: 16, color: ink }]}>
               {name}
             </Text>
             <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, color: dim }]}>
@@ -287,7 +287,7 @@ function RailNarrow({ active }: { active: Tab }) {
   return (
     <View style={{ width: RAIL_NARROW, minHeight: 0, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", paddingVertical: 18, gap: 14 }}>
       <Pressable accessibilityRole="link" accessibilityLabel="Lincin" onPress={() => router.push("/feed")}>
-        <Text style={[serif(), { fontSize: 20, lineHeight: 24, color: ink }]}>L</Text>
+        <Text style={[capf(false, true), { fontSize: 20, lineHeight: 24, color: ink }]}>L</Text>
       </Pressable>
       {nav.map((n) => {
         const on = n.on;
@@ -346,7 +346,7 @@ export function DesktopTitle({ children, right }: { children: ReactNode; right?:
         borderBottomColor: color("ink"),
       }}
     >
-      <Text style={[serif(), { flexShrink: 1, fontSize: 40, lineHeight: 38, letterSpacing: -0.8, color: color("ink") }]}>{children}</Text>
+      <Text style={[capf(false, true), { flexShrink: 1, fontSize: 40, lineHeight: 38, letterSpacing: -0.8, color: color("ink") }]}>{children}</Text>
       {right ? <View style={{ flexDirection: "row", gap: 14, paddingBottom: 6, alignItems: "center" }}>{right}</View> : null}
     </View>
   );

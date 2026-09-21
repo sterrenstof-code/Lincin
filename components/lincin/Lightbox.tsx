@@ -4,7 +4,7 @@ import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SafeImage } from "@/components/SafeImage";
-import { mono, serif } from "@/lib/design/type";
+import { capf, mono } from "@/lib/design/type";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useImageSize } from "@/lib/lincin/ratio";
 import { useT } from "@/lib/i18n";
@@ -277,7 +277,7 @@ function LightboxView({ p }: { p: LightboxPayload }) {
             </ScrollView>
           ) : null}
           <View style={{ gap: 6 }}>
-            {p.title ? <Text style={{ ...serif(), fontSize: 24, lineHeight: 25, color: LB_PAPER }}>{p.title}</Text> : null}
+            {p.title ? <Text style={{ ...capf(false, true), fontSize: 24, lineHeight: 25, color: LB_PAPER }}>{p.title}</Text> : null}
             <Text style={[metaStyle, { color: PAPER_DIM }]}>
               {d ? `${d.w} × ${d.h} px · ` : ""}
               {orient}

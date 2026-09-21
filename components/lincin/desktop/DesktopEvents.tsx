@@ -6,7 +6,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { mono, sans, serif } from "@/lib/design/type";
+import { capf, mono, sans } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
 
@@ -53,7 +53,7 @@ export function DesktopEvents() {
           </>
         }
       >
-        {t.eventsA} <Text style={serif(true)}>{t.eventsB}</Text>
+        {t.eventsA} <Text style={capf(true, true)}>{t.eventsB}</Text>
       </DesktopTitle>
       <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -97,7 +97,7 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
     >
       <View style={{ width: 76, gap: 6 }}>
         <View style={{ width: 10, height: 10, backgroundColor: fc.fill }} />
-        <Text style={[serif(), { fontSize: 52, lineHeight: 44, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
+        <Text style={[capf(false, true), { fontSize: 52, lineHeight: 44, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: dim }]}>
           {start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")}
         </Text>
@@ -111,7 +111,7 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
           </Text>
           <Text style={meta}>{when}</Text>
         </View>
-        <Text numberOfLines={2} style={[serif(), { fontSize: 26, lineHeight: 27, color: ink }]}>
+        <Text numberOfLines={2} style={[capf(false, true), { fontSize: 26, lineHeight: 27, color: ink }]}>
           {e.name}
         </Text>
         <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 19, color: dim }]}>

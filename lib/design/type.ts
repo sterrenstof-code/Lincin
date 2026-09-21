@@ -75,6 +75,25 @@ export function serif(italic = false): TextStyle {
     : { fontFamily: italic ? FONT.serifItalic : FONT.serif };
 }
 
+/**
+ * De ONDERSCHRIFTLETTER (`--capf` in de prototypes).
+ *
+ * Bijschriften, citaten, paginatitels en namen staan in Instrument Serif —
+ * behalve in modern. Daar bestaat geen serif én geen cursief (`--hfi` staat
+ * er op `normal`): alles loopt in gewone Archivo. Vandaar deze functie in
+ * plaats van `serif()` overal: hij kiest de letter die bij het thema hoort.
+ *
+ * `heavy` is voor de grotere trappen — een titel, een naam — die in modern
+ * op 500 staan en niet op 400.
+ */
+export function capf(italic = false, heavy = false): TextStyle {
+  if (themeSpec().heads === "archivo") {
+    // Modern kent geen cursief; de nadruk komt van de maat, niet van de hoek.
+    return sans(heavy ? 500 : 400);
+  }
+  return serif(italic);
+}
+
 /** IBM Plex Mono. */
 export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
   const fontFamily = weight === 600 ? FONT.monoSemi : weight === 500 ? FONT.monoMedium : FONT.mono;
@@ -157,27 +176,27 @@ function buildLincinType() {
   initial: { ...sans(700), fontSize: 13, lineHeight: 16 } as TextStyle,
 
   // ---- Instrument Serif: bijschriften, titels, citaten ----
-  caption: { ...serif(), fontSize: 15, lineHeight: 19 } as TextStyle,
-  captionLarge: { ...serif(), fontSize: 17, lineHeight: 21 } as TextStyle,
+  caption: { ...capf(), fontSize: 15, lineHeight: 19 } as TextStyle,
+  captionLarge: { ...capf(), fontSize: 17, lineHeight: 21 } as TextStyle,
   /** Het tekstvlak van een tekstbijdrage, en het bijschrift op de bladzijde. */
-  quote: { ...serif(), fontSize: 19, lineHeight: 24 } as TextStyle,
-  quoteLarge: { ...serif(), fontSize: 20, lineHeight: 25 } as TextStyle,
+  quote: { ...capf(), fontSize: 19, lineHeight: 24 } as TextStyle,
+  quoteLarge: { ...capf(), fontSize: 20, lineHeight: 25 } as TextStyle,
   /** "Zeg iets tegen …", de gestreepte kaarten. */
-  aside: { ...serif(true), fontSize: 17, lineHeight: 21 } as TextStyle,
-  asideSmall: { ...serif(true), fontSize: 14, lineHeight: 18 } as TextStyle,
+  aside: { ...capf(true), fontSize: 17, lineHeight: 21 } as TextStyle,
+  asideSmall: { ...capf(true), fontSize: 14, lineHeight: 18 } as TextStyle,
   /** De rij in een lijst (Instellingen →). */
-  row: { ...serif(), fontSize: 19, lineHeight: 24 } as TextStyle,
+  row: { ...capf(false, true), fontSize: 19, lineHeight: 24 } as TextStyle,
   /** De naam in de gesprekkenlijst en de kop van een gesprek. */
-  name: { ...serif(), fontSize: 20, lineHeight: 25 } as TextStyle,
+  name: { ...capf(false, true), fontSize: 20, lineHeight: 25 } as TextStyle,
   /** Titel van een event. */
-  eventTitle: { ...serif(), fontSize: 24, lineHeight: 26, letterSpacing: -0.24 } as TextStyle,
+  eventTitle: { ...capf(false, true), fontSize: 24, lineHeight: 26, letterSpacing: -0.24 } as TextStyle,
   /** De paginatitel: "Wat je vrienden maken". */
-  pageTitle: { ...serif(), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
-  pageTitleItalic: { ...serif(true), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
-  pageTitleLarge: { ...serif(), fontSize: 32, lineHeight: 33, letterSpacing: -0.32 } as TextStyle,
+  pageTitle: { ...capf(false, true), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
+  pageTitleItalic: { ...capf(true, true), fontSize: 30, lineHeight: 30, letterSpacing: -0.3 } as TextStyle,
+  pageTitleLarge: { ...capf(false, true), fontSize: 32, lineHeight: 33, letterSpacing: -0.32 } as TextStyle,
   /** Je eigen naam op "Jij". */
-  ownName: { ...serif(), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
-  ownNameItalic: { ...serif(true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
+  ownName: { ...capf(false, true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
+  ownNameItalic: { ...capf(true, true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
 
   // ---- Archivo 900 smal: de koppen ----
   /** Kaarttitel 22px, max 3 regels = 66px. */

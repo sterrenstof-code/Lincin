@@ -10,7 +10,7 @@ import { VerticalLabel } from "@/components/lincin/ui";
 import { WhoReacted } from "@/components/lincin/WhoReacted";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
 import { cardStyle, color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
-import { head, headStep, mono, serif } from "@/lib/design/type";
+import { capf, head, headStep, mono } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
@@ -159,7 +159,7 @@ export function DesktopFeed() {
       <View key="end" style={{ paddingTop: 34, paddingHorizontal: 24, paddingBottom: 50, gap: 14, alignItems: "flex-start" }}>
         <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, textTransform: "uppercase", color: dim }]}>{t.endLine}</Text>
         <Pressable accessibilityRole="button" onPress={f.compose} style={{ maxWidth: 560 }}>
-          <Text style={[serif(), { fontSize: 34, lineHeight: 34, color: ink }]}>{t.endTitle}</Text>
+          <Text style={[capf(false, true), { fontSize: 34, lineHeight: 34, color: ink }]}>{t.endTitle}</Text>
           <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: ink, marginTop: 12, textDecorationLine: "underline" }]}>
             {t.newPost} →
           </Text>
@@ -181,7 +181,7 @@ export function DesktopFeed() {
           </>
         }
       >
-        {t.feedA} <Text style={serif(true)}>{t.feedB}</Text>
+        {t.feedA} <Text style={capf(true, true)}>{t.feedB}</Text>
       </DesktopTitle>
       <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
         {/* Dezelfde scrollfade van 18 px als op de telefoon (2.2 §9). */}
@@ -356,7 +356,7 @@ function Card({
             {p.title}
           </Text>
           {p.caption || p.body ? (
-            <Text numberOfLines={1} style={[serif(), { fontSize: 15, lineHeight: 18, color: dim, marginTop: 4 }]}>
+            <Text numberOfLines={1} style={[capf(false, true), { fontSize: 15, lineHeight: 18, color: dim, marginTop: 4 }]}>
               {p.caption || p.body}
             </Text>
           ) : null}

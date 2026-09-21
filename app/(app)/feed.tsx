@@ -1,5 +1,4 @@
 import { DesktopFeed } from "@/components/lincin/desktop/DesktopFeed";
-import { DesktopMagazine } from "@/components/lincin/desktop/DesktopMagazine";
 import { FeedKleur } from "@/components/lincin/feed/FeedKleur";
 import { FeedMagazine } from "@/components/lincin/feed/FeedMagazine";
 import { FeedModern } from "@/components/lincin/modern/FeedModern";
@@ -12,14 +11,16 @@ import { usePageTitle } from "@/lib/page-title";
  * lay-outs. Welke, bepaalt het thema van de gebruiker. Alle drie lezen
  * dezelfde bijdragen en vrienden (`components/lincin/feed/useFeed.ts`).
  *
- * Op desktop bestaat modern nog niet als eigen vorm; daar valt hij terug
- * op `DesktopFeed`, net als kleur. 2.2 is een ronde voor de telefoon.
+ * Op DESKTOP is er sinds 2.2 één feed voor alle drie de thema's: het
+ * bento-rooster, waarvan alleen de naad en de kaartvorm het thema volgen
+ * (§9). `DesktopMagazine` — de masthead-feed uit 2.1 — staat nog in de
+ * code maar heeft geen route meer; hij wacht op de vraag of hij terugkomt.
  */
 export default function FeedScreen() {
   usePageTitle("Feed");
   const { theme } = useLincinTheme();
   const desktop = useIsDesktop();
-  if (desktop) return theme === "magazine" ? <DesktopMagazine /> : <DesktopFeed />;
+  if (desktop) return <DesktopFeed />;
   if (theme === "magazine") return <FeedMagazine />;
   if (theme === "modern") return <FeedModern />;
   return <FeedKleur />;

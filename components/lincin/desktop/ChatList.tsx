@@ -8,7 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, hueFor, listSeam, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { mono, sans, serif } from "@/lib/design/type";
+import { capf, mono, sans } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
@@ -182,7 +182,7 @@ function Row({
         }}
       />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={[serif(), { fontSize: 19, lineHeight: 21, color: ink }]}>
+        <Text numberOfLines={1} style={[capf(false, true), { fontSize: 19, lineHeight: 21, color: ink }]}>
           {name}
         </Text>
         <Text numberOfLines={1} style={[sans(), { fontSize: 12.5, lineHeight: 17, color: dim }]}>

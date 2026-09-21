@@ -6,7 +6,7 @@ import { ChatDetail } from "@/app/chat/[id]";
 import { chatTitle, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { color, friendColor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { mono, serif } from "@/lib/design/type";
+import { capf, mono } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { LIST_W, pickThread } from "@/lib/lincin/desktop";
 
@@ -98,7 +98,7 @@ function ThreadHead({ chatId }: { chatId: string }) {
   return (
     <View style={{ height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16, paddingHorizontal: 24, borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12, flexShrink: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={[serif(), { fontSize: 26, lineHeight: 28, color: color("ink"), flexShrink: 1 }]}>
+        <Text numberOfLines={1} style={[capf(false, true), { fontSize: 26, lineHeight: 28, color: color("ink"), flexShrink: 1 }]}>
           {chatTitle(chat, myUserId)}
         </Text>
         {sub ? <MonoLink label={sub} on={false} /> : null}

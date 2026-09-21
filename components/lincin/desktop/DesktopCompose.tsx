@@ -5,7 +5,7 @@ import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { SafeImage } from "@/components/SafeImage";
 import { color, friendColor, HUES, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, serif } from "@/lib/design/type";
+import { capf, head, mono } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { safeBack } from "@/lib/nav";
 
@@ -63,7 +63,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
                     c.slotImage && c.kind !== "foto" ? (
                       <SafeImage uri={c.slotImage} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                     ) : c.kind === "tekst" && c.body.trim() ? (
-                      <Text numberOfLines={12} style={[serif(), { fontSize: 22, lineHeight: 28, padding: 18, color: ink }]}>
+                      <Text numberOfLines={12} style={[capf(false, true), { fontSize: 22, lineHeight: 28, padding: 18, color: ink }]}>
                         {c.body}
                       </Text>
                     ) : null
@@ -78,7 +78,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
                   placeholder="De tekst zelf…"
                   placeholderTextColor={dim}
                   multiline
-                  style={[serif(), { minHeight: 120, fontSize: 19, lineHeight: 24, padding: 12, textAlignVertical: "top", borderWidth: 1, borderColor: rule, color: ink }, web as object]}
+                  style={[capf(false, true), { minHeight: 120, fontSize: 19, lineHeight: 24, padding: 12, textAlignVertical: "top", borderWidth: 1, borderColor: rule, color: ink }, web as object]}
                 />
               ) : null}
             </>
@@ -99,7 +99,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
             onChangeText={c.setCaption}
             placeholder={t.captionPh}
             placeholderTextColor={dim}
-            style={[serif(), { height: 44, fontSize: 18, lineHeight: 22, borderBottomWidth: 1, borderBottomColor: rule, color: ink }, web as object]}
+            style={[capf(false, true), { height: 44, fontSize: 18, lineHeight: 22, borderBottomWidth: 1, borderBottomColor: rule, color: ink }, web as object]}
           />
           {c.kind === "link" || c.kind === "muziek" ? (
             <TextInput

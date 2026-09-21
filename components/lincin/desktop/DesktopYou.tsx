@@ -10,7 +10,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { ON_DARK, THEMES, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { mono, sans, serif } from "@/lib/design/type";
+import { capf, mono, sans } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
@@ -78,8 +78,8 @@ export function DesktopYou() {
             onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile-edit") as never)}
             style={{ flexShrink: 1 }}
           >
-            <Text style={[serif(), { fontSize: 46, lineHeight: 44, color: ink }]}>
-              {first} {last ? <Text style={[serif(true), { color: dim }]}>{last}</Text> : null}
+            <Text style={[capf(false, true), { fontSize: 46, lineHeight: 44, color: ink }]}>
+              {first} {last ? <Text style={[capf(true, true), { color: dim }]}>{last}</Text> : null}
             </Text>
           </Pressable>
           <View style={{ flexDirection: "row", gap: 24, paddingBottom: 6 }}>
@@ -163,7 +163,7 @@ export function DesktopYou() {
   function Group({ title, children }: { title: string; children: ReactNode }) {
     return (
       <View style={{ flexGrow: 1, flexBasis: 280, minWidth: 280 }}>
-        <Text style={[serif(true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>{title}</Text>
+        <Text style={[capf(true, true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>{title}</Text>
         <View>{children}</View>
       </View>
     );

@@ -11,7 +11,7 @@ import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, serif } from "@/lib/design/type";
+import { capf, head, mono } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, numberMap, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
@@ -126,7 +126,7 @@ export function DesktopProfile({ username }: { username: string }) {
               <View style={{ flexShrink: 1, minWidth: 0 }}>
                 <Text style={[head(), { fontSize: 52, lineHeight: 47, color: fc.ink }]}>{name}</Text>
                 {p.bio ? (
-                  <Text numberOfLines={3} style={[serif(true), { fontSize: 19, lineHeight: 24, marginTop: 8, color: fc.ink }]}>
+                  <Text numberOfLines={3} style={[capf(true, true), { fontSize: 19, lineHeight: 24, marginTop: 8, color: fc.ink }]}>
                     {p.bio.split("\n")[0]}
                   </Text>
                 ) : null}
@@ -170,7 +170,7 @@ function Card({ post: c, width, number, onPress }: { post: CardPost; width: numb
           <SafeImage uri={image.uri} cacheKey={image.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
         ) : m.kind === "tekst" && m.text ? (
           // Een tekst toont zijn begin, zoals een tekstkaart in de feed.
-          <Text numberOfLines={5} style={[serif(), { alignSelf: "stretch", paddingHorizontal: 14, fontSize: 15, lineHeight: 19, color: color("ink") }]}>
+          <Text numberOfLines={5} style={[capf(false, true), { alignSelf: "stretch", paddingHorizontal: 14, fontSize: 15, lineHeight: 19, color: color("ink") }]}>
             {m.text}
           </Text>
         ) : m.kind === "link" && m.image ? (

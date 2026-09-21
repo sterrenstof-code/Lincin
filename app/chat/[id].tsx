@@ -2455,6 +2455,8 @@ function MessageBubble({
   const content = msg.content;
   const hasAttachment = !!content?.attachment;
   const hasText = !!content?.text && content.text.length > 0;
+  // Modern kent geen kaders en geen rechte hoeken; zie de bubbelstijl onder.
+  const modern = useThemeSpec().layout === "bento";
   // In groepsgesprekken: avatar-slot links van inkomende berichten
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
@@ -2600,16 +2602,40 @@ function MessageBubble({
           * anders bijna in het paginavlak verdwijnt — hij moet niet
           * opvallen, en `rule.soft` valt niet op.
           */
-        style={{
-          opacity: pending ? 0.65 : 1,
-          // Anderhalve pixel in álle thema's, los van het thema-kader
-          // (prototype THREAD: `border: 1.5px solid` naast `--bw`).
-          borderWidth: 1.5,
-          borderColor: failed ? color("red") : selected && accent ? accent : color("ink"),
-        }}
+        style={[
+          {
+            opacity: pending ? 0.65 : 1,
+            // Kleur en magazine: anderhalve pixel inkt om elke bubbel
+            // (prototype THREAD: `border: 1.5px solid` naast `--bw`).
+            borderWidth: 1.5,
+            borderColor: failed ? color("red") : selected && accent ? accent : color("ink"),
+          },
+          /**
+           * Modern kent geen kaders en geen rechte hoeken. Daar is een
+           * bubbel een afgeronde vorm met één korte hoek aan de kant waar
+           * hij vandaan komt — 20/20/6/20 voor die van jou, 20/20/20/6 voor
+           * die van de ander (prototype). De jouwe is een inktvlak zonder
+           * rand; die van de ander een lichte inkttint met een haarlijn.
+           */
+          modern
+            ? {
+                borderWidth: isMine ? 0 : 1,
+                borderColor: failed
+                  ? color("red")
+                  : selected && accent
+                    ? accent
+                    : color("ink", "postRule"),
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                borderBottomRightRadius: isMine ? 6 : 20,
+                borderBottomLeftRadius: isMine ? 20 : 6,
+                backgroundColor: failed ? color("red") : isMine ? color("ink") : color("ink", "onDark"),
+              }
+            : null,
+        ]}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
-        } ${failed ? "bg-flame" : isMine ? "bg-ink" : "bg-page-alt"}`}
+        } ${modern ? "" : failed ? "bg-flame" : isMine ? "bg-ink" : "bg-page-alt"}`}
       >
         {content === null ? (
           msg.pendingRekey ? (

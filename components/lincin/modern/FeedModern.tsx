@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
 import { BellIcon, PlusIcon } from "@/components/lincin/chrome/Header";
@@ -40,7 +41,7 @@ const TILE_COUNT = 6;
 
 export function FeedModern() {
   const f = useFeed();
-  const { t, lang, feed, byTime, sheet, setSheet, seen, fresh } = f;
+  const { t, lang, feed, byTime, groups, sheet, setSheet, seen } = f;
   const scheme = useScheme();
   useHueChoices();
 
@@ -87,10 +88,13 @@ export function FeedModern() {
           }
           align="flex-end"
         >
+          {/* Prototype: bovenaan de tijd van de NIEUWSTE bijdrage (`modClock`),
+              eronder de telling (`modKicker`). Er stond de wandklok, en die
+              zegt niets over de feed. */}
           <Counter>
-            {clock(lang)}
+            {byTime[0] ? timeLabel(byTime[0].createdAt, t, lang) : ""}
             {"\n"}
-            {fresh > 0 ? `${fresh} ${t.new}` : t.tabFeed}
+            {byTime.length} {t.posts} · {groups.length} {t.friends}
           </Counter>
         </TitleTile>
 
@@ -146,15 +150,6 @@ export function FeedModern() {
   );
 }
 
-/** De tijd van nu, als "wo 16 sep · 22:41" — de regel rechtsboven. */
-function clock(lang: string): string {
-  const locale = lang === "en" ? "en-GB" : lang === "de" ? "de-DE" : "nl-BE";
-  const now = new Date();
-  const day = now.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
-  const time = now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
-  return `${day} · ${time}`;
-}
-
 /**
  * De rij vriendenchips: één rond vlakje per vriend, met het aantal nieuwe
  * bijdragen erop. Ze schuiven horizontaal als er meer zijn dan er passen.
@@ -171,6 +166,12 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
           {groups.map((g) => {
             const fc = friendColor(g.hue, scheme);
             const unseen = g.posts.filter((p) => !seen.has(p.id)).length;
+            /**
+             * Alleen wie iets nieuws heeft draagt zijn kleur; de rest staat
+             * als omlijnde cirkel op het papier (prototype `modChips`). Zo
+             * springt in één oogopslag eruit waar iets te zien is — stond
+             * ieders kleur gevuld, dan zei de rij niets meer.
+             */
             return (
               <Pressable
                 key={g.key}
@@ -182,13 +183,24 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: fc.fill,
+                  backgroundColor: unseen > 0 ? fc.fill : "transparent",
+                  borderWidth: 1,
+                  borderColor: color("ink", unseen > 0 ? "pillSoft" : "postRule"),
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: unseen > 0 ? 1 : 0.72,
+                  opacity: unseen > 0 ? 1 : 0.6,
                 }}
               >
-                <Text style={{ ...sans(500), fontSize: 13, lineHeight: 16, color: fc.ink }}>{g.initial}</Text>
+                <Text
+                  style={{
+                    ...sans(500),
+                    fontSize: 13,
+                    lineHeight: 16,
+                    color: unseen > 0 ? fc.ink : color("ink", "inkDim"),
+                  }}
+                >
+                  {g.initial}
+                </Text>
                 {unseen > 0 ? (
                   <View
                     style={{
@@ -269,6 +281,8 @@ function Hero({
   lang: Lang;
   t: Dict;
 }) {
+  // Eén id per hero: op web staan meerdere schermen tegelijk in het document.
+  const scrimId = `modhero-${useId().replace(/[^a-z0-9]/gi, "")}`;
   return (
     <Tile
       span={2}
@@ -280,15 +294,25 @@ function Hero({
       <View style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
         <KindPreview post={post} scheme={scheme} fill />
       </View>
-      <View
-        style={{
-          padding: 18,
-          flexDirection: "row",
-          alignItems: "flex-end",
-          gap: 14,
-          backgroundColor: "rgba(8,8,9,.62)",
-        }}
-      >
+      {/* Prototype: `linear-gradient(180deg, rgba(8,8,9,0) 0%, rgba(8,8,9,.86) 58%)`
+          over de onderrand. Er stond een vlakke balk van .62 — die sneed de
+          foto met een harde lijn doormidden in plaats van erin te zakken. */}
+      <View style={{ padding: 18, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
+        <Svg
+          width="100%"
+          height="100%"
+          style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}
+          preserveAspectRatio="none"
+        >
+          <Defs>
+            <LinearGradient id={scrimId} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#080809" stopOpacity={0} />
+              <Stop offset="0.58" stopColor="#080809" stopOpacity={0.86} />
+              <Stop offset="1" stopColor="#080809" stopOpacity={0.86} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${scrimId})`} />
+        </Svg>
         <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
           <Text
             style={{

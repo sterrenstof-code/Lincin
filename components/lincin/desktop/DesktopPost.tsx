@@ -17,7 +17,7 @@ import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { capf, head, mono, sans } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
@@ -259,7 +259,7 @@ export function DesktopPost({ id }: { id: string }) {
               <Text style={[head(), { fontSize: 64, lineHeight: 60, letterSpacing: spec.serifHeads ? 0 : -0.64, color: fc.ink }]}>{card.title}</Text>
               {card.media.kind === "tekst" ? (
                 <View style={{ borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), paddingVertical: 22, paddingHorizontal: 26 }}>
-                  <Text selectable style={[serif(), { fontSize: 20, lineHeight: 30, color: ink }]}>
+                  <Text selectable style={[capf(false, true), { fontSize: 20, lineHeight: 30, color: ink }]}>
                     {card.media.text}
                   </Text>
                 </View>
@@ -286,7 +286,7 @@ export function DesktopPost({ id }: { id: string }) {
               {photos ? (
                 <Text style={[head(), { fontSize: 34, lineHeight: 31, letterSpacing: spec.serifHeads ? 0 : -0.34, color: ink }]}>{card.title}</Text>
               ) : null}
-              {card.caption ? <Text style={[serif(), { fontSize: 19, lineHeight: 24, color: ink }]}>{card.caption}</Text> : null}
+              {card.caption ? <Text style={[capf(false, true), { fontSize: 19, lineHeight: 24, color: ink }]}>{card.caption}</Text> : null}
               {card.body && card.body !== card.caption ? <Text style={[sans(), { fontSize: 13.5, lineHeight: 20, color: dim, maxWidth: 640 }]}>{card.body}</Text> : null}
             </>
           )}
