@@ -3,12 +3,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
+import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
-import { BackChip, BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
+import { BORDER, Body, Box, GAP, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import {
   addEntityComment,
   listEntityComments,
@@ -169,9 +169,9 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
       tint={p ? fc.fill : null}
       counter={t.post}
       embedded={embedded}
+      back="/feed"
       header={
         <TopRow
-          left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
           right={
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Mono variant="micro" tone="dim">
@@ -196,7 +196,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
       }
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }} showsVerticalScrollIndicator={false}>
           {post.isLoading && !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.loading}

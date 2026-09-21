@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
-import { LincinScreen } from "@/components/lincin/Chrome";
+import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -117,7 +117,7 @@ function ChatsMobile() {
       {/* Eén kader dat tot de onderrand loopt (prototype §04: het scrollvlak
           zelf draagt het kader, zonder onderlijn); de rijen erin. */}
       <ScrollView
-        style={{ flex: 1, marginTop: 14, marginHorizontal: GUTTER, borderWidth: BORDER, borderBottomWidth: 0, borderColor: line(), backgroundColor: color("paper") }}
+        style={[{ flex: 1, marginTop: 14, marginHorizontal: GUTTER, borderWidth: BORDER, borderBottomWidth: 0, borderColor: line(), backgroundColor: color("paper") }, vfade()]}
         showsVerticalScrollIndicator={false}
       >
         {chats.isLoading ? (

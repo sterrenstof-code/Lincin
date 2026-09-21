@@ -41,11 +41,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
+import { BORDER, GUTTER, Head, Serif, line } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
-import { ChatWorkspace, CHAT_RAIL_BREAKPOINT } from "@/components/ChatWorkspace";
+import { ChatWorkspace } from "@/components/ChatWorkspace";
 
 import { QueryError } from "@/components/QueryError";
 import { plural } from "@/lib/plural";
@@ -53,7 +53,6 @@ import { Skeleton } from "@/components/Skeleton";
 import { useAuth } from "@/lib/auth/provider";
 import { DesktopChats } from "@/components/lincin/desktop/DesktopChats";
 import { useIsDesktop } from "@/lib/lincin/desktop";
-import { safeBack } from "@/lib/nav";
 import { useToast } from "@/lib/toast";
 import {
   chatTitle,
@@ -210,9 +209,6 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   const params = useLocalSearchParams<{ id: string }>();
   // Ingebed (desktop) komt het id als prop; als scherm uit de route.
   const id = idProp ?? params.id;
-  // Boven dit breekpunt toont ChatWorkspace de gesprekkenlijst links.
-  const { width: windowWidth } = useWindowDimensions();
-  const railVisible = !embedded && windowWidth >= CHAT_RAIL_BREAKPOINT;
   // De chat scrollt in een eigen omgekeerde lijst, dus de kop klapt hier
   // nooit open of dicht; `compact` houdt hem vast in de balkstand. De
   // Animated.Value is er alleen omdat AppChrome hem in zijn signatuur heeft.
@@ -304,18 +300,6 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   });
   const myName =
     myProfile.data?.display_name ?? myProfile.data?.username ?? "Iemand";
-
-  // Zelfde query als in (app)/_layout — react-query dedupliceert automatisch
-  // dus dit kost geen extra fetch. We gebruiken hem om te tonen op de back-
-  // button hoeveel ongelezen berichten er in ANDERE chats wachten.
-  const allChatsQuery = useQuery({
-    queryKey: ["chats", myUserId],
-    queryFn: () => listMyChats(myUserId!),
-    enabled: !!myUserId,
-  });
-  const otherUnread = (allChatsQuery.data ?? [])
-    .filter((c) => c.id !== id)
-    .reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
 
   // Initial load + realtime
   // Laad vrienden voor @mention autocomplete
@@ -1088,7 +1072,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   }, [chat, myUserId, id, router]);
 
   return (
-    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full embedded={embedded}>
+    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full embedded={embedded} back="/(app)/chats">
       {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
           balk was de chat een doodlopende straat: op desktop verbergt de
           gesprekkenlijst links de terug-knop, en dan was er geen enkele
@@ -1115,10 +1099,16 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             vulling deed doet de lijn nu, en de knoppen dragen zichzelf op
             de maat die élke knop in de app heeft (CONTROL_H).
         */}
-        {/* De kop van v2 (README §05): één kader van 48 — terug, de naam in
-            serif, en rechts een cel in de kleur van de ander met zijn
-            initiaal. Bellen zit als smalle cel ertussen; de kleurcel opent
-            de groepsinfo of het profiel. */}
+        {/* De kop van v2 (README §05): één kader van 48 — de naam in serif,
+            en rechts een cel in de kleur van de ander met zijn initiaal.
+            Bellen zit als smalle cel ertussen; de kleurcel opent de
+            groepsinfo of het profiel.
+
+            De cel `← Terug` stond hier tot 2.1 vooraan. Sinds 2.2 zit de
+            terugknop in de kopregel (2.2 §5) en is deze rij alleen nog van
+            de naam en de twee knoppen. Het aantal ongelezen berichten in
+            ándere gesprekken stond op die cel; dat draagt nu de rode stip
+            achter "Gesprekken" in de navigatie. */}
         <View
           style={{
             marginTop: 8,
@@ -1132,23 +1122,6 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             display: embedded ? "none" : "flex",
           }}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t2.back}
-            onPress={() => safeBack(router, "/(app)/chats")}
-            style={{
-              paddingHorizontal: 12,
-              justifyContent: "center",
-              borderRightWidth: BORDER,
-              borderRightColor: line(),
-              display: railVisible || embedded ? "none" : "flex",
-            }}
-          >
-            <Mono variant="meta" style={{ textTransform: "none" }}>
-              ← {t2.back}
-              {otherUnread > 0 ? ` · ${otherUnread > 99 ? "99+" : otherUnread}` : ""}
-            </Mono>
-          </Pressable>
           <Pressable
             onPress={onPressHeaderTitle}
             hitSlop={4}

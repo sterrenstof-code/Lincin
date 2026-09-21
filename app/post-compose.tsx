@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { BackChip, BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
+import { BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { MAX_PHOTOS, POLL_MAX, POLL_MIN } from "@/lib/lincin/compose";
@@ -277,7 +277,7 @@ export default function ComposeScreen() {
   const desktop = useIsDesktop();
   const c = useCompose();
   const [panelH, setPanelH] = useState(297);
-  const { router, t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
+  const { t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
   if (desktop) return <DesktopCompose c={c} />;
   return (
     <LincinScreen
@@ -285,9 +285,9 @@ export default function ComposeScreen() {
       tint={fc.fill}
       tabTint={null}
       counter={t.newPost}
+      back="/feed"
       header={
         <TopRow
-          left={<BackChip label={`× ${t.cancel}`} onPress={() => safeBack(router, "/feed")} />}
           right={
             <Mono variant="micro" tone="dim">
               {t.newPost} · № {number}

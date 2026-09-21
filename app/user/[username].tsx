@@ -3,11 +3,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
-import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
+import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { HuePicker } from "@/components/lincin/HuePicker";
-import { BackChip, Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
+import { Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
 import {
@@ -25,7 +25,6 @@ import { displayName, fromPost, shortDate, type CardPost } from "@/lib/lincin/mo
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { DesktopProfile } from "@/components/lincin/desktop/DesktopProfile";
 import { openPost as openPostAnywhere, openThread, useIsDesktop } from "@/lib/lincin/desktop";
-import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
@@ -194,9 +193,9 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
       tint={p ? fc.fill : null}
       counter={t.scrProfile}
       embedded={embedded}
+      back="/feed"
       header={
         <TopRow
-          left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
           right={
             <Mono variant="micro" tone="dim">
               {t.scrProfile}
@@ -205,7 +204,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
         />
       }
     >
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }}>
         {relation.kind === "not-found" ? (
           <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
             {t.failed}

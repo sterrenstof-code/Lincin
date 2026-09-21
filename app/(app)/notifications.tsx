@@ -2,8 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { BackChip, BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
+import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
+import { BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -15,7 +15,6 @@ import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } fr
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { shortAgo } from "@/lib/lincin/model";
-import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -67,15 +66,15 @@ export default function NotificationsScreen() {
     <LincinScreen
       tab="you"
       counter={t.notifications}
+      back="/profile"
       header={
         <TopRow
-          left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/profile")} />}
           center={<Serif variant="pageTitleLarge">{t.notifications}</Serif>}
           right={unread > 0 ? <Btn label="Alles gelezen" height={30} onPress={readAll} /> : null}
         />
       }
     >
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20 }}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20 }}>
         {notes.isLoading ? (
           <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
             {t.loading}

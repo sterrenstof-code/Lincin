@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
-import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
+import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
-import { BackChip, BORDER, Body, Box, GUTTER, Mono, Segment, Serif, line } from "@/components/lincin/ui";
+import { BORDER, Body, Box, GUTTER, Mono, Segment, Serif, line } from "@/components/lincin/ui";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
@@ -12,7 +12,6 @@ import { color, setPreference, usePreference, type LincinTheme, type ThemePrefer
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
-import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -67,14 +66,14 @@ function SettingsMobile() {
     <LincinScreen
       tab="you"
       counter={t.settings}
+      back="/profile"
       header={
         <TopRow
-          left={<BackChip label={`← ${t.you}`} onPress={() => safeBack(router, "/profile")} />}
           center={<Serif variant="pageTitleLarge">{t.settings}</Serif>}
         />
       }
     >
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20, gap: 16 }}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20, gap: 16 }}>
         <Group title={t.lookTitle}>
           <Row label={t.theme} sub={t.themeSub}>
             <Segment<LincinTheme>

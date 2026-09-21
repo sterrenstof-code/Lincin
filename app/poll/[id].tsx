@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 
@@ -8,7 +8,7 @@ import { CommentReactions } from "@/components/lincin/CommentReactions";
 import { CommentRow } from "@/components/lincin/CommentRow";
 import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
 import { PostCard } from "@/components/lincin/PostCard";
-import { BackChip, GAP, GUTTER, Mono } from "@/components/lincin/ui";
+import { GAP, GUTTER, Mono } from "@/components/lincin/ui";
 import { addEntityComment, listEntityComments, subscribeToEntityComments } from "@/lib/api/entity-comments";
 import { getPollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
@@ -17,7 +17,6 @@ import { useT } from "@/lib/i18n";
 import { openProfile } from "@/lib/lincin/desktop";
 import { fromPoll } from "@/lib/lincin/model";
 import { useCommentReactions } from "@/lib/lincin/reactions";
-import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { markSeen } from "@/lib/read-state";
@@ -35,7 +34,6 @@ import { useToast } from "@/lib/toast";
 export default function PollScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = String(raw ?? "");
-  const router = useRouter();
   const qc = useQueryClient();
   const t = useT();
   const scheme = useScheme();
@@ -102,9 +100,9 @@ export default function PollScreen() {
       tab="feed"
       tint={p ? fc.fill : null}
       counter={t.post}
+      back="/feed"
       header={
         <TopRow
-          left={<BackChip label={`← ${t.back}`} onPress={() => safeBack(router, "/feed")} />}
           right={
             <Mono variant="micro" tone="dim">
               poll

@@ -15,7 +15,7 @@ import {
 
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
-import { columnWidth, LincinScreen } from "@/components/lincin/Chrome";
+import { LincinScreen, columnWidth, vfade } from "@/components/lincin/Chrome";
 import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
@@ -76,6 +76,13 @@ export function FeedKleur() {
   const tops = useRef<number[]>([]);
   const [idx, setIdx] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  /**
+   * Zit het blad nog in de trekzone (2.2 §5)? De regel "trek om te
+   * vernieuwen" hoort alleen te staan terwijl je trekt of terwijl er
+   * ververst wordt. Ingeklapt blijft de strook leeg — anders leest er
+   * bovenaan élk bezoek een instructie die je niet vroeg.
+   */
+  const [pullNear, setPullNear] = useState(false);
   const settled = useRef(false);
 
   useEffect(() => {
@@ -108,6 +115,11 @@ export function FeedKleur() {
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
+      // Prototype: `pullNear = scrollTop < 44`.
+      setPullNear((was) => {
+        const near = y < 44;
+        return near === was ? was : near;
+      });
       if (y <= 2 && settled.current && !refreshing) refresh();
       const mid = y + 100;
       let i = 0;
@@ -143,9 +155,11 @@ export function FeedKleur() {
 
   children.push(
     <View key="pull" style={{ height: PULL_H, alignItems: "center", justifyContent: "center" }}>
-      <Mono variant="micro" tone="dim">
-        {refreshing ? t.refreshing : t.pull}
-      </Mono>
+      {pullNear || refreshing ? (
+        <Mono variant="micro" tone="dim">
+          {refreshing ? t.refreshing : t.pull}
+        </Mono>
+      ) : null}
     </View>,
   );
 
@@ -298,7 +312,7 @@ export function FeedKleur() {
       </View>
       <ScrollView
         ref={scrollRef}
-        style={{ flex: 1, marginTop: 12 }}
+        style={[{ flex: 1, marginTop: 12 }, vfade()]}
         stickyHeaderIndices={sticky}
         onScroll={onScroll}
         scrollEventThrottle={32}

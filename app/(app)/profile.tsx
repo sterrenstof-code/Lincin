@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
-import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
+import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
 import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -63,7 +63,7 @@ function YouMobile() {
 
   return (
     <LincinScreen tab="you" counter={t.tabYou}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 20 }}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
           {/* Je naam opent je profiel, zoals je vrienden het zien; de avatar bewerkt. */}
           <Pressable

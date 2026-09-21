@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 
-import { LincinScreen } from "@/components/lincin/Chrome";
+import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { Body, BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
@@ -73,7 +73,7 @@ function EventsMobile() {
           ) : null}
         </View>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, paddingBottom: 20, gap: GAP }}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, paddingBottom: 20, gap: GAP }}>
         {events.isLoading ? (
           <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
             {t.loading}

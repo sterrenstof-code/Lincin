@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
+import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
 import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, GUTTER, line, Mono, Serif } from "@/components/lincin/ui";
@@ -290,7 +290,7 @@ export function FeedMagazine() {
 
   return (
     <LincinScreen tab="feed" header="none" bleed>
-      <ScrollView style={{ flex: 1 }} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
