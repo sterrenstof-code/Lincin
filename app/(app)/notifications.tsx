@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
+import { NotificationsModern } from "@/components/lincin/modern/NotificationsModern";
 import { BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
 import {
   listNotifications,
@@ -32,6 +33,11 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const spec = useThemeSpec();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
 
   const notes = useQuery({
     queryKey: ["notifications", myUserId],
@@ -60,6 +66,29 @@ export default function NotificationsScreen() {
   async function readAll() {
     await markAllNotificationsRead(myUserId).catch(() => {});
     bump();
+  }
+
+  if (spec.layout === "bento") {
+    return (
+      <NotificationsModern
+        rows={data.map((n) => ({
+          key: n.id,
+          actorId: n.actor_id,
+          // `bug_resolved` heeft geen afzender; dan staat de zin alleen.
+          by: n.type === "bug_resolved" ? "" : n.actor?.display_name ?? n.actor?.username ?? "Iemand",
+          text: describe(n).text,
+          when: shortAgo(n.created_at, t, lang),
+          unread: !n.read,
+          onPress: () => open(n),
+        }))}
+        unread={unread}
+        scheme={scheme}
+        t={t}
+        state={notes.isLoading ? t.loading : notes.isError ? t.failed : null}
+        emptyLabel="Nog geen meldingen"
+        onEmptyPress={() => router.push("/profile")}
+      />
+    );
   }
 
   return (

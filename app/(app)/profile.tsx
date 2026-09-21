@@ -3,13 +3,14 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
+import { YouModern } from "@/components/lincin/modern/YouModern";
 import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
 import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
@@ -42,6 +43,7 @@ function YouMobile() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  const spec = useThemeSpec();
   const unread = useUnread();
 
   const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId) });
@@ -60,6 +62,53 @@ function YouMobile() {
   const since = new Date(session!.user.created_at);
   const yy = `'${String(since.getFullYear()).slice(2)}`;
   const mon = since.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "");
+
+  const links = [
+    { label: t.settings, right: "→", onPress: () => router.push("/settings" as never) },
+    {
+      label: t.notifications,
+      right: unread.notifications > 0 ? `${unread.notifications} ${t.new} →` : "→",
+      red: unread.notifications > 0,
+      onPress: () => router.push("/notifications"),
+    },
+    {
+      label: t.lincsInvites,
+      right: pendingIn > 0 ? `${pendingIn} ${t.waitsForYou} →` : `${lincs} →`,
+      red: pendingIn > 0,
+      onPress: () => router.push("/friends"),
+    },
+    { label: t.myQr, right: "→", onPress: () => router.push("/qr-code") },
+  ];
+
+  if (spec.layout === "bento") {
+    return (
+      <YouModern
+        first={first}
+        last={last}
+        t={t}
+        avatar={
+          p?.avatar_url ? (
+            <View style={{ width: 64, height: 64, borderRadius: 32, overflow: "hidden" }}>
+              <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+            </View>
+          ) : (
+            <Initial letter={name.slice(0, 1).toUpperCase()} size={64} bg={fc.fill} fg={fc.ink} fontSize={26} round />
+          )
+        }
+        stats={[
+          { n: String(posts.data?.length ?? 0), label: t.posts },
+          { n: String(lincs), label: "lincs" },
+          { n: yy, label: `${t.sinceMar} ${mon}` },
+        ]}
+        latest={(posts.data ?? []).slice(0, 8).map((post) => ({
+          key: post.id,
+          onPress: () => openPost(post.id),
+          children: <MiniBody post={post} fill={fc.fill} ink={fc.ink} />,
+        }))}
+        links={links}
+      />
+    );
+  }
 
   return (
     <LincinScreen tab="you" counter={t.tabYou}>
@@ -162,6 +211,19 @@ function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string
       <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}>
         <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: lincinType.numeralTiny.fontFamily, fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
       </View>
+      <MiniBody post={post} fill={fill} ink={ink} />
+    </Pressable>
+  );
+}
+
+/**
+ * De inhoud van zo'n minikaartje, zonder kader en zonder kleurrug: de foto,
+ * of de tekst, of de plaat. Modern zet hem in een tegel van 128 × 160 met
+ * een ronding van 14; kleur zet hem naast de rug van 44 (zie `Mini`).
+ */
+function MiniBody({ post, fill, ink }: { post: PostWithAuthor; fill: string; ink: string }) {
+  const card = fromPost(post);
+  return (
       <View style={{ flex: 1, backgroundColor: color("paper2") }}>
         {post.image_url ? (
           <SafeImage uri={post.image_url} cacheKey={post.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
@@ -189,7 +251,6 @@ function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string
           </View>
         )}
       </View>
-    </Pressable>
   );
 }
 

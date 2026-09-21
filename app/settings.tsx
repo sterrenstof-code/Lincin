@@ -3,6 +3,7 @@ import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
+import { SettingsModern, type SettingsGroupData } from "@/components/lincin/modern/SettingsModern";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
 import { BORDER, Body, Box, GUTTER, Mono, Segment, Serif, line } from "@/components/lincin/ui";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -42,6 +43,7 @@ function SettingsMobile() {
   const theme = usePreference();
   const prefs = usePrefs(myUserId);
   const lincin = useLincinTheme();
+  const spec = lincin.spec;
 
   const friendships = useQuery({
     queryKey: ["friendships", myUserId],
@@ -61,6 +63,104 @@ function SettingsMobile() {
   }
 
   const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
+
+  /**
+   * De vier groepen als gegevens. Kleur en magazine zetten ze in kaders,
+   * modern in tegels met gestippelde scheidingen (2.2 §1). Dezelfde rijen,
+   * dezelfde schakelaars, dezelfde handelingen.
+   */
+  const arrow = (red = false) => (
+    <Mono variant="meta" tone={red ? "red" : "ink"} style={{ textTransform: "none" }}>
+      →
+    </Mono>
+  );
+  const groups: SettingsGroupData[] = [
+    {
+      title: t.lookTitle,
+      rows: [
+        {
+          key: "theme",
+          label: t.theme,
+          sub: t.themeSub,
+          right: (
+            <Segment<LincinTheme>
+              options={[
+                { value: "kleur", label: t.themeKleur },
+                { value: "magazine", label: t.themeMagazine },
+                { value: "modern", label: t.themeModern },
+              ]}
+              value={lincin.theme}
+              onChange={lincin.choose}
+            />
+          ),
+        },
+        {
+          key: "lang",
+          label: t.language,
+          sub: t.languageSub,
+          right: (
+            <Segment<Lang>
+              options={[
+                { value: "nl", label: "NL" },
+                { value: "en", label: "EN" },
+                { value: "de", label: "DE" },
+              ]}
+              value={lang}
+              onChange={setLang}
+            />
+          ),
+        },
+        {
+          key: "stand",
+          label: t.lightDark,
+          sub: t.followsDevice,
+          onPress: () => setPreference(THEME_NEXT[theme]),
+          right: (
+            <Mono variant="meta" style={{ textTransform: "none" }}>
+              {themeLabel} →
+            </Mono>
+          ),
+        },
+        { key: "tint", label: t.tint, sub: t.tintSub, onPress: toggle("tint"), right: <Toggle on={prefs.tint} /> },
+      ],
+    },
+    {
+      title: t.notifTitle,
+      rows: [
+        { key: "pushNew", label: t.newPosts, sub: t.newPostsSub, onPress: toggle("pushNew"), right: <Toggle on={prefs.pushNew} /> },
+        { key: "quiet", label: t.quiet, sub: t.quietSub, onPress: toggle("quiet"), right: <Toggle on={prefs.quiet} /> },
+      ],
+    },
+    {
+      title: t.whoTitle,
+      rows: [
+        { key: "visible", label: t.visible, sub: t.visibleSub, onPress: toggle("visible"), right: <Toggle on={prefs.visible} /> },
+        {
+          key: "lincs",
+          label: t.myLincs,
+          sub: `${lincs} ${t.friends}`,
+          onPress: () => router.push("/friends"),
+          right: (
+            <Mono variant="meta" style={{ textTransform: "none" }}>
+              {lincs} →
+            </Mono>
+          ),
+        },
+      ],
+    },
+    {
+      title: "Account",
+      rows: [
+        { key: "edit", label: "Profiel bewerken", sub: session?.user.email ?? "", onPress: () => router.push("/profile-edit"), right: arrow() },
+        { key: "device", label: "Toestel koppelen", sub: "Je sleutels naar een tweede toestel", onPress: () => router.push("/device-link"), right: arrow() },
+        { key: "logout", label: "Uitloggen", sub: "Op dit toestel", onPress: logout, right: arrow(true) },
+      ],
+    },
+  ];
+
+  if (spec.layout === "bento") {
+    return <SettingsModern groups={groups} footer={t.footerNote} t={t} />;
+  }
 
   return (
     <LincinScreen

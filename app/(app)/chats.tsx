@@ -4,11 +4,13 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
+import { DashedTile } from "@/components/lincin/modern/Bento";
+import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme, type Hue } from "@/lib/design/theme";
+import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
@@ -42,6 +44,7 @@ function ChatsMobile() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
+  const spec = useThemeSpec();
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
   const toast = useToast();
@@ -78,6 +81,58 @@ function ChatsMobile() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.failed);
     }
+  }
+
+  /**
+   * De rijen als gegevens, los van hun vorm. Kleur tekent ze als lijst in
+   * één kader; modern als tegels in een bento-rooster (2.2 §1). Dezelfde
+   * gesprekken, dezelfde volgorde, dezelfde handelingen.
+   */
+  const rows: ChatRowData[] = [
+    ...list.map((c) => {
+      const isGroup = c.type === "group";
+      const other = isGroup ? null : otherMember(c, myUserId);
+      const pv = previews[c.id];
+      let preview = "Nog geen berichten";
+      if (pv) preview = pv.fromMe ? `${t.me}: ${pv.text}` : isGroup && pv.sender ? `${pv.sender}: ${pv.text}` : pv.text;
+      const name = chatTitle(c, myUserId);
+      return {
+        key: c.id,
+        name,
+        initial: name.slice(0, 1).toUpperCase(),
+        hue: (isGroup ? "green" : hueFor(other?.id)) as Hue,
+        time: c.last_message_at ? shortAgo(c.last_message_at, t, lang) : "",
+        preview,
+        unread: c.unread_count ?? 0,
+        onPress: () => openThread(c.id),
+      };
+    }),
+    ...withoutChat.map((f) => {
+      const name = displayName(f.other);
+      return {
+        key: f.id,
+        name,
+        initial: name.slice(0, 1).toUpperCase(),
+        hue: hueFor(f.other.id),
+        time: "",
+        preview: "Nog geen berichten",
+        unread: 0,
+        onPress: () => openWith(f.other.id),
+      };
+    }),
+  ];
+
+  if (spec.layout === "bento") {
+    return (
+      <ChatsModern
+        rows={rows}
+        unread={unread}
+        scheme={scheme}
+        t={t}
+        state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+        footer={<DashedTile label="Nieuwe groep →" onPress={() => router.push("/group-create")} />}
+      />
+    );
   }
 
   function rowFor(c: ChatWithMembers) {
