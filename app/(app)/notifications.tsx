@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { NotificationsModern } from "@/components/lincin/modern/NotificationsModern";
+import { NotificationsMagazine } from "@/components/lincin/magazine/Pages";
 import { BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
 import {
   listNotifications,
@@ -68,19 +69,34 @@ export default function NotificationsScreen() {
     bump();
   }
 
+  const noteRows = data.map((n, i) => ({
+    key: n.id,
+    actorId: n.actor_id,
+    // `bug_resolved` heeft geen afzender; dan staat de zin alleen.
+    by: n.type === "bug_resolved" ? "" : n.actor?.display_name ?? n.actor?.username ?? "Iemand",
+    text: describe(n).text,
+    when: shortAgo(n.created_at, t, lang),
+    no: String(data.length - i).padStart(2, "0"),
+    unread: !n.read,
+    onPress: () => open(n),
+  }));
+
+  if (spec.layout === "spread") {
+    return (
+      <NotificationsMagazine
+        rows={noteRows}
+        unread={unread}
+        scheme={scheme}
+        t={t}
+        state={notes.isLoading ? t.loading : notes.isError ? t.failed : data.length === 0 ? "Nog geen meldingen" : null}
+      />
+    );
+  }
+
   if (spec.layout === "bento") {
     return (
       <NotificationsModern
-        rows={data.map((n) => ({
-          key: n.id,
-          actorId: n.actor_id,
-          // `bug_resolved` heeft geen afzender; dan staat de zin alleen.
-          by: n.type === "bug_resolved" ? "" : n.actor?.display_name ?? n.actor?.username ?? "Iemand",
-          text: describe(n).text,
-          when: shortAgo(n.created_at, t, lang),
-          unread: !n.read,
-          onPress: () => open(n),
-        }))}
+        rows={noteRows}
         unread={unread}
         scheme={scheme}
         t={t}

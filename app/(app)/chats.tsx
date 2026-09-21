@@ -6,6 +6,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
+import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -121,6 +122,18 @@ function ChatsMobile() {
       };
     }),
   ];
+
+  if (spec.layout === "spread") {
+    return (
+      <ChatsMagazine
+        rows={rows}
+        unread={unread}
+        scheme={scheme}
+        t={t}
+        state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+      />
+    );
+  }
 
   if (spec.layout === "bento") {
     return (

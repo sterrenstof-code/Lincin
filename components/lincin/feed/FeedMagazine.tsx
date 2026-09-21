@@ -13,6 +13,9 @@ import type { Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
+import { KindPreview } from "../modern/KindPreview";
+import { Spread, SpreadCaption, SpreadKicker, SpreadTitle } from "../magazine/Spread";
+
 import { EmptyFeed } from "./EmptyFeed";
 import { useFeed } from "./useFeed";
 
@@ -228,56 +231,68 @@ export function FeedMagazine() {
       </View>,
     );
 
-    toc.forEach((p) => {
+    /**
+     * De inhoudsopgave is sinds 2.2 geen lijst meer maar een reeks
+     * POSTER-SPREADS (§2): per bijdrage een volvlaks kleurvlak met een naad
+     * van 6, een verticale metarail die per item van kant wisselt, een
+     * serif-kop en een cursief onderschrift. Rechts een beeldkolom van 138;
+     * een bijdrage zonder foto toont daar zijn eigen preview op papier.
+     *
+     * Elk derde item is hoger (228 / 300).
+     */
+    toc.forEach((p, i) => {
       const fc = friendColor(hueOf(p), scheme);
       children.push(
         // Bewust géén `accessibilityRole="button"`: op web wordt dat een
-        // <button>, en daar mag de privaat-knop rechts niet in.
-        <Pressable
+        // <button>, en daar mag de knop "Bericht" rechts niet in.
+        <Spread
           key={p.id}
-          accessibilityLabel={p.title}
+          index={i}
+          page="feed"
+          fill={fc.fill}
+          ink={fc.ink}
+          rail={`№ ${numberOf(p.id)} · ${p.authorName} · ${timeLabel(p.createdAt, t, lang)}`}
           onPress={() => f.openPost(p)}
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            gap: 12,
-            paddingVertical: 12,
-            paddingHorizontal: PAD,
-            borderBottomWidth: 1,
-            borderBottomColor: color("ink", "postRule"),
-            alignItems: "stretch",
-            // Al gezien of gelezen: licht gedempt, zodat het nieuwe opvalt.
-            opacity: (f.seen.has(p.id) ? SEEN_OPACITY : 1) * (pressed ? 0.7 : 1),
-          })}
+          accessibilityLabel={p.title}
+          // Al gezien: licht gedempt, zodat het nieuwe opvalt.
+          style={{ opacity: f.seen.has(p.id) ? SEEN_OPACITY : 1 }}
+          media={<KindPreview post={p} scheme={scheme} variant="papier" />}
         >
-          <View style={{ width: 6, backgroundColor: fc.fill }} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Mono variant="tiny" tone="dim" numberOfLines={1} style={{ fontSize: 8, lineHeight: 11, letterSpacing: 0.96 }}>
-              {p.authorName} · {p.kind} · {timeLabel(p.createdAt, t, lang)}
-            </Mono>
-            {p.untitled && p.media.kind === "foto" ? (
-              // Geen titel: dan de foto zelf, klein, in plaats van het woord "foto".
-              <View style={{ marginTop: 5, width: 72, height: 44, borderWidth: 1, borderColor: color("ink", "postRule"), backgroundColor: color("paper2"), overflow: "hidden" }}>
-                <SafeImage uri={p.media.uri} cacheKey={p.media.cacheKey} style={{ width: "100%", height: "100%" }} contentFit="cover" fallbackBg="bg-paper2" />
-              </View>
-            ) : (
-              <Serif variant="row" numberOfLines={2} style={{ lineHeight: 20, marginTop: 3 }}>
-                {p.title}
-              </Serif>
-            )}
-          </View>
-          <View style={{ alignItems: "flex-end", justifyContent: "space-between" }}>
-            <Mono variant="tiny" style={{ textTransform: "none", letterSpacing: 0 }}>
-              № {numberOf(p.id)}
-            </Mono>
-            {f.isMine(p.authorId) ? null : (
-              <Pressable accessibilityRole="button" accessibilityLabel={t.privateMsg} onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)} hitSlop={6}>
-                <Mono variant="tiny" tone="dim" style={{ textDecorationLine: "underline", letterSpacing: 0.54 }}>
-                  {t.privateShort}
-                </Mono>
+          <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
+          <SpreadTitle ink={fc.ink}>{p.untitled ? p.caption || p.kind : p.title}</SpreadTitle>
+          <View style={{ gap: 10 }}>
+            {p.caption && !p.untitled ? (
+              <SpreadCaption ink={fc.ink} numberOfLines={2}>
+                {p.caption}
+              </SpreadCaption>
+            ) : null}
+            {/* "Bericht" en "Comment · n" — allebei met een raakvlak van 44
+                (2.2 §7). Ze liggen op het kleurvlak, dus in de inkt daarvan. */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${t.comment} ${p.commentCount}`}
+                onPress={() => f.openPost(p)}
+                style={{ paddingVertical: 13, marginVertical: -13 }}
+              >
+                <SpreadKicker ink={fc.ink}>
+                  {t.comment}
+                  {p.commentCount ? ` · ${p.commentCount}` : ""}
+                </SpreadKicker>
               </Pressable>
-            )}
+              {f.isMine(p.authorId) ? null : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.privateMsg}
+                  onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
+                  style={{ paddingVertical: 13, marginVertical: -13 }}
+                >
+                  <SpreadKicker ink={fc.ink}>{t.privateShort}</SpreadKicker>
+                </Pressable>
+              )}
+            </View>
           </View>
-        </Pressable>,
+        </Spread>,
       );
     });
 

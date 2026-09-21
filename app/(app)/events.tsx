@@ -4,6 +4,7 @@ import { ScrollView, View } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { EventsModern, type EventTileData } from "@/components/lincin/modern/EventsModern";
+import { EventsMagazine } from "@/components/lincin/magazine/Pages";
 import { Body, BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
@@ -61,6 +62,22 @@ function EventsMobile() {
   const past = data
     .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
     .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+
+  if (spec.layout === "spread") {
+    const toSpread = (e: EventTileData) => ({ ...e, actions: e.actions.map((a) => ({ label: a.label, onPress: a.onPress })) });
+    return (
+      <EventsMagazine
+        events={[...active, ...upcoming].map((e) => toSpread(tileData(e, t, lang, scheme, router, e.is_active, false)))}
+        past={past.map((e) => toSpread(tileData(e, t, lang, scheme, router, false, true)))}
+        planned={upcoming.length + active.length}
+        waiting={data.reduce((n, e) => n + (e.is_host ? e.pending_requests_count : 0), 0)}
+        scheme={scheme}
+        t={t}
+        state={events.isLoading ? t.loading : events.isError ? t.failed : null}
+        onPlanNew={() => router.push("/event-create")}
+      />
+    );
+  }
 
   if (spec.layout === "bento") {
     return (

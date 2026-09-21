@@ -4,6 +4,7 @@ import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
 import { YouModern } from "@/components/lincin/modern/YouModern";
+import { YouMagazine } from "@/components/lincin/magazine/Pages";
 import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -80,6 +81,27 @@ function YouMobile() {
     { label: t.myQr, right: "→", onPress: () => router.push("/qr-code") },
   ];
 
+  const latest = (posts.data ?? []).slice(0, 8).map((post) => ({
+    key: post.id,
+    onPress: () => openPost(post.id),
+    children: <MiniBody post={post} fill={fc.fill} ink={fc.ink} />,
+  }));
+
+  if (spec.layout === "spread") {
+    return (
+      <YouMagazine
+        first={first}
+        last={last}
+        sub={`${posts.data?.length ?? 0} ${t.posts} · ${lincs} lincs · ${t.sinceMar} ${mon} ${yy}`}
+        hue={hueFor(myUserId)}
+        latest={latest}
+        links={links}
+        scheme={scheme}
+        t={t}
+      />
+    );
+  }
+
   if (spec.layout === "bento") {
     return (
       <YouModern
@@ -100,11 +122,7 @@ function YouMobile() {
           { n: String(lincs), label: "lincs" },
           { n: yy, label: `${t.sinceMar} ${mon}` },
         ]}
-        latest={(posts.data ?? []).slice(0, 8).map((post) => ({
-          key: post.id,
-          onPress: () => openPost(post.id),
-          children: <MiniBody post={post} fill={fc.fill} ink={fc.ink} />,
-        }))}
+        latest={latest}
         links={links}
       />
     );
