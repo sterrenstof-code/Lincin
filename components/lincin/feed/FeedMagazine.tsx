@@ -163,7 +163,7 @@ export function FeedMagazine() {
           </View>
         ) : null}
 
-        {/* onderaan: reacties · comment · privaat */}
+        {/* onderaan: reacties · reactie · bericht */}
         <View style={{ position: "absolute", left: PAD, right: PAD, bottom: 14, flexDirection: "row", gap: 6, alignItems: "flex-end" }}>
           {grouped.map((r) => (
             <Pressable

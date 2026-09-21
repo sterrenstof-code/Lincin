@@ -22,12 +22,12 @@ import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
  *
  * Titel serif 40 met "Per vriend | Op tijd"; per vriend een kleefband van
  * 46 over de volle breedte in zijn kleur — de naam in Archivo 900 smal,
- * een mono-regel met wat er nieuw is, het aantal en PRIVAAT BERICHT —
+ * een mono-regel met wat er nieuw is, het aantal en BERICHT —
  * en daaronder een raster van kaarten (minstens 330 breed, 248 hoog) met
  * haarlijnen van 1px ertussen. Een kaart: een kleurrug van 34 met het №
  * boven en "wie · soort · tijd" gedraaid, het beeld (carrousel bij een
  * album), titel en bijschrift, en een voetregel met de reacties en
- * COMMENT · n. Een tik opent de bijdrage op volle breedte.
+ * REACTIE · n. Een tik opent de bijdrage op volle breedte.
  */
 
 const MIN_CARD = 330;
@@ -166,7 +166,7 @@ export function DesktopFeed() {
   );
 }
 
-/** De band van 46: naam, wat er nieuw is, het aantal, PRIVAAT BERICHT. */
+/** De band van 46: naam, wat er nieuw is, het aantal, BERICHT. */
 function Band({
   name,
   sub,

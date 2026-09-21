@@ -14,7 +14,11 @@ import { useToast } from "@/lib/toast";
 import { BORDER, CONTROL, GUTTER, Mono, Serif, SquareBtn } from "./ui";
 
 /**
- * Het privé-blad (README §Private-message sheet).
+ * Het berichtblad (README §Private-message sheet).
+ *
+ * Heette tot 2.1 het privé-blad; 2.2 haalde "privé" uit alle teksten
+ * (§7). De naam van het bestand en het type blijven `Private…`, want die
+ * staan in een paar honderd regels en zeggen wat het ding dóet.
  *
  * Vanaf een kaart, een bladzijde of een band: een blad van onder, met de
  * naam van de vriend, het bijschrift als citaat (weg te halen met

@@ -19,7 +19,7 @@ import { WhoReacted } from "./WhoReacted";
  *   [ media 150 | meta 40 ]
  *   [ titelstrook in vriendkleur      ]
  *   [ bijschrift, serif, gedempt      ]
- *   [ reacties | COMMENT · n | PRIVAAT BERICHT ]
+ *   [ reacties | REACTIE · n | BERICHT ]
  *
  * Alles binnen één kader van 1.5px. De metakolom rechts is het tweede
  * vlak met de avatar boven en "NAAM · SOORT · TIJD" gedraaid onderaan.
@@ -74,7 +74,7 @@ export const PostCard = memo(function PostCard({
   reactions: GroupedPostReaction[];
   onReact: (emoji: string) => void;
   onOpen: () => void;
-  /** Weggelaten bij je eigen bijdrage: geen PRIVAAT BERICHT aan jezelf. */
+  /** Weggelaten bij je eigen bijdrage: geen BERICHT aan jezelf. */
   onPrivate?: () => void;
   onProfile: () => void;
 }) {
@@ -101,7 +101,7 @@ export const PostCard = memo(function PostCard({
 
   const card = (
     // Bewust géén `accessibilityRole="button"`: op web wordt dat een
-    // <button>, en daar mogen de reacties, COMMENT, PRIVAAT en de avatar
+    // <button>, en daar mogen de reacties, REACTIE, BERICHT en de avatar
     // (zelf knoppen) niet in.
     <Pressable
       accessibilityLabel={`${post.title}, ${post.authorName}`}

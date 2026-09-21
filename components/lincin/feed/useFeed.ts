@@ -23,7 +23,7 @@ import { markSeen, useSeenPosts } from "@/lib/read-state";
  *   - de reacties (één vraag voor allemaal, optimistisch)
  *   - wat je al zag
  *   - de weergave (per vriend | op tijd), per gebruiker onthouden
- *   - de handelingen: openen, naar een profiel, een privé-bericht
+ *   - de handelingen: openen, naar een profiel, een bericht
  *
  * De twee lay-outs — `FeedKleur` en `FeedMagazine` — tekenen
  * hier elk hun eigen blad omheen.

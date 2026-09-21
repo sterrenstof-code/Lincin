@@ -24,7 +24,7 @@ import { DesktopShell, MonoLink, TopBar } from "./Shell";
  *
  * Een balk van 56 met `← Feed` en "Profiel · naam"; dan een vlak in zijn
  * kleur met de naam in Archivo 900 van 52, de bio cursief, en rechts
- * PRIVAAT BERICHT →. Daaronder "Alles van … · n bijdragen" en een raster
+ * BERICHT →. Daaronder "Alles van … · n bijdragen" en een raster
  * van kaarten (minstens 240 breed, 200 hoog). Het blad kleurt mee.
  *
  * Wie (nog) geen linc is krijgt op die plek de knoppen van de telefoon:

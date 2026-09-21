@@ -39,7 +39,7 @@ import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
  *
  * De rail klapt in tot 64, de gesprekken rechts verdwijnen. Bovenaan een
  * balk van 56: `← Feed` en "Bijdrage № 01 · Noor · foto", rechts de teller,
- * PRIVAAT BERICHT en ×. Dan het beeld van rand tot rand, met ‹ › en
+ * BERICHT en ×. Dan het beeld van rand tot rand, met ‹ › en
  * streepjes bij een album. Onderaan een band van hoogstens 300: links
  * titel, bijschrift, tekst, de reacties met ☺ en "Profiel van … →";
  * rechts een kolom van 420 met de comments — elk met zijn reacties — en

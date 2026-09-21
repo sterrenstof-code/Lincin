@@ -42,7 +42,7 @@ import { useToast } from "@/lib/toast";
  * `← Terug` en een label bovenaan; dan de kaart: het beeld op 300 met een
  * kleurstrook links, de titel groot, het bijschrift in serif, de tekst,
  * en wie het maakte. Daaronder de reacties, een `◷ EVENT` als er iets te
- * plannen valt, `PRIVAAT BERICHT`, en de comments. Onderaan de balk met
+ * plannen valt, `BERICHT`, en de comments. Onderaan de balk met
  * `☺` (het reactievak), invoer en `↑`.
  */
 
@@ -303,7 +303,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
               </Box>
 
               {/* De actierij staat lós onder de kaart (prototype §02): reacties
-                  van 34 zonder kader, dan ◷ EVENT en PRIVAAT BERICHT. */}
+                  van 34 zonder kader, dan ◷ EVENT en BERICHT. */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                   {grouped.map((g) => (
                     <Pressable
