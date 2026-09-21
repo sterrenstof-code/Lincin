@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { color, friendColor, type Hue, type Scheme } from "@/lib/design/theme";
+import { ON_DARK, color, friendColor, type Hue, type Scheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
@@ -109,7 +109,7 @@ export function ChatsModern({
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ ...mono(500), fontSize: 10, lineHeight: 13, color: "#F8F6F2" }}>{r.unread}</Text>
+                  <Text style={{ ...mono(500), fontSize: 10, lineHeight: 13, color: ON_DARK }}>{r.unread}</Text>
                 </View>
               ) : null}
             </Tile>

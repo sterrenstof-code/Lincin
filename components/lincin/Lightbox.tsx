@@ -1,3 +1,4 @@
+import { ON_LIGHT } from "@/lib/design/theme";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -100,7 +101,7 @@ const read = () => current;
 // ---- het beeld ----
 
 const GROUND = "rgba(10,10,9,.92)";
-const FRAME_BG = "#141413";
+const FRAME_BG = ON_LIGHT;
 const PAPER_DIM = "rgba(242,239,232,.6)";
 
 function fallbackRatio(kind: string): number {

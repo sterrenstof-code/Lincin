@@ -1,3 +1,4 @@
+import { ON_DARK, ON_LIGHT } from "@/lib/design/theme";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform, Text, View } from "react-native";
 
@@ -20,8 +21,8 @@ export function canHover(): boolean {
 export function ReadTag() {
   const t = useT();
   return (
-    <View style={{ pointerEvents: "none", position: "absolute", left: 8, top: 8, zIndex: 3, backgroundColor: "#141414", paddingVertical: 4, paddingHorizontal: 7 }}>
-      <Text numberOfLines={1} style={[mono(600), { fontSize: 9, lineHeight: 12, letterSpacing: 1.1, textTransform: "uppercase", color: "#F2EFE8" }]}>
+    <View style={{ pointerEvents: "none", position: "absolute", left: 8, top: 8, zIndex: 3, backgroundColor: ON_LIGHT, paddingVertical: 4, paddingHorizontal: 7 }}>
+      <Text numberOfLines={1} style={[mono(600), { fontSize: 9, lineHeight: 12, letterSpacing: 1.1, textTransform: "uppercase", color: ON_DARK }]}>
         {t.readPost} →
       </Text>
     </View>
@@ -90,12 +91,12 @@ export function useReadCursor(): { ref: (node: unknown) => void; label: ReactNod
         left: pos.x + 12,
         top: pos.y + 12,
         zIndex: 20,
-        backgroundColor: "#141414",
+        backgroundColor: ON_LIGHT,
         paddingVertical: 6,
         paddingHorizontal: 9,
       }}
     >
-      <Text numberOfLines={1} style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: "#F2EFE8" }]}>
+      <Text numberOfLines={1} style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: ON_DARK }]}>
         {t.readPost} →
       </Text>
     </View>

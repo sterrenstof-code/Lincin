@@ -19,7 +19,7 @@ import { LincinScreen, columnWidth, vfade } from "@/components/lincin/Chrome";
 import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
-import { color, friendColor, useScheme } from "@/lib/design/theme";
+import { ON_LIGHT, color, friendColor, useScheme } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, two, type FriendGroup, type TimeGroup } from "@/lib/lincin/model";
@@ -546,14 +546,14 @@ function EndCard({ onCompose }: { onCompose: () => void }) {
       </Mono>
       <Box fill="acid" style={{ paddingVertical: 16, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Head variant="endTitle" color="#141414">
+          <Head variant="endTitle" color={ON_LIGHT}>
             {t.endTitle}
           </Head>
-          <Serif variant="asideSmall" color="#141414" style={{ fontSize: 15, lineHeight: 19, marginTop: 6 }}>
+          <Serif variant="asideSmall" color={ON_LIGHT} style={{ fontSize: 15, lineHeight: 19, marginTop: 6 }}>
             {t.endSub}
           </Serif>
         </View>
-        <SquareBtn glyph="+" size={44} fontSize={22} fill borderless onPress={onCompose} accessibilityLabel={t.newPost} style={{ backgroundColor: "#141414" }} />
+        <SquareBtn glyph="+" size={44} fontSize={22} fill borderless onPress={onCompose} accessibilityLabel={t.newPost} style={{ backgroundColor: ON_LIGHT }} />
       </Box>
     </View>
   );

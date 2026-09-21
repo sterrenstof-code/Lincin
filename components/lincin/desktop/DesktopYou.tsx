@@ -9,7 +9,7 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, setPreference, THEMES, usePreference, useScheme, useThemeSpec, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
+import { ON_DARK, THEMES, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
@@ -123,7 +123,7 @@ export function DesktopYou() {
               {unread.notifications > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5 }}>
-                    <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: "#F5F1E8" }]}>{unread.notifications}</Text>
+                    <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: ON_DARK }]}>{unread.notifications}</Text>
                   </View>
                   <MonoLink label="→" active on />
                 </View>

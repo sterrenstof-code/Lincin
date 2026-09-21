@@ -3,7 +3,7 @@ import { Linking, Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
 import { usePollVote } from "@/lib/lincin/poll";
-import { color, friendColor, useScheme, type Hue, line } from "@/lib/design/theme";
+import { ON_LIGHT, color, friendColor, line, type Hue, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { waveform, type CardMedia } from "@/lib/lincin/model";
@@ -83,7 +83,7 @@ export function Media({
     case "kleur":
       return (
         <View style={{ height, backgroundColor: media.hex, justifyContent: "flex-end", padding: 10 }}>
-          <Mono variant="tiny" style={{ color: "#141414", opacity: 0.7 }}>
+          <Mono variant="tiny" style={{ color: ON_LIGHT, opacity: 0.7 }}>
             {media.hex}
           </Mono>
         </View>

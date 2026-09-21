@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { COMMENT_REACTIONS } from "@/lib/api/comment-reactions";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
-import { color } from "@/lib/design/theme";
+import { ON_LIGHT, color } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
@@ -61,7 +61,7 @@ export function CommentReactions({
             }}
           >
             <Text style={{ fontSize: 15, lineHeight: 18 }}>{r.emoji}</Text>
-            <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: r.mine ? "#141414" : ink }}>{r.count}</Text>
+            <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: r.mine ? ON_LIGHT : ink }}>{r.count}</Text>
           </Pressable>
         ))}
         <Pressable

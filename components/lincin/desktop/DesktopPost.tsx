@@ -16,7 +16,7 @@ import { addEntityComment, listEntityComments, subscribeToEntityComments, type E
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
@@ -48,7 +48,7 @@ import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
 
 /** Het reactievak van de bijdrage (prototype `emojiGrid`). */
 const POST_EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "✨"];
-const ON_IMAGE = "#F2EFE8";
+const ON_IMAGE = ON_DARK;
 
 export function DesktopPost({ id }: { id: string }) {
   const router = useRouter();

@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { chatTitle, listMyChats } from "@/lib/api/chats";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType, mono, serif } from "@/lib/design/type";
 import { useT, type Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
@@ -31,7 +31,7 @@ import { useFeed } from "../feed/useFeed";
  * breedte in de desktopschil (model 3c/3d), net als in kleur.
  */
 
-const ON_IMAGE = "#F2EFE8";
+const ON_IMAGE = ON_DARK;
 const SIDE_W = 380;
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 

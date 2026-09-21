@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { color, line, subscribeTheme, themeSpec } from "@/lib/design/theme";
+import { ON_DARK, ON_LIGHT, color, line, subscribeTheme, themeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 
 /**
@@ -369,7 +369,7 @@ export function Chip({
   inkColor?: string;
 }) {
   const fg =
-    tone === "red" ? "#F5F1E8" : tone === "ink" ? color("paper") : tone === "acid" ? "#141414" : inkColor ?? color("ink");
+    tone === "red" ? ON_DARK : tone === "ink" ? color("paper") : tone === "acid" ? ON_LIGHT : inkColor ?? color("ink");
   const bg = tone === "red" ? color("red") : tone === "ink" ? color("ink") : tone === "acid" ? color("acid") : "transparent";
   return (
     <View

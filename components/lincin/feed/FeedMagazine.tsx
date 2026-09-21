@@ -8,7 +8,7 @@ import { HeroScrim, ON_IMAGE_SHADE } from "@/components/lincin/HeroScrim";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { BORDER, GUTTER, line, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
-import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { ON_DARK, ON_LIGHT, color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import type { Lang } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
@@ -36,7 +36,7 @@ import { useFeed } from "./useFeed";
 
 const HERO_H = 520;
 const PAD = 16;
-const ON_IMAGE = "#F2EFE8";
+const ON_IMAGE = ON_DARK;
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 /** Hoe gedempt een regel in de inhoudsopgave staat als je hem al zag. */
@@ -202,7 +202,7 @@ export function FeedMagazine() {
           <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 }}>
             {/* Wat de muis op desktop zegt, staat hier als knop: "post lezen". */}
             <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={[onImageChip, { backgroundColor: ON_IMAGE }]}>
-              <Mono variant="action" color="#141414" style={{ fontSize: 11, lineHeight: 14 }}>
+              <Mono variant="action" color={ON_LIGHT} style={{ fontSize: 11, lineHeight: 14 }}>
                 {t.readPost} →
               </Mono>
             </Pressable>

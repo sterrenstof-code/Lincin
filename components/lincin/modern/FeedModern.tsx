@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
 import { BellIcon, PlusIcon } from "@/components/lincin/chrome/Header";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
-import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme } from "@/lib/design/theme";
+import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import type { Dict, Lang } from "@/lib/i18n";
@@ -302,7 +302,7 @@ function Hero({
           >
             {post.authorName} · {post.kind} · {timeLabel(post.createdAt, t, lang)}
           </Text>
-          <Text numberOfLines={2} style={{ ...sans(500), fontSize: 22, lineHeight: 25, letterSpacing: -0.44, color: "#F8F6F2" }}>
+          <Text numberOfLines={2} style={{ ...sans(500), fontSize: 22, lineHeight: 25, letterSpacing: -0.44, color: ON_DARK }}>
             {post.untitled ? post.caption || post.kind : post.title}
           </Text>
         </View>
@@ -318,7 +318,7 @@ function Hero({
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 16, color: "#F8F6F2" }}>↗</Text>
+          <Text style={{ fontSize: 16, color: ON_DARK }}>↗</Text>
         </View>
       </View>
     </Tile>

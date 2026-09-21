@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { vfade } from "@/components/lincin/Chrome";
+
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { useReadCursor } from "@/components/lincin/ReadCursor";
@@ -182,7 +184,8 @@ export function DesktopFeed() {
         {t.feedA} <Text style={serif(true)}>{t.feedB}</Text>
       </DesktopTitle>
       <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
-        <ScrollView style={{ flex: 1 }} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
+        {/* Dezelfde scrollfade van 18 px als op de telefoon (2.2 §9). */}
+        <ScrollView style={[{ flex: 1 }, vfade()]} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       </View>

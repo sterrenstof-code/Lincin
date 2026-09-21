@@ -1,3 +1,4 @@
+import { ON_LIGHT } from "@/lib/design/theme";
 import { useId } from "react";
 import type { TextStyle } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
@@ -37,7 +38,7 @@ export function HeroScrim() {
   );
 }
 
-const INK = "#141414";
+const INK = ON_LIGHT;
 
 /** Een zachte schaduw onder tekst op de foto, voor een drukke plek waar de sluier niet genoeg is. */
 export const ON_IMAGE_SHADE: TextStyle = {

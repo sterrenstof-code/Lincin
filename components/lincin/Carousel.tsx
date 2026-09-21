@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
-import { color } from "@/lib/design/theme";
+import { ON_DARK, color } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
@@ -41,7 +41,7 @@ import { PlayGlyph } from "./Media";
  */
 
 const CHIP_BG = "rgba(10,10,9,.74)";
-export const LB_PAPER = "#F2EFE8";
+export const LB_PAPER = ON_DARK;
 
 export function Carousel({
   uris,

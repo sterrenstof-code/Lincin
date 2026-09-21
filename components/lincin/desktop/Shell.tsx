@@ -8,17 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import {
-  color,
-  pageTint,
-  setPreference,
-  THEMES,
-  usePreference,
-  useScheme,
-  useThemeSpec,
-  type LincinTheme,
-  type ThemePreference,
-} from "@/lib/design/theme";
+import { ON_DARK, THEMES, color, pageTint, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
 import { head, mono, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
@@ -198,7 +188,7 @@ function Rail({ active }: { active: Tab }) {
               </Text>
               {n.badge > 0 ? (
                 <View style={{ marginLeft: "auto", backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5 }}>
-                  <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: "#F5F1E8" }]}>{n.badge}</Text>
+                  <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: ON_DARK }]}>{n.badge}</Text>
                 </View>
               ) : null}
             </Pressable>

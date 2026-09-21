@@ -1165,3 +1165,23 @@ export function listSeam(last = false, t: LincinTheme = theme): {
     borderBottomColor: color("ink", "postRule"),
   };
 }
+
+// ===============================================================
+// TWEE VASTE KLEUREN — voor wat níet meekleurt
+// ===============================================================
+
+/**
+ * Tekst op een vlak dat zijn eigen kleur heeft en dus niet meebeweegt met
+ * het thema: een foto, de zure oproepkaart, een rode teller.
+ *
+ * Dit zijn met opzet géén tokens. Een token verandert mee met papier en
+ * inkt; deze twee mógen dat niet, want de ondergrond verandert niet mee.
+ * Ze staan hier zodat er één waarde is in plaats van vijf losse hexen door
+ * de code — die liepen na elke paletwijziging uit de pas met het palet
+ * waar ze ooit uit gekopieerd waren (2.2 §7).
+ *
+ *   ON_DARK   papierkleur, voor tekst op een foto of op inkt
+ *   ON_LIGHT  inktkleur, voor tekst op zuur of op een licht vlak
+ */
+export const ON_DARK = "#F6F3ED";
+export const ON_LIGHT = "#231F1A";
