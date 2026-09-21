@@ -304,7 +304,10 @@ export function FeedMagazine() {
   }
 
   return (
-    <LincinScreen tab="feed" header="none" bleed>
+    // `tint` kleurt hier het blad niet (magazine tint niet), maar geeft de
+    // navigatie de kleur van de pagina: de rugstrook draagt de vriendkleur
+    // van de bijdrage in beeld, en valt terug op inkt (2.2 §3).
+    <LincinScreen tab="feed" header="none" bleed tint={hero ? heroColor.fill : null}>
       <ScrollView style={[{ flex: 1 }, vfade()]} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>
