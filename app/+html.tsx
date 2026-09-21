@@ -50,13 +50,18 @@ export default function Root({ children }: PropsWithChildren) {
     p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   var t = localStorage.getItem('lincin-thema');
-  if (t !== 'magazine') t = 'kleur';
+  if (t !== 'magazine' && t !== 'modern') t = 'kleur';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
   r.dataset.lincinTheme = t;
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', t === 'magazine' ? '#F7F4EE' : p === 'dark' ? '#1A1917' : '#F2EFE8');
+  var paper = {
+    kleur:    { light: '#F2EFE8', dark: '#1A1917' },
+    magazine: { light: '#F7F4EE', dark: '#14120E' },
+    modern:   { light: '#F4F1EB', dark: '#0C0C0D' }
+  };
+  if (m) m.setAttribute('content', paper[t][p]);
 }catch(e){}})();`,
           }}
         />
@@ -305,12 +310,14 @@ html, body {
             --------------------------------------------------------------- */}
         <style dangerouslySetInnerHTML={{ __html: propVarCss() }} />
 
-        {/* Het thema magazine: hetzelfde palet, andere waarden,
-            gekoppeld aan `data-lincin-theme` op <html>. Uit dezelfde bron
-            als native (lib/design/theme.ts), zodat de twee niet uit elkaar
-            kunnen lopen. `html:root[…]` wint op specificiteit van
-            `.dark:root` in global.css, dat later in het document staat. */}
-        <style dangerouslySetInnerHTML={{ __html: themeVarCss().replace(/:root\[/g, "html:root[") }} />
+        {/* De drie thema's (2.2): kleur, magazine en modern, elk in een
+            lichte en een donkere stand, gekoppeld aan `data-lincin-theme`
+            en `.dark` op <html>. Uit dezelfde bron als native
+            (lib/design/theme.ts), zodat de twee niet uit elkaar kunnen
+            lopen. De selectors dragen zelf `html` mee, zodat ze op
+            specificiteit winnen van `:root` en `.dark:root` in global.css
+            en de volgorde in het document niets meer bepaalt. */}
+        <style dangerouslySetInnerHTML={{ __html: themeVarCss() }} />
 
         {/* ScrollViewStyleReset verwijdert de default body-scroll-styling. */}
         <ScrollViewStyleReset />

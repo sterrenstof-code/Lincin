@@ -82,16 +82,27 @@ export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
 }
 
 /**
- * De kop. In kleur: Archivo 900, 75% breed, altijd kapitaal. In magazine:
- * Instrument Serif regular, geen kapitaal (`--tf/--tw/--tt` in
- * het prototype). Leest het thema op het moment van bouwen; `lincinType`
- * wordt bij een wissel opnieuw gebouwd.
+ * De kop. Drie letters, één per thema (`--tf/--tw/--tt` in het prototype):
+ *
+ *   kleur     Archivo 900, 75% breed, altijd kapitaal.
+ *   magazine  Instrument Serif regular, geen kapitaal.
+ *   modern    gewone Archivo op 500, geen kapitaal — de spatiëring komt
+ *             er per maat bij (−.02em/−.03em), zie `lincinType`.
+ *
+ * Leest het thema op het moment van bouwen; `lincinType` wordt bij een
+ * wissel opnieuw gebouwd.
  */
 export function head(): TextStyle {
-  if (themeSpec().serifHeads) {
+  const heads = themeSpec().heads;
+  if (heads === "serif") {
     return isWeb
       ? { fontFamily: FONT.serif, fontWeight: "400", fontStyle: "normal", textTransform: "none" }
       : { fontFamily: FONT.serif, textTransform: "none" };
+  }
+  if (heads === "archivo") {
+    return isWeb
+      ? { fontFamily: FONT.sansMedium, fontWeight: "500", textTransform: "none" }
+      : { fontFamily: FONT.sansMedium, textTransform: "none" };
   }
   return isWeb
     ? { fontFamily: FONT.head, fontWeight: "900", textTransform: "uppercase" }
@@ -114,9 +125,13 @@ export function numeral(): TextStyle {
  * fontSize × 1 (README: .9–1), serif op × 1.25, lopende tekst op × 1.35.
  */
 function buildLincinType() {
-  const serif_ = themeSpec().serifHeads;
-  /** Serifkoppen spatiëren niet; Archivo wel (−.01em). */
-  const ls = (px: number) => (serif_ ? 0 : -px / 100);
+  const heads = themeSpec().heads;
+  const serif_ = heads === "serif";
+  /**
+   * Serifkoppen spatiëren niet; Archivo 900 op −.01em, en de gewone
+   * Archivo van modern strakker: −.02em (2.2 §1).
+   */
+  const ls = (px: number) => (serif_ ? 0 : heads === "archivo" ? -px / 50 : -px / 100);
   const cardTitle = themeSpec().cardTitle;
   return {
   // ---- mono: meta, labels, knoppen ----
