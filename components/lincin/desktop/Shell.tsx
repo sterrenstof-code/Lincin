@@ -12,11 +12,14 @@ import {
   color,
   pageTint,
   setPreference,
+  THEMES,
   usePreference,
   useScheme,
   useThemeSpec,
+  type LincinTheme,
   type ThemePreference,
 } from "@/lib/design/theme";
+import { useLincinTheme } from "@/components/lincin/ThemeProvider";
 import { head, mono, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { CHATS_MIN, CHATS_W, RAIL_NARROW, RAIL_W } from "@/lib/lincin/desktop";
@@ -46,6 +49,11 @@ import { ChatList, ChatListHead } from "./ChatList";
 type ShellMode = "rest" | "feed" | "full";
 
 const TAB_HREF: Record<Tab, string> = { feed: "/feed", chats: "/chats", events: "/events", you: "/profile" };
+/** Het woord bij een thema, in de taal die nu geldt. */
+function themeLabel(th: LincinTheme, t: ReturnType<typeof useT>): string {
+  return th === "kleur" ? t.themeKleur : th === "magazine" ? t.themeMagazine : t.themeModern;
+}
+
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 /** De rail wisselt toestel → licht → donker (prototype `cycleStand`). */
 const STAND_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
@@ -147,6 +155,7 @@ function Rail({ active }: { active: Tab }) {
   const scheme = useScheme();
   const pref = usePreference();
   const spec = useThemeSpec();
+  const lincin = useLincinTheme();
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "anon";
   const nav = useNav(active);
@@ -219,6 +228,27 @@ function Rail({ active }: { active: Tab }) {
           <Pressable accessibilityRole="button" accessibilityLabel={t.lightDark} onPress={() => setPreference(STAND_NEXT[pref])}>
             <Text style={[railLink(ink), { textDecorationLine: "underline" }]}>{standLabel}</Text>
           </Pressable>
+        </View>
+        {/* De themaschakelaar, onder taal en licht/donker (2.2 §9). Op de
+            telefoon staat hij in Instellingen; desktop heeft dat scherm
+            niet, dus hij hoort hier. */}
+        <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+          {THEMES.map((th) => {
+            const on = lincin.theme === th;
+            return (
+              <Pressable
+                key={th}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${t.theme}: ${themeLabel(th, t)}`}
+                onPress={() => lincin.choose(th)}
+              >
+                <Text style={[railLink(on ? ink : dim), { textDecorationLine: on ? "underline" : "none" }]}>
+                  {themeLabel(th, t)}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
         <Pressable
           accessibilityRole="link"

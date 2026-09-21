@@ -7,7 +7,7 @@ import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWi
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, hueFor, listSeam, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
@@ -148,7 +148,7 @@ function Row({
   onPress: () => void;
 }) {
   const t = useT();
-  const scheme = useScheme();
+  const spec = useThemeSpec();
   const ink = active ? fill.ink : color("ink");
   const dim = active ? fill.ink : color("ink", "inkDim");
   return (
@@ -163,13 +163,24 @@ function Row({
         gap: 12,
         paddingVertical: 14,
         paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: color("ink", "postRule"),
         backgroundColor: active ? fill.fill : "transparent",
+        // Kleur en magazine zetten een haarlijn tussen twee rijen; modern
+        // een naad van 6 met een ronding en géén lijn (2.2 §9).
+        borderRadius: spec.cardRadius,
+        ...listSeam(),
+        ...(spec.listGap > 1 ? { marginHorizontal: spec.gap } : null),
       }}
     >
-      {/* Op de open rij is de balk inkt (licht) of papier (donker), zoals het prototype. */}
-      <View style={{ width: 10, height: 38, backgroundColor: active ? (scheme === "dark" ? "#1A1917" : "#141414") : fill.fill }} />
+      {/* Op de open rij is de balk inkt (licht) of papier (donker), zoals het
+          prototype. De kleurrug volgt de ronding van de rij. */}
+      <View
+        style={{
+          width: 10,
+          height: 38,
+          borderRadius: spec.cardRadius ? 5 : 0,
+          backgroundColor: active ? color("ink") : fill.fill,
+        }}
+      />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={[serif(), { fontSize: 19, lineHeight: 21, color: ink }]}>
           {name}

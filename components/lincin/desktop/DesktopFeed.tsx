@@ -7,8 +7,8 @@ import { useReadCursor } from "@/components/lincin/ReadCursor";
 import { VerticalLabel } from "@/components/lincin/ui";
 import { WhoReacted } from "@/components/lincin/WhoReacted";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
-import { color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
-import { head, mono, serif } from "@/lib/design/type";
+import { cardStyle, color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { head, headStep, mono, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
@@ -32,7 +32,12 @@ import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
 
 const MIN_CARD = 330;
 const CARD_H = 248;
-const SPINE_W = 34;
+/**
+ * De kaartrug is 34 in kleur en magazine, 26 in modern (2.2 §9); hij komt
+ * nu uit `spec.spine`. De constante blijft als terugval voor wie hem buiten
+ * een thema nodig heeft.
+ */
+const SPINE_FALLBACK = 34;
 
 export function DesktopFeed() {
   const f = useFeed();
@@ -40,8 +45,16 @@ export function DesktopFeed() {
   const scheme = useScheme();
   const spec = useThemeSpec();
   const [gridW, setGridW] = useState(0);
-  const cols = Math.max(1, Math.floor((gridW + 1) / (MIN_CARD + 1)));
-  const cardW = gridW ? (gridW - (cols - 1)) / cols : MIN_CARD;
+  /**
+   * De naad tussen twee kaarten. In kleur en magazine is dat één pixel:
+   * het rooster staat op de haarlijnkleur en de kaarten laten hem ertussen
+   * doorschijnen. In modern is het een échte naad van 6 en staan de kaarten
+   * als losse tegels op het papier (§9: "alleen naad en kaartvorm volgen
+   * het thema"; het rooster zelf blijft).
+   */
+  const seam = spec.listGap > 1 ? spec.gap : 1;
+  const cols = Math.max(1, Math.floor((gridW + seam) / (MIN_CARD + seam)));
+  const cardW = gridW ? (gridW - (cols - 1) * seam) / cols : MIN_CARD;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const hueOf = (p: CardPost): Hue => groups.find((g) => g.key === p.authorId)?.hue ?? "orange";
@@ -51,7 +64,19 @@ export function DesktopFeed() {
   const noFriends = f.empty && f.friendCount === 0;
 
   const grid = (posts: CardPost[]) => (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: ink }}>
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: seam,
+        // De haarlijn komt uit de ondergrond; in modern is er geen lijn.
+        backgroundColor: seam > 1 ? "transparent" : color("ink", "postRule"),
+        paddingHorizontal: seam > 1 ? seam : 0,
+        paddingBottom: seam > 1 ? seam : 0,
+        borderBottomWidth: seam > 1 ? 0 : spec.border,
+        borderBottomColor: ink,
+      }}
+    >
       {posts.map((p) => (
         <Card
           key={p.id}
@@ -200,10 +225,25 @@ function Band({
     </Text>
   );
   return (
-    <View style={{ height: 46, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 24, backgroundColor: bg, borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+    <View
+      style={{
+        height: 46,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingHorizontal: 24,
+        backgroundColor: bg,
+        // In modern krijgt de band een ronding en 6 px zijmarge, zodat hij
+        // als tegel leest in plaats van als een strook die het blad
+        // doorsnijdt (2.2 §9). Dan hoort er ook geen onderlijn onder.
+        ...(spec.layout === "bento"
+          ? { marginHorizontal: spec.gap, marginTop: spec.gap, borderRadius: spec.cardRadius }
+          : { borderBottomWidth: spec.border, borderBottomColor: color("ink") }),
+      }}
+    >
       {bar ? <View style={{ width: 6, alignSelf: "stretch", marginVertical: 8, backgroundColor: bar }} /> : null}
       <Pressable accessibilityRole={onName ? "link" : undefined} onPress={onName} disabled={!onName}>
-        <Text numberOfLines={1} style={[head(), { fontSize: 17, lineHeight: 19, letterSpacing: spec.serifHeads ? 0 : -0.17, color: fg }]}>
+        <Text numberOfLines={1} style={[headStep(18), { color: fg }]}>
           {name}
         </Text>
       </Pressable>
@@ -265,20 +305,31 @@ function Card({
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
+  const spec = useThemeSpec();
+  const spine = spec.spine ?? SPINE_FALLBACK;
+  const shape = cardStyle();
   return (
     <Pressable
       accessibilityLabel={`${p.title}, ${p.authorName}`}
       onPress={onOpen}
       onLayout={photo ? (e) => setCardH(Math.round(e.nativeEvent.layout.height)) : undefined}
-      style={{ width, height: photo ? undefined : CARD_H, flexDirection: "row", backgroundColor: color("paper") }}
+      style={{
+        width,
+        height: photo ? undefined : CARD_H,
+        flexDirection: "row",
+        backgroundColor: shape.backgroundColor,
+        borderRadius: shape.borderRadius,
+        // Een ronde kaart moet zijn beeld en zijn rug bijsnijden.
+        overflow: shape.borderRadius ? "hidden" : "visible",
+      }}
     >
       {/* de rug: № boven, "wie · soort · tijd" van onder naar boven */}
-      <View style={{ width: SPINE_W, backgroundColor: fc.fill, alignItems: "center", paddingVertical: 8, overflow: "hidden" }}>
+      <View style={{ width: spine, backgroundColor: fc.fill, alignItems: "center", paddingVertical: 8, overflow: "hidden" }}>
         <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: fc.ink }]}>{number}</Text>
-        <View style={{ position: "absolute", left: 0, top: 27, width: SPINE_W, height: cardH - 27 }}>
+        <View style={{ position: "absolute", left: 0, top: 27, width: spine, height: cardH - 27 }}>
           <VerticalLabel
             text={`${p.authorName} · ${p.kind} · ${timeLabel(p.createdAt, t, lang)}`}
-            width={SPINE_W}
+            width={spine}
             height={cardH - 27}
             color={fc.ink}
             style={[mono(600), { fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }]}
