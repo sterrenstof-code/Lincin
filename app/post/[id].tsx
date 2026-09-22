@@ -17,7 +17,7 @@ import {
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { displayName, fromPost, hhmm } from "@/lib/lincin/model";
@@ -161,6 +161,20 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   const canEvent = !!p && (/\?/.test(p.caption ?? "") || card?.media.kind === "plek");
   const own = !!p && p.user_id === myUserId;
   const authorName = p ? displayName(p.author) : "";
+  const spec = useThemeSpec();
+  // Modern tekent in tegels: rond, halfdoorzichtig, zonder inktrand, met
+  // het blad er wazig doorheen. Kleur en magazine houden hun kaders.
+  const modern = spec.id === "modern";
+  const tile = modern
+    ? ({
+        borderWidth: 0,
+        borderRadius: RASTER.tileRadius,
+        backgroundColor: color("tile", "tileFill"),
+        overflow: "hidden",
+        ...(Platform.OS === "web" ? { backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } : null),
+      } as object)
+    : undefined;
+  const pill = modern ? { borderRadius: 999 } : null;
   const zoom = p && card ? { number, author: authorName, kind: card.kind, time: hhmm(p.created_at), title: card.title } : undefined;
 
   return (
@@ -210,7 +224,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
               {/* Een foto zoals Instagram: rand tot rand over het scherm, de
                   hoogte uit zijn eigen verhouding (4:5–1.91:1). */}
               {photo ? (
-                <View style={{ marginHorizontal: -GUTTER, marginBottom: -GAP }}>
+                <View style={{ marginHorizontal: -GUTTER, marginBottom: modern ? 0 : -GAP }}>
                   <Media
                     media={card.media}
                     height={MEDIA_H}
@@ -223,7 +237,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                   />
                 </View>
               ) : null}
-              <Box>
+              <Box style={tile}>
                 {/* beeld met kleurstrook — de andere soorten */}
                 {photo ? null : (
                 <View
@@ -271,7 +285,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                 </View>
                 )}
                 {/* tekst — of, bij je eigen bijdrage, het bewerkvak */}
-                <View style={{ padding: 14, gap: 10, borderTopWidth: photo ? 0 : BORDER, borderTopColor: line() }}>
+                <View style={{ padding: modern ? 18 : 14, gap: 10, borderTopWidth: photo ? 0 : BORDER, borderTopColor: line() }}>
                   {editing ? (
                     <EditPost post={p} onDone={() => setEditing(false)} />
                   ) : (
@@ -319,6 +333,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                         alignItems: "center",
                         gap: 4,
                         backgroundColor: g.mine ? color("ink") : "transparent",
+                        ...pill,
                       }}
                     >
                       <Text style={{ fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }}>{g.emoji}</Text>
@@ -338,6 +353,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                         borderColor: line(),
                         alignItems: "center",
                         justifyContent: "center",
+                        ...pill,
                       }}
                     >
                       <Mono variant="action">◷ {t.event}</Mono>
@@ -355,7 +371,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                           postTitle: card.title,
                         })
                       }
-                      style={{ height: 34, paddingHorizontal: 11, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}
+                      style={{ height: modern ? 40 : 34, paddingHorizontal: modern ? 18 : 11, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center", ...pill }}
                     >
                       <Mono variant="monoBody" tone="paper">
                         {t.privateMsg}

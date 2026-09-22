@@ -161,8 +161,16 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
   const { groups, seen, t, router } = f;
   return (
     <View style={{ width: "100%", flexDirection: "row", gap: SEAM, minHeight: 56 }}>
-      <Tile span={1} pad={0} style={{ paddingHorizontal: 12, paddingVertical: 8, justifyContent: "center" }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, alignItems: "center" }}>
+      {/* Het getal staat 2 px buiten zijn cirkel (`top/right: -2`), en een
+          horizontale ScrollView knipt alles af wat buiten zijn inhoud valt:
+          de bovenkant van het getal was weg. Vier punten lucht in de inhoud,
+          en evenveel minder in de tegel, zodat de rij even hoog blijft. */}
+      <Tile span={1} pad={0} style={{ paddingHorizontal: 8, paddingVertical: 4, justifyContent: "center" }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, alignItems: "center", paddingVertical: 4, paddingHorizontal: 4 }}
+        >
           {groups.map((g) => {
             const fc = friendColor(g.hue, scheme);
             const unseen = g.posts.filter((p) => !seen.has(p.id)).length;

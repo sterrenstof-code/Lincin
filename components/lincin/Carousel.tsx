@@ -11,7 +11,7 @@ import {
 import { SafeImage } from "@/components/SafeImage";
 import { ON_DARK, color } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
-import { useImageRatio } from "@/lib/lincin/ratio";
+import { useImageRatio, useImageSize } from "@/lib/lincin/ratio";
 
 import { PlayGlyph } from "./Media";
 
@@ -108,34 +108,22 @@ export function Carousel({
 
   const zoomable = !!onZoom && !video;
   /**
-   * Bij `"ratio"` de hele foto, nooit bijgesneden.
+   * Hoe een foto in zijn kader valt. Zie `SlideImage` hieronder.
    *
-   * Het kader volgt de eerste foto, begrensd tussen 4:5 en 1.91:1, en dat
-   * mag: zo springt de lay-out niet bij elk beeld. Maar de foto zelf werd
-   * met `cover` in dat kader geperst, en er waren drie manieren waarop dat
-   * stuk ging. Een foto buiten de grenzen (een schermafdruk, 9:16) verloor
-   * boven en onder. In een rij van de feed was het kader bovendien
-   * hoogstens 0,85× de breedte (`maxHeight`), dus élke vierkante of staande
-   * foto werd liggend gesneden — de meeste foto's van een telefoon. En de
-   * tweede tot zesde foto kregen het kader van de eerste, wat bij een
-   * staande na een liggende de helft weggooide.
-   *
-   * `contain` toont de foto zoals hij genomen is; wat overblijft is het
-   * papier (`paper2`) waar het kader al op stond. Met een vaste hoogte —
-   * de tegels van het raster — blijft het `cover`: daar is bijsnijden de
-   * bedoeling.
+   * `capped`: de rij van de feed (kleur) begrenst de hoogte tot 0,85× de
+   * breedte. Daar zou "vul de breedte" elke staande foto liggend snijden,
+   * dus daar blijft de hele foto staan, met papier ernaast.
    */
-  const fit = heightProp === "ratio" ? "contain" : "cover";
+  const frameRatio = w && height ? w / height : null;
+  const capped = heightProp === "ratio" && !!maxHeight && natural !== undefined && natural > maxHeight;
   const slide = (uri: string | null, i: number) => {
     const style = { width: w || "100%", height: height ?? "100%", backgroundColor: color("paper2") } as const;
     const image = (
-      <SafeImage
+      <SlideImage
         uri={uri}
         cacheKey={cacheKeys?.[i]}
-        style={{ width: "100%", height: "100%" }}
-        contentFit={fit}
-        fallbackBg="bg-paper2"
-        fallbackColor={color("ink", "inkDim")}
+        mode={heightProp === "ratio" ? (capped ? "whole" : "width") : "cover"}
+        frameRatio={frameRatio}
       />
     );
     // Zonder lichtbak geen knop: dan gaat de tik door naar de kaart eromheen.
@@ -259,4 +247,56 @@ export function Dashes({
 
 function two(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+/**
+ * Eén foto in het kader van de carrousel.
+ *
+ *   `cover`  vaste hoogte (de tegels van een raster): bijsnijden is daar de
+ *            bedoeling.
+ *   `width`  de foto vult altijd de volle breedte, zoals Instagram. Is hij
+ *            hoger dan het kader (voorbij 4:5, of foto 2 na een liggende),
+ *            dan valt er van boven en onder iets af — bij een gewone 3:4
+ *            zo'n 6%. Is hij breder, dan komt er papier boven en onder.
+ *            Nooit aan de zijkant: dan leest de foto smaller dan de kaart
+ *            eronder, en dat was precies de klacht.
+ *   `whole`  de hele foto, met papier waar hij het kader niet vult. Voor
+ *            een kader waarvan de hoogte begrensd is (de rij van kleur);
+ *            daar zou `width` staande foto's liggend snijden.
+ *
+ * Voor `width` is de echte verhouding van déze foto nodig, niet die van de
+ * eerste: `useImageSize` meet hem, onbegrensd. Tot hij gemeten is: `whole`,
+ * zodat er nooit iets wegvalt dat er daarna weer bij komt.
+ */
+function SlideImage({
+  uri,
+  cacheKey,
+  mode,
+  frameRatio,
+}: {
+  uri: string | null;
+  cacheKey?: string;
+  mode: "cover" | "width" | "whole";
+  frameRatio: number | null;
+}) {
+  const size = useImageSize(mode === "width" ? uri : null, cacheKey);
+  const own = size ? size.w / size.h : null;
+  const fit =
+    mode === "cover"
+      ? "cover"
+      : mode === "whole" || own === null || frameRatio === null
+        ? "contain"
+        : own < frameRatio
+          ? "cover"
+          : "contain";
+  return (
+    <SafeImage
+      uri={uri}
+      cacheKey={cacheKey}
+      style={{ width: "100%", height: "100%" }}
+      contentFit={fit}
+      fallbackBg="bg-paper2"
+      fallbackColor={color("ink", "inkDim")}
+    />
+  );
 }

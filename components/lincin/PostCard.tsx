@@ -9,7 +9,7 @@ import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { Media } from "./Media";
-import { BORDER, GUTTER, Head, Initial, Mono, Serif } from "./ui";
+import { BORDER, Head, Initial, Mono, Serif } from "./ui";
 import { canHover, ReadTag, useReadCursor } from "./ReadCursor";
 import { WhoReacted } from "./WhoReacted";
 
@@ -32,8 +32,12 @@ import { WhoReacted } from "./WhoReacted";
  *
  * Foto's zoals Instagram: hun eigen verhouding (4:5–1.91:1) in plaats van
  * een strook van 150. In een verticale lijst (`bleed`) staat de foto
- * bóven de kaart, rand tot rand over het scherm; in een rij van 340 vult
- * hij de hoofdkolom van de kaart.
+ * bóven de kaart, zonder eigen kader maar precies even breed; in een rij
+ * van 340 vult hij de hoofdkolom van de kaart.
+ *
+ * "Even breed" was eerst "rand tot rand over het scherm" (`marginHorizontal:
+ * -GUTTER`). Dan stak de foto aan weerskanten een marge uit boven de kaart
+ * eronder, en las het als twee dingen die niet bij elkaar horen.
  */
 
 export const CARD_W = 340;
@@ -61,8 +65,8 @@ export const PostCard = memo(function PostCard({
   /** In een rij: een foto nooit hoger dan dit, zodat de rij niet te hoog wordt. */
   maxPhotoH?: number;
   /**
-   * In een verticale lijst met zijmarge GUTTER: de foto loopt rand tot rand
-   * over het scherm, boven de kaart. Alleen voor foto's.
+   * In een verticale lijst: de foto staat boven de kaart, zonder eigen
+   * kader, precies zo breed als de kaart. Alleen voor foto's.
    */
   bleed?: boolean;
   /** "01" — voor de lichtbak (`№ 01 · Noor · foto · 22:41`). */
@@ -238,7 +242,6 @@ export const PostCard = memo(function PostCard({
         ref={readHint && hover ? (read.ref as never) : undefined}
         accessibilityLabel={`${post.title}, ${post.authorName}`}
         onPress={canOpen ? onOpen : undefined}
-        style={{ marginHorizontal: -GUTTER }}
       >
         <Media media={post.media} height={MEDIA_H} hue={hue} postId={post.id} myUserId={myUserId} photoFit="ratio" maxPhotoH={maxPhotoH} />
         {readHint}

@@ -365,7 +365,10 @@ function HeaderModern({ counter, back, actions = true }: { counter?: string; bac
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: 12,
-        paddingBottom: 6,
+        // De ronde knoppen van 44 stonden tegen de bovenrand geplakt; de
+        // andere twee thema's hebben hier wel lucht.
+        paddingTop: 10,
+        paddingBottom: 8,
         gap: 10,
       }}
     >
