@@ -200,6 +200,29 @@ export function DesktopPost({ id }: { id: string }) {
     );
   }
 
+  /**
+   * De reactiekolom, per thema. Kleur en magazine: een rechte kolom tegen de
+   * rand, met een inktlijn ervoor, zoals elk paneel daar. Modern: een
+   * zwevende tegel van glas — rond, halfdoorzichtig, met het blad wazig
+   * erdoorheen en lucht eromheen — zoals de pil en de tegels van modern.
+   */
+  const modern = spec.id === "modern";
+  /** Modern: ronde knoppen met een haarlijn; kleur en magazine: inktkaders. */
+  const edge = modern ? { borderWidth: 1, borderColor: rule, borderRadius: 999 } : { borderWidth: 1.5, borderColor: ink };
+  const commentsColumn =
+    spec.id === "modern"
+      ? ({
+          width: COMMENTS_W,
+          margin: 12,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: rule,
+          backgroundColor: color("paper", "glass"),
+          overflow: "hidden",
+          ...(Platform.OS === "web" ? { backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } : null),
+        } as object)
+      : { width: COMMENTS_W, borderLeftWidth: spec.border, borderLeftColor: ink, backgroundColor: color("paper") };
+
   const arrow = (glyph: string, d: number) => (
     <Pressable
       accessibilityRole="button"
@@ -215,6 +238,13 @@ export function DesktopPost({ id }: { id: string }) {
     <DesktopShell active="feed" mode="full" tint={fc.fill}>
       <TopBar left={left} right={right} />
 
+      {/* Links het beeld met de band eronder, rechts de reacties over de
+          volle hoogte — zoals Instagram op desktop. Stonden de reacties in
+          de band onder de foto, dan groeide die band met elke reactie mee
+          (tot 300) en kromp de foto erboven: hoe meer er gezegd werd, hoe
+          kleiner het ding waarover het ging. */}
+      <View style={{ flex: 1, minHeight: 0, flexDirection: "row" }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
       {/* het beeld, van rand tot rand */}
       <View
         style={[{ flex: 1, minHeight: 0, overflow: "hidden" }, Platform.OS === "web" ? ({ animationKeyframes: RISE, animationDuration: "300ms", animationTimingFunction: "cubic-bezier(.2,.7,.2,1)" } as object) : null]}
@@ -276,7 +306,7 @@ export function DesktopPost({ id }: { id: string }) {
         ) : null}
       </View>
 
-      {/* de band onderaan: tekst en reacties links, comments rechts */}
+      {/* de band onder het beeld: titel, zin en reacties — alleen over de bijdrage zelf */}
       <View style={{ maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: color("paper") }}>
         <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }} showsVerticalScrollIndicator={false}>
           {editing ? (
@@ -301,7 +331,7 @@ export function DesktopPost({ id }: { id: string }) {
                 {...who.chip(r)}
                 accessibilityState={{ selected: r.mine }}
                 onPress={() => reactions.toggle(id, r.emoji)}
-                style={{ height: 34, justifyContent: "center", borderWidth: 1.5, borderColor: ink, backgroundColor: r.mine ? ink : "transparent", paddingHorizontal: 10 }}
+                style={{ height: 34, justifyContent: "center", ...edge, backgroundColor: r.mine ? ink : "transparent", paddingHorizontal: 10 }}
               >
                 <Text style={[mono(600), { fontSize: 12, lineHeight: 15, color: r.mine ? color("paper") : ink }]}>
                   {r.emoji} {r.count}
@@ -314,7 +344,7 @@ export function DesktopPost({ id }: { id: string }) {
               accessibilityState={{ expanded: boxOpen }}
               onPress={() => setBoxOpen((v) => !v)}
               // Zo groot als de reacties ernaast, in inkt: goed te zien.
-              style={{ height: 34, justifyContent: "center", borderWidth: 1.5, borderStyle: "dashed", borderColor: ink, backgroundColor: boxOpen ? ink : "transparent", paddingHorizontal: 12 }}
+              style={{ height: 34, justifyContent: "center", ...edge, borderStyle: modern ? "solid" : "dashed", backgroundColor: boxOpen ? ink : "transparent", paddingHorizontal: 12 }}
             >
               <Text style={[mono(600), { fontSize: 15, lineHeight: 18, color: boxOpen ? color("paper") : ink }]}>☺ +</Text>
             </Pressable>
@@ -344,12 +374,14 @@ export function DesktopPost({ id }: { id: string }) {
             </View>
           ) : null}
         </ScrollView>
+      </View>
+      </View>
 
-        <View style={{ width: COMMENTS_W, minHeight: 0, borderLeftWidth: 1, borderLeftColor: rule }}>
+      <View style={commentsColumn}>
           <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim, paddingTop: 14, paddingHorizontal: 20, paddingBottom: 8 }]}>
             {t.comments} · {comments.data?.length ?? p.comment_count ?? 0}
           </Text>
-          <ScrollView style={{ flexGrow: 0, flexShrink: 1, minHeight: 0 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
             {(comments.data ?? []).map((c) => (
               <Comment
                 key={c.id}
@@ -378,7 +410,7 @@ export function DesktopPost({ id }: { id: string }) {
               placeholderTextColor={dim}
               style={[
                 sans(),
-                { flex: 1, minWidth: 0, height: 40, borderWidth: 1.5, borderColor: ink, paddingHorizontal: 12, fontSize: 14, color: ink },
+                { flex: 1, minWidth: 0, height: 40, ...edge, paddingHorizontal: modern ? 16 : 12, fontSize: 14, color: ink },
                 Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null,
               ]}
             />
@@ -387,7 +419,7 @@ export function DesktopPost({ id }: { id: string }) {
               accessibilityLabel={t.comment}
               onPress={send}
               disabled={sending || !draft.trim()}
-              style={{ width: 40, height: 40, backgroundColor: ink, alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}
+              style={{ width: 40, height: 40, borderRadius: modern ? 20 : 0, backgroundColor: ink, alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}
             >
               <Text style={{ fontSize: 16, lineHeight: 20, color: color("paper") }}>↑</Text>
             </Pressable>

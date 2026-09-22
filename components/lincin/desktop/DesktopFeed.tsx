@@ -48,13 +48,20 @@ export function DesktopFeed() {
   const spec = useThemeSpec();
   const [gridW, setGridW] = useState(0);
   /**
-   * De naad tussen twee kaarten. In kleur en magazine is dat één pixel:
-   * het rooster staat op de haarlijnkleur en de kaarten laten hem ertussen
-   * doorschijnen. In modern is het een échte naad van 6 en staan de kaarten
-   * als losse tegels op het papier (§9: "alleen naad en kaartvorm volgen
-   * het thema"; het rooster zelf blijft).
+   * De naad tussen twee kaarten.
+   *
+   * Magazine: één pixel — het rooster staat op de haarlijnkleur en de
+   * kaarten laten hem ertussen doorschijnen, zoals een krantenpagina.
+   * Kleur en modern: een échte naad (`spec.gap`: 10 en 6), en de kaarten
+   * staan als losse vlakken op het blad.
+   *
+   * Kleur had eerst ook de haarlijn. Dan liep de gekleurde rug van elke
+   * kaart pal tegen de foto van zijn buur aan, en las een rij van drie als
+   * één lange strook in plaats van drie bijdragen. Een kleurkaart krijgt
+   * nu zijn eigen inktrand (`cardStyle`), anders valt het papieren
+   * tekstvlak weg tegen het papier van het blad.
    */
-  const seam = spec.listGap > 1 ? spec.gap : 1;
+  const seam = spec.id === "magazine" ? 1 : spec.gap;
   const cols = Math.max(1, Math.floor((gridW + seam) / (MIN_CARD + seam)));
   const cardW = gridW ? (gridW - (cols - 1) * seam) / cols : MIN_CARD;
   const ink = color("ink");
@@ -90,6 +97,7 @@ export function DesktopFeed() {
           onReact={(e) => reactions.toggle(p.id, e)}
           onOpen={() => f.openPost(p)}
           myUserId={myUserId}
+          framed={seam > 1}
         />
       ))}
     </View>
@@ -284,6 +292,7 @@ function Card({
   onReact,
   onOpen,
   myUserId,
+  framed = false,
 }: {
   post: CardPost;
   width: number;
@@ -293,6 +302,8 @@ function Card({
   onReact: (emoji: string) => void;
   onOpen: () => void;
   myUserId: string;
+  /** Losse kaart met naad eromheen: dan draagt hij zijn eigen rand. */
+  framed?: boolean;
 }) {
   const t = useT();
   const who = useReactionWho(reactions);
@@ -322,6 +333,8 @@ function Card({
         flexDirection: "row",
         backgroundColor: shape.backgroundColor,
         borderRadius: shape.borderRadius,
+        borderWidth: framed ? shape.borderWidth : 0,
+        borderColor: shape.borderColor,
         // Een ronde kaart moet zijn beeld en zijn rug bijsnijden.
         overflow: shape.borderRadius ? "hidden" : "visible",
       }}

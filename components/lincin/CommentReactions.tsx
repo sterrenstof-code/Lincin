@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { COMMENT_REACTIONS } from "@/lib/api/comment-reactions";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
-import { ON_LIGHT, color } from "@/lib/design/theme";
+import { ON_LIGHT, color, useThemeSpec } from "@/lib/design/theme";
 import { mono } from "@/lib/design/type";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
@@ -36,6 +36,12 @@ export function CommentReactions({
   const isOpen = open ?? ownOpen;
   const setOpen = onOpenChange ?? setOwnOpen;
   const ink = color("ink");
+  // Modern: rond en met een haarlijn, zoals de rest van modern. Kleur en
+  // magazine houden hun inktkaders en de gestippelde "☺ +".
+  const modern = useThemeSpec().id === "modern";
+  const edge = modern
+    ? { borderWidth: 1, borderColor: color("ink", "postRule"), borderRadius: 999 }
+    : { borderWidth: 1.5, borderColor: ink };
   const mine = new Set(reactions.filter((r) => r.mine).map((r) => r.emoji));
   const who = useReactionWho(reactions);
 
@@ -55,8 +61,7 @@ export function CommentReactions({
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              borderWidth: 1.5,
-              borderColor: ink,
+              ...edge,
               backgroundColor: r.mine ? color("acid") : "transparent",
             }}
           >
@@ -72,9 +77,8 @@ export function CommentReactions({
           style={{
             height: 34,
             paddingHorizontal: 12,
-            borderWidth: 1.5,
-            borderStyle: "dashed",
-            borderColor: ink,
+            ...edge,
+            borderStyle: modern ? "solid" : "dashed",
             backgroundColor: isOpen ? ink : "transparent",
             alignItems: "center",
             justifyContent: "center",
@@ -91,8 +95,7 @@ export function CommentReactions({
             flexDirection: "row",
             gap: 4,
             marginTop: 6,
-            borderWidth: 1.5,
-            borderColor: ink,
+            ...edge,
             padding: 4,
             alignSelf: "flex-start",
             backgroundColor: color("paper"),
