@@ -65,6 +65,7 @@ export function LincinScreen({
   bleed = false,
   embedded = false,
   ownDesktop = false,
+  tabs = true,
   children,
 }: {
   tab: Tab;
@@ -108,6 +109,13 @@ export function LincinScreen({
   embedded?: boolean;
   /** Dit scherm tekent zijn eigen desktopvorm (de feed): geen omlijsting. */
   ownDesktop?: boolean;
+  /**
+   * De tabbalk onderaan, en ◉ en + in de kop. Uit bij een scherm waar je
+   * iets maakt (nieuwe bijdrage): daar staan ze in de weg van het
+   * toetsenbord en lokken ze je weg van wat je aan het schrijven bent —
+   * "+" opende er zelfs een tweede nieuwe bijdrage. Terug staat in de kop.
+   */
+  tabs?: boolean;
   children: ReactNode;
 }) {
   const scheme = useScheme();
@@ -152,10 +160,10 @@ export function LincinScreen({
           alignSelf: "center",
         }}
       >
-        {header === "none" ? null : <Header counter={counter} back={back} />}
+        {header === "none" ? null : <Header counter={counter} back={back} actions={tabs} />}
         {header === "default" || header === "none" ? null : header}
-        <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
-        <FooterTabs active={tab} tint={activeTint} bottomInset={Math.max(insets.bottom, 16)} />
+        <View style={{ flex: 1, minHeight: 0, paddingBottom: tabs ? 0 : insets.bottom }}>{children}</View>
+        {tabs ? <FooterTabs active={tab} tint={activeTint} bottomInset={Math.max(insets.bottom, 16)} /> : null}
       </View>
     </View>
   );

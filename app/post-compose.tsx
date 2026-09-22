@@ -284,8 +284,12 @@ export default function ComposeScreen() {
       tab="feed"
       tint={fc.fill}
       tabTint={null}
-      counter={t.newPost}
+      // Geen `counter`: de regel eronder zegt al "Nieuwe bijdrage · № 16",
+      // en zonder ◉ en + stonden die twee pal onder elkaar.
       back="/feed"
+      // Geen Feed · Gesprekken · Events · Jij terwijl je een bijdrage maakt;
+      // wie weg wil, heeft de terugknop in de kop.
+      tabs={false}
       header={
         <TopRow
           right={
@@ -300,7 +304,16 @@ export default function ComposeScreen() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: 16 }} keyboardShouldPersistTaps="handled">
           {/* de poster — bij een poll met de keuze-editor rechts (2.1) */}
           <Box style={kind === "poll" ? { flexDirection: "row", minHeight: 300 } : { flexDirection: "row", height: 300 }}>
-            <View
+            {/* Het gekleurde vlak kiest ook een foto. Gebruikers tikten erop
+                en er gebeurde niets: het is het grootste, meest opvallende
+                ding op het scherm, en naast een leeg fotovak leest het als
+                de knop. Alleen bij foto en krabbel, waar het lege vak zelf
+                ook de kiezer opent; bij de andere soorten is het een etiket. */}
+            <Pressable
+              disabled={!(kind === "foto" || kind === "krabbel") || c.imageUris.length >= MAX_PHOTOS}
+              onPress={c.addPhotos}
+              accessibilityRole="button"
+              accessibilityLabel={c.imageUris.length ? t.addPhoto : "Kies een foto"}
               onLayout={(e) => {
                 setPanelW(e.nativeEvent.layout.width);
                 setPanelH(e.nativeEvent.layout.height - 3);
@@ -317,7 +330,7 @@ export default function ComposeScreen() {
               <Mono variant="micro" color={fc.ink} style={{ position: "absolute", top: 10, left: 10, textTransform: "none", letterSpacing: 0 }}>
                 {number}
               </Mono>
-            </View>
+            </Pressable>
             {kind === "poll" ? (
               <PollEditor c={c} />
             ) : (

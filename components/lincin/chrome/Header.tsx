@@ -232,15 +232,20 @@ export function CircleGlyphBtn({
   );
 }
 
-export function Header({ counter, back }: { counter?: string; back?: string | null }) {
+/**
+ * `actions={false}`: zonder ◉ en +. Op een scherm waar je iets maakt is
+ * "+ nieuwe bijdrage" een tweede kopie van waar je al bent, en de meldingen
+ * lokken je weg van wat je aan het schrijven bent.
+ */
+export function Header({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const spec = useThemeSpec();
-  if (spec.id === "magazine") return <HeaderMagazine counter={counter} back={back} />;
-  if (spec.id === "modern") return <HeaderModern counter={counter} back={back} />;
-  return <HeaderKleur counter={counter} back={back} />;
+  if (spec.id === "magazine") return <HeaderMagazine counter={counter} back={back} actions={actions} />;
+  if (spec.id === "modern") return <HeaderModern counter={counter} back={back} actions={actions} />;
+  return <HeaderKleur counter={counter} back={back} actions={actions} />;
 }
 
 /** "Lincin" · teller · ◉ · + */
-function HeaderKleur({ counter, back }: { counter?: string; back?: string | null }) {
+function HeaderKleur({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const unread = useUnread();
@@ -266,28 +271,32 @@ function HeaderKleur({ counter, back }: { counter?: string; back?: string | null
         {counter ? (
           <Text style={[lincinType.meta, { color: color("ink", "inkDim"), marginRight: 4 }]}>{counter}</Text>
         ) : null}
-        <SquareBtn
-          glyph="◉"
-          fontSize={14}
-          fill={onNotes}
-          badge={unread.notifications > 0}
-          onPress={() => router.push("/notifications")}
-          accessibilityLabel={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
-        />
-        <SquareBtn
-          glyph="+"
-          fontSize={18}
-          fill
-          onPress={() => router.push("/post-compose")}
-          accessibilityLabel="Nieuwe bijdrage"
-        />
+        {actions ? (
+          <>
+            <SquareBtn
+              glyph="◉"
+              fontSize={14}
+              fill={onNotes}
+              badge={unread.notifications > 0}
+              onPress={() => router.push("/notifications")}
+              accessibilityLabel={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
+            />
+            <SquareBtn
+              glyph="+"
+              fontSize={18}
+              fill
+              onPress={() => router.push("/post-compose")}
+              accessibilityLabel="Nieuwe bijdrage"
+            />
+          </>
+        ) : null}
       </View>
     </View>
   );
 }
 
 /** De kolofonregel: "Lincin · teller" links, ✳ en + rechts. */
-function HeaderMagazine({ counter, back }: { counter?: string; back?: string | null }) {
+function HeaderMagazine({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const unread = useUnread();
@@ -328,23 +337,25 @@ function HeaderMagazine({ counter, back }: { counter?: string; back?: string | n
           {counter ? `Lincin · ${counter}` : "Lincin"}
         </Text>
       </Pressable>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 0 }}>
-        <CircleGlyphBtn
-          glyph="✳"
-          fontSize={15}
-          badge={unread.notifications > 0}
-          tone={onNotes ? color("ink") : color("ink", "inkDim")}
-          onPress={() => router.push("/notifications")}
-          label={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
-        />
-        <CircleGlyphBtn glyph="+" fontSize={19} onPress={() => router.push("/post-compose")} label="Nieuwe bijdrage" />
-      </View>
+      {actions ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <CircleGlyphBtn
+            glyph="✳"
+            fontSize={15}
+            badge={unread.notifications > 0}
+            tone={onNotes ? color("ink") : color("ink", "inkDim")}
+            onPress={() => router.push("/notifications")}
+            label={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
+          />
+          <CircleGlyphBtn glyph="+" fontSize={19} onPress={() => router.push("/post-compose")} label="Nieuwe bijdrage" />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 /** De teller in mono links, twee ronde knoppen van 44 px rechts. */
-function HeaderModern({ counter, back }: { counter?: string; back?: string | null }) {
+function HeaderModern({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const router = useRouter();
   const unread = useUnread();
   return (
@@ -374,19 +385,21 @@ function HeaderModern({ counter, back }: { counter?: string; back?: string | nul
           {counter ?? "Lincin"}
         </Text>
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
-        <RoundTileBtn
-          onPress={() => router.push("/notifications")}
-          label={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
-          badge={unread.notifications > 0}
-          render={(tone) => <BellIcon tone={tone} />}
-        />
-        <RoundTileBtn
-          onPress={() => router.push("/post-compose")}
-          label="Nieuwe bijdrage"
-          render={(tone) => <PlusIcon tone={tone} />}
-        />
-      </View>
+      {actions ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <RoundTileBtn
+            onPress={() => router.push("/notifications")}
+            label={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
+            badge={unread.notifications > 0}
+            render={(tone) => <BellIcon tone={tone} />}
+          />
+          <RoundTileBtn
+            onPress={() => router.push("/post-compose")}
+            label="Nieuwe bijdrage"
+            render={(tone) => <PlusIcon tone={tone} />}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
