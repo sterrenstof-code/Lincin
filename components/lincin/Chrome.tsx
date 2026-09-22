@@ -65,7 +65,8 @@ export function LincinScreen({
   bleed = false,
   embedded = false,
   ownDesktop = false,
-  tabs = true,
+  tabs,
+  actions = true,
   children,
 }: {
   tab: Tab;
@@ -110,12 +111,22 @@ export function LincinScreen({
   /** Dit scherm tekent zijn eigen desktopvorm (de feed): geen omlijsting. */
   ownDesktop?: boolean;
   /**
-   * De tabbalk onderaan, en ◉ en + in de kop. Uit bij een scherm waar je
-   * iets maakt (nieuwe bijdrage): daar staan ze in de weg van het
-   * toetsenbord en lokken ze je weg van wat je aan het schrijven bent —
-   * "+" opende er zelfs een tweede nieuwe bijdrage. Terug staat in de kop.
+   * De tabbalk onderaan. Standaard alleen op een hoofdscherm — een scherm
+   * zonder `back`: feed, gesprekken, events, jij.
+   *
+   * Hij stond op elk scherm, en in modern zweeft de pil over de inhoud
+   * zonder dat iets er ruimte voor houdt. Op een bijdrage lag hij dus pal
+   * over het reactieveld, in een gesprek boven het invoerveld. Een
+   * subscherm heeft "terug" in de kop; de tabbalk voegt daar niets toe
+   * behalve iets om per ongeluk op te tikken.
    */
   tabs?: boolean;
+  /**
+   * ◉ en + in de kop. Uit bij een scherm waar je iets maakt (nieuwe
+   * bijdrage): daar lokken ze je weg van wat je schrijft, en "+" opende er
+   * een tweede nieuwe bijdrage.
+   */
+  actions?: boolean;
   children: ReactNode;
 }) {
   const scheme = useScheme();
@@ -123,6 +134,7 @@ export function LincinScreen({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const desktop = useIsDesktop();
+  const showTabs = tabs ?? !back;
   if (embedded) return <View style={{ flex: 1, minHeight: 0 }}>{children}</View>;
   if (desktop && !ownDesktop) {
     // Desktop (Lincin Desktop.dc.html): rail, hoofdkolom, paneel. Een scherm
@@ -160,10 +172,10 @@ export function LincinScreen({
           alignSelf: "center",
         }}
       >
-        {header === "none" ? null : <Header counter={counter} back={back} actions={tabs} />}
+        {header === "none" ? null : <Header counter={counter} back={back} actions={actions} />}
         {header === "default" || header === "none" ? null : header}
-        <View style={{ flex: 1, minHeight: 0, paddingBottom: tabs ? 0 : insets.bottom }}>{children}</View>
-        {tabs ? <FooterTabs active={tab} tint={activeTint} bottomInset={Math.max(insets.bottom, 16)} /> : null}
+        <View style={{ flex: 1, minHeight: 0, paddingBottom: showTabs ? 0 : insets.bottom }}>{children}</View>
+        {showTabs ? <FooterTabs active={tab} tint={activeTint} bottomInset={Math.max(insets.bottom, 16)} /> : null}
       </View>
     </View>
   );

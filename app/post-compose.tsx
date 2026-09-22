@@ -287,9 +287,9 @@ export default function ComposeScreen() {
       // Geen `counter`: de regel eronder zegt al "Nieuwe bijdrage · № 16",
       // en zonder ◉ en + stonden die twee pal onder elkaar.
       back="/feed"
-      // Geen Feed · Gesprekken · Events · Jij terwijl je een bijdrage maakt;
-      // wie weg wil, heeft de terugknop in de kop.
-      tabs={false}
+      // Geen ◉ en + terwijl je een bijdrage maakt. De tabbalk valt al weg
+      // omdat dit een subscherm is (`back`).
+      actions={false}
       header={
         <TopRow
           right={
