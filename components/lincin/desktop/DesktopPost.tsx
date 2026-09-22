@@ -16,6 +16,7 @@ import { addEntityComment, listEntityComments, subscribeToEntityComments, type E
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
+import { EmojiSuggestions, useEmojiSuggest } from "@/components/lincin/ComposeBar";
 import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { capf, head, mono, sans } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
@@ -95,6 +96,7 @@ export function DesktopPost({ id }: { id: string }) {
   const commentReactions = useCommentReactions(commentIds, myUserId);
 
   const [draft, setDraft] = useState("");
+  const emoji = useEmojiSuggest(draft, setDraft);
   const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
   const [pickOpen, setPickOpen] = useState<string | null>(null);
@@ -360,10 +362,16 @@ export function DesktopPost({ id }: { id: string }) {
               />
             ))}
           </ScrollView>
-          <View style={{ flexDirection: "row", gap: 8, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 18, borderTopWidth: 1, borderTopColor: rule, marginTop: "auto" }}>
+          {/* De suggesties (`:monk` → 🐒) staan binnen dezelfde voet als het
+              veld, erboven. Dit veld had ze niet: het is niet de gedeelde
+              ComposeBar van de telefoon maar een eigen invoer. */}
+          <View style={{ borderTopWidth: 1, borderTopColor: rule, marginTop: "auto" }}>
+          <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={spec.id === "modern"} pad={20} />
+          <View style={{ flexDirection: "row", gap: 8, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 18 }}>
             <TextInput
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={emoji.onChangeText}
+              onKeyPress={emoji.onKeyPress}
               onSubmitEditing={send}
               blurOnSubmit={false}
               placeholder={t.writeComment}
@@ -383,6 +391,7 @@ export function DesktopPost({ id }: { id: string }) {
             >
               <Text style={{ fontSize: 16, lineHeight: 20, color: color("paper") }}>↑</Text>
             </Pressable>
+          </View>
           </View>
         </View>
       </View>

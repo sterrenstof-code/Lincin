@@ -32,7 +32,7 @@ const EMOJI_QUERY = /:([a-z0-9_+\-]{2,})$/i;
  * ene plek wel en een scherm verder niet. De lijst wordt afgeleid van de
  * tekst, niet bewaard: wat je typt ís de toestand.
  */
-function useEmojiSuggest(value: string, onChange: (v: string) => void) {
+export function useEmojiSuggest(value: string, onChange: (v: string) => void) {
   const match = value.match(EMOJI_QUERY);
   const list = match ? emojiSuggestionsFor(match[1]) : [];
   const apply = (emoji: string) => onChange(value.replace(EMOJI_QUERY, emoji + " "));
@@ -46,15 +46,18 @@ function useEmojiSuggest(value: string, onChange: (v: string) => void) {
   return { list, apply, onChangeText, onKeyPress };
 }
 
-function EmojiSuggestions({
+export function EmojiSuggestions({
   list,
   onPick,
   round,
+  pad = GUTTER,
 }: {
   list: { name: string; emoji: string }[];
   onPick: (emoji: string) => void;
   /** Modern: pillen. Kleur en magazine: vakjes met een rand. */
   round: boolean;
+  /** De zijmarge van de rij; het desktoppaneel gebruikt 20. */
+  pad?: number;
 }) {
   if (list.length === 0) return null;
   return (
@@ -62,7 +65,7 @@ function EmojiSuggestions({
       horizontal
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
-      contentContainerStyle={{ gap: 6, paddingHorizontal: GUTTER, paddingTop: 8 }}
+      contentContainerStyle={{ gap: 6, paddingHorizontal: pad, paddingTop: 8 }}
     >
       {list.map(({ name, emoji }) => (
         <Pressable
