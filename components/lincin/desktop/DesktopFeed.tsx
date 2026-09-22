@@ -48,20 +48,20 @@ export function DesktopFeed() {
   const spec = useThemeSpec();
   const [gridW, setGridW] = useState(0);
   /**
-   * De naad tussen twee kaarten.
+   * De naad tussen twee kaarten: een échte naad in elk thema (`spec.gap`:
+   * 10 in kleur, 6 in magazine en modern), en de kaarten staan als losse
+   * vlakken op het blad.
    *
-   * Magazine: één pixel — het rooster staat op de haarlijnkleur en de
-   * kaarten laten hem ertussen doorschijnen, zoals een krantenpagina.
-   * Kleur en modern: een échte naad (`spec.gap`: 10 en 6), en de kaarten
-   * staan als losse vlakken op het blad.
-   *
-   * Kleur had eerst ook de haarlijn. Dan liep de gekleurde rug van elke
-   * kaart pal tegen de foto van zijn buur aan, en las een rij van drie als
-   * één lange strook in plaats van drie bijdragen. Een kleurkaart krijgt
-   * nu zijn eigen inktrand (`cardStyle`), anders valt het papieren
-   * tekstvlak weg tegen het papier van het blad.
+   * Kleur en magazine hadden eerst een haarlijn van één pixel: het rooster
+   * stond op de haarlijnkleur en de kaarten lieten hem ertussen
+   * doorschijnen. Dan liep de gekleurde rug van elke kaart pal tegen de foto
+   * van zijn buur aan, en las een rij als één lange strook in plaats van
+   * losse bijdragen. Een kaart in kleur of magazine krijgt daarom zijn eigen
+   * inktrand (`cardStyle`: 1,5 en 1), anders valt het papieren tekstvlak weg
+   * tegen het papier van het blad. Modern heeft geen rand; zijn tegels
+   * dragen hun eigen vlak.
    */
-  const seam = spec.id === "magazine" ? 1 : spec.gap;
+  const seam = spec.gap;
   const cols = Math.max(1, Math.floor((gridW + seam) / (MIN_CARD + seam)));
   const cardW = gridW ? (gridW - (cols - 1) * seam) / cols : MIN_CARD;
   const ink = color("ink");
