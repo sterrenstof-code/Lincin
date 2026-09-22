@@ -4,6 +4,7 @@ import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-na
 
 import { color, line, useThemeSpec } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
+import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useT } from "@/lib/i18n";
 
 import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
@@ -18,6 +19,76 @@ import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
  */
 
 const EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "🌅", "☕", "🛶", "🎧", "✨"];
+
+/** `:naam` aan het eind van wat je typt: dat is een emoji die je zoekt. */
+const EMOJI_QUERY = /:([a-z0-9_+\-]{2,})$/i;
+
+/**
+ * Emoji-suggesties bij het typen, zoals in een gesprek.
+ *
+ * Het gesprek had ze al (`app/chat/[id].tsx`): `:monk` toont 🐒 erboven,
+ * Tab neemt de eerste, en `:)` wordt 🙂. Deze balk — reacties op een
+ * bijdrage of poll — had er niets van, dus werkte hetzelfde gebaar op de
+ * ene plek wel en een scherm verder niet. De lijst wordt afgeleid van de
+ * tekst, niet bewaard: wat je typt ís de toestand.
+ */
+function useEmojiSuggest(value: string, onChange: (v: string) => void) {
+  const match = value.match(EMOJI_QUERY);
+  const list = match ? emojiSuggestionsFor(match[1]) : [];
+  const apply = (emoji: string) => onChange(value.replace(EMOJI_QUERY, emoji + " "));
+  const onChangeText = (text: string) => onChange(replaceEmoticons(text));
+  // Op web: Tab neemt de eerste suggestie, zoals in een gesprek.
+  const onKeyPress = (e: { nativeEvent: { key: string }; preventDefault?: () => void }) => {
+    if (Platform.OS !== "web" || e.nativeEvent.key !== "Tab" || list.length === 0) return;
+    e.preventDefault?.();
+    apply(list[0].emoji);
+  };
+  return { list, apply, onChangeText, onKeyPress };
+}
+
+function EmojiSuggestions({
+  list,
+  onPick,
+  round,
+}: {
+  list: { name: string; emoji: string }[];
+  onPick: (emoji: string) => void;
+  /** Modern: pillen. Kleur en magazine: vakjes met een rand. */
+  round: boolean;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="always"
+      contentContainerStyle={{ gap: 6, paddingHorizontal: GUTTER, paddingTop: 8 }}
+    >
+      {list.map(({ name, emoji }) => (
+        <Pressable
+          key={name}
+          accessibilityRole="button"
+          accessibilityLabel={`${emoji} :${name}`}
+          onPress={() => onPick(emoji)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            height: 34,
+            paddingHorizontal: 10,
+            backgroundColor: round ? color("paper", "glass") : color("paper"),
+            ...(round
+              ? { borderRadius: 999, borderWidth: 1, borderColor: color("ink", "postRule") }
+              : { borderWidth: BORDER, borderColor: line() }),
+          }}
+        >
+          <Text style={{ fontSize: 18, lineHeight: 22 }}>{emoji}</Text>
+          <Text style={[lincinType.meta, { textTransform: "none", color: color("ink", "inkDim") }]}>:{name}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
 
 export function ComposeBar({
   value,
@@ -40,6 +111,7 @@ export function ComposeBar({
   above?: ReactNode;
 }) {
   const spec = useThemeSpec();
+  const emoji = useEmojiSuggest(value, onChange);
   if (spec.id === "modern") {
     return (
       <ModernBar
@@ -51,12 +123,14 @@ export function ComposeBar({
         onToggleBox={onToggleBox}
         sending={sending}
         above={above}
+        emoji={emoji}
       />
     );
   }
   return (
     <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
       {above}
+      <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={false} />
       <View style={{ flexDirection: "row", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
         <SquareBtn
           glyph="☺"
@@ -69,7 +143,8 @@ export function ComposeBar({
         />
         <TextInput
           value={value}
-          onChangeText={onChange}
+          onChangeText={emoji.onChangeText}
+          onKeyPress={emoji.onKeyPress}
           placeholder={placeholder}
           placeholderTextColor={color("ink", "inkDim")}
           onSubmitEditing={onSend}
@@ -111,6 +186,7 @@ function ModernBar({
   onToggleBox,
   sending,
   above,
+  emoji,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -120,6 +196,7 @@ function ModernBar({
   onToggleBox: () => void;
   sending: boolean;
   above?: ReactNode;
+  emoji: ReturnType<typeof useEmojiSuggest>;
 }) {
   const ink = color("ink");
   const round = (fill: boolean) => ({
@@ -131,8 +208,14 @@ function ModernBar({
     backgroundColor: fill ? ink : "transparent",
   });
   return (
-    <View style={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 12 }}>
+    <View style={{ paddingTop: 8, paddingBottom: 12 }}>
       {above}
+      <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round />
+      <View
+        // De pil zelf houdt de zijmarge; de suggesties erboven schuiven van
+        // rand tot rand.
+        style={{ marginHorizontal: GUTTER, marginTop: emoji.list.length ? 8 : 0 }}
+      >
       <View
         style={{
           flexDirection: "row",
@@ -153,7 +236,8 @@ function ModernBar({
         </Pressable>
         <TextInput
           value={value}
-          onChangeText={onChange}
+          onChangeText={emoji.onChangeText}
+          onKeyPress={emoji.onKeyPress}
           placeholder={placeholder}
           placeholderTextColor={color("ink", "inkDim")}
           onSubmitEditing={onSend}
@@ -176,6 +260,7 @@ function ModernBar({
         <Pressable accessibilityRole="button" accessibilityLabel="Verstuur" onPress={onSend} style={round(true)}>
           <Text style={{ fontSize: 17, lineHeight: 20, color: color("paper") }}>↑</Text>
         </Pressable>
+      </View>
       </View>
     </View>
   );
