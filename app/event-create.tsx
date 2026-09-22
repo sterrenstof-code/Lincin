@@ -39,6 +39,7 @@ import {
 import { safeBack } from "@/lib/nav";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { CharCount } from "@/components/CharCount";
+import { usePageTitle } from "@/lib/page-title";
 
 function plusHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 3_600_000);
@@ -83,6 +84,7 @@ const FIELD = {
 };
 
 export default function EventCreateScreen() {
+  usePageTitle("Nieuw event");
   const router = useRouter();
   const wide = useWide();
   const qc = useQueryClient();

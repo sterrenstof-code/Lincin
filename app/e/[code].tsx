@@ -10,6 +10,32 @@ import { useAuth } from "@/lib/auth/provider";
 import { rememberPendingInvite } from "@/lib/pending-invite";
 import { joinEventByCode } from "@/lib/api/events";
 import { creamOnDark, feed } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Wat de `join_event`-RPC opwerpt, in taal die de ontvanger van een
+ * uitnodiging kan lezen.
+ *
+ * De database spreekt in brokstukken — `event not found`, `event is vol` —
+ * en die stonden hier rechtstreeks onder "Kon niet meedoen": een Engelse
+ * regel in een Nederlands scherm, op de enige pagina die deze app naar
+ * buiten stuurt. Wie hem niet kent, weet nog steeds niet of de link stuk
+ * is of het feest vol. Onbekende meldingen worden bewust níet doorgegeven:
+ * dan liever één zin die klopt dan een technische die niemand helpt.
+ */
+function joinErrorText(raw: unknown): string {
+  const m = typeof raw === "string" ? raw.toLowerCase() : "";
+  if (m.includes("not found")) {
+    return "Deze uitnodiging bestaat niet meer. Vraag je gastheer om een nieuwe link.";
+  }
+  if (m.includes("vol")) {
+    return "Dit event zit vol. Vraag je gastheer of er nog plek bij kan.";
+  }
+  if (m.includes("not authenticated")) {
+    return "Je bent niet meer ingelogd. Log opnieuw in en open de link nog eens.";
+  }
+  return "Er ging iets mis bij het meedoen. Probeer de link straks opnieuw.";
+}
 
 /**
  * Landing voor /e/{join_code}: roept de join_event RPC aan.
@@ -20,6 +46,7 @@ import { creamOnDark, feed } from "@/lib/design/type";
  * uitleg. Bij niet-ingelogd: eerst naar login.
  */
 export default function JoinEventScreen() {
+  usePageTitle("Uitnodiging");
   const router = useRouter();
   const qc = useQueryClient();
   const { session, loading } = useAuth();
@@ -60,7 +87,7 @@ export default function JoinEventScreen() {
         }
         router.replace(`/event/${result.eventId}`);
       } catch (e: any) {
-        setError(e?.message ?? "Kon event niet joinen.");
+        setError(joinErrorText(e?.message));
       }
     })();
   }, [code, loading, session, router, qc]);

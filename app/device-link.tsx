@@ -27,6 +27,7 @@ import {
 } from "@/lib/crypto/transfer";
 import { copyToClipboard } from "@/lib/share";
 import { desk, feed, flameDeep } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 const EXPIRY_SECS = 600;
 
@@ -227,6 +228,7 @@ function DeviceLinkScreenBody() {
  * opleverde in plaats van een inlogpagina.
  */
 export default function DeviceLinkScreen() {
+  usePageTitle("Toestel koppelen");
   return (
     <RequireSession>
       <DeviceLinkScreenBody />

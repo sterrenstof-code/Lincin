@@ -19,10 +19,12 @@ import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { NL } from "@/lib/locale";
+import { usePageTitle } from "@/lib/page-title";
 
 const QR_SIZE = 260;
 
 export default function EventQrScreen() {
+  usePageTitle("Uitnodigen");
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const eventId = id!;

@@ -25,7 +25,7 @@ import { useMeasure } from "@/lib/lincin/measure";
 import { useImageRatio } from "@/lib/lincin/ratio";
 import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
 import { useReactionWho } from "@/lib/lincin/reactors";
-import { safeBack } from "@/lib/nav";
+import { safeBack, useBackTarget } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
 import { markSeen } from "@/lib/read-state";
@@ -104,6 +104,7 @@ export function DesktopPost({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
 
   const close = () => safeBack(router, "/feed");
+  const back = useBackTarget(router, "/feed");
 
   // Escape sluit — tenzij de lichtbak openstaat; die gaat eerst dicht.
   useEffect(() => {
@@ -163,7 +164,7 @@ export function DesktopPost({ id }: { id: string }) {
 
   const left = (
     <>
-      <MonoLink label={`← ${t.tabFeed}`} active onPress={() => router.navigate("/feed")} />
+      <MonoLink label={`← ${back.label}`} active onPress={back.go} />
       <MonoLink
         numberOfLines={1}
         label={`${t.post}${number ? ` № ${number}` : ""}${card ? ` · ${authorName} · ${card.kind}` : ""}`}
@@ -189,7 +190,7 @@ export function DesktopPost({ id }: { id: string }) {
   if (!p || !card) {
     return (
       <DesktopShell active="feed" mode="full">
-        <TopBar left={<MonoLink label={`← ${t.tabFeed}`} active onPress={() => router.navigate("/feed")} />} right={<CloseBox label={t.cancel} onPress={close} />} />
+        <TopBar left={<MonoLink label={`← ${back.label}`} active onPress={back.go} />} right={<CloseBox label={t.cancel} onPress={close} />} />
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim, padding: 24 }]}>
           {post.isLoading ? t.loading : t.failed}
         </Text>

@@ -131,11 +131,13 @@ const BRAND_NEEDS_WIDTH = 760;
  * verzoeken: allebei een concreet ding dat op jou wacht en dat verdwijnt
  * zodra je het bekeken hebt.
  *
- * Feed, Events en Profiel krijgen bewust géén getal. Er is voor die drie
- * geen bron die "nieuw voor jou" betekent — je zou iets moeten verzinnen
- * (posts sinds je laatste bezoek, events die je nog niet opende), en een
- * badge die niet klopt leert je hem te negeren. Komt er later een echte
- * bron, dan is dit de plek: één getal erbij in deze map.
+ * Feed en Events krijgen bewust géén getal. Er is voor die twee geen bron
+ * die "nieuw voor jou" betekent — je zou iets moeten verzinnen (posts
+ * sinds je laatste bezoek, events die je nog niet opende), en een badge
+ * die niet klopt leert je hem te negeren. Komt er later een echte bron,
+ * dan is dit de plek: één getal erbij in deze map.
+ *
+ * Profiel draagt het getal van Vrienden, omdat je lincs daaronder wonen.
  *
  * De sleutels zijn exact die van `app/(app)/_layout.tsx`, dus react-query
  * dedupliceert; deze hook kost geen extra verzoek per pagina.
@@ -163,7 +165,19 @@ function useTabBadges(): Partial<Record<string, number>> {
     (f) => f.status === "pending" && f.addressee_id === myUserId
   ).length;
 
-  return { "/chats": unreadChats, "/friends": incomingRequests };
+  /**
+   * Vrienden heeft geen eigen tabblad meer, dus zijn getal telt hier mee
+   * met Profiel.
+   *
+   * Het stond er wel — `"/friends": incomingRequests` — maar sinds Vrienden
+   * onder Profiel verhuisde las niemand die sleutel nog: de lus hieronder
+   * kijkt alleen `badges[tab.href]` op, en `/friends` staat niet in `TABS`.
+   * Het gevolg was dat een inkomend verzoek nergens een cijfer kreeg — niet
+   * hier, niet in de rail, en er is ook geen melding van dat soort. Wie je
+   * wilde toevoegen bleef onzichtbaar tot je uit jezelf naar Jij → Mijn
+   * lincs liep.
+   */
+  return { "/chats": unreadChats, "/profile": incomingRequests };
 }
 
 /**

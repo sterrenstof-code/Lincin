@@ -36,6 +36,7 @@ import {
   flame,
 } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 function DeviceReceiveScreenBody() {
   const { session } = useAuth();
@@ -351,6 +352,7 @@ function DeviceReceiveScreenBody() {
  * opleverde in plaats van een inlogpagina.
  */
 export default function DeviceReceiveScreen() {
+  usePageTitle("Toestel koppelen");
   return (
     <RequireSession>
       <DeviceReceiveScreenBody />

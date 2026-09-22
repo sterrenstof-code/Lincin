@@ -18,8 +18,10 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { sendEmailInvite } from "@/lib/api/invites";
 import { feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function InviteEmailScreen() {
+  usePageTitle("Iemand uitnodigen");
   const router = useRouter();
   const qc = useQueryClient();
   const [email, setEmail] = useState("");

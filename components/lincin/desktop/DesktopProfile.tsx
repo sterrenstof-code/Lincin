@@ -14,6 +14,7 @@ import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } fr
 import { capf, head, mono } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, numberMap, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
+import { useBackTarget } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -35,6 +36,7 @@ const MIN_CARD = 240;
 
 export function DesktopProfile({ username }: { username: string }) {
   const router = useRouter();
+  const back = useBackTarget(router, "/feed");
   const qc = useQueryClient();
   const t = useT();
   const scheme = useScheme();
@@ -110,7 +112,7 @@ export function DesktopProfile({ username }: { username: string }) {
       <TopBar
         left={
           <>
-            <MonoLink label={`← ${t.tabFeed}`} active onPress={() => router.navigate("/feed")} />
+            <MonoLink label={`← ${back.label}`} active onPress={back.go} />
             <MonoLink numberOfLines={1} label={`${t.scrProfile} · ${name}`} />
           </>
         }

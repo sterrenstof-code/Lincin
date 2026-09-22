@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "@/components/Avatar";
@@ -31,6 +32,7 @@ import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/lib/toast";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,6 +56,18 @@ export default function ListDetailScreen() {
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const toast = useToast();
+
+  usePageTitle(list?.title?.trim() || "Lijst");
+
+  // Het overzicht (`/lists`) blijft gemount onder dit scherm en toont per
+  // lijst "3 van 5". Zonder dit stond daar na terugkeren nog de stand van
+  // vóór je iets toevoegde of afvinkte.
+  const qc = useQueryClient();
+  useEffect(() => {
+    return () => {
+      void qc.invalidateQueries({ queryKey: ["shared-lists", myUserId] });
+    };
+  }, [qc, myUserId]);
 
   async function load() {
     if (!id) return;
@@ -158,7 +172,7 @@ export default function ListDetailScreen() {
           void load();
         }}
         backLabel="Terug"
-        onBack={() => safeBack(router, "/(app)/chats")}
+        onBack={() => safeBack(router, "/lists")}
       />
     );
   }
@@ -183,7 +197,7 @@ export default function ListDetailScreen() {
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Terug"
-                onPress={() => router.back()} className="w-9 h-9 items-center justify-center">
+                onPress={() => safeBack(router, "/lists")} className="w-9 h-9 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text style={{ fontSize: 28 }}>{list.emoji}</Text>

@@ -21,6 +21,7 @@ import { sendMessage } from "@/lib/api/messages";
 import { CONTROL_H, creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { useUnsavedGuard } from "@/lib/unsaved";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function PollComposeScreen() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function PollComposeScreen() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const { chatId } = useLocalSearchParams<{ chatId?: string }>();
+  usePageTitle(chatId ? "Poll in chat" : "Nieuwe stemming");
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);

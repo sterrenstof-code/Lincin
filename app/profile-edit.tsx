@@ -35,6 +35,7 @@ import { uriToBytes } from "@/lib/crypto/file";
 import { feed, feedType, flameDeep } from "@/lib/design/type";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * Je profiel bewerken — op het blad, niet op het werkblad.
@@ -48,6 +49,7 @@ import { safeBack } from "@/lib/nav";
  * begint en gecentreerd als een aankondiging (§8).
  */
 export default function ProfileEditScreen() {
+  usePageTitle("Profiel bewerken");
   const router = useRouter();
   const qc = useQueryClient();
   const wide = useWide();

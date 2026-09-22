@@ -24,6 +24,7 @@ import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { NL } from "@/lib/locale";
+import { usePageTitle } from "@/lib/page-title";
 
 type SlotDraft = {
   id: string;
@@ -70,6 +71,7 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export default function CallPlanComposeScreen() {
+  usePageTitle("Videocall plannen");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();

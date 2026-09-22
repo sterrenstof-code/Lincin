@@ -221,6 +221,7 @@ function ChatsMobile() {
           </>
         )}
         <DashedCard style={{ margin: 12 }} onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
+        <DashedCard style={{ marginHorizontal: 12, marginBottom: 12 }} onPress={() => router.push("/list-compose")}>{`${t.newList} →`}</DashedCard>
       </ScrollView>
     </LincinScreen>
   );

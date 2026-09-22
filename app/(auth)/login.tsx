@@ -19,6 +19,7 @@ import {
   feedType,
   flameDeep,
 } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * Eén weg naar binnen.
@@ -48,6 +49,7 @@ type Status =
   | { kind: "error"; message: string };
 
 export default function LoginScreen() {
+  usePageTitle("Inloggen");
   const { signInWithPassword, signUp, sendPasswordReset, resendConfirmation } = useAuth();
 
   const [email, setEmail] = useState("");

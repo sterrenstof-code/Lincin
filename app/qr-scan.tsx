@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * QR-scanner: scan de code van een andere gebruiker om naar diens profiel te gaan.
@@ -15,6 +16,7 @@ import { safeBack } from "@/lib/nav";
  * of de deep-link variant lincin://user/{username}.
  */
 export default function QRScanScreen() {
+  usePageTitle("Scan een linc");
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanError, setScanError] = useState<string | null>(null);

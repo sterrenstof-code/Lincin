@@ -227,6 +227,7 @@ function RootStack() {
         <Stack.Screen name="group/[id]" />
         <Stack.Screen name="event/[id]" />
         <Stack.Screen name="list/[id]" />
+        <Stack.Screen name="lists" />
         <Stack.Screen name="profile-edit" options={MODAL} />
         <Stack.Screen name="post-compose" options={MODAL} />
         <Stack.Screen name="poll-compose" options={MODAL} />

@@ -24,8 +24,10 @@ import {
 import { listMyFriendships } from "@/lib/api/friends";
 import { rekeyMessagesForNewMember } from "@/lib/api/rekey";
 import { feed } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function GroupAddMembersScreen() {
+  usePageTitle("Leden toevoegen");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();

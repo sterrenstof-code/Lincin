@@ -15,6 +15,7 @@ import { FieldError, FormError } from "@/components/FormError";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/lib/auth/provider";
 import { feed } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * Verplicht wachtwoord-instellen scherm. Wordt afgedwongen na de eerste
@@ -24,6 +25,7 @@ import { feed } from "@/lib/design/type";
  * heeft maar de metadata-vlag mist.
  */
 export default function SetPasswordScreen() {
+  usePageTitle("Wachtwoord instellen");
   const router = useRouter();
   const { setPassword, signOut, session, markHasPassword, hasPassword } = useAuth();
 

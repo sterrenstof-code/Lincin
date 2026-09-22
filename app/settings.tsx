@@ -14,6 +14,7 @@ import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
+import { listMySharedLists } from "@/lib/api/shared-lists";
 
 /**
  * Instellingen (README §08).
@@ -51,6 +52,19 @@ function SettingsMobile() {
     enabled: !!session,
   });
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
+  // Wie op jou wacht, net als op het brede scherm (DesktopYou). Zonder dit
+  // is een inkomend verzoek op de telefoon nergens te zien.
+  const pendingIn = (friendships.data ?? []).filter(
+    (f) => f.status === "pending" && f.addressee_id === myUserId
+  ).length;
+  const lincsSub = `${lincs} ${t.friends}${pendingIn ? ` · ${pendingIn} ${t.waitsForYou}` : ""}`;
+  const lists = useQuery({
+    queryKey: ["shared-lists", myUserId],
+    queryFn: () => listMySharedLists(myUserId),
+    enabled: !!myUserId,
+  });
+  const listCount = (lists.data ?? []).length;
+  const listsSub = listCount === 0 ? t.noListsYet : `${listCount} ${listCount === 1 ? t.list : t.lists}`;
 
   const themeLabel = theme === "system" ? t.followsDevice : theme === "light" ? t.light : t.dark;
 
@@ -138,11 +152,22 @@ function SettingsMobile() {
         {
           key: "lincs",
           label: t.myLincs,
-          sub: `${lincs} ${t.friends}`,
+          sub: lincsSub,
           onPress: () => router.push("/friends"),
           right: (
             <Mono variant="meta" style={{ textTransform: "none" }}>
               {lincs} →
+            </Mono>
+          ),
+        },
+        {
+          key: "lists",
+          label: t.myLists,
+          sub: listsSub,
+          onPress: () => router.push("/lists"),
+          right: (
+            <Mono variant="meta" style={{ textTransform: "none" }}>
+              {listCount} →
             </Mono>
           ),
         },
@@ -220,7 +245,7 @@ function SettingsMobile() {
           <Row label={t.visible} sub={t.visibleSub} onPress={toggle("visible")}>
             <Toggle on={prefs.visible} />
           </Row>
-          <Row label={t.myLincs} sub={`${lincs} ${t.friends}`} onPress={() => router.push("/friends")} last>
+          <Row label={t.myLincs} sub={lincsSub} onPress={() => router.push("/friends")} last>
             <Mono variant="meta" style={{ textTransform: "none" }}>
               {lincs} →
             </Mono>

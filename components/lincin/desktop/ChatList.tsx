@@ -122,8 +122,9 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
         />
       ))}
       {full ? (
-        <View style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+        <View style={{ paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", gap: 16, flexWrap: "wrap" }}>
           <MonoLink label="Nieuwe groep →" active onPress={() => router.push("/group-create")} />
+          <MonoLink label={`${t.newList} →`} active onPress={() => router.push("/list-compose")} />
         </View>
       ) : null}
     </ScrollView>

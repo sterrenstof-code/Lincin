@@ -18,6 +18,7 @@ import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
 import { useUnread } from "@/lib/lincin/unread";
 
 import { DesktopShell, MonoLink } from "./Shell";
+import { listMySharedLists } from "@/lib/api/shared-lists";
 
 /**
  * Jij op desktop (Lincin Desktop.dc.html, JIJ): je naam in serif 46
@@ -52,6 +53,8 @@ export function DesktopYou() {
   const last = rest.join(" ");
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
   const pendingIn = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId).length;
+  const lists = useQuery({ queryKey: ["shared-lists", myUserId], queryFn: () => listMySharedLists(myUserId) });
+  const listCount = (lists.data ?? []).length;
   const since = new Date(session!.user.created_at);
   const yy = `'${String(since.getFullYear()).slice(2)}`;
 
@@ -138,6 +141,9 @@ export function DesktopYou() {
             </Row>
             <Row label={t.myLincs} sub={`${lincs} ${t.friends}${pendingIn ? ` · ${pendingIn} ${t.waitsForYou}` : ""}`} onPress={() => router.push("/friends")}>
               <MonoLink label={`${lincs} →`} active />
+            </Row>
+            <Row label={t.myLists} sub={listCount === 0 ? t.noListsYet : `${listCount} ${listCount === 1 ? t.list : t.lists}`} onPress={() => router.push("/lists")}>
+              <MonoLink label={`${listCount} →`} active />
             </Row>
             <Row label={t.myQr} sub="" onPress={() => router.push("/qr-code")} last>
               <MonoLink label="→" active />

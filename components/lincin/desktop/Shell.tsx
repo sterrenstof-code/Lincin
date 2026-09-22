@@ -110,6 +110,11 @@ type NavItem = { id: Tab | "notifications"; num: string; label: string; badge: n
  * De vier tabbladen en, als vijfde, de meldingen. Die krijgen een eigen
  * plek met hun eigen teller: stond de teller op "Jij", dan zag je een 1
  * zonder te weten waar hij naartoe wees. Op de telefoon is dat de ◉ in de kop.
+ *
+ * "Jij" draagt daarnaast wél één getal, en precies één: het aantal mensen
+ * dat je linc wil zijn. Dat is geen melding — die soort bestaat niet — en
+ * het woont onder Jij → Mijn lincs, dus het wijst maar naar één plek en
+ * blijft daarmee te lezen.
  */
 function useNav(active: Tab): NavItem[] {
   const t = useT();
@@ -120,7 +125,7 @@ function useNav(active: Tab): NavItem[] {
     { id: "feed", num: "01", label: t.tabFeed, badge: 0, href: TAB_HREF.feed, on: active === "feed" },
     { id: "chats", num: "02", label: t.tabChats, badge: active === "chats" ? 0 : unread.chats, href: TAB_HREF.chats, on: active === "chats" },
     { id: "events", num: "03", label: t.tabEvents, badge: 0, href: TAB_HREF.events, on: active === "events" },
-    { id: "you", num: "04", label: t.tabYou, badge: 0, href: TAB_HREF.you, on: !onNotes && (active === "you" || pathname.startsWith("/settings")) },
+    { id: "you", num: "04", label: t.tabYou, badge: active === "you" ? 0 : unread.friendRequests, href: TAB_HREF.you, on: !onNotes && (active === "you" || pathname.startsWith("/settings")) },
     { id: "notifications", num: "05", label: t.notifications, badge: onNotes ? 0 : unread.notifications, href: "/notifications", on: onNotes },
   ];
 }

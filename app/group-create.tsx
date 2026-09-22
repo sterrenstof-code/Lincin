@@ -22,8 +22,10 @@ import { createGroupChat } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function GroupCreateScreen() {
+  usePageTitle("Nieuwe groep");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();

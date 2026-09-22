@@ -18,8 +18,10 @@ import { useAuth } from "@/lib/auth/provider";
 import { safeBack } from "@/lib/nav";
 import { contributeToEvent } from "@/lib/api/events";
 import { feed } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function EventLinkComposeScreen() {
+  usePageTitle("Event delen");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();

@@ -36,6 +36,7 @@ import { sendMessage } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 import { creamOnDark, desk, feed, flameDeep } from "@/lib/design/type";
+import { usePageTitle } from "@/lib/page-title";
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -57,6 +58,10 @@ export default function GroupInfoScreen() {
     queryFn: () => getChatRow(chatId),
     enabled: !!chatId,
   });
+
+  // De naam van de groep zodra die er is; tot dan de schermnaam, zodat er
+  // nooit "undefined" in de tab staat.
+  usePageTitle(chat.data?.name?.trim() || "Groep info");
 
   const members = useQuery({
     queryKey: ["chat-members", chatId],

@@ -13,6 +13,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { buildAddFriendUrl, copyToClipboard, shareText } from "@/lib/share";
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 const QR_SIZE = 260;
 
@@ -155,6 +156,7 @@ function QRCodeScreenBody() {
  * opleverde in plaats van een inlogpagina.
  */
 export default function QRCodeScreen() {
+  usePageTitle("Jouw linc");
   return (
     <RequireSession>
       <QRCodeScreenBody />

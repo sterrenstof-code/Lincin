@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { contributeToEvent } from "@/lib/api/events";
 import { creamOnDark, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * Full-screen camera met paper-cream shutter controls. Tap shutter →
@@ -25,6 +26,7 @@ import { safeBack } from "@/lib/nav";
  * terug naar live view voor de volgende foto (Once-stijl rapid contribute).
  */
 export default function EventCameraScreen() {
+  usePageTitle("Foto toevoegen");
   const router = useRouter();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();

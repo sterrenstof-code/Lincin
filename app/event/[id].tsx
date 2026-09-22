@@ -9,6 +9,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   useWindowDimensions,
   View,
@@ -17,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
+import { CloseBox, DesktopShell, MonoLink, TopBar } from "@/components/lincin/desktop/Shell";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
 import { openLightbox } from "@/components/lincin/Lightbox";
@@ -43,11 +45,12 @@ import { confirm } from "@/lib/confirm";
 import { useHeroTag } from "@/lib/hero-transition";
 import { humanizeError } from "@/lib/errors";
 import { plural } from "@/lib/plural";
-import { safeBack } from "@/lib/nav";
+import { safeBack, useBackTarget } from "@/lib/nav";
 import { copyToClipboard } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
 import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
 import { NL } from "@/lib/locale";
 
@@ -320,11 +323,28 @@ export default function EventDetailScreen() {
   }
 
   usePageTitle(event.data?.name ?? null);
+  const desktop = useIsDesktop();
+  const back = useBackTarget(router, "/events");
 
   // Drie standen, geen één. Zolang dit `isLoading || !data` was, las een
   // verwijderd event en een mislukte query allebei als "laden…" — voor
   // altijd, en zonder terug-knop. Zie components/DetailState.tsx.
   if (event.isLoading || event.isError || !event.data) {
+    // Ook laden en mislukken in de rail, zodat het scherm niet van vorm
+    // wisselt zodra het event binnen is.
+    if (desktop) {
+      return (
+        <DesktopShell active="events" mode="full">
+          <TopBar left={<MonoLink label={`← ${back.label}`} active onPress={back.go} />} />
+          <View style={{ padding: 24, gap: 12, alignItems: "flex-start" }}>
+            <Text style={[feedType.label, { color: feed.inkDim }]}>
+              {event.isLoading ? "Laden…" : event.isError ? "Dit event kon niet laden." : "Dit event bestaat niet meer."}
+            </Text>
+            {event.isError ? <MonoLink label="Opnieuw" active onPress={() => event.refetch()} /> : null}
+          </View>
+        </DesktopShell>
+      );
+    }
     return (
       <DetailState
         kind={event.isError ? "error" : event.isLoading ? "loading" : "missing"}
@@ -343,19 +363,7 @@ export default function EventDetailScreen() {
   const status = eventStatusLabel(ev);
   const start = new Date(ev.starts_at);
 
-  return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        backLabel="Alle events"
-        onBack={() => safeBack(router, "/(app)/events")}
-        gutter={false}
-        contentStyle={{ paddingBottom: 100 }}
-      >
+  const body = (
         <View>
           {/* ============ HERO ============
               Zelfde opbouw als de uitgelichte vondst in de feed: kicker en
@@ -371,17 +379,9 @@ export default function EventDetailScreen() {
               borderBottomColor: feed.ink,
             }}
           >
-            <Pressable
-              onPress={() => safeBack(router, "/(app)/events")}
-              hitSlop={8}
-              style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}
-            >
-              <Ionicons name="chevron-back" color={feed.ink} size={16} />
-              <Text style={[feedType.label, { color: feed.ink, marginLeft: 4 }]}>
-                Alle events
-              </Text>
-            </Pressable>
-
+            {/* Hier stond een tweede "Alle events" met hetzelfde doel als
+                die van `PageScroll` hierboven — twee keer dezelfde terugweg
+                onder elkaar. De kop van de chrome draagt hem al. */}
             <View
               style={{
                 flexDirection: wide ? "row" : "column",
@@ -828,6 +828,46 @@ export default function EventDetailScreen() {
             </View>
           )}
         </View>
+  );
+
+  // Op het brede scherm staat een event in de Lincin-rail, net als de
+  // vondsten en gesprekken die je daar opent. Hier stond op elke breedte de
+  // oude kop (`AppChrome`) met een eigen tabbalk zonder Meldingen, en daar
+  // bovenop nog een tweede "Alle events" — je stapte vanuit Events in een
+  // andere app. De inhoud is voor beide vormen dezelfde.
+  if (desktop) {
+    return (
+      <DesktopShell active="events" mode="full">
+        <TopBar
+          left={
+            <>
+              <MonoLink label={`← ${back.label}`} active onPress={back.go} />
+              <MonoLink numberOfLines={1} label={`Event · ${ev.name}`} />
+            </>
+          }
+          right={<CloseBox label="Sluit" onPress={() => safeBack(router, "/events")} />}
+        />
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
+          {body}
+        </ScrollView>
+      </DesktopShell>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
+      <PageScroll
+        wide={wide}
+        progress={chrome.progress}
+        onScroll={chrome.onScroll}
+        scrollEventThrottle={chrome.scrollEventThrottle}
+        compact
+        backLabel="Alle events"
+        onBack={() => safeBack(router, "/(app)/events")}
+        gutter={false}
+        contentStyle={{ paddingBottom: 100 }}
+      >
+        {body}
       </PageScroll>
     </SafeAreaView>
   );

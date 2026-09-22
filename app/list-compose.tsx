@@ -22,10 +22,12 @@ import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends
 import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { useUnsavedGuard } from "@/lib/unsaved";
+import { usePageTitle } from "@/lib/page-title";
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🎁", "🛒", "🍕", "📚", "🎬", "🏕️", "💡"];
 
 export default function ListComposeScreen() {
+  usePageTitle("Nieuwe lijst");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
@@ -64,7 +66,8 @@ export default function ListComposeScreen() {
     try {
       await createSharedList({ userId: myUserId, title: title.trim(), emoji, memberIds });
       await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
-      safeBack(router, "/(app)/feed");
+      await qc.invalidateQueries({ queryKey: ["shared-lists", myUserId] });
+      safeBack(router, "/lists");
     } catch (e: any) {
       setError(e.message ?? "Er ging iets mis.");
       // Mislukt: pas hier mag de knop weer aan, en de bewaking dus ook.
@@ -84,7 +87,7 @@ export default function ListComposeScreen() {
                 hitSlop={4}
                 accessibilityRole="button"
                 accessibilityLabel="Terug"
-                onPress={() => safeBack(router, "/(app)/feed")} className="w-10 h-10 items-center justify-center">
+                onPress={() => safeBack(router, "/lists")} className="w-10 h-10 items-center justify-center">
                 <Ionicons name="arrow-back" color={desk.ink} size={22} />
               </Pressable>
               <Text className="text-desk-ink font-bold text-lg">Nieuwe lijst</Text>

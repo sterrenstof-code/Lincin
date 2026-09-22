@@ -4,16 +4,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PageScroll, useChromeScroll } from "@/components/AppChrome";
 import { useWide } from "@/components/Editorial";
+import { DesktopShell, MonoLink, TopBar } from "@/components/lincin/desktop/Shell";
+import { color } from "@/lib/design/theme";
 import {
   announce,
   announceDeep,
+  capf,
   CONTROL_H,
   creamOnDark,
   feed,
   feedType,
   flameDeep,
+  mono,
+  sans,
   space,
 } from "@/lib/design/type";
+import { useIsDesktop } from "@/lib/lincin/desktop";
+import { usePageTitle } from "@/lib/page-title";
 
 /**
  * Catch-all 404 voor paden die de router niet kan matchen. Dit gebeurt
@@ -50,9 +57,42 @@ import {
  * doet.
  */
 export default function NotFoundScreen() {
+  usePageTitle("Pagina niet gevonden");
   const router = useRouter();
   const wide = useWide();
   const chrome = useChromeScroll();
+  const desktop = useIsDesktop();
+
+  // Op het brede scherm in de Lincin-rail, zoals elk ander scherm daar:
+  // de navigatie is hier juist het belangrijkste wat je aanreikt.
+  if (desktop) {
+    return (
+      <DesktopShell active="feed">
+        <Stack.Screen options={{ headerShown: false }} />
+        <TopBar
+          left={
+            <MonoLink
+              label="← Terug"
+              active
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/feed"))}
+            />
+          }
+        />
+        <View style={{ padding: 32, maxWidth: 520, gap: 16 }}>
+          <Text style={[mono(500), { fontSize: 10, letterSpacing: 1.2, color: color("red"), textTransform: "uppercase" }]}>
+            404 — verdwaald
+          </Text>
+          <Text style={[capf(false, true), { fontSize: 46, lineHeight: 46, color: color("ink") }]}>
+            Deze pagina <Text style={[capf(true, true), { color: color("ink", "inkDim") }]}>bestaat niet</Text>
+          </Text>
+          <Text style={[sans(), { fontSize: 15, lineHeight: 22, color: color("ink", "inkDim") }]}>
+            Misschien is de link verlopen, of werd hij verkeerd gekopieerd. Er staat in elk geval niets meer achter.
+          </Text>
+          <MonoLink label="Naar de feed →" active onPress={() => router.replace("/feed")} />
+        </View>
+      </DesktopShell>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
