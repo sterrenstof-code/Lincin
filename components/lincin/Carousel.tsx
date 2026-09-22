@@ -107,6 +107,25 @@ export function Carousel({
   }
 
   const zoomable = !!onZoom && !video;
+  /**
+   * Bij `"ratio"` de hele foto, nooit bijgesneden.
+   *
+   * Het kader volgt de eerste foto, begrensd tussen 4:5 en 1.91:1, en dat
+   * mag: zo springt de lay-out niet bij elk beeld. Maar de foto zelf werd
+   * met `cover` in dat kader geperst, en er waren drie manieren waarop dat
+   * stuk ging. Een foto buiten de grenzen (een schermafdruk, 9:16) verloor
+   * boven en onder. In een rij van de feed was het kader bovendien
+   * hoogstens 0,85× de breedte (`maxHeight`), dus élke vierkante of staande
+   * foto werd liggend gesneden — de meeste foto's van een telefoon. En de
+   * tweede tot zesde foto kregen het kader van de eerste, wat bij een
+   * staande na een liggende de helft weggooide.
+   *
+   * `contain` toont de foto zoals hij genomen is; wat overblijft is het
+   * papier (`paper2`) waar het kader al op stond. Met een vaste hoogte —
+   * de tegels van het raster — blijft het `cover`: daar is bijsnijden de
+   * bedoeling.
+   */
+  const fit = heightProp === "ratio" ? "contain" : "cover";
   const slide = (uri: string | null, i: number) => {
     const style = { width: w || "100%", height: height ?? "100%", backgroundColor: color("paper2") } as const;
     const image = (
@@ -114,7 +133,7 @@ export function Carousel({
         uri={uri}
         cacheKey={cacheKeys?.[i]}
         style={{ width: "100%", height: "100%" }}
-        contentFit="cover"
+        contentFit={fit}
         fallbackBg="bg-paper2"
         fallbackColor={color("ink", "inkDim")}
       />

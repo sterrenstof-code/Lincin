@@ -66,7 +66,10 @@ export function PhotoSlots({
                 style={{ width: w, height: "100%", alignItems: "center", justifyContent: "center", padding: uri || preview ? 0 : 16 }}
               >
                 {uri ? (
-                  <SafeImage uri={uri} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                  // Hele foto, niet bijgesneden: dit is waar je kiest wat je
+                  // plaatst, en een kader dat de randen wegsnijdt laat je
+                  // denken dat je foto zo verminkt online komt.
+                  <SafeImage uri={uri} style={{ width: "100%", height: "100%" }} contentFit="contain" />
                 ) : preview ? (
                   preview
                 ) : (

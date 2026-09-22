@@ -47,10 +47,26 @@ export const IMG = {
   /** Avatars en andere kleine ronde beelden — 2× voor retina. */
   avatar: (px: number): ImageSize => ({ width: px * 2, height: px * 2, resize: "cover", quality: 70 }),
   /** Tegel in een raster of een strook. */
-  tile: { width: 900, quality: 68 } as ImageSize,
+  tile: { width: 900, resize: "contain", quality: 68 } as ImageSize,
   /** Grote plaat op een detailpagina. */
-  hero: { width: 1600, quality: 76 } as ImageSize,
+  hero: { width: 1600, resize: "contain", quality: 76 } as ImageSize,
 };
+/*
+ * `resize: "contain"` bij tile en hero is geen stijlkeuze maar de reden dat
+ * foto's heel blijven.
+ *
+ * Zonder `resize` gebruikt de transformatie van Supabase `cover`, en zonder
+ * `height` houdt hij dan de hoogte van het origineel aan. Een staande foto
+ * van 1680×2670 kwam daardoor terug als 900×2670: dezelfde hoogte, en
+ * van de breedte alleen het middelste stuk — bijna de helft van de foto
+ * weg, al op de server, nog vóór de app er iets mee deed. Elke foto die
+ * breder was dan 900 werd zo een smalle strook; kleinere werden niet
+ * geschaald en bleven gaaf, wat het lastig maakte om te zien.
+ *
+ * Met `contain` schaalt hij de breedte naar 900 en de hoogte mee:
+ * 900×1430. Omdat `resize` in de cachesleutel zit (`sizeKey`), worden oude,
+ * bijgesneden URL's niet meer hergebruikt.
+ */
 
 function params(size: ImageSize): string {
   const q = new URLSearchParams();

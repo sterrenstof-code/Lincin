@@ -113,6 +113,7 @@ import {
 } from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
 import { NL } from "@/lib/locale";
+import { useImageRatio } from "@/lib/lincin/ratio";
 
 /**
  * De leesmaat van een gesprek.
@@ -3038,6 +3039,12 @@ function CallNotificationCard({
 function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: boolean }) {
   const [open, setOpen] = useState(false);
   const { width: screenW, height: screenH } = useWindowDimensions();
+  // Elke foto stond als vierkant van 240 met `cover`: een staande foto
+  // verloor boven en onder, een liggende de zijkanten. Nu 240 breed en zo
+  // hoog als de foto zelf (begrensd 4:5–1.91:1, zie lib/lincin/ratio), en
+  // wat buiten die grenzen valt wordt ingepast in plaats van afgesneden.
+  const ratio = useImageRatio(uri);
+  const thumbH = Math.round(240 / ratio);
 
   return (
     <>
@@ -3050,8 +3057,8 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
         {uri && !loading ? (
           <Image
             source={{ uri }}
-            style={{ width: 240, height: 240 }}
-            contentFit="cover"
+            style={{ width: 240, height: thumbH }}
+            contentFit="contain"
             transition={150}
           />
         ) : (
