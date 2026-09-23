@@ -23,9 +23,9 @@ import { Spread } from "./magazine/Spread";
  *             kleur van wie uitnodigt, de titel in Archivo 900 smal, mono
  *             labels. De acties als vakken in één band; de hoofdactie
  *             zuurgeel.
- *   magazine  vlakken op het tweede papier met een naad van 6 en een rug
- *             van 5 in de kleur. De dag als serif in de kleur, de titel in
- *             Instrument Serif, labels in Archivo 9–10 op .2em. Pillen;
+ *   magazine  de kop als volvlaks kleurvlak van wie uitnodigt, zoals de
+ *             spreads op de voorpagina; daaronder vlakken op het tweede
+ *             papier met een naad van 6. De dag en de titel in serif, labels in Archivo 9–10 op .2em. Pillen;
  *             de andere acties onderstreept.
  *   modern    tegels van 18 op het halfdoorzichtige vlak, naad 6. Een
  *             kleurtegel met de dag groot, Archivo 400 en Plex Mono,
@@ -292,7 +292,7 @@ function HeroMagazine({ f, wide, cover, faces, onGuests }: HeroProps) {
   const rule = color("ink", "postRule");
   return (
     <>
-      <Panel style={{ borderLeftWidth: 5, borderLeftColor: f.fill.fill }}>
+      <Panel style={{ backgroundColor: f.fill.fill }}>
         <View style={{ flexDirection: wide ? "row" : "column" }}>
           <View
             style={{
@@ -301,18 +301,18 @@ function HeroMagazine({ f, wide, cover, faces, onGuests }: HeroProps) {
               paddingHorizontal: wide ? 30 : 20,
               justifyContent: "space-between",
               gap: 8,
-              ...(wide ? { borderRightWidth: 1, borderRightColor: rule } : { borderBottomWidth: 1, borderBottomColor: rule }),
+              ...(wide ? { borderRightWidth: 1, borderRightColor: f.fill.ink } : { borderBottomWidth: 1, borderBottomColor: f.fill.ink }),
             }}
           >
-            <Text style={kicker(10, f.fill.fill)}>{f.month}</Text>
-            <Text style={[serif(), { fontSize: wide ? 150 : 88, lineHeight: wide ? 120 : 74, letterSpacing: wide ? -6 : -3.5, color: f.fill.fill }]}>{f.day}</Text>
+            <Text style={kicker(10, f.fill.ink)}>{f.month}</Text>
+            <Text style={[serif(), { fontSize: wide ? 150 : 88, lineHeight: wide ? 120 : 74, letterSpacing: wide ? -6 : -3.5, color: f.fill.ink }]}>{f.day}</Text>
           </View>
           <View style={{ flex: wide ? 1 : undefined, minWidth: 0, paddingVertical: wide ? 28 : 20, paddingHorizontal: wide ? 36 : 20, gap: wide ? 18 : 12, justifyContent: "space-between" }}>
-            <Text style={kicker(wide ? 10 : 9, dim)}>
+            <Text style={[kicker(wide ? 10 : 9, f.fill.ink), { opacity: 0.8 }]}>
               {f.host} {t.invites} · {f.when} · {f.status}
             </Text>
-            <Text style={[serif(), { fontSize: wide ? 72 : 42, lineHeight: wide ? 68 : 40, letterSpacing: wide ? -1.5 : -0.8, color: ink }]}>{f.title}</Text>
-            <Text style={[serif(true), { fontSize: wide ? 22 : 17, lineHeight: wide ? 28 : 23, color: color("inkSoft") }]}>
+            <Text style={[serif(), { fontSize: wide ? 72 : 42, lineHeight: wide ? 68 : 40, letterSpacing: wide ? -1.5 : -0.8, color: f.fill.ink }]}>{f.title}</Text>
+            <Text style={[serif(true), { fontSize: wide ? 22 : 17, lineHeight: wide ? 28 : 23, color: f.fill.ink, opacity: 0.86 }]}>
               {f.place ? `${f.place} — ` : ""}
               {f.whoGo}
             </Text>
