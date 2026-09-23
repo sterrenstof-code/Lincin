@@ -8,7 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { ON_DARK, THEMES, color, pageTint, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, RASTER, THEMES, color, pageTint, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
 import { capf, head, mono } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
@@ -34,6 +34,9 @@ import { ChatList, ChatListHead } from "./ChatList";
  * Lijnen zijn de kaderdikte van het thema (1.5 in kleur). Het blad kleurt
  * in kleur mee met wie in beeld is — vlak, niet als verloop: 26% van de
  * vriendkleur op papier, 14% in donker.
+ *
+ * Modern heeft geen inktlijnen: de rail en de gesprekken zijn losse tegels
+ * met een ronding van 18 en een naad van 6 rondom, de navigatie pillen.
  */
 
 type ShellMode = "rest" | "feed" | "full";
@@ -48,6 +51,20 @@ const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 /** De rail wisselt toestel → licht → donker (prototype `cycleStand`). */
 const STAND_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
 const DESKTOP_TINT = { light: 0.26, dark: 0.14 };
+const SEAM = RASTER.seam;
+
+/** Modern tekent tegels en pillen; kleur en magazine kaders en inktlijnen. */
+function useRound(): boolean {
+  return useThemeSpec().id === "modern";
+}
+
+/** De lijn onder een kop of naast een paneel: inkt, of de haarlijn in modern. */
+export function edgeColor(round: boolean): string {
+  return round ? color("ink", "postRule") : color("ink");
+}
+
+/** Een tegel van de rail in modern. */
+const bubble = () => ({ borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") });
 
 export function DesktopShell({
   active,
@@ -67,17 +84,24 @@ export function DesktopShell({
   const bg = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
   // grid-template-columns: 196px minmax(0,1fr) minmax(240px,300px)
   const chatsW = Math.max(CHATS_MIN, Math.min(CHATS_W, width - RAIL_W - 600));
+  const round = spec.id === "modern";
   return (
     <View
       style={[
         { flex: 1, flexDirection: "row", minHeight: 0, backgroundColor: bg },
+        round ? { padding: SEAM, gap: SEAM } : null,
         Platform.OS === "web" ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object) : null,
       ]}
     >
       {mode === "full" ? <RailNarrow active={active} /> : <Rail active={active} />}
       <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
       {mode === "feed" ? (
-        <View style={{ width: chatsW, minHeight: 0, borderLeftWidth: spec.border, borderLeftColor: color("ink"), backgroundColor: color("paper") }}>
+        <View
+          style={[
+            { width: chatsW, minHeight: 0 },
+            round ? { ...bubble(), overflow: "hidden" } : { borderLeftWidth: spec.border, borderLeftColor: color("ink"), backgroundColor: color("paper") },
+          ]}
+        >
           <ChatsPanel />
         </View>
       ) : null}
@@ -89,11 +113,12 @@ export function DesktopShell({
 function ChatsPanel() {
   const t = useT();
   const router = useRouter();
+  const round = useRound();
   return (
     <View style={{ flex: 1, minHeight: 0 }}>
       <ChatListHead link />
       <ChatList activeId={null} onOpen={(id) => router.push(`/chat/${id}` as never)} />
-      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}>
+      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}>
         <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: color("ink", "inkDim") }]}>{t.panelNote}</Text>
       </View>
     </View>
@@ -168,15 +193,24 @@ function Rail({ active }: { active: Tab }) {
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
+  const round = spec.id === "modern";
+  /** In modern: drie tegels onder elkaar (merk, navigatie, jij). */
+  const tile = round ? { ...bubble(), padding: 16 } : null;
 
   return (
-    <View style={{ width: RAIL_W, minHeight: 0, borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 26, paddingHorizontal: 20 }}>
-      <Pressable accessibilityRole="link" onPress={() => router.push("/feed")}>
+    <View
+      style={[
+        { width: RAIL_W, minHeight: 0 },
+        round ? { gap: SEAM } : { borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 26, paddingHorizontal: 20 },
+      ]}
+    >
+      <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} style={tile}>
         <Text style={[capf(false, true), { fontSize: 27, lineHeight: 27, color: ink }]}>Lincin</Text>
         <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, textTransform: "uppercase", color: dim, marginTop: 6 }]}>{dateLine}</Text>
       </Pressable>
 
-      <View style={{ marginTop: 30, gap: 2 }}>
+      <View style={round ? { ...tile, padding: 8 } : null}>
+      <View style={{ marginTop: round ? 0 : 30, gap: 2 }}>
         {nav.map((n) => {
           const on = n.on;
           return (
@@ -186,13 +220,13 @@ function Rail({ active }: { active: Tab }) {
               accessibilityLabel={n.badge > 0 ? `${n.label}, ${n.badge} ${t.new}` : n.label}
               accessibilityState={{ selected: on }}
               onPress={() => router.push(n.href as never)}
-              style={{ height: 40, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 10, backgroundColor: on ? ink : "transparent" }}
+              style={{ height: 40, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: round ? 14 : 10, borderRadius: round ? 999 : 0, backgroundColor: on ? ink : "transparent" }}
             >
               <Text numberOfLines={1} style={[mono(600), { flexShrink: 1, fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: on ? color("paper") : dim }]}>
                 {n.num} {n.label}
               </Text>
               {n.badge > 0 ? (
-                <View style={{ marginLeft: "auto", backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5 }}>
+                <View style={{ marginLeft: "auto", backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5, borderRadius: round ? 999 : 0 }}>
                   <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: ON_DARK }]}>{n.badge}</Text>
                 </View>
               ) : null}
@@ -204,13 +238,25 @@ function Rail({ active }: { active: Tab }) {
       <Pressable
         accessibilityRole="button"
         onPress={() => router.push("/post-compose")}
-        style={{ marginTop: 24, height: 42, borderWidth: spec.border, borderColor: ink, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12 }}
+        style={[
+          { height: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+          round
+            ? { marginTop: 10, borderRadius: 999, backgroundColor: color("ink", "postRule"), paddingLeft: 16, paddingRight: 6 }
+            : { marginTop: 24, borderWidth: spec.border, borderColor: ink, paddingHorizontal: 12 },
+        ]}
       >
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: ink }]}>{t.newPost}</Text>
-        <Text style={{ fontSize: 16, lineHeight: 18, color: ink }}>+</Text>
+        {round ? (
+          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 16, lineHeight: 18, color: color("paper") }}>+</Text>
+          </View>
+        ) : (
+          <Text style={{ fontSize: 16, lineHeight: 18, color: ink }}>+</Text>
+        )}
       </Pressable>
+      </View>
 
-      <View style={{ marginTop: "auto", gap: 12 }}>
+      <View style={[{ marginTop: "auto", gap: 12 }, tile]}>
         <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: dim }]}>{t.noAlgo}</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -249,9 +295,9 @@ function Rail({ active }: { active: Tab }) {
           accessibilityRole="link"
           // Je naam opent je profiel, zoals bij een vriend.
           onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile") as never)}
-          style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}
         >
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color("paper2"), borderWidth: 1, borderColor: ink, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color("paper2"), borderWidth: 1, borderColor: edgeColor(round), overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
             {profile.data?.avatar_url ? (
               <SafeImage uri={profile.data.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             ) : (
@@ -289,8 +335,14 @@ function RailNarrow({ active }: { active: Tab }) {
   const spec = useThemeSpec();
   const nav = useNav(active);
   const ink = color("ink");
+  const round = spec.id === "modern";
   return (
-    <View style={{ width: RAIL_NARROW, minHeight: 0, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", paddingVertical: 18, gap: 14 }}>
+    <View
+      style={[
+        { width: RAIL_NARROW, minHeight: 0, alignItems: "center", paddingVertical: 18, gap: 14 },
+        round ? bubble() : { borderRightWidth: spec.border, borderRightColor: ink },
+      ]}
+    >
       <Pressable accessibilityRole="link" accessibilityLabel="Lincin" onPress={() => router.push("/feed")}>
         <Text style={[capf(false, true), { fontSize: 20, lineHeight: 24, color: ink }]}>L</Text>
       </Pressable>
@@ -308,13 +360,14 @@ function RailNarrow({ active }: { active: Tab }) {
               height: 34,
               alignItems: "center",
               justifyContent: "center",
+              borderRadius: round ? 17 : 0,
               backgroundColor: on ? ink : "transparent",
               borderWidth: on ? spec.border : 1,
               borderColor: on ? ink : color("ink", "postRule"),
             }}
           >
             <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: on ? color("paper") : color("ink", "inkDim") }]}>{n.num}</Text>
-            {n.badge > 0 ? <View style={{ position: "absolute", top: -3, right: -3, width: 6, height: 6, backgroundColor: color("red") }} /> : null}
+            {n.badge > 0 ? <View style={{ position: "absolute", top: -3, right: -3, width: 6, height: 6, borderRadius: round ? 3 : 0, backgroundColor: color("red") }} /> : null}
           </Pressable>
         );
       })}
@@ -322,9 +375,12 @@ function RailNarrow({ active }: { active: Tab }) {
         accessibilityRole="button"
         accessibilityLabel={t.newPost}
         onPress={() => router.push("/post-compose")}
-        style={{ marginTop: "auto", width: 34, height: 34, borderWidth: spec.border, borderColor: ink, alignItems: "center", justifyContent: "center" }}
+        style={[
+          { marginTop: "auto", width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+          round ? { borderRadius: 17, backgroundColor: ink } : { borderWidth: spec.border, borderColor: ink },
+        ]}
       >
-        <Text style={{ fontSize: 16, lineHeight: 18, color: ink }}>+</Text>
+        <Text style={{ fontSize: 16, lineHeight: 18, color: round ? color("paper") : ink }}>+</Text>
       </Pressable>
     </View>
   );
@@ -348,7 +404,7 @@ export function DesktopTitle({ children, right }: { children: ReactNode; right?:
         paddingHorizontal: 24,
         paddingBottom: 14,
         borderBottomWidth: spec.border,
-        borderBottomColor: color("ink"),
+        borderBottomColor: edgeColor(spec.id === "modern"),
       }}
     >
       <Text style={[capf(false, true), { flexShrink: 1, fontSize: 40, lineHeight: 38, letterSpacing: -0.8, color: color("ink") }]}>{children}</Text>
@@ -370,7 +426,7 @@ export function TopBar({ left, right }: { left: ReactNode; right?: ReactNode }) 
         gap: 16,
         paddingHorizontal: 22,
         borderBottomWidth: spec.border,
-        borderBottomColor: color("ink"),
+        borderBottomColor: edgeColor(spec.id === "modern"),
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, flexShrink: 1, minWidth: 0 }}>{left}</View>
@@ -434,7 +490,7 @@ export function CloseBox({ onPress, label }: { onPress: () => void; label: strin
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={{ width: 30, height: 30, borderWidth: spec.border, borderColor: color("ink"), alignItems: "center", justifyContent: "center" }}
+      style={{ width: 30, height: 30, borderRadius: spec.id === "modern" ? 15 : 0, borderWidth: spec.border, borderColor: edgeColor(spec.id === "modern"), alignItems: "center", justifyContent: "center" }}
     >
       <Text style={{ fontSize: 15, lineHeight: 17, color: color("ink") }}>×</Text>
     </Pressable>

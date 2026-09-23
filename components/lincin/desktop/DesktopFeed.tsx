@@ -252,7 +252,7 @@ function Band({
           : { borderBottomWidth: spec.border, borderBottomColor: color("ink") }),
       }}
     >
-      {bar ? <View style={{ width: 6, alignSelf: "stretch", marginVertical: 8, backgroundColor: bar }} /> : null}
+      {bar ? <View style={{ width: 6, alignSelf: "stretch", marginVertical: 8, borderRadius: spec.layout === "bento" ? 3 : 0, backgroundColor: bar }} /> : null}
       <Pressable accessibilityRole={onName ? "link" : undefined} onPress={onName} disabled={!onName}>
         <Text numberOfLines={1} style={[headStep(18), { color: fg }]}>
           {name}
@@ -274,7 +274,7 @@ function Band({
           accessibilityState={{ expanded: !!open }}
           onPress={onToggle}
           hitSlop={6}
-          style={{ width: 28, height: 28, borderWidth: 1.5, borderColor: fg, alignItems: "center", justifyContent: "center", transform: [{ rotate: open ? "45deg" : "0deg" }] }}
+          style={{ width: 28, height: 28, ...(spec.layout === "bento" ? { borderRadius: 14, borderWidth: 1 } : { borderWidth: 1.5 }), borderColor: fg, alignItems: "center", justifyContent: "center", transform: [{ rotate: open ? "45deg" : "0deg" }] }}
         >
           <Text style={[mono(500), { fontSize: 16, lineHeight: 18, color: fg }]}>+</Text>
         </Pressable>

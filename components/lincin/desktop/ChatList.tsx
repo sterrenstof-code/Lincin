@@ -13,7 +13,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
-import { MonoLink } from "./Shell";
+import { edgeColor, MonoLink } from "./Shell";
 
 /**
  * De gesprekken als lijst (Lincin Desktop.dc.html, GESPREKKENPANEEL en
@@ -50,7 +50,7 @@ export function ChatListHead({ link = false }: { link?: boolean }) {
   const { list } = useSortedChats();
   const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
   return (
-    <View style={{ height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+    <View style={{ height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, borderBottomWidth: spec.border, borderBottomColor: edgeColor(spec.id === "modern") }}>
       {link ? (
         <MonoLink label={t.chats} active onPress={() => router.push("/chats")} />
       ) : (
