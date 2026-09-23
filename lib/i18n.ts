@@ -17,6 +17,8 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  noNotes: "Nog geen meldingen", 
+  editProfile: "Profiel bewerken", linkDevice: "Toestel koppelen", logout: "Uitloggen", groupsLabel: "Groepen", peopleYouLet: "mensen die jij toeliet", remembered: "wordt onthouden", rememberNote: "Alles wordt onthouden, ook op je andere toestellen — je thema, je taal, je weergave en welke vrienden je open of dicht had.", foldedDefault: "Vrienden standaard ingeklapt", foldedDefaultSub: "je ziet eerst de titels, klik om te openen", myPosts: "Jouw bijdragen", yourPage: "Jouw pagina", 
   dropHere: "sleep hierheen of klik — tot 6", titleLabel: "Titel", captionLabel: "Onderschrift", whoSees: "Wie ziet het", allLincs: "Al je lincs", howLincSees: "Zo ziet je linc het", share: "Delen", shareWithLincs: "Delen met je lincs", forYourLincs: "voor je lincs · geen algoritme", 
   togetherIn: "Samen in", messageTo: "Bericht aan", allPosts: "Alle bijdragen", newestFirst: "nieuwste eerst", lincPortrait: "Linc · portret", aboutTitle: "Over", fromName: "van", 
   invites: "nodigt uit", upcomingN: "komend", newEventPlus: "Nieuw event +", eventsTitle: "Events", 
@@ -64,6 +66,8 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  noNotes: "No notifications yet", 
+  editProfile: "Edit profile", linkDevice: "Link a device", logout: "Log out", groupsLabel: "Groups", peopleYouLet: "people you let in", remembered: "remembered", rememberNote: "Everything is remembered, on your other devices too — your theme, your language, your view and which friends you had open.", foldedDefault: "Friends folded by default", foldedDefaultSub: "you see the titles first, click to open", myPosts: "Your posts", yourPage: "Your page", 
   dropHere: "drop here or click — up to 6", titleLabel: "Title", captionLabel: "Caption", whoSees: "Who sees it", allLincs: "All your lincs", howLincSees: "How your linc sees it", share: "Share", shareWithLincs: "Share with your lincs", forYourLincs: "for your lincs · no algorithm", 
   togetherIn: "Together in", messageTo: "Message", allPosts: "All posts", newestFirst: "newest first", lincPortrait: "Linc · portrait", aboutTitle: "About", fromName: "by", 
   invites: "invites you", upcomingN: "upcoming", newEventPlus: "New event +", eventsTitle: "Events", 
@@ -111,6 +115,8 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  noNotes: "Noch keine Meldungen", 
+  editProfile: "Profil bearbeiten", linkDevice: "Gerät verbinden", logout: "Abmelden", groupsLabel: "Gruppen", peopleYouLet: "Menschen, die du zugelassen hast", remembered: "wird gespeichert", rememberNote: "Alles wird gespeichert, auch auf deinen anderen Geräten — dein Thema, deine Sprache, deine Ansicht und welche Freunde du offen hattest.", foldedDefault: "Freunde standardmäßig eingeklappt", foldedDefaultSub: "du siehst zuerst die Titel, klicke zum Öffnen", myPosts: "Deine Beiträge", yourPage: "Deine Seite", 
   dropHere: "hierher ziehen oder klicken — bis 6", titleLabel: "Titel", captionLabel: "Unterschrift", whoSees: "Wer sieht es", allLincs: "Alle deine Lincs", howLincSees: "So sieht dein Linc es", share: "Teilen", shareWithLincs: "Mit deinen Lincs teilen", forYourLincs: "für deine Lincs · kein Algorithmus", 
   togetherIn: "Zusammen in", messageTo: "Nachricht an", allPosts: "Alle Beiträge", newestFirst: "neueste zuerst", lincPortrait: "Linc · Porträt", aboutTitle: "Über", fromName: "von", 
   invites: "lädt ein", upcomingN: "kommend", newEventPlus: "Neues Event +", eventsTitle: "Events", 

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
@@ -18,6 +18,7 @@ import { lincinType } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { shortAgo } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
+import { useIsDesktop } from "@/lib/lincin/desktop";
 
 /**
  * Meldingen (README §09).
@@ -29,6 +30,12 @@ import { usePageTitle } from "@/lib/page-title";
 
 export default function NotificationsScreen() {
   usePageTitle("Meldingen");
+  // Op desktop staan de meldingen op Jij (desktop-*-pages, JIJ); de ◉ komt daar uit.
+  if (useIsDesktop()) return <Redirect href="/profile" />;
+  return <NotificationsPhone />;
+}
+
+function NotificationsPhone() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
@@ -142,7 +149,7 @@ export default function NotificationsScreen() {
   );
 }
 
-function destinationFor(item: NotificationWithDetails): string | null {
+export function destinationFor(item: NotificationWithDetails): string | null {
   if (item.event_id) return `/event/${item.event_id}`;
   if (item.post_id) return `/post/${item.post_id}`;
   return null;
@@ -200,7 +207,7 @@ function truncate(text: string, max: number): string {
 }
 
 /** Wat er gebeurde, zónder de naam — die staat er vet voor. */
-function describe(item: NotificationWithDetails): { text: string } {
+export function describe(item: NotificationWithDetails): { text: string } {
   const eventName = item.event_name ? `«${item.event_name}»` : "je event";
   const subject = item.post_source_title
     ? `«${truncate(item.post_source_title, 32)}»`

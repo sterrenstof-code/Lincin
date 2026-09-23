@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Redirect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
@@ -13,6 +13,7 @@ import { color, setPreference, usePreference, type LincinTheme, type ThemePrefer
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
+import { DesktopSettings } from "@/components/lincin/desktop/DesktopSettings";
 import { usePageTitle } from "@/lib/page-title";
 import { listMySharedLists } from "@/lib/api/shared-lists";
 
@@ -31,7 +32,7 @@ const THEME_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", 
 export default function SettingsScreen() {
   usePageTitle("Instellingen");
   const desktop = useIsDesktop();
-  if (desktop) return <Redirect href="/profile" />;
+  if (desktop) return <DesktopSettings />;
   return <SettingsMobile />;
 }
 
