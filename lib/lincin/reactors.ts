@@ -65,9 +65,14 @@ function selfFirst(ids: string[], myUserId: string): string[] {
  */
 function whoLine(reactions: GroupedPostReaction[], nameOf: (id: string) => string, t: Dict, myUserId: string): string {
   if (reactions.length === 0) return "";
+  return `${reactions.map((r) => r.emoji).join("")} ${whoNames(reactions, nameOf, t, myUserId)}`;
+}
+
+/** Alleen de namen, voor naast chips die de emoji al tonen: "Jij, Johanna en 2 anderen". */
+function whoNames(reactions: GroupedPostReaction[], nameOf: (id: string) => string, t: Dict, myUserId: string): string {
   const ids: string[] = [];
   for (const r of reactions) for (const id of r.userIds) if (!ids.includes(id)) ids.push(id);
-  return `${reactions.map((r) => r.emoji).join("")} ${joinNames(selfFirst(ids, myUserId).map(nameOf), t)}`;
+  return joinNames(selfFirst(ids, myUserId).map(nameOf), t);
 }
 
 /**
@@ -95,6 +100,8 @@ export function useReactionWho(reactions: GroupedPostReaction[]) {
   const nameOf = useReactorNames(reactions);
   return {
     line: whoLine(reactions, nameOf, t, myUserId),
+    /** De namen zonder emoji: voor naast de chips, waar geen ruimte is voor een regel eronder. */
+    names: whoNames(reactions, nameOf, t, myUserId),
     chip: (r: GroupedPostReaction) => {
       const who = chipWho(r, nameOf, myUserId);
       return {

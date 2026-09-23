@@ -112,6 +112,8 @@ import {
   shortenForPreview,
 } from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
+import { useReactionWho } from "@/lib/lincin/reactors";
+import { WhoReacted } from "@/components/lincin/WhoReacted";
 import { NL } from "@/lib/locale";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
@@ -2471,6 +2473,9 @@ function MessageBubble({
   selected?: boolean;
   onSelect?: () => void;
 }) {
+  // Wie er reageerde, in woorden: "❤️ Jij en Noor" onder de chips, en de
+  // namen bij hover (web). Een telling alleen zegt niet wie.
+  const who = useReactionWho(reactions);
   // `[]` betekende "de taal van het besturingssysteem", en op een toestel
   // dat op Engels staat gaf dat `3:45 PM` — in dezelfde bubbel als een
   // Nederlandse datum. Zie lib/locale.ts.
@@ -2886,6 +2891,7 @@ function MessageBubble({
           {reactions.map((r) => (
             <Pressable
               key={r.emoji}
+              {...who.chip(r)}
               onPress={() => onToggleReaction(r.emoji)}
               onLongPress={() => onReactionLongPress?.(r.emoji, r.userIds)}
               delayLongPress={300}
@@ -2912,6 +2918,12 @@ function MessageBubble({
           ))}
         </View>
       )}
+      {reactions.length > 0 ? (
+        <WhoReacted
+          line={who.line}
+          style={[{ marginTop: 3, maxWidth: BUBBLE_MAX_W }, isMine ? { alignSelf: "flex-end", paddingRight: 4 } : { alignSelf: "flex-start", marginLeft: showAvatarSlot ? 44 : 0 }]}
+        />
+      ) : null}
 
       {isMine && showReadReceipt && (
         // Een leesbevestiging is metadata, geen redactioneel accent. Rood

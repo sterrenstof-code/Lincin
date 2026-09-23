@@ -142,6 +142,11 @@ export function DesktopMagazine() {
                     </Text>
                   </Pressable>
                 ))}
+                {who.names ? (
+                  <Text numberOfLines={1} style={[mono(500), { flexShrink: 1, minWidth: 0, alignSelf: "center", fontSize: 12, lineHeight: 15, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
+                    {who.names}
+                  </Text>
+                ) : null}
                 <Pressable accessibilityRole="button" onPress={() => f.openPost(hero)} style={chip}>
                   <Text style={[mono(600), { fontSize: 12, lineHeight: 15, textTransform: "uppercase", color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
                     {t.comment}

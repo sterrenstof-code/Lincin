@@ -4,6 +4,7 @@ import { Platform, Pressable, ScrollView, Text, View, type TextStyle, type ViewS
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
+import { useReactionWho } from "@/lib/lincin/reactors";
 import { color, friendColor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { capf, head, mono, sans } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
@@ -839,12 +840,15 @@ function Toggle({ open, ink, onPress, label }: { open: boolean; ink: string; onP
 }
 
 function Reacts({ list, onReact, ink }: { list: GroupedPostReaction[]; onReact: (emoji: string) => void; ink: string }) {
+  // Wie er reageerde staat erachter, niet alleen in een tooltip: "Jij en Noor".
+  const who = useReactionWho(list);
   return (
     <>
       {list.slice(0, 4).map((r) => (
         <Pressable
           key={r.emoji}
           accessibilityRole="button"
+          {...who.chip(r)}
           accessibilityState={{ selected: r.mine }}
           onPress={() => onReact(r.emoji)}
           style={{ height: 28, paddingHorizontal: 5, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: r.mine ? ink : "transparent" }}
@@ -853,6 +857,11 @@ function Reacts({ list, onReact, ink }: { list: GroupedPostReaction[]; onReact: 
           <Text style={metaStyle(10, r.mine ? color("paper") : ink, 0, 600)}>{r.count}</Text>
         </Pressable>
       ))}
+      {who.names ? (
+        <Text numberOfLines={1} style={[sans(400), { flexShrink: 1, minWidth: 0, marginLeft: 4, fontSize: 12, lineHeight: 15, color: ink, opacity: 0.66 }]}>
+          {who.names}
+        </Text>
+      ) : null}
     </>
   );
 }

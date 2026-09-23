@@ -194,6 +194,12 @@ export function FeedMagazine() {
               </Text>
             </Pressable>
           ))}
+          {/* Wie er reageerde, niet alleen een telling. */}
+          {who.names ? (
+            <Text numberOfLines={1} style={[lincinType.monoBody, { flexShrink: 1, minWidth: 0, alignSelf: "center", fontSize: 11, lineHeight: 14, color: ON_IMAGE, ...ON_IMAGE_SHADE }]}>
+              {who.names}
+            </Text>
+          ) : null}
           {/* Rechts, als groep: past het niet op één regel (vier knoppen op
               een smalle telefoon), dan loopt de groep netjes door op een tweede. */}
           <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 }}>

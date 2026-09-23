@@ -5,6 +5,7 @@ import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
+import { useReactionWho } from "@/lib/lincin/reactors";
 import { color, friendColor, pageTint, useScheme, type Hue } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import { useLang } from "@/lib/i18n";
@@ -623,15 +624,22 @@ function underlineOffset(n: number): TextStyle | null {
 }
 
 function Reacts({ list, onReact }: { list: GroupedPostReaction[]; onReact: (emoji: string) => void }) {
+  // Wie er reageerde staat erachter, cursief: "Jij en Noor".
+  const who = useReactionWho(list);
   return (
-    <View style={{ flexDirection: "row", gap: 12 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1, minWidth: 0 }}>
       {list.slice(0, 4).map((r) => (
-        <Pressable key={r.emoji} accessibilityRole="button" accessibilityState={{ selected: r.mine }} onPress={() => onReact(r.emoji)}>
+        <Pressable key={r.emoji} accessibilityRole="button" {...who.chip(r)} accessibilityState={{ selected: r.mine }} onPress={() => onReact(r.emoji)}>
           <Text style={{ fontSize: 13, lineHeight: 16, color: r.mine ? color("ink") : color("ink", "inkDim"), textDecorationLine: r.mine ? "underline" : "none" }}>
             {r.emoji} {r.count}
           </Text>
         </Pressable>
       ))}
+      {who.names ? (
+        <Text numberOfLines={1} style={[serif(true), { flexShrink: 1, minWidth: 0, fontSize: 15, lineHeight: 18, color: color("ink", "inkDim") }]}>
+          {who.names}
+        </Text>
+      ) : null}
     </View>
   );
 }
