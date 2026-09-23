@@ -51,3 +51,7 @@ google-service-account.json
 
 # lokale service-rolsleutel — nooit committen
 .env.bugs
+
+# design-handoffs (niet in de repo)
+lincin-handoff/
+*.zip

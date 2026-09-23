@@ -475,31 +475,68 @@ function derive(
 }
 
 /**
- * MAGAZINE — papier en serif, nu in twee standen (2.2 §2).
+ * MAGAZINE — de OMSLAG (handoff 24 sep, magazine-overzicht.dc.html).
  *
- * Licht bleef zoals het was. Donker is in 2.2 herzien: het grijsbruine
- * #282520/#DAD4C6 van 2.1 is vervangen door een warm, bijna zwart papier
- * met okeren accent — de kleurvlakken van de spreads moeten erop kunnen
- * staan zonder dat het blad zelf meekleurt.
+ * Een tijdschriftcover op élke pagina: papier en inkt, en één rood dat
+ * alles draagt wat groot is — het woordmerk LINCIN, de paginatitels, de
+ * nummers, de primaire actie. Het oranje (#F06A2B) en oker (#D9A05B) van
+ * 2.2 zijn weg; `acid` en `red` zijn in magazine allebei dat rood.
+ *
+ *   licht  papier #F7F4EE / #F1EDE3, inkt #16160F, rood #E5271C
+ *   donker papier #14120E / #1B1813, inkt #EFE7D6, rood #F0533E
+ *
+ * `inkSoft` is de `--i2` van het prototype (inkt op 80%). De rest van de
+ * vorm — lijnen van 2 tussen secties, de rug van 5 — staat in `OMSLAG`.
  */
-const MAGAZINE_LIGHT: Palette = derive(LIGHT, {
-  paper: "247 244 238", // #F7F4EE
-  paper2: "241 237 227", // #F1EDE3
-  ink: "22 22 15", // #16160F
-  acid: "240 106 43", // #F06A2B — het accent van magazine
-  red: "216 50 31", // #D8321F
-  line: "22 22 15",
-  tile: "255 255 255",
-});
-const MAGAZINE_DARK: Palette = derive(DARK, {
-  paper: "20 18 14", // #14120E
-  paper2: "27 24 19", // #1B1813
-  ink: "239 231 214", // #EFE7D6
-  acid: "217 160 91", // #D9A05B
-  red: "194 96 78", // #C2604E
-  line: "239 231 214",
-  tile: "27 24 19",
-});
+const MAGAZINE_LIGHT: Palette = {
+  ...derive(LIGHT, {
+    paper: "247 244 238", // #F7F4EE
+    paper2: "241 237 227", // #F1EDE3
+    ink: "22 22 15", // #16160F
+    acid: "229 39 28", // #E5271C — het rood van de omslag
+    red: "229 39 28",
+    line: "22 22 15",
+    tile: "255 255 255",
+  }),
+  inkSoft: mix("22 22 15", "247 244 238", 0.8),
+};
+const MAGAZINE_DARK: Palette = {
+  ...derive(DARK, {
+    paper: "20 18 14", // #14120E
+    paper2: "27 24 19", // #1B1813
+    ink: "239 231 214", // #EFE7D6
+    acid: "240 83 62", // #F0533E
+    red: "240 83 62",
+    line: "239 231 214",
+    tile: "27 24 19",
+  }),
+  inkSoft: mix("239 231 214", "20 18 14", 0.82),
+};
+
+/**
+ * De vorm van de omslag, naast het palet. Alleen magazine leest dit.
+ *
+ *   rule       de lijn tussen twee secties: 2 px inkt
+ *   hairline   de lijn bínnen een blok: 1 px, inkt op 16%
+ *   seam       de naad tussen twee blokken
+ *   spine      de rug van een vriend, links langs zijn blok
+ *   red…       het rood ingedrukt (hover) en op een foto
+ */
+export const OMSLAG = {
+  rule: 2,
+  hairline: 1,
+  seam: RASTER.seam,
+  spine: 5,
+  /** Hoe sterk een vriendblok met iets nieuws getint is (color-mix 12%). */
+  tintNew: 0.12,
+  redPressed: { light: "#C41E14", dark: "#FF5A43" } as Record<Scheme, string>,
+  /** Rood op een foto: de namen onder "Ook nieuw", de naam in de covertekst. */
+  redOnImage: "#FF5A43",
+  /** Wit op een foto. */
+  onImage: "#FFFFFF",
+  /** De sluier over een foto: bijna-zwart, warm. */
+  scrim: "16 16 12",
+} as const;
 
 /**
  * MODERN — het bento-rooster (2.2 §1).
@@ -532,7 +569,7 @@ const MODERN_DARK: Palette = derive(DARK, {
  * De doorzichtigheden per thema en stand. `postDim`/`inkDim` is de `--dim`
  * uit het prototype, `postRule`/`linePaper` de `--rule`.
  */
-const MAGAZINE_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.52, inkDim: 0.52, postRule: 0.13, linePaper: 0.13 };
+const MAGAZINE_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.62, inkDim: 0.62, postRule: 0.16, linePaper: 0.16 };
 const MAGAZINE_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.54, inkDim: 0.54, postRule: 0.14, linePaper: 0.14 };
 const MODERN_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.56, inkDim: 0.56, postRule: 0.12, linePaper: 0.12 };
 const MODERN_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.58, inkDim: 0.58, postRule: 0.14, linePaper: 0.14 };

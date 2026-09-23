@@ -41,6 +41,10 @@ export const FONT = {
   sans: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Regular",
   sansMedium: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Medium",
   sansBold: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Bold",
+  /** Archivo 600, 800 en 900 op volle breedte: het woordmerk en de rode titels van magazine. */
+  sansSemi: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-SemiBold",
+  sansExtra: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-ExtraBold",
+  sansBlack: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Black",
   serif: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Regular",
   serifItalic: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Italic",
   mono: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-Regular",
@@ -55,6 +59,9 @@ export const FONT_FILES = {
   "Archivo-Regular": require("../../assets/fonts/Archivo-Regular.ttf"),
   "Archivo-Medium": require("../../assets/fonts/Archivo-Medium.ttf"),
   "Archivo-Bold": require("../../assets/fonts/Archivo-Bold.ttf"),
+  "Archivo-SemiBold": require("../../assets/fonts/Archivo-SemiBold.ttf"),
+  "Archivo-ExtraBold": require("../../assets/fonts/Archivo-ExtraBold.ttf"),
+  "Archivo-Black": require("../../assets/fonts/Archivo-Black.ttf"),
   "InstrumentSerif-Regular": require("../../assets/fonts/InstrumentSerif-Regular.ttf"),
   "InstrumentSerif-Italic": require("../../assets/fonts/InstrumentSerif-Italic.ttf"),
   "IBMPlexMono-Regular": require("../../assets/fonts/IBMPlexMono-Regular.ttf"),
@@ -63,8 +70,19 @@ export const FONT_FILES = {
 };
 
 /** Archivo op leesmaat. */
-export function sans(weight: 400 | 500 | 700 = 400): TextStyle {
-  const fontFamily = weight === 700 ? FONT.sansBold : weight === 500 ? FONT.sansMedium : FONT.sans;
+export function sans(weight: 400 | 500 | 600 | 700 | 800 | 900 = 400): TextStyle {
+  const fontFamily =
+    weight === 900
+      ? FONT.sansBlack
+      : weight === 800
+        ? FONT.sansExtra
+        : weight === 700
+          ? FONT.sansBold
+          : weight === 600
+            ? FONT.sansSemi
+            : weight === 500
+              ? FONT.sansMedium
+              : FONT.sans;
   return isWeb ? { fontFamily, fontWeight: String(weight) as TextStyle["fontWeight"] } : { fontFamily };
 }
 
