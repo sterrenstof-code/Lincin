@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  dropHere: "sleep hierheen of klik — tot 6", titleLabel: "Titel", captionLabel: "Onderschrift", whoSees: "Wie ziet het", allLincs: "Al je lincs", howLincSees: "Zo ziet je linc het", share: "Delen", shareWithLincs: "Delen met je lincs", forYourLincs: "voor je lincs · geen algoritme", 
   togetherIn: "Samen in", messageTo: "Bericht aan", allPosts: "Alle bijdragen", newestFirst: "nieuwste eerst", lincPortrait: "Linc · portret", aboutTitle: "Over", fromName: "van", 
   invites: "nodigt uit", upcomingN: "komend", newEventPlus: "Nieuw event +", eventsTitle: "Events", 
   firstComment: "Nog niemand zei iets. Jij als eerste?", writeBack: "Schrijf iets terug…", 
@@ -63,6 +64,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  dropHere: "drop here or click — up to 6", titleLabel: "Title", captionLabel: "Caption", whoSees: "Who sees it", allLincs: "All your lincs", howLincSees: "How your linc sees it", share: "Share", shareWithLincs: "Share with your lincs", forYourLincs: "for your lincs · no algorithm", 
   togetherIn: "Together in", messageTo: "Message", allPosts: "All posts", newestFirst: "newest first", lincPortrait: "Linc · portrait", aboutTitle: "About", fromName: "by", 
   invites: "invites you", upcomingN: "upcoming", newEventPlus: "New event +", eventsTitle: "Events", 
   firstComment: "Nobody said anything yet. You first?", writeBack: "Write something back…", 
@@ -109,6 +111,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  dropHere: "hierher ziehen oder klicken — bis 6", titleLabel: "Titel", captionLabel: "Unterschrift", whoSees: "Wer sieht es", allLincs: "Alle deine Lincs", howLincSees: "So sieht dein Linc es", share: "Teilen", shareWithLincs: "Mit deinen Lincs teilen", forYourLincs: "für deine Lincs · kein Algorithmus", 
   togetherIn: "Zusammen in", messageTo: "Nachricht an", allPosts: "Alle Beiträge", newestFirst: "neueste zuerst", lincPortrait: "Linc · Porträt", aboutTitle: "Über", fromName: "von", 
   invites: "lädt ein", upcomingN: "kommend", newEventPlus: "Neues Event +", eventsTitle: "Events", 
   firstComment: "Noch hat niemand etwas gesagt. Du zuerst?", writeBack: "Schreib etwas zurück…", 

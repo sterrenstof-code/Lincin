@@ -20,6 +20,12 @@ níets (geen verzonnen tekst). Hieronder wat er was, en wat ermee gebeurde.
 | De plek ("◎ Marken") | **Geleverd.** `events.place` (0073, vrije tekst, hoogstens 80), een veld "Plek" bij Nieuw event, en mee in `list_my_events` / `get_event_meta`. Oudere events zonder plek tonen de eerste regel van hun beschrijving. |
 | Wie uitnodigt ("Noor nodigt uit") | **Geleverd** uit bestaande data: de naam van de host via `getProfiles`. |
 
+## Nieuwe bijdrage
+
+| Wat het prototype toont | Stand |
+|---|---|
+| "Wie ziet het": al je lincs **of één groep** ("Kamp '26 · 5") | **Deels.** De app toont "Al je lincs · n", want zo werkt het nu: een bijdrage is voor al je vrienden. Delen met één groep vraagt een kolom op `posts` (bv. `audience_chat_id uuid null`) en een aangepaste RLS-select op `posts` (vriend én, als hij gezet is, lid van die groep). Niet gedaan: een wijziging aan de zichtbaarheid van bijdragen wil ik eerst afstemmen. |
+
 ## Voorkeuren
 
 `user_prefs` (migratie 0070) bewaart per gebruiker de weergave van de feed,
