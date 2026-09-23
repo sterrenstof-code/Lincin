@@ -1,24 +1,25 @@
 /**
  * Brontoestel: genereer QR-code voor apparaatkoppeling.
  * Geopend via Profiel → "Nieuw apparaat koppelen".
+ *
+ * DE VORM. De onderdelen van de subpagina (components/lincin/SubPage),
+ * maar niet `SubPage` zelf: die zet een terugknop in de kop die alleen
+ * terug navigeert. Hier moet sluiten óók het pakket intrekken
+ * (`onClose` → `cancelTransferPackage`), dus het enige sluitknopje is het
+ * eigen kruisje bovenaan, zonder terugknop, tabbalk of meldingen ernaast.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ActivityIndicator, Platform, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import { SafeAreaView } from "react-native-safe-area-context";
 
+import { columnWidth, LincinScreen, vfade } from "@/components/lincin/Chrome";
+import { Button, IconBtn, labelStyle, Note, PageTitle, Panel } from "@/components/lincin/SubPage";
+import { VerticalLabel } from "@/components/lincin/ui";
 import { RequireSession } from "@/components/RequireSession";
 import { useAuth } from "@/lib/auth/provider";
-import { FormError } from "@/components/FormError";
 import { safeBack } from "@/lib/nav";
 import {
   cancelTransferPackage,
@@ -26,10 +27,15 @@ import {
   type TransferPackage,
 } from "@/lib/crypto/transfer";
 import { copyToClipboard } from "@/lib/share";
-import { desk, feed, flameDeep } from "@/lib/design/type";
+import { color, friendColor, ON_DARK, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { mono, serif } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
 
 const EXPIRY_SECS = 600;
+/** Dezelfde kleur als de kop van `PageTitle` (die valt terug op oranje). */
+const HUE: Hue = "orange";
+/** De stille zone rond de code: ruim meer dan de vier modules die de norm vraagt. */
+const QUIET = 18;
 
 function DeviceLinkScreenBody() {
   const { session } = useAuth();
@@ -105,120 +111,141 @@ function DeviceLinkScreenBody() {
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
 
-  return (
-    <SafeAreaView className="flex-1 bg-desk">
-      {/* Header */}
-      <View className="flex-row items-center px-5 pt-4 pb-2">
-        <Pressable
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Sluiten"
-          onPress={onClose}
-          className="w-9 h-9 bg-paper-soft items-center justify-center"
-        >
-          <Ionicons name="close" color={feed.ink} size={20} />
-        </Pressable>
-        <Text className="text-ink text-lg font-bold ml-3">
-          Nieuw apparaat koppelen
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const scheme = useScheme();
+  const { width } = useWindowDimensions();
+  const pad = th === "kleur" ? 18 : RASTER.seam;
+  const dim = color("ink", "inkDim");
+  const expired = secondsLeft === 0;
+  const qrSize = Math.max(170, Math.min(220, columnWidth(width) - 2 * QUIET - 90));
+
+  const timer = (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <Ionicons name={expired ? "alert-circle-outline" : "time-outline"} color={expired ? color("red") : dim} size={15} />
+      {expired ? (
+        <Text style={labelStyle(th, 10, color("red"))}>Deze code is verlopen.</Text>
+      ) : (
+        <Text style={labelStyle(th, 10, dim)}>
+          Verloopt over{" "}
+          <Text style={{ ...mono(600), color: color("ink") }}>
+            {mins}:{secs.toString().padStart(2, "0")}
+          </Text>
         </Text>
-      </View>
+      )}
+    </View>
+  );
 
-      <View className="flex-1 items-center justify-center px-6">
-        {loading ? (
-          <ActivityIndicator color={desk.ink} size="large" />
-        ) : error ? (
-          <View className="items-center gap-4">
-            <FormError tone="desk">{error}</FormError>
-            <Pressable
-              onPress={generate}
-              className="bg-paper-soft active:bg-paper px-6 py-3"
-            >
-              <Text className="text-ink font-semibold">Opnieuw proberen</Text>
-            </Pressable>
+  const code = pkg ? (
+    // De code staat altijd donker op licht, met een stille zone — ook in de
+    // donkere stand en op het kleurvlak van magazine. Anders leest de
+    // camera van het nieuwe toestel haar niet.
+    <View
+      style={{
+        padding: QUIET,
+        backgroundColor: ON_DARK,
+        borderRadius: th === "modern" ? 14 : 0,
+        borderWidth: th === "kleur" ? spec.border : 0,
+        borderColor: color("ink"),
+        opacity: expired ? 0.25 : 1,
+      }}
+    >
+      <QRCode value={pkg.url} size={qrSize} backgroundColor={ON_DARK} color={ON_LIGHT} />
+    </View>
+  ) : null;
+
+  const intro = "Open Lincin op je nieuwe apparaat, log in met hetzelfde account en scan deze QR-code.";
+
+  return (
+    <LincinScreen tab="you" back={null} tabs={false} actions={false} header="none" tint={friendColor(HUE, scheme).fill}>
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+        <View style={{ padding: pad, paddingTop: th === "kleur" ? 8 : SEAM_TOP, gap: th === "kleur" ? 16 : RASTER.seam }}>
+          {/* Het kruisje: sluiten trekt het pakket in (zie `onClose`). */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: th === "kleur" ? 0 : 12 }}>
+            <IconBtn icon="close" label="Sluiten" tone="ink" onPress={onClose} />
+            <Text style={labelStyle(th, 10, dim)}>Toestel koppelen</Text>
           </View>
-        ) : pkg ? (
-          <>
-            <Text className="text-ink-soft text-sm text-center mb-6 leading-6 max-w-xs">
-              Open Lincin op je nieuwe apparaat, log in met hetzelfde account
-              en scan deze QR-code.
-            </Text>
 
-            {/* QR-code op paper achtergrond */}
-            <View className="bg-paper p-5 mb-5 shadow-sm">
-              <QRCode
-                value={pkg.url}
-                size={220}
-                backgroundColor="transparent"
-                color={feed.ink}
-              />
+          <PageTitle kicker="Beveiliging" title="Nieuw apparaat koppelen" sub={th === "magazine" ? undefined : intro} />
+
+          {loading ? (
+            <View style={{ paddingVertical: 48, alignItems: "center" }}>
+              <ActivityIndicator color={color("ink")} size="large" />
             </View>
-
-            {/* Afteltimer, en op nul een knop in plaats van een nieuwe code
-                die er stilletjes voor in de plaats komt. Zie `generate`. */}
-            <View className="flex-row items-center gap-2 mb-5">
-              <Ionicons
-                name={secondsLeft === 0 ? "alert-circle-outline" : "time-outline"}
-                color={secondsLeft === 0 ? flameDeep : feed.inkDim}
-                size={15}
-              />
-              {secondsLeft === 0 ? (
-                <Text className="text-sm" style={{ color: flameDeep }}>
-                  Deze code is verlopen.
-                </Text>
+          ) : error ? (
+            <Panel style={{ padding: 16, gap: 12 }}>
+              <Note tone="red">{error}</Note>
+              <Button label="Opnieuw proberen" icon="refresh" onPress={generate} />
+            </Panel>
+          ) : pkg ? (
+            <>
+              {th === "magazine" ? (
+                <Poster hue={HUE} rail={expired ? "Verlopen" : `Code · ${mins}:${secs.toString().padStart(2, "0")}`} intro={intro}>
+                  {code}
+                </Poster>
               ) : (
-                <Text className="text-ink-muted text-sm">
-                  Verloopt over{" "}
-                  <Text className="text-ink font-semibold">
-                    {mins}:{secs.toString().padStart(2, "0")}
-                  </Text>
-                </Text>
+                <Panel style={{ padding: th === "modern" ? RASTER.tilePadLarge : 18, alignItems: "center", gap: 16 }}>
+                  {code}
+                  {timer}
+                </Panel>
               )}
-            </View>
 
-            {secondsLeft === 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Maak een nieuwe code"
-                onPress={generate}
-                className="bg-ink active:bg-ink-soft px-6 py-3 mb-5"
-              >
-                <Text className="text-cream font-semibold">Nieuwe code</Text>
-              </Pressable>
-            ) : null}
+              {th === "magazine" ? <Panel style={{ padding: 14, borderLeftWidth: 5, borderLeftColor: friendColor(HUE, scheme).fill }}>{timer}</Panel> : null}
 
-            {/* Kopieerknop — voor desktop-browsers die geen camera-QR-scan hebben */}
-            <Pressable
-              onPress={onCopy}
-              className="flex-row items-center bg-paper-soft active:bg-paper px-5 py-3.5 mb-3"
-            >
-              <Ionicons
-                name={copied ? "checkmark-circle" : "link-outline"}
-                color={copied ? "#4CAF82" : feed.ink}
-                size={18}
+              {/* Afteltimer, en op nul een knop in plaats van een nieuwe code
+                  die er stilletjes voor in de plaats komt. Zie `generate`. */}
+              {expired ? (
+                <Button label="Nieuwe code" tone="primary" icon="refresh" onPress={generate} />
+              ) : null}
+
+              {/* Kopieerknop — voor desktop-browsers die geen camera-QR-scan hebben */}
+              <Button
+                label={copied ? "Link gekopieerd" : "Kopieer link (voor desktop)"}
+                icon={copied ? "checkmark-circle" : "link-outline"}
+                onPress={onCopy}
               />
-              <Text className="text-ink font-semibold ml-2">
-                {copied ? "Link gekopieerd" : "Kopieer link (voor desktop)"}
-              </Text>
-            </Pressable>
 
-            {Platform.OS !== "web" && (
-              <Text className="text-ink-muted text-xs text-center mt-2 leading-5 max-w-xs">
-                Op desktop: kopieer de link en open hem in de browser van je nieuwe apparaat.
-              </Text>
-            )}
+              {Platform.OS !== "web" && (
+                <Note center>Op desktop: kopieer de link en open hem in de browser van je nieuwe apparaat.</Note>
+              )}
 
-            {/* Stond er als "na 10 minuten wordt automatisch een nieuwe code
-                aangemaakt" — en dat is precies wat er niet meer gebeurt, want
-                die stille vervanging maakte de link die je net doorstuurde
-                dood zonder dat het scherm iets zei. */}
-            <Text className="text-ink-muted text-xs text-center mt-4 leading-5 max-w-xs">
-              De code werkt tien minuten. Daarna moet je zelf een nieuwe maken,
-              zodat je weet dat de vorige niet meer werkt.
-            </Text>
-          </>
-        ) : null}
+              {/* Stond er als "na 10 minuten wordt automatisch een nieuwe code
+                  aangemaakt" — en dat is precies wat er niet meer gebeurt, want
+                  die stille vervanging maakte de link die je net doorstuurde
+                  dood zonder dat het scherm iets zei. */}
+              <Note center>
+                De code werkt tien minuten. Daarna moet je zelf een nieuwe maken,
+                zodat je weet dat de vorige niet meer werkt.
+              </Note>
+            </>
+          ) : null}
+        </View>
+      </ScrollView>
+    </LincinScreen>
+  );
+}
+
+/** De bovenmarge in magazine en modern: de naad, zoals in `SubPage`. */
+const SEAM_TOP = RASTER.seam;
+
+/**
+ * Magazine: de code op een kleurvlak, zoals een spread — de rail met de
+ * resterende tijd, een cursieve regel uitleg, en de code op haar lichte
+ * plaat.
+ */
+function Poster({ hue, rail, intro, children }: { hue: Hue; rail: string; intro: string; children: ReactNode }) {
+  const fc = friendColor(hue, useScheme());
+  const [h, setH] = useState(380);
+  return (
+    <View style={{ backgroundColor: fc.fill, flexDirection: "row" }} onLayout={(e) => setH(e.nativeEvent.layout.height)}>
+      <View style={{ width: RASTER.rail, overflow: "hidden" }}>
+        <VerticalLabel text={rail} width={RASTER.rail} height={h} color={fc.ink} style={{ letterSpacing: 1.9, textTransform: "uppercase" }} />
       </View>
-    </SafeAreaView>
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 22, paddingRight: 20, paddingLeft: 6, gap: 16 }}>
+        <Text style={{ ...serif(true), fontSize: 18, lineHeight: 23, color: fc.ink, opacity: 0.9 }}>{intro}</Text>
+        <View style={{ alignItems: "flex-start" }}>{children}</View>
+      </View>
+    </View>
   );
 }
 

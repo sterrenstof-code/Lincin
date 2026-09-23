@@ -3,24 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Platform, Pressable, Text, TextInput, View, type TextInputProps } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import { CharCount } from "@/components/CharCount";
-import { Arrow, BoxButton, Meta, Rule, Sheet, useWide } from "@/components/Editorial";
-import { FieldError, FormError } from "@/components/FormError";
 import { FormatBar } from "@/components/FormatBar";
-import { IconButton } from "@/components/IconButton";
+import { bodyStyle, Button, Field, IconBtn, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -32,29 +20,29 @@ import {
   type ProfileLink,
 } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { feed, feedType, flameDeep } from "@/lib/design/type";
+import { color, hueFor, useThemeSpec, type LincinTheme } from "@/lib/design/theme";
+import { sans, serif } from "@/lib/design/type";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
- * Je profiel bewerken — op het blad, niet op het werkblad.
+ * Je profiel bewerken, in de vorm van het thema (components/lincin/SubPage).
  *
- * Dit was een §8-scherm (DESIGN.md): zwart werkblad, een gevuld lavendel
- * paneel, velden met een eigen vulling, de avatar gecentreerd als een
- * pasfoto. Nu dezelfde opbouw als het deelscherm: een lavendel blad, een
- * kop met kruisje en één gevulde knop, kickers in flame-deep, en velden
- * die niet meer zijn dan een regel met een lijn eronder (§4). De
- * profielfoto staat links, want links uitgelijnd leest als een pagina die
- * begint en gecentreerd als een aankondiging (§8).
+ * Een zusje van Instellingen: dezelfde kop, dezelfde rubrieken. De kop is
+ * jij zelf — "Profiel bewerken", je handle eronder, en je profielfoto
+ * ernaast, die je aantikt om hem te wijzigen (zoals de groepsfoto op
+ * Groep info). Daaronder wie je bent, je links, Bewaren, en apart de
+ * beveiliging: je wachtwoord heeft een eigen knop, want het wordt niet
+ * met de rest bewaard.
  */
 export default function ProfileEditScreen() {
   usePageTitle("Profiel bewerken");
   const router = useRouter();
   const qc = useQueryClient();
-  const wide = useWide();
   const { session, setPassword } = useAuth();
   const myUserId = session!.user.id;
+  const th = useThemeSpec().id;
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -188,323 +176,294 @@ export default function ProfileEditScreen() {
     setPwdSaving(false);
   }
 
-  return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      <Sheet flex>
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          {/* Kop — dezelfde als op het deelscherm: kruisje, titel, één knop. */}
-          <View className="flex-row items-center px-6 py-4">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Sluiten"
-              onPress={() => safeBack(router, "/(app)/profile")}
-              hitSlop={10}
-            >
-              <Ionicons name="close" color={feed.ink} size={22} />
-            </Pressable>
-            <View className="flex-1 ml-4">
-              <Meta tone="feed" strong>Profiel bewerken</Meta>
-            </View>
-            {saving ? (
-              <ActivityIndicator size="small" color={feed.inkDim} />
-            ) : loading || loadError ? null : (
-              <BoxButton tone="feed" label="Bewaren" filled disabled={!canSave} onPress={onSave} />
-            )}
-          </View>
-          <Rule tone="feed" strong />
+  const ready = !loading && !loadError;
+  const dim = color("ink", "inkDim");
 
-          {loading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color={feed.inkDim} />
-            </View>
-          ) : loadError ? (
-            /* Geen leeg formulier tonen dat je profiel kan wissen zodra je op
-               Bewaren drukt — zie de laadhaak. */
-            <View className="px-6 pt-7">
-              <FormError>{loadError}</FormError>
-            </View>
-          ) : (
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 96 }}>
-              <View style={wide ? { maxWidth: 720 } : undefined}>
-                {/* De profielfoto: links, als een rij die je aantikt. */}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Profielfoto wijzigen"
-                  onPress={onPickAvatar}
-                  className="flex-row items-center px-6 py-5 active:bg-feed-panel"
-                >
-                  <Avatar name={displayName || username} avatarUrl={avatarUrl} size="hero" />
-                  <View className="flex-1 ml-5">
-                    <Text style={[feedType.tile, { color: feed.ink }]}>Profielfoto</Text>
-                    <View className="mt-0.5">
-                      <Meta tone="feed" dim>Tik om te wijzigen</Meta>
-                    </View>
-                  </View>
-                  <Arrow tone="feed" dim />
-                </Pressable>
-                <Rule tone="feed" />
-
-                <Field label="Gebruikersnaam">
-                  <View className="flex-row items-center">
-                    <Text style={[feedType.tile, { color: feed.inkDim, paddingVertical: 11 }]}>@</Text>
-                    <TextInput
-                      value={username}
-                      onChangeText={(t) => setUsername(t.toLowerCase())}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      placeholder="kies een handle"
-                      placeholderTextColor={feed.inkDim}
-                      maxLength={32}
-                      returnKeyType="next"
-                      submitBehavior="submit"
-                      onSubmitEditing={() => displayNameRef.current?.focus()}
-                      style={[INPUT, feedType.tile, { flex: 1, paddingLeft: 4 }]}
-                    />
-                  </View>
-                </Field>
-                <Hint error={usernameError}>3–32 tekens. Kleine letters, cijfers, punt of underscore.</Hint>
-
-                <Field label="Weergavenaam — optioneel">
-                  <TextInput
-                    ref={displayNameRef}
-                    value={displayName}
-                    onChangeText={setDisplayName}
-                    placeholder="bv. Tom"
-                    placeholderTextColor={feed.inkDim}
-                    maxLength={48}
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      if (canSave) void onSave();
-                    }}
-                    style={[INPUT, feedType.body]}
-                  />
-                </Field>
-                <Hint>Dit zien je vrienden in chats en op je vondsten.</Hint>
-
-                {/* De bio draagt opmaak sinds 0054: dezelfde balk als boven
-                    de tekst van een vondst. Platte tekst is geldige
-                    markdown, dus bestaande bio's lezen ongewijzigd door. */}
-                <Field label="Bio — optioneel">
-                  <FormatBar
-                    value={bio}
-                    selection={bioSelection}
-                    onChange={(next) => {
-                      setBio(next.text);
-                      setForcedBioSelection(next.selection);
-                    }}
-                  />
-                  <TextInput
-                    value={bio}
-                    onChangeText={setBio}
-                    onSelectionChange={(e) => {
-                      setBioSelection(e.nativeEvent.selection);
-                      if (forcedBioSelection) setForcedBioSelection(null);
-                    }}
-                    selection={forcedBioSelection ?? undefined}
-                    placeholder="Waar ben je mee bezig?"
-                    placeholderTextColor={feed.inkDim}
-                    multiline
-                    maxLength={280}
-                    style={[INPUT, feedType.body, { minHeight: 88, textAlignVertical: "top" }]}
-                  />
-                  <CharCount value={bio} max={280} />
-                </Field>
-                <Hint>
-                  Een paar regels over jezelf, bovenaan je profiel. Selecteer tekst en tik B of I,
-                  of typ **vet** en *cursief*.
-                </Hint>
-
-                {/* ---- Links ---- */}
-                <View className="px-6 pt-7">
-                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-                    LINKS — OPTIONEEL
-                  </Text>
-                  <View className="mt-1">
-                    <Meta tone="feed" dim>
-                      {`Waar je heen wijst — hoogstens ${MAX_PROFILE_LINKS}. Zonder naam gebruiken we het adres.`}
-                    </Meta>
-                  </View>
-                </View>
-                {links.map((link, i) => (
-                  <View key={i} className="flex-row items-start px-6 pt-4">
-                    <View className="flex-1">
-                      <TextInput
-                        value={link.label}
-                        onChangeText={(t) =>
-                          setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, label: t } : l)))
-                        }
-                        placeholder="Naam"
-                        placeholderTextColor={feed.inkDim}
-                        maxLength={48}
-                        accessibilityLabel={`Naam van link ${i + 1}`}
-                        style={[INPUT, feedType.body]}
-                      />
-                      <Rule tone="feed" />
-                      <TextInput
-                        value={link.url}
-                        onChangeText={(t) =>
-                          setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, url: t } : l)))
-                        }
-                        placeholder="voorbeeld.be"
-                        placeholderTextColor={feed.inkDim}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                        maxLength={200}
-                        accessibilityLabel={`Adres van link ${i + 1}`}
-                        style={[INPUT, feedType.body]}
-                      />
-                      <Rule tone="feed" />
-                    </View>
-                    <View className="ml-2 mt-2">
-                      <IconButton
-                        name="close"
-                        label={`Link ${i + 1} verwijderen`}
-                        onPress={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
-                        size={16}
-                        color={feed.inkDim}
-                      />
-                    </View>
-                  </View>
-                ))}
-                {links.length < MAX_PROFILE_LINKS ? (
-                  <View className="mt-3">
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Link toevoegen"
-                      onPress={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
-                      className="flex-row items-center px-6 py-5 active:bg-feed-panel"
-                    >
-                      <Text style={[feedType.tile, { color: feed.ink, flex: 1 }]}>Link toevoegen</Text>
-                      <Arrow tone="feed" dim />
-                    </Pressable>
-                    <Rule tone="feed" />
-                  </View>
-                ) : null}
-
-                {error ? (
-                  <View className="mx-6 mt-7 px-4 py-3" style={{ borderLeftWidth: 2, borderLeftColor: feed.ink }}>
-                    <Text style={[feedType.body, { color: feed.ink }]}>{error}</Text>
-                  </View>
-                ) : null}
-
-                {/* ---- Wachtwoord ---- */}
-                <View className="px-6 pt-10">
-                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-                    BEVEILIGING
-                  </Text>
-                  <Text style={[feedType.tile, { color: feed.ink, marginTop: 6 }]}>Wachtwoord</Text>
-                  <View className="mt-1">
-                    <Meta tone="feed" dim>
-                      Waarmee je inlogt. Na &quot;Wachtwoord vergeten&quot; kies je hier een nieuw; je blijft
-                      overal ingelogd.
-                    </Meta>
-                  </View>
-                </View>
-                <Field label="Nieuw wachtwoord">
-                  <TextInput
-                    value={password}
-                    onChangeText={setPwd}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    placeholder="min. 8 tekens"
-                    placeholderTextColor={feed.inkDim}
-                    returnKeyType="next"
-                    submitBehavior="submit"
-                    onSubmitEditing={() => confirmRef.current?.focus()}
-                    style={[INPUT, feedType.body]}
-                  />
-                </Field>
-                <Field label="Bevestig">
-                  <TextInput
-                    ref={confirmRef}
-                    value={passwordConfirm}
-                    onChangeText={setPwdConfirm}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    placeholder="herhaal je wachtwoord"
-                    placeholderTextColor={feed.inkDim}
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      if (passwordValid) void onSavePassword();
-                    }}
-                    style={[INPUT, feedType.body]}
-                  />
-                </Field>
-                {password.length > 0 && password.length < 8 ? (
-                  <Hint error="Minstens 8 tekens." />
-                ) : passwordConfirm.length > 0 && password !== passwordConfirm ? (
-                  <Hint error="De bevestiging is niet hetzelfde." />
-                ) : null}
-                <View className="px-6 pt-6">
-                  <BoxButton
-                    tone="feed"
-                    label={pwdSaving ? "Bezig…" : "Wachtwoord opslaan"}
-                    disabled={!passwordValid}
-                    onPress={onSavePassword}
-                  />
-                </View>
-                {pwdResult?.ok === true ? (
-                  <View className="px-6 pt-4">
-                    <Meta tone="feed" strong>Wachtwoord ingesteld.</Meta>
-                  </View>
-                ) : null}
-                {pwdResult && pwdResult.ok === false ? (
-                  <View className="px-6 pt-4">
-                    <FormError>{pwdResult.message}</FormError>
-                  </View>
-                ) : null}
-              </View>
-            </ScrollView>
-          )}
-        </KeyboardAvoidingView>
-      </Sheet>
-    </SafeAreaView>
-  );
-}
-
-/** Eén invoerveld: geen vulling, geen kader — de lijn eronder komt van `Field`. */
-const INPUT = {
-  color: feed.ink,
-  paddingVertical: 11,
-  ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : {}),
-} as const;
-
-/** Een veld: kicker, invoer, lijn — dezelfde als op het deelscherm. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View className="px-6 pt-7">
-      <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55 }]}>
-        {label.toUpperCase()}
-      </Text>
-      {children}
-      <Rule tone="feed" />
-    </View>
-  );
-}
-
-/** De regel onder een veld: uitleg, of de fout die de uitleg vervangt. */
-function Hint({ children, error }: { children?: string; error?: string | null }) {
-  if (error) {
-    return (
-      <View className="px-6">
-        <FieldError>{error}</FieldError>
+  // De profielfoto naast de kop, zoals de groepsfoto op Groep info: vierkant
+  // kader in kleur, los in magazine en modern. Tik om te wijzigen.
+  const photo = ready ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Profielfoto wijzigen"
+      onPress={onPickAvatar}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
+      <Avatar name={displayName || username} avatarUrl={avatarUrl} size="hero" />
+      <View
+        style={{
+          position: "absolute",
+          right: -2,
+          bottom: -2,
+          width: 28,
+          height: 28,
+          borderRadius: th === "kleur" ? 0 : 14,
+          backgroundColor: color("ink"),
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="camera" color={color("paper")} size={13} />
       </View>
-    );
-  }
-  if (!children) return null;
+    </Pressable>
+  ) : null;
+
   return (
-    <View className="px-6 pt-2">
-      <Meta tone="feed" dim>{children}</Meta>
+    <SubPage
+      title="Profiel bewerken"
+      kicker="Jij"
+      sub={ready && username ? `@${username}` : undefined}
+      back="/(app)/profile"
+      tab="you"
+      hue={hueFor(myUserId)}
+      keyboard
+      right={photo}
+    >
+      {loading ? (
+        <View style={{ paddingVertical: 48, alignItems: "center" }}>
+          <ActivityIndicator color={dim} />
+        </View>
+      ) : loadError ? (
+        /* Geen leeg formulier tonen dat je profiel kan wissen zodra je op
+           Bewaren drukt — zie de laadhaak. */
+        <Note tone="red">{loadError}</Note>
+      ) : (
+        <>
+          <Section label="Wie je bent" pad>
+            <HandleField
+              th={th}
+              error={usernameError}
+              value={username}
+              onChangeText={(t) => setUsername(t.toLowerCase())}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="kies een handle"
+              maxLength={32}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => displayNameRef.current?.focus()}
+            />
+            <Field
+              ref={displayNameRef}
+              label="Weergavenaam — optioneel"
+              hint="Dit zien je vrienden in chats en op je vondsten."
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="bv. Tom"
+              maxLength={48}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (canSave) void onSave();
+              }}
+            />
+          </Section>
+
+          {/* De bio draagt opmaak sinds 0054: dezelfde balk als boven de
+              tekst van een vondst. Platte tekst is geldige markdown, dus
+              bestaande bio's lezen ongewijzigd door. */}
+          <Section label="Bio — optioneel" pad>
+            <FormatBar
+              value={bio}
+              selection={bioSelection}
+              onChange={(next) => {
+                setBio(next.text);
+                setForcedBioSelection(next.selection);
+              }}
+            />
+            <View>
+              <Field
+                accessibilityLabel="Bio"
+                value={bio}
+                onChangeText={setBio}
+                onSelectionChange={(e) => {
+                  setBioSelection(e.nativeEvent.selection);
+                  if (forcedBioSelection) setForcedBioSelection(null);
+                }}
+                selection={forcedBioSelection ?? undefined}
+                placeholder="Waar ben je mee bezig?"
+                multiline
+                maxLength={280}
+                hint="Een paar regels over jezelf, bovenaan je profiel. Selecteer tekst en tik B of I, of typ **vet** en *cursief*."
+                style={{ minHeight: 88 }}
+              />
+              <CharCount value={bio} max={280} />
+            </View>
+          </Section>
+
+          <Section
+            label={`Links — optioneel · ${links.length}/${MAX_PROFILE_LINKS}`}
+            action={
+              links.length < MAX_PROFILE_LINKS
+                ? { label: "Voeg toe", icon: "add", onPress: () => setLinks((prev) => [...prev, { label: "", url: "" }]) }
+                : undefined
+            }
+            pad
+          >
+            <Note>{`Waar je heen wijst — hoogstens ${MAX_PROFILE_LINKS}. Zonder naam gebruiken we het adres.`}</Note>
+            {links.map((link, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
+                  <Field
+                    label={`Link ${i + 1}`}
+                    value={link.label}
+                    onChangeText={(t) =>
+                      setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, label: t } : l)))
+                    }
+                    placeholder="Naam"
+                    maxLength={48}
+                    accessibilityLabel={`Naam van link ${i + 1}`}
+                  />
+                  <Field
+                    value={link.url}
+                    onChangeText={(t) =>
+                      setLinks((prev) => prev.map((l, j) => (j === i ? { ...l, url: t } : l)))
+                    }
+                    placeholder="voorbeeld.be"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    maxLength={200}
+                    accessibilityLabel={`Adres van link ${i + 1}`}
+                  />
+                </View>
+                <View style={{ paddingTop: 26 }}>
+                  <IconBtn
+                    icon="close"
+                    label={`Link ${i + 1} verwijderen`}
+                    onPress={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+                  />
+                </View>
+              </View>
+            ))}
+          </Section>
+
+          {error ? <Note tone="red">{error}</Note> : null}
+
+          <Button
+            label={saving ? "Bezig…" : "Bewaren"}
+            tone="primary"
+            icon="checkmark"
+            busy={saving}
+            disabled={!canSave}
+            onPress={onSave}
+          />
+
+          {/* ---- Wachtwoord: een eigen knop, los van Bewaren ---- */}
+          <Section label="Beveiliging" pad>
+            <View style={{ gap: 4 }}>
+              <Text style={th === "magazine" ? { ...serif(), fontSize: 24, lineHeight: 27, color: color("ink") } : { ...sans(500), fontSize: 16, lineHeight: 20, color: color("ink") }}>
+                Wachtwoord
+              </Text>
+              <Text style={bodyStyle(th, 13, dim)}>
+                Waarmee je inlogt. Na &quot;Wachtwoord vergeten&quot; kies je hier een nieuw; je blijft
+                overal ingelogd.
+              </Text>
+            </View>
+            <Field
+              label="Nieuw wachtwoord"
+              value={password}
+              onChangeText={setPwd}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              placeholder="min. 8 tekens"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmRef.current?.focus()}
+              error={password.length > 0 && password.length < 8 ? "Minstens 8 tekens." : null}
+            />
+            <Field
+              ref={confirmRef}
+              label="Bevestig"
+              value={passwordConfirm}
+              onChangeText={setPwdConfirm}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              placeholder="herhaal je wachtwoord"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (passwordValid) void onSavePassword();
+              }}
+              error={
+                !(password.length > 0 && password.length < 8) &&
+                passwordConfirm.length > 0 &&
+                password !== passwordConfirm
+                  ? "De bevestiging is niet hetzelfde."
+                  : null
+              }
+            />
+            <View style={{ flexDirection: "row" }}>
+              <Button
+                label={pwdSaving ? "Bezig…" : "Wachtwoord opslaan"}
+                icon="lock-closed-outline"
+                busy={pwdSaving}
+                disabled={!passwordValid}
+                onPress={onSavePassword}
+              />
+            </View>
+            {pwdResult?.ok === true ? <Note tone="ink">Wachtwoord ingesteld.</Note> : null}
+            {pwdResult && pwdResult.ok === false ? <Note tone="red">{pwdResult.message}</Note> : null}
+          </Section>
+        </>
+      )}
+    </SubPage>
+  );
+}
+
+/**
+ * De gebruikersnaam: een veld met een vaste "@" ervoor. Dezelfde vorm als
+ * `Field` uit de kit — kader van 1.5 (kleur), een lijn eronder
+ * (magazine), een afgerond vlak (modern) — maar met het apenstaartje ín
+ * het vak, zodat je ziet dat het een handle is.
+ */
+function HandleField({
+  th,
+  error,
+  ...input
+}: TextInputProps & { th: LincinTheme; error?: string | null }) {
+  const spec = useThemeSpec();
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const letter = th === "magazine" ? { ...serif(), fontSize: 20 } : { ...sans(400), fontSize: 15 };
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={labelStyle(th, 9, dim)}>Gebruikersnaam</Text>
+      <View
+        style={{
+          minHeight: 48,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: th === "magazine" ? 0 : 14,
+          borderRadius: th === "modern" ? 14 : 0,
+          borderWidth: th === "kleur" ? spec.border : th === "magazine" ? 0 : 1,
+          borderBottomWidth: th === "kleur" ? spec.border : 1,
+          borderColor: error ? color("red") : th === "kleur" ? ink : color("ink", "postRule"),
+          backgroundColor: th === "magazine" ? "transparent" : color("paper"),
+        }}
+      >
+        <Text style={[letter, { color: dim }]}>@</Text>
+        <TextInput
+          accessibilityLabel="Gebruikersnaam"
+          placeholderTextColor={dim}
+          {...input}
+          style={[
+            letter,
+            { flex: 1, minHeight: 46, paddingLeft: 3, color: ink },
+            Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null,
+          ]}
+        />
+      </View>
+      {error ? (
+        <Text style={[labelStyle(th, 9, color("red")), { textTransform: "none", letterSpacing: 0.3 }]}>{error}</Text>
+      ) : (
+        <Text style={bodyStyle(th, 12, dim)}>
+          3–32 tekens. Kleine letters, cijfers, punt of underscore.
+        </Text>
+      )}
     </View>
   );
 }

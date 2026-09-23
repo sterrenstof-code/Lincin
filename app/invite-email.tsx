@@ -1,25 +1,21 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
 
-import { FieldError } from "@/components/FormError";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { bodyStyle, Button, Field, Panel, Section, SubPage, titleStyle } from "@/components/lincin/SubPage";
 import { sendEmailInvite } from "@/lib/api/invites";
-import { feed } from "@/lib/design/type";
+import { color, friendColor, RASTER, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { serif } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
+/**
+ * Iemand uitnodigen via e-mail, in de vorm van het thema
+ * (components/lincin/SubPage). Eén veld en één knop; is de mail weg, dan
+ * staat er een bevestiging met "Nog iemand" en "Klaar" — in magazine als
+ * groen kleurvlak, zoals een spread op de voorpagina.
+ */
 export default function InviteEmailScreen() {
   usePageTitle("Iemand uitnodigen");
   const router = useRouter();
@@ -48,104 +44,87 @@ export default function InviteEmailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-row items-center px-4 py-3">
-          <Pressable
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Sluiten"
-            onPress={() => safeBack(router, "/(app)/friends")}
-            className="w-9 h-9 bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="close" color={feed.ink} size={20} />
-          </Pressable>
-          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-            Iemand uitnodigen
-          </Text>
+    <SubPage
+      title="Nodig ze uit via e-mail"
+      kicker="Vriend nog niet op Lincin?"
+      sub="We sturen hen een uitnodiging om hun eigen Lincin-account te maken. Zodra ze aanmelden, zijn jullie automatisch vrienden."
+      back="/(app)/friends"
+      tab="you"
+      hue="blue"
+      keyboard
+    >
+      <Section label="Uitnodiging" pad>
+        <Field
+          label="E-mailadres"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          placeholder="vriend@voorbeeld.be"
+          editable={!submitting}
+          onSubmitEditing={onSubmit}
+          error={typeof status === "object" && status.kind === "error" ? status.message : null}
+        />
+        {status === "sent" ? null : (
+          <Button
+            label={submitting ? "Bezig…" : "Stuur uitnodiging"}
+            tone="primary"
+            icon="paper-plane-outline"
+            busy={submitting}
+            onPress={onSubmit}
+          />
+        )}
+      </Section>
+
+      {status === "sent" ? (
+        <Sent
+          email={email}
+          onAgain={() => {
+            setEmail("");
+            setStatus("idle");
+          }}
+          onDone={() => safeBack(router, "/(app)/friends")}
+        />
+      ) : null}
+    </SubPage>
+  );
+}
+
+/**
+ * De bevestiging. Kleur: een kader; modern: een tegel; magazine: een
+ * groen kleurvlak met de kop in serif, de knoppen eronder op papier.
+ */
+function Sent({ email, onAgain, onDone }: { email: string; onAgain: () => void; onDone: () => void }) {
+  const th = useThemeSpec().id;
+  const fc = friendColor("green", useScheme());
+  const dim = color("ink", "inkDim");
+  const text = `${email} kreeg een mail om een account aan te maken. Zodra ze inloggen, verschijnen ze in je vrienden-lijst.`;
+  const buttons = (
+    <View style={{ flexDirection: "row", gap: 8 }}>
+      <Button label="Nog iemand uitnodigen" grow onPress={onAgain} />
+      <Button label="Klaar" tone="primary" grow onPress={onDone} />
+    </View>
+  );
+  if (th === "magazine") {
+    return (
+      <View style={{ gap: RASTER.seam }}>
+        <View style={{ backgroundColor: fc.fill, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20, gap: 8 }}>
+          <Text style={{ ...serif(), fontSize: 34, lineHeight: 34, letterSpacing: -0.8, color: fc.ink }}>Uitnodiging verstuurd</Text>
+          <Text style={{ ...serif(true), fontSize: 17, lineHeight: 22, color: fc.ink, opacity: 0.86 }}>{text}</Text>
         </View>
-
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper p-6">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-                Vriend nog niet op Lincin?
-              </Text>
-              <Text className="text-2xl font-bold tracking-tight text-ink mb-2">
-                Nodig ze uit via e-mail
-              </Text>
-              <Text className="text-ink-soft text-sm leading-5 mb-5">
-                We sturen hen een uitnodiging om hun eigen Lincin-account te maken.
-                Zodra ze aanmelden, zijn jullie automatisch vrienden.
-              </Text>
-
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                E-mailadres
-              </Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholder="vriend@voorbeeld.be"
-                placeholderTextColor={feed.inkDim}
-                editable={!submitting}
-                onSubmitEditing={onSubmit}
-                className="bg-paper-light text-ink text-base px-5 py-3.5 border border-line-paper"
-              />
-
-              {typeof status === "object" && status.kind === "error" && (
-                <FieldError tone="desk">{status.message}</FieldError>
-              )}
-
-              {status === "sent" ? (
-                <View className="mt-5 bg-paper-light border border-line-paper px-5 py-4">
-                  <Text className="text-ink font-semibold text-base mb-1">
-                    Uitnodiging verstuurd
-                  </Text>
-                  <Text className="text-ink-soft text-sm leading-5">
-                    {email} kreeg een mail om een account aan te maken. Zodra ze inloggen, verschijnen ze in je vrienden-lijst.
-                  </Text>
-                  <View className="flex-row gap-2 mt-4">
-                    <Pressable
-                      onPress={() => {
-                        setEmail("");
-                        setStatus("idle");
-                      }}
-                      className="flex-1 border border-ink/30 py-2.5 items-center"
-                    >
-                      <Text className="text-ink font-semibold text-sm">
-                        Nog iemand uitnodigen
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => safeBack(router, "/(app)/friends")}
-                      className="flex-1 bg-ink active:bg-ink-soft py-2.5 items-center"
-                    >
-                      <Text className="text-cream font-semibold text-sm">Klaar</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={onSubmit}
-                  disabled={submitting}
-                  className="mt-5 bg-ink active:bg-ink-soft py-3.5 items-center"
-                >
-                  <Text className="text-cream font-semibold text-base">
-                    {submitting ? "Bezig…" : "Stuur uitnodiging"}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ScreenContainer>
-    </SafeAreaView>
+        <Panel style={{ padding: 16 }}>{buttons}</Panel>
+      </View>
+    );
+  }
+  return (
+    <Panel style={{ padding: th === "modern" ? RASTER.tilePad : 16, gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {th === "modern" ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: fc.fill }} /> : null}
+        <Text style={titleStyle(th, th === "modern" ? 20 : 22)}>Uitnodiging verstuurd</Text>
+      </View>
+      <Text style={bodyStyle(th, 13.5, dim)}>{text}</Text>
+      <View style={{ marginTop: 4 }}>{buttons}</View>
+    </Panel>
   );
 }

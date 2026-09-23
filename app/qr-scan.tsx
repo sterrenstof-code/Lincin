@@ -1,12 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { Button, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
+import { color, ON_DARK, ON_LIGHT, useThemeSpec } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
@@ -14,10 +14,16 @@ import { usePageTitle } from "@/lib/page-title";
  * QR-scanner: scan de code van een andere gebruiker om naar diens profiel te gaan.
  * Verwacht een URL in het formaat: https://lincin.app/user/{username}
  * of de deep-link variant lincin://user/{username}.
+ *
+ * De vraag om cameratoegang staat op een subpagina van het thema; de
+ * camera zelf vult het scherm, met de knoppen en het kader in de vorm van
+ * het thema (vierkant in kleur, rond in magazine en modern) en in de
+ * vaste kleuren voor op beeld (ON_DARK op een donkere sluier).
  */
 export default function QRScanScreen() {
   usePageTitle("Scan een linc");
   const router = useRouter();
+  const th = useThemeSpec().id;
   const [permission, requestPermission] = useCameraPermissions();
   const [scanError, setScanError] = useState<string | null>(null);
   const scannedRef = useRef(false); // voorkom dubbele navigatie
@@ -39,64 +45,36 @@ export default function QRScanScreen() {
 
   // ── Permissie nog niet gevraagd ──────────────────────────────────────────
   if (!permission) {
-    return <View className="flex-1 bg-desk" />;
+    return <View style={{ flex: 1, backgroundColor: color("paper") }} />;
   }
 
   // ── Permissie geweigerd ──────────────────────────────────────────────────
   if (!permission.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-        <ScreenContainer>
-          <View className="flex-row items-center px-4 py-3">
-            <Pressable
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Sluiten"
-              onPress={() => safeBack(router, "/(app)/friends")}
-              className="w-9 h-9 bg-paper-soft items-center justify-center"
-            >
-              <Ionicons name="close" color={feed.ink} size={20} />
-            </Pressable>
-            <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-              QR-code scannen
-            </Text>
+      <SubPage
+        title="Camera-toegang vereist"
+        kicker="QR-code scannen"
+        back="/(app)/friends"
+        tab="you"
+        hue="blue"
+      >
+        <Section pad>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Ionicons name="camera-outline" color={color("ink")} size={32} />
+            <View style={{ flex: 1 }}>
+              <Note tone="ink">Lincin heeft toegang tot je camera nodig om QR-codes te scannen.</Note>
+            </View>
           </View>
-          <View className="flex-1 items-center justify-center px-8 gap-4">
-            <Ionicons name="camera-outline" color={desk.ink} size={48} />
-            <Text className="text-desk-ink text-xl font-bold text-center">
-              Camera-toegang vereist
-            </Text>
-            <Text className="text-desk-soft text-sm text-center leading-5">
-              Lincin heeft toegang tot je camera nodig om QR-codes te scannen.
-            </Text>
-            <Pressable
-              onPress={requestPermission}
-              className="mt-2 bg-desk-ink px-6 py-3"
-            >
-              <Text className="text-desk font-semibold">Geef toegang</Text>
-            </Pressable>
-          </View>
-        </ScreenContainer>
-      </SafeAreaView>
+          <Button label="Geef toegang" tone="primary" icon="camera-outline" onPress={requestPermission} />
+        </Section>
+      </SubPage>
     );
   }
 
   // ── Camera actief ────────────────────────────────────────────────────────
+  const round = th !== "kleur";
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={["top", "left", "right"]}>
-      {/* Sluitknop over de camera */}
-      <View className="absolute top-14 left-4 z-10">
-        <Pressable
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel="Scanner sluiten"
-          onPress={() => safeBack(router, "/(app)/friends")}
-          className="w-10 h-10 bg-black/50 items-center justify-center"
-        >
-          <Ionicons name="close" color={creamOnDark.DEFAULT} size={22} />
-        </Pressable>
-      </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: ON_LIGHT }} edges={["top", "left", "right"]}>
       <CameraView
         style={{ flex: 1 }}
         facing="back"
@@ -104,36 +82,61 @@ export default function QRScanScreen() {
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
       />
 
-      {/* Richtlijn-overlay */}
-      <View className="absolute inset-0 items-center justify-center pointer-events-none">
-        {/* Verduisterd kader rondom de scanzone */}
+      {/* Richtlijn-overlay: het kader waarin de code hoort */}
+      <View style={{ pointerEvents: "none", position: "absolute", left: 0, top: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
         <View
           style={{
             width: 240,
             height: 240,
-            borderRadius: 20,
-            borderWidth: 2,
-            borderColor: creamOnDark.DEFAULT,
-            backgroundColor: "transparent",
+            borderRadius: round ? 20 : 0,
+            borderWidth: th === "kleur" ? 3 : 2,
+            borderColor: ON_DARK,
           }}
         />
       </View>
 
+      {/* Sluitknop over de camera */}
+      <View style={{ position: "absolute", top: 56, left: 16, zIndex: 10 }}>
+        <Pressable
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Scanner sluiten"
+          onPress={() => safeBack(router, "/(app)/friends")}
+          style={({ pressed }) => ({ width: 44, height: 44, borderRadius: round ? 22 : 0, overflow: "hidden", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+        >
+          <Veil />
+          <Ionicons name="close" color={ON_DARK} size={22} />
+        </Pressable>
+      </View>
+
       {/* Label onderaan */}
-      <View className="absolute bottom-12 left-0 right-0 items-center px-6">
+      <View style={{ position: "absolute", bottom: 48, left: 0, right: 0, alignItems: "center", paddingHorizontal: 24 }}>
         {scanError ? (
-          <View className="bg-red-800/90 px-5 py-2">
-            <Text className="text-white font-medium text-sm">{scanError}</Text>
-          </View>
+          <Chip round={round} fill={color("red")}>
+            <Text style={labelStyle(th, 10, ON_DARK)}>{scanError}</Text>
+          </Chip>
         ) : (
-          <View className="bg-black/50 px-5 py-2">
-            <Text className="text-cream text-sm">
-              Richt op de QR-code van een vriend
-            </Text>
-          </View>
+          <Chip round={round}>
+            <Text style={labelStyle(th, 10, ON_DARK)}>Richt op de QR-code van een vriend</Text>
+          </Chip>
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** Een donkere sluier onder een knop of label op het camerabeeld. */
+function Veil() {
+  return <View style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, backgroundColor: ON_LIGHT, opacity: 0.55 }} />;
+}
+
+/** Een label op het camerabeeld: op de sluier, of op een eigen vlak (de fout). */
+function Chip({ round, fill, children }: { round: boolean; fill?: string; children: ReactNode }) {
+  return (
+    <View style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: round ? 999 : 0, overflow: "hidden", backgroundColor: fill }}>
+      {fill ? null : <Veil />}
+      {children}
+    </View>
   );
 }
 

@@ -7,34 +7,24 @@
  *   1. Profiel → Beveiliging → "Nieuw apparaat koppelen" → camera-scanner
  *   2. Deep link: lincin://device-receive?s=…&u=…  (automatisch verwerkt)
  *   3. Handmatig plakken (desktop-web: geen camera, of bij camerafout)
+ *
+ * In de vorm van het thema (components/lincin/SubPage): de vraag om
+ * cameratoegang en het plakveld als subpagina, de scanner met een korte
+ * kop zodat de camera de ruimte krijgt.
  */
 
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { ActivityIndicator, Platform, Text, useWindowDimensions, View } from "react-native";
 
+import { bodyStyle, Button, Field, IconBtn, labelStyle, Note, Panel, Section, SubPage, titleStyle } from "@/components/lincin/SubPage";
 import { RequireSession } from "@/components/RequireSession";
-import { FieldError } from "@/components/FormError";
 import { useAuth } from "@/lib/auth/provider";
 import { consumeTransferPackage } from "@/lib/crypto/transfer";
-import {
-  creamOnDark,
-  desk,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flame,
-} from "@/lib/design/type";
+import { color, ON_DARK, ON_LIGHT, RASTER, useThemeSpec } from "@/lib/design/theme";
+import { mono } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 
@@ -118,87 +108,57 @@ function DeviceReceiveScreenBody() {
     parseAndHandle(cleaned);
   }
 
+  const th = useThemeSpec().id;
+  const round = th !== "kleur";
+  const { height: winH } = useWindowDimensions();
+
   // ── Laadspinner tijdens verwerking ──────────────────────────────────────────
+  // Zonder kop of terugknop, net als eerst: de overdracht loopt, en weglopen
+  // halverwege helpt niemand.
   if (processing) {
     return (
-      <SafeAreaView className="flex-1 bg-desk items-center justify-center gap-4">
-        <ActivityIndicator color={desk.ink} size="large" />
-        <Text className="text-ink-soft text-sm">Sleutels worden overgedragen…</Text>
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <ActivityIndicator color={color("ink")} size="large" />
+        <Text style={labelStyle(th, 10, color("ink", "inkDim"))}>Sleutels worden overgedragen…</Text>
+      </View>
     );
   }
 
   // ── Handmatige invoer (desktop web of camera geweigerd) ─────────────────────
   if (showManual) {
     return (
-      <SafeAreaView className="flex-1 bg-desk px-6 justify-center">
-        <Pressable
-          onPress={() => {
-            if (Platform.OS !== "web") setShowManual(false);
-            else safeBack(router, "/(app)/profile");
-          }}
-          className="flex-row items-center mb-6"
-        >
-          <Ionicons name="arrow-back" color={feed.inkDim} size={18} />
-          <Text className="text-ink-soft text-sm ml-1">Terug</Text>
-        </Pressable>
-
-        <View className="w-12 h-12 bg-brand/20 items-center justify-center mb-4">
-          <Ionicons name="link-outline" color="#5B8DEF" size={22} />
-        </View>
-        <Text className="text-ink text-xl font-bold mb-2">
-          Koppelingslink invoeren
-        </Text>
-        <Text className="text-ink-soft text-sm mb-5 leading-5">
-          Kopieer de koppelingslink van je andere apparaat en plak hem hieronder.
-        </Text>
-
-        <TextInput
-          value={manualInput}
-          onChangeText={setManualInput}
-          placeholder="lincin://device-receive?s=…&u=…"
-          placeholderTextColor={feed.inkDim}
-          autoCapitalize="none"
-          autoCorrect={false}
-          multiline={false}
-          className="bg-paper-soft px-4 py-3.5 text-ink text-xs font-mono mb-3"
-          style={{
-            borderWidth: 1,
-            borderColor: manualInput ? "#5B8DEF" : "transparent",
-          }}
-        />
-
-        {error && (
-          <FieldError tone="desk" style={{ marginBottom: 12 }}>{error}</FieldError>
-        )}
-
-        <Pressable
-          onPress={onManualSubmit}
-          disabled={!manualInput.trim()}
-          className={` py-3.5 items-center mb-3 ${
-            manualInput.trim() ? "bg-ink active:bg-ink-soft" : "bg-paper-warm"
-          }`}
-        >
-          <Text
-            className={`font-bold ${
-              manualInput.trim() ? "text-cream" : "text-ink-muted"
-            }`}
-          >
-            Koppel apparaat
-          </Text>
-        </Pressable>
-
-        {Platform.OS !== "web" && (
-          <Pressable
-            onPress={() => setShowManual(false)}
-            className="items-center py-2"
-          >
-            <Text className="text-ink-soft text-sm">
-              Camera gebruiken
-            </Text>
-          </Pressable>
-        )}
-      </SafeAreaView>
+      <SubPage
+        title="Koppelingslink invoeren"
+        kicker="Nieuw toestel"
+        sub="Kopieer de koppelingslink van je andere apparaat en plak hem hieronder."
+        back="/(app)/profile"
+        tab="you"
+        keyboard
+      >
+        <Section label="Koppelingslink" pad>
+          <Field
+            accessibilityLabel="Koppelingslink"
+            value={manualInput}
+            onChangeText={setManualInput}
+            placeholder="lincin://device-receive?s=…&u=…"
+            autoCapitalize="none"
+            autoCorrect={false}
+            multiline={false}
+            error={error}
+            style={{ ...mono(400), fontSize: 12 }}
+          />
+          <Button
+            label="Koppel apparaat"
+            tone="primary"
+            icon="link-outline"
+            disabled={!manualInput.trim()}
+            onPress={onManualSubmit}
+          />
+          {Platform.OS !== "web" && (
+            <Button label="Camera gebruiken" tone="quiet" icon="camera-outline" onPress={() => setShowManual(false)} />
+          )}
+        </Section>
+      </SubPage>
     );
   }
 
@@ -215,69 +175,53 @@ function DeviceReceiveScreenBody() {
    * regel.
    */
   if (!permission) {
-    return <View className="flex-1 bg-desk" />;
+    return <View style={{ flex: 1, backgroundColor: color("paper") }} />;
   }
 
   // ── Camera toestemming vragen ────────────────────────────────────────────────
   if (!permission.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-desk items-center justify-center px-6">
-        <View className="w-14 h-14 bg-brand/20 items-center justify-center mb-4">
-          <Ionicons name="camera-outline" color="#5B8DEF" size={26} />
-        </View>
-        <Text className="text-ink text-xl font-bold text-center mb-2">
-          Camera nodig
-        </Text>
-        <Text className="text-ink-soft text-sm text-center mb-6 leading-5">
-          Om de QR-code te scannen heeft Lincin toegang tot je camera nodig.
-        </Text>
-
-        {error && (
-          <FieldError tone="desk" style={{ marginBottom: 16 }}>{error}</FieldError>
-        )}
-
-        <Pressable
-          onPress={requestPermission}
-          className="bg-ink active:bg-ink-soft px-6 py-3.5 mb-3 w-full max-w-xs items-center"
-        >
-          <Text className="text-cream font-bold">Geef cameratoegang</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setShowManual(true)}
-          className="py-2"
-        >
-          <Text className="text-ink-soft text-sm">Link handmatig invoeren</Text>
-        </Pressable>
-        <Pressable onPress={() => safeBack(router, "/(app)/profile")} className="py-2 mt-1">
-          <Text className="text-ink-muted text-sm">Annuleren</Text>
-        </Pressable>
-      </SafeAreaView>
+      <SubPage
+        title="Camera nodig"
+        kicker="Nieuw toestel"
+        sub="Om de QR-code te scannen heeft Lincin toegang tot je camera nodig."
+        back="/(app)/profile"
+        tab="you"
+      >
+        {error ? <Note tone="red">{error}</Note> : null}
+        <Section pad>
+          <Button label="Geef cameratoegang" tone="primary" icon="camera-outline" onPress={requestPermission} />
+          <Button label="Link handmatig invoeren" icon="link-outline" onPress={() => setShowManual(true)} />
+          <Button label="Annuleren" tone="quiet" onPress={() => safeBack(router, "/(app)/profile")} />
+        </Section>
+      </SubPage>
     );
   }
 
   // ── QR-scanner ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView className="flex-1 bg-desk">
-      {/* Header */}
-      <View className="flex-row items-center px-5 pt-4 pb-2">
-        <Pressable
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Terug"
-          onPress={() => safeBack(router, "/(app)/profile")}
-          className="w-9 h-9 bg-paper-soft items-center justify-center"
-        >
-          <Ionicons name="arrow-back" color={feed.ink} size={20} />
-        </Pressable>
-        <Text className="text-ink text-lg font-bold ml-3">Scan QR-code</Text>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={() => setShowManual(true)} className="py-2 px-3">
-          <Text className="text-brand text-sm font-semibold">Link invoeren</Text>
-        </Pressable>
+    <SubPage title={null} kicker="Nieuw toestel" back="/(app)/profile" tab="you" scroll={false}>
+      {/* Een korte kop in plaats van de grote: de camera krijgt de ruimte. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: th === "kleur" ? 0 : 12 }}>
+        <Text style={[titleStyle(th, 26), { flex: 1 }]} numberOfLines={1}>
+          Scan QR-code
+        </Text>
+        <Button label="Link invoeren" small icon="link-outline" onPress={() => setShowManual(true)} />
       </View>
 
-      {/* Camera */}
-      <View style={{ flex: 1, position: "relative" }}>
+      {/* Camera, in de vorm van het thema: kader in kleur, ronding in modern.
+          Een vaste hoogte uit het venster: zonder scroll rekt het blad van
+          `SubPage` zijn inhoud niet op, dus `flex: 1` zou hier inklappen. */}
+      <View
+        style={{
+          height: Math.max(280, Math.min(640, winH - 260)),
+          overflow: "hidden",
+          backgroundColor: ON_LIGHT,
+          borderRadius: th === "modern" ? RASTER.tileRadius : 0,
+          borderWidth: th === "kleur" ? 1.5 : 0,
+          borderColor: color("ink"),
+        }}
+      >
         <CameraView
           style={{ flex: 1 }}
           facing="back"
@@ -288,8 +232,12 @@ function DeviceReceiveScreenBody() {
         {/* Scanner-overlay */}
         <View
           style={{
+            pointerEvents: "none",
             position: "absolute",
-            inset: 0,
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -298,51 +246,26 @@ function DeviceReceiveScreenBody() {
             style={{
               width: 240,
               height: 240,
-              borderWidth: 2,
-              borderColor: creamOnDark.DEFAULT,
-              borderRadius: 16,
-              backgroundColor: "transparent",
+              borderWidth: th === "kleur" ? 3 : 2,
+              borderColor: ON_DARK,
+              borderRadius: round ? 16 : 0,
             }}
           />
-          <Text
-            style={{
-              color: creamOnDark.DEFAULT,
-              fontSize: 14,
-              marginTop: 16,
-              fontWeight: "500",
-            }}
-          >
-            Richt je camera op de QR-code
-          </Text>
+          <Text style={[labelStyle(th, 10, ON_DARK), { marginTop: 16 }]}>Richt je camera op de QR-code</Text>
         </View>
       </View>
 
       {/* Foutmelding onderaan */}
       {error ? (
-        <View className="px-6 pb-4">
-          <View
-            accessibilityRole="alert"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              padding: 12,
-              borderWidth: FEED_BORDER,
-              borderColor: flame,
-            }}
-          >
-            <Ionicons name="warning-outline" color={flame} size={16} />
-            <Text style={[feedType.body, { color: desk.ink, flex: 1 }]}>{error}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Waarschuwing sluiten"
-              onPress={() => setError(null)}>
-              <Ionicons name="close" color={desk.muted} size={16} />
-            </Pressable>
+        <Panel style={{ borderLeftWidth: th === "kleur" ? undefined : 5, borderLeftColor: color("red"), ...(th === "kleur" ? { borderColor: color("red") } : null) }}>
+          <View accessibilityRole="alert" style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12 }}>
+            <Ionicons name="warning-outline" color={color("red")} size={16} />
+            <Text style={[bodyStyle(th, 13), { flex: 1 }]}>{error}</Text>
+            <IconBtn icon="close" label="Waarschuwing sluiten" size={32} onPress={() => setError(null)} />
           </View>
-        </View>
+        </Panel>
       ) : null}
-    </SafeAreaView>
+    </SubPage>
   );
 }
 
