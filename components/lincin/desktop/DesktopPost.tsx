@@ -17,7 +17,7 @@ import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { EmojiSuggestions, useEmojiSuggest } from "@/components/lincin/ComposeBar";
-import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { capf, head, mono, sans } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
@@ -45,6 +45,10 @@ import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
  * titel, bijschrift, tekst, de reacties met ☺ en "Profiel van … →";
  * rechts een kolom van 420 met de comments — elk met zijn reacties — en
  * een invoer (Enter of ↑). `← Feed`, × of Escape sluit.
+ *
+ * Modern: geen inktlijnen. Het beeld en de band eronder zijn samen één
+ * tegel, de reacties een tweede ernaast, met de naad van 6 ertussen — zoals
+ * de rail. Pijlen, knoppen en het reactievak zijn rond.
  */
 
 /** Het reactievak van de bijdrage (prototype `emojiGrid`). */
@@ -203,32 +207,27 @@ export function DesktopPost({ id }: { id: string }) {
   /**
    * De reactiekolom, per thema. Kleur en magazine: een rechte kolom tegen de
    * rand, met een inktlijn ervoor, zoals elk paneel daar. Modern: een
-   * zwevende tegel van glas — rond, halfdoorzichtig, met het blad wazig
-   * erdoorheen en lucht eromheen — zoals de pil en de tegels van modern.
+   * tegel naast de tegel van het beeld, zoals de rail en de gesprekken.
    */
   const modern = spec.id === "modern";
   /** Modern: ronde knoppen met een haarlijn; kleur en magazine: inktkaders. */
   const edge = modern ? { borderWidth: 1, borderColor: rule, borderRadius: 999 } : { borderWidth: 1.5, borderColor: ink };
-  const commentsColumn =
-    spec.id === "modern"
-      ? ({
-          width: COMMENTS_W,
-          margin: 12,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: rule,
-          backgroundColor: color("paper", "glass"),
-          overflow: "hidden",
-          ...(Platform.OS === "web" ? { backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } : null),
-        } as object)
-      : { width: COMMENTS_W, borderLeftWidth: spec.border, borderLeftColor: ink, backgroundColor: color("paper") };
+  /** Modern: een tegel zoals in de rail. */
+  const tile = { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), overflow: "hidden" as const };
+  const commentsColumn = modern
+    ? { width: COMMENTS_W, ...tile }
+    : { width: COMMENTS_W, borderLeftWidth: spec.border, borderLeftColor: ink, backgroundColor: color("paper") };
+  /** Het vak rond een tekst of medium op het affiche. */
+  const box = modern
+    ? { borderRadius: 14, backgroundColor: color("tile", "tileFill"), overflow: "hidden" as const }
+    : { borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper") };
 
   const arrow = (glyph: string, d: number) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={d < 0 ? "Vorige foto" : "Volgende foto"}
       onPress={() => setSlide((i) => (i + d + n) % n)}
-      style={{ width: 44, height: 44, borderWidth: 1.5, borderColor: "rgba(242,239,232,.7)", backgroundColor: "rgba(10,10,9,.45)", alignItems: "center", justifyContent: "center" }}
+      style={{ width: 44, height: 44, borderRadius: modern ? 22 : 0, borderWidth: modern ? 0 : 1.5, borderColor: "rgba(242,239,232,.7)", backgroundColor: "rgba(10,10,9,.45)", alignItems: "center", justifyContent: "center" }}
     >
       <Text style={{ fontSize: 18, lineHeight: 22, color: ON_IMAGE }}>{glyph}</Text>
     </Pressable>
@@ -243,8 +242,8 @@ export function DesktopPost({ id }: { id: string }) {
           de band onder de foto, dan groeide die band met elke reactie mee
           (tot 300) en kromp de foto erboven: hoe meer er gezegd werd, hoe
           kleiner het ding waarover het ging. */}
-      <View style={{ flex: 1, minHeight: 0, flexDirection: "row" }}>
-      <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={[{ flex: 1, minHeight: 0, flexDirection: "row" }, modern ? { gap: RASTER.seam, paddingTop: RASTER.seam } : null]}>
+      <View style={[{ flex: 1, minWidth: 0 }, modern ? tile : null]}>
       {/* het beeld, van rand tot rand */}
       <View
         style={[{ flex: 1, minHeight: 0, overflow: "hidden" }, Platform.OS === "web" ? ({ animationKeyframes: RISE, animationDuration: "300ms", animationTimingFunction: "cubic-bezier(.2,.7,.2,1)" } as object) : null]}
@@ -255,7 +254,7 @@ export function DesktopPost({ id }: { id: string }) {
           <>
             {/* Instagram op desktop: de hele foto in zijn eigen verhouding,
                 zo groot als het venster toelaat, in het midden. */}
-            <View style={{ position: "absolute", left: (stage.w - frame.w) / 2, top: (stage.h - frame.h) / 2, width: frame.w, height: frame.h }}>
+            <View style={{ position: "absolute", left: (stage.w - frame.w) / 2, top: (stage.h - frame.h) / 2, width: frame.w, height: frame.h, borderRadius: modern ? 14 : 0, overflow: "hidden" }}>
             <Carousel
                 uris={photos.uris}
                 cacheKeys={photos.cacheKeys}
@@ -291,13 +290,13 @@ export function DesktopPost({ id }: { id: string }) {
             <View style={{ width: Math.min(720, stage.w - 48), gap: 20 }}>
               <Text style={[head(), { fontSize: 64, lineHeight: 60, letterSpacing: spec.serifHeads ? 0 : -0.64, color: fc.ink }]}>{card.title}</Text>
               {card.media.kind === "tekst" ? (
-                <View style={{ borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), paddingVertical: 22, paddingHorizontal: 26 }}>
+                <View style={{ ...box, paddingVertical: 22, paddingHorizontal: 26 }}>
                   <Text selectable style={[capf(false, true), { fontSize: 20, lineHeight: 30, color: ink }]}>
                     {card.media.text}
                   </Text>
                 </View>
               ) : (
-                <View style={{ borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), overflow: "hidden" }}>
+                <View style={{ ...box, overflow: "hidden" }}>
                   <Media media={card.media} height={Math.min(260, stage.h - 110)} hue={hue} postId={p.id} myUserId={myUserId} size="page" />
                 </View>
               )}
@@ -307,7 +306,14 @@ export function DesktopPost({ id }: { id: string }) {
       </View>
 
       {/* de band onder het beeld: titel, zin en reacties — alleen over de bijdrage zelf */}
-      <View style={{ maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: color("paper") }}>
+      <View
+        style={[
+          { maxHeight: editing ? 560 : 300, flexDirection: "row", alignItems: "stretch" },
+          modern
+            ? { borderTopWidth: 1, borderTopColor: rule, borderStyle: "dashed" }
+            : { borderTopWidth: spec.border, borderTopColor: ink, backgroundColor: color("paper") },
+        ]}
+      >
         <ScrollView style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ flexGrow: 1, paddingTop: 16, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }} showsVerticalScrollIndicator={false}>
           {editing ? (
             // Je eigen bijdrage bewerken: titel, zin, tekst (EditPost).
@@ -355,7 +361,7 @@ export function DesktopPost({ id }: { id: string }) {
           </View>
           <WhoReacted line={who.line} />
           {boxOpen ? (
-            <View style={{ flexDirection: "row", gap: 4, borderWidth: 1.5, borderColor: ink, padding: 4, alignSelf: "flex-start" }}>
+            <View style={{ flexDirection: "row", gap: 4, padding: 4, alignSelf: "flex-start", ...(modern ? { borderRadius: 999, backgroundColor: color("ink", "postRule") } : { borderWidth: 1.5, borderColor: ink }) }}>
               {POST_EMOJI.map((e) => {
                 const on = grouped.some((g) => g.emoji === e && g.mine);
                 return (
@@ -365,7 +371,7 @@ export function DesktopPost({ id }: { id: string }) {
                     accessibilityLabel={e}
                     accessibilityState={{ selected: on }}
                     onPress={() => reactions.toggle(id, e)}
-                    style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center", backgroundColor: on ? color("acid") : color("paper") }}
+                    style={{ width: 34, height: 34, borderRadius: modern ? 17 : 0, alignItems: "center", justifyContent: "center", backgroundColor: on ? (modern ? ink : color("acid")) : modern ? "transparent" : color("paper") }}
                   >
                     <Text style={{ fontSize: 18, lineHeight: 22 }}>{e}</Text>
                   </Pressable>
@@ -397,7 +403,7 @@ export function DesktopPost({ id }: { id: string }) {
           {/* De suggesties (`:monk` → 🐒) staan binnen dezelfde voet als het
               veld, erboven. Dit veld had ze niet: het is niet de gedeelde
               ComposeBar van de telefoon maar een eigen invoer. */}
-          <View style={{ borderTopWidth: 1, borderTopColor: rule, marginTop: "auto" }}>
+          <View style={{ borderTopWidth: 1, borderTopColor: rule, borderStyle: modern ? "dashed" : "solid", marginTop: "auto" }}>
           <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={spec.id === "modern"} pad={20} />
           <View style={{ flexDirection: "row", gap: 8, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 18 }}>
             <TextInput
@@ -459,6 +465,7 @@ function Comment({
   const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
   const name = own ? t.me : displayName(c.author);
   const router = useRouter();
+  const modern = useThemeSpec().id === "modern";
   // Een naam opent een profiel — ook "Jij" het jouwe.
   const toProfile = c.author?.username ? () => router.push(`/user/${c.author!.username}` as never) : undefined;
   return (
@@ -485,7 +492,8 @@ function Comment({
             accessibilityLabel={`${t.gifNote}, ${name}`}
             onPress={() => openCommentImage(c, name)}
             style={[
-              { width: 160, height: 110, marginTop: 4, borderWidth: 1.5, borderColor: color("ink"), backgroundColor: color("paper2") },
+              { width: 160, height: 110, marginTop: 4, backgroundColor: color("paper2"), overflow: "hidden" },
+              modern ? { borderRadius: 12 } : { borderWidth: 1.5, borderColor: color("ink") },
               Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null,
             ]}
           >
