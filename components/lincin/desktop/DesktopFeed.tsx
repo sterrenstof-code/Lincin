@@ -12,6 +12,7 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed, type Feed } from "../feed/useFeed";
 import { DesktopFeedMagazine } from "./DesktopFeedMagazine";
+import { DesktopFeedModern } from "./DesktopFeedModern";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -46,6 +47,7 @@ export function DesktopFeed() {
   const ed = useEdition(f);
 
   if (spec.id === "magazine") return <DesktopFeedMagazine f={f} ed={ed} />;
+  if (spec.id === "modern") return <DesktopFeedModern f={f} ed={ed} />;
 
   const noFriends = f.empty && f.friendCount === 0;
   const firstNew = f.sections.neu[0];
