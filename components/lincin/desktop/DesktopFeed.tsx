@@ -15,7 +15,6 @@ import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
-import { SEEN_OPACITY } from "../feed/FeedMagazine";
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { Spread, SpreadCaption, SpreadKicker, SpreadTitle } from "../magazine/Spread";
 import { KindPreview } from "../modern/KindPreview";
@@ -112,7 +111,7 @@ export function DesktopFeed() {
     >
       {posts.map((p, i) =>
         spread ? (
-          <PostSpread key={p.id} post={p} index={i} width={width} number={numberOf(p.id)} hue={hueOf(p)} seen={seen.has(p.id)} f={f} />
+          <PostSpread key={p.id} post={p} index={i} width={width} number={numberOf(p.id)} hue={hueOf(p)} f={f} />
         ) : (
         <Card
           key={p.id}
@@ -407,7 +406,6 @@ function PostSpread({
   width,
   number,
   hue,
-  seen,
   f,
 }: {
   post: CardPost;
@@ -415,7 +413,6 @@ function PostSpread({
   width: number;
   number: string;
   hue: Hue;
-  seen: boolean;
   f: ReturnType<typeof useFeed>;
 }) {
   const t = useT();
@@ -434,8 +431,7 @@ function PostSpread({
       height={CARD_H}
       mediaWidth={Math.round(width * 0.42)}
       media={<KindPreview post={p} scheme={scheme} variant="papier" />}
-      // Al gezien: licht gedempt, zodat het nieuwe opvalt.
-      style={{ width, marginHorizontal: 0, marginBottom: 0, opacity: seen ? SEEN_OPACITY : 1 }}
+      style={{ width, marginHorizontal: 0, marginBottom: 0 }}
     >
       <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
       <SpreadTitle ink={fc.ink} size={26}>

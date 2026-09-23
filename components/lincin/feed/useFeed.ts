@@ -177,12 +177,15 @@ export function useFeed() {
   const reactions = usePostReactions(postIds, myUserId);
 
   // ---- gelezen ----
-  const { seen: seenPosts } = useSeenPosts();
-  /** Gelezen: wat je opende of voorbij scrolde, en alles wat je zelf maakte. */
-  const seen = useMemo(() => {
-    const own = cards.filter((c) => c.authorId === myUserId).map((c) => c.id);
-    return own.length ? new Set([...seenPosts, ...own]) : seenPosts;
-  }, [seenPosts, cards, myUserId]);
+  const { isSeen } = useSeenPosts();
+  /**
+   * Gezien: wat er al stond bij je vorige bezoek, wat je opende of voorbij
+   * scrolde, en alles wat je zelf maakte.
+   */
+  const seen = useMemo(
+    () => new Set(cards.filter((c) => c.authorId === myUserId || isSeen(c.id, c.createdAt)).map((c) => c.id)),
+    [isSeen, cards, myUserId],
+  );
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
 
   const refresh = useCallback(

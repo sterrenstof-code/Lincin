@@ -41,7 +41,7 @@ const TILE_COUNT = 6;
 
 export function FeedModern() {
   const f = useFeed();
-  const { t, lang, feed, byTime, groups, sheet, setSheet, seen } = f;
+  const { t, lang, feed, byTime, groups, sheet, setSheet } = f;
   const scheme = useScheme();
   useHueChoices();
 
@@ -136,7 +136,7 @@ export function FeedModern() {
         ) : null}
 
         {tiles.map((p) => (
-          <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} seen={seen.has(p.id)} />
+          <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
         ))}
 
         {rows.map((p) => (
@@ -196,7 +196,6 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
                   borderColor: color("ink", unseen > 0 ? "pillSoft" : "postRule"),
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: unseen > 0 ? 1 : 0.6,
                 }}
               >
                 <Text
@@ -364,14 +363,12 @@ function PostTile({
   scheme,
   lang,
   t,
-  seen,
 }: {
   post: CardPost;
   onPress: () => void;
   scheme: ReturnType<typeof useScheme>;
   lang: Lang;
   t: Dict;
-  seen: boolean;
 }) {
   return (
     <Tile
@@ -379,7 +376,7 @@ function PostTile({
       pad={0}
       onPress={onPress}
       accessibilityLabel={post.title}
-      style={{ minHeight: 196, opacity: seen ? 0.82 : 1 }}
+      style={{ minHeight: 196 }}
     >
       <View style={{ height: 128, overflow: "hidden" }}>
         <KindPreview post={post} scheme={scheme} />

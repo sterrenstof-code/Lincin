@@ -160,11 +160,11 @@ function useFreshCount(): number {
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "";
   const t = useT();
-  const { seen } = useSeenPosts();
+  const { isSeen } = useSeenPosts();
   const feed = useQuery({ queryKey: ["unified-feed", myUserId], queryFn: () => listUnifiedFeed(myUserId), enabled: !!myUserId, staleTime: 30_000 });
   return useMemo(
-    () => (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c) => !!c && c.authorId !== myUserId && !seen.has(c.id)).length,
-    [feed.data, t, myUserId, seen],
+    () => (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c) => !!c && c.authorId !== myUserId && !isSeen(c.id, c.createdAt)).length,
+    [feed.data, t, myUserId, isSeen],
   );
 }
 

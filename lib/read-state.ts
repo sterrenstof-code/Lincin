@@ -1,9 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
+import { AppState } from "react-native";
 
 /**
- * Bijhouden welke vondsten je al gezien hebt, zodat de feed ze kan
- * uitgrijzen.
+ * Bijhouden wat je al gezien hebt, zodat de feed weet wat nieuw is.
+ *
+ * Nieuw is wat er gedeeld werd sinds je hier de vorige keer was — ook als
+ * je het toen niet opende. Wie de site bezocht, heeft gezien wat er toen
+ * stond. Daarnaast telt alles wat je opende als gezien (`markSeen`).
  *
  * ---------------------------------------------------------------
  * WAAROM LOKAAL EN NIET IN DE DATABASE
@@ -30,6 +34,58 @@ const KEY = "lincin.seen-posts.v1";
  * een vondst van een jaar geleden hoeft niet meer als "gelezen" te tellen.
  */
 const MAX = 500;
+
+// ---------------------------------------------------------------
+// DE VORIGE KEER
+// ---------------------------------------------------------------
+
+const LAST_KEY = "lincin.last-active.v1";
+/** Zo vaak schrijven we "nu hier" weg terwijl de app open staat. */
+const BEAT_MS = 60_000;
+/** Wie langer weg was dan dit, begint bij terugkomst een nieuw bezoek. */
+const AWAY_MS = 30 * 60_000;
+
+/**
+ * Het moment van je vorige bezoek: wat daarvóór gedeeld is, heb je gezien.
+ * Blijft vast tijdens een bezoek, zodat nieuw niet verdwijnt terwijl je kijkt.
+ * `null` tot de opslag gelezen is; 0 als je hier nooit eerder was.
+ */
+let since: number | null = null;
+let lastBeat = Date.now();
+let started = false;
+const sinceListeners = new Set<(ms: number) => void>();
+
+function beat() {
+  lastBeat = Date.now();
+  AsyncStorage.setItem(LAST_KEY, String(lastBeat)).catch(() => {});
+}
+
+function setSince(ms: number) {
+  since = ms;
+  sinceListeners.forEach((fn) => fn(ms));
+}
+
+/** Eén keer per app: de vorige keer lezen, en vanaf nu bijhouden dat je hier bent. */
+function start() {
+  if (started) return;
+  started = true;
+  AsyncStorage.getItem(LAST_KEY)
+    .then((raw) => setSince(raw ? Number(raw) || 0 : 0))
+    .catch(() => setSince(0))
+    .finally(beat);
+  setInterval(() => {
+    if (AppState.currentState === "active") beat();
+  }, BEAT_MS);
+  AppState.addEventListener("change", (state) => {
+    if (state !== "active") {
+      beat();
+      return;
+    }
+    // Terug na een tijd weg: een nieuw bezoek, met de vorige keer als grens.
+    if (Date.now() - lastBeat > AWAY_MS) setSince(lastBeat);
+    beat();
+  });
+}
 
 /** In-memory spiegel, zodat de feed niet per tegel de opslag hoeft te lezen. */
 let cache: string[] | null = null;
@@ -68,29 +124,39 @@ export async function markSeen(id: string): Promise<void> {
 }
 
 /**
- * De set met geziene id's, die meebeweegt als er iets bijkomt.
+ * Wat je gezien hebt: de geopende id's, en het moment van je vorige bezoek.
  *
- * Geeft een lege set terug tot de opslag geladen is — dan is er even niets
- * uitgegrijsd, wat beter is dan de feed laten wachten op een leesactie.
+ * Tot de opslag gelezen is, is `since` oneindig: dan telt even niets als
+ * nieuw, wat beter is dan de feed laten wachten op een leesactie of alles
+ * kort als nieuw laten oplichten.
  */
 export function useSeenPosts(): {
   seen: Set<string>;
-  isSeen: (id: string) => boolean;
+  isSeen: (id: string, createdAt?: string) => boolean;
 } {
   const [seen, setSeen] = useState<Set<string>>(() => new Set(cache ?? []));
+  const [sinceMs, setSinceMs] = useState<number | null>(since);
 
   useEffect(() => {
     let alive = true;
+    start();
     load().then((list) => {
       if (alive) setSeen(new Set(list));
     });
     listeners.add(setSeen);
+    sinceListeners.add(setSinceMs);
+    if (since !== null) setSinceMs(since);
     return () => {
       alive = false;
       listeners.delete(setSeen);
+      sinceListeners.delete(setSinceMs);
     };
   }, []);
 
-  const isSeen = useCallback((id: string) => seen.has(id), [seen]);
+  const isSeen = useCallback(
+    (id: string, createdAt?: string) =>
+      seen.has(id) || sinceMs === null || (!!createdAt && new Date(createdAt).getTime() <= sinceMs),
+    [seen, sinceMs],
+  );
   return { seen, isSeen };
 }

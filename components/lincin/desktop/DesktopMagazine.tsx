@@ -18,7 +18,6 @@ import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { useUnread } from "@/lib/lincin/unread";
 
-import { SEEN_OPACITY } from "../feed/FeedMagazine";
 import { useFeed } from "../feed/useFeed";
 
 /**
@@ -176,7 +175,7 @@ export function DesktopMagazine() {
           {toc.map((p, i) => {
             const fc = friendColor(hueOf(p), scheme);
             return (
-              <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule, opacity: f.seen.has(p.id) ? SEEN_OPACITY : 1 }}>
+              <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.title} onPress={() => f.openPost(p)} style={{ flexDirection: "row", gap: 14, paddingVertical: 16, paddingHorizontal: 26, borderBottomWidth: i < toc.length - 1 ? 1 : 0, borderBottomColor: rule }}>
                 <View style={{ width: 8, backgroundColor: fc.fill }} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: dim }]}>

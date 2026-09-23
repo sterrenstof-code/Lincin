@@ -39,9 +39,6 @@ const PAD = 16;
 const ON_IMAGE = ON_DARK;
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
-/** Hoe gedempt een regel in de inhoudsopgave staat als je hem al zag. */
-export const SEEN_OPACITY = 0.5;
-
 export function FeedMagazine() {
   const f = useFeed();
   const { t, lang, router, feed, byTime, groups, reactions, sheet, setSheet, numberOf } = f;
@@ -272,8 +269,6 @@ export function FeedMagazine() {
           rail={`№ ${numberOf(p.id)} · ${p.authorName} · ${timeLabel(p.createdAt, t, lang)}`}
           onPress={() => f.openPost(p)}
           accessibilityLabel={p.title}
-          // Al gezien: licht gedempt, zodat het nieuwe opvalt.
-          style={{ opacity: f.seen.has(p.id) ? SEEN_OPACITY : 1 }}
           media={<KindPreview post={p} scheme={scheme} variant="papier" />}
         >
           <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
