@@ -19,12 +19,13 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 
 export const BAND_H = 56;
 
-/** "2 nieuw · Het licht om 22:19 · Hier stond ik" — status en titels. */
+/**
+ * "2 nieuw" of "Gelezen · 3 bijdragen" — alleen de status. De titels
+ * stonden erachter, maar een dichte vriend hoort dicht te zijn: wat hij
+ * deelde zie je als je openklapt.
+ */
 export function statusLine(fresh: CardPost[], all: CardPost[], t: ReturnType<typeof useT>): string {
-  const list = fresh.length ? fresh : all;
-  const titles = list.map((p) => p.title || p.caption || p.kind).filter(Boolean);
-  const head = fresh.length ? `${fresh.length} ${t.new}` : `${t.read} · ${all.length} ${all.length === 1 ? t.post1 : t.posts}`;
-  return [head, ...titles].join(" · ");
+  return fresh.length ? `${fresh.length} ${t.new}` : `${t.read} · ${all.length} ${all.length === 1 ? t.post1 : t.posts}`;
 }
 
 export function SectionHead({
@@ -147,7 +148,7 @@ export function FriendBand({
 }
 
 /**
- * Een geziene vriend, ingeklapt: "3 bijdragen · titels · 08:20". De rijen
+ * Een geziene vriend, ingeklapt: "3 bijdragen · 08:20" — geen titels. De rijen
  * delen hun lijnen; `top` sluit het kader boven een rij die na een
  * opengeklapte vriend komt.
  */
@@ -157,7 +158,6 @@ export function SeenRow({ group: g, top, onToggle }: { group: FriendGroup; top: 
   const scheme = useScheme();
   const fc = friendColor(g.hue, scheme);
   const n = g.posts.length;
-  const titles = g.posts.map((p) => p.title || p.caption || p.kind).filter(Boolean).join(", ");
   return (
     <Pressable
       accessibilityRole="button"
@@ -184,7 +184,7 @@ export function SeenRow({ group: g, top, onToggle }: { group: FriendGroup; top: 
           {g.name}
         </Head>
         <Mono variant="micro" tone="dim" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
-          {n} {n === 1 ? t.post1 : t.posts} · {titles} · {timeLabel(g.latest, t, lang)}
+          {n} {n === 1 ? t.post1 : t.posts} · {timeLabel(g.latest, t, lang)}
         </Mono>
       </View>
       <View style={{ width: 30, height: 30, borderWidth: 1.5, borderColor: color("ink"), alignItems: "center", justifyContent: "center" }}>

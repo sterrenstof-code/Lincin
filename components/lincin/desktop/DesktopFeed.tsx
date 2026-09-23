@@ -680,40 +680,11 @@ function SeenRow({ f, g, top }: { f: Feed; g: FriendGroup; top: boolean }) {
           {g.name}
         </Text>
       </View>
-      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", gap: 10, overflow: "hidden" }}>
-        {g.posts.slice(0, 6).map((p) => (
-          <View
-            key={p.id}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              paddingVertical: 8,
-              paddingLeft: 8,
-              paddingRight: 12,
-              borderWidth: 1,
-              borderColor: rule,
-              borderRadius: spec.cardRadius,
-              backgroundColor: spec.cardFill === "tile" ? color("tile", "tileFill") : color("paper"),
-            }}
-          >
-            <View style={{ width: 28, height: 28, borderRadius: spec.cardRadius ? 8 : 0, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}>
-              <Text style={metaStyle(9, fc.ink, 0, 600)}>{f.numberOf(p.id)}</Text>
-            </View>
-            <Text style={metaStyle(9, color("ink", "inkDim"), 0.72, 500)}>
-              {p.kind} · {timeLabel(p.createdAt, t, lang)}
-            </Text>
-            {p.untitled ? null : (
-              <Text numberOfLines={1} style={[capf(), { maxWidth: 220, fontSize: 17, lineHeight: 19, color: color("ink") }]}>
-                {p.title}
-              </Text>
-            )}
-          </View>
-        ))}
-      </View>
+      {/* Dicht is dicht: naam en status, geen titels. */}
+      <View style={{ flex: 1 }} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
         <Text style={metaStyle(10, color("ink", "inkDim"), 0.6, 500)}>
-          {t.read} · {n} {n === 1 ? t.post1 : t.posts}
+          {t.read} · {n} {n === 1 ? t.post1 : t.posts} · {timeLabel(g.latest, t, lang)}
         </Text>
         <Toggle open={false} ink={color("ink")} label={t.openAll} />
       </View>

@@ -23,7 +23,7 @@ import { DesktopShell } from "./Shell";
  *               met de titel erin; daaronder Gezien als vier tegels en de
  *               rest als rijen van een halve breedte.
  *   Per vriend  een rij per vriend over de volle breedte, getint (22% nieuw,
- *               10% gezien); ingeklapt zijn bijdragen als pillen, open de
+ *               10% gezien); ingeklapt alleen naam en status, open de
  *               tegels eronder.
  *   Op tijd     een sectietegel per dagdeel en de tegels.
  */
@@ -401,37 +401,8 @@ function FriendRow({ f, g, isNew, open, width }: { f: Feed; g: FriendGroup; isNe
           {status}
         </Text>
       </View>
-      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", gap: SEAM, overflow: "hidden" }}>
-        {open
-          ? null
-          : g.posts.slice(0, 6).map((p) => {
-              const pNew = !f.seen.has(p.id);
-              return (
-                <View key={p.id} style={{ height: 40, paddingLeft: 6, paddingRight: 14, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(255,255,255,.7)" }}>
-                  <View
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: pNew ? fc.fill : "transparent",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={[mono(600), { fontSize: 8, lineHeight: 10, color: pNew ? fc.ink : color("ink", "inkDim") }]}>{f.numberOf(p.id)}</Text>
-                  </View>
-                  {p.untitled ? null : (
-                    <Text numberOfLines={1} style={[sans(500), { maxWidth: 200, fontSize: 13, lineHeight: 16, letterSpacing: -0.13, color: INK_ON_CHIP }]}>
-                      {p.title}
-                    </Text>
-                  )}
-                  <Text style={meta(8.5, "rgba(23,23,15,.56)", 1.2)}>
-                    {p.kind} · {timeLabel(p.createdAt, t, lang)}
-                  </Text>
-                </View>
-              );
-            })}
-      </View>
+      {/* Dicht is dicht: naam en status, geen titels. Die staan in de tegels als je openklapt. */}
+      <View style={{ flex: 1 }} />
       {g.isGroup || f.isMine(g.authorId) ? null : (
         <Pressable
           accessibilityRole="button"

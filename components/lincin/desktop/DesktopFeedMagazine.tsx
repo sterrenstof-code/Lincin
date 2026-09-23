@@ -504,29 +504,10 @@ function Chapter({ f, g, isNew, idx, total }: { f: Feed; g: FriendGroup; isNew: 
         ) : null}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        {open ? <ChapterCards f={f} g={g} /> : <ChapterList f={f} g={g} />}
+        {/* Dicht is dicht: geen lijst met titels, alleen de kop. */}
+        {open ? <ChapterCards f={f} g={g} /> : null}
       </View>
     </View>
-  );
-}
-
-function ChapterList({ f, g }: { f: Feed; g: FriendGroup }) {
-  const { t } = f;
-  const lang = useLang();
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t.openAll} onPress={() => f.toggleOpen(g.key)} style={{ alignSelf: "stretch" }}>
-      {g.posts.map((p) => (
-        <View key={p.id} style={{ flexDirection: "row", alignItems: "baseline", gap: 18, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color("ink", "linePaper") }}>
-          <Text style={[label(9, color("ink", "inkDim")), { width: 60 }]}>№ {f.numberOf(p.id)}</Text>
-          <Text numberOfLines={1} style={[serif(), { flex: 1, minWidth: 0, fontSize: 24, lineHeight: 25, color: color("ink") }]}>
-            {p.title}
-          </Text>
-          <Text numberOfLines={1} style={[label(9, color("ink", "inkDim")), { width: 140, textAlign: "right" }]}>
-            {p.kind} · {timeLabel(p.createdAt, t, lang)}
-          </Text>
-        </View>
-      ))}
-    </Pressable>
   );
 }
 
