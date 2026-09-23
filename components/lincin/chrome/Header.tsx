@@ -4,6 +4,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 import { color, useThemeSpec } from "@/lib/design/theme";
 import { lincinType, mono, sans, serif } from "@/lib/design/type";
+import { useT } from "@/lib/i18n";
 import { safeBack } from "@/lib/nav";
 import { useUnread } from "@/lib/lincin/unread";
 
@@ -247,6 +248,7 @@ export function Header({ counter, back, actions = true }: { counter?: string; ba
 /** "Lincin" · teller · ◉ · + */
 function HeaderKleur({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const router = useRouter();
+  const t = useT();
   const pathname = usePathname();
   const unread = useUnread();
   const onNotes = pathname.startsWith("/notifications");
@@ -263,9 +265,17 @@ function HeaderKleur({ counter, back, actions = true }: { counter?: string; back
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
         {back ? <BackButton to={back} /> : null}
-        <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} hitSlop={8}>
-          <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>Lincin</Text>
-        </Pressable>
+        {/* Op een subpagina zegt de kop "Terug" naast de pijl, niet "Lincin"
+            (mobile-app.dc.html, `kleurNoBack`): de weg terug staat er één keer. */}
+        {back ? (
+          <Pressable accessibilityRole="button" onPress={() => safeBack(router, back)} hitSlop={8}>
+            <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>{t.back}</Text>
+          </Pressable>
+        ) : (
+          <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} hitSlop={8}>
+            <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>Lincin</Text>
+          </Pressable>
+        )}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
         {counter ? (
