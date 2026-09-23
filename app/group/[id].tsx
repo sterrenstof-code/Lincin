@@ -1,28 +1,15 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { Avatar } from "@/components/Avatar";
-import { IconButton } from "@/components/IconButton";
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { Skeleton, SkeletonListCard } from "@/components/Skeleton";
+import { Button, Field, IconBtn, ListRow, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { safeBack } from "@/lib/nav";
 import {
   getChatRow,
   leaveChat,
@@ -35,8 +22,16 @@ import {
 import { sendMessage } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
-import { creamOnDark, desk, feed, flameDeep } from "@/lib/design/type";
+import { color, hueFor, RASTER, useThemeSpec } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Groep info, in de vorm van het thema (components/lincin/SubPage).
+ *
+ * De kop is de groep zelf: naam, aantal leden, en de groepsfoto ernaast.
+ * Daaronder de leden als rijen, en onderaan Verlaat groep. De eigenaar
+ * kan de naam en de foto wijzigen, leden toevoegen en verwijderen.
+ */
 
 export default function GroupInfoScreen() {
   const router = useRouter();
@@ -156,237 +151,130 @@ export default function GroupInfoScreen() {
     }
   }
 
+  const th = useThemeSpec().id;
+  const memberList = members.data ?? [];
+  const name = chat.data?.name?.trim() || "Groep";
+
+  // De groepsfoto: vierkant in kleur en magazine, afgerond in modern. De
+  // eigenaar tikt erop om hem te wijzigen.
+  const photo = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Groepsfoto wijzigen"
+      onPress={onPickGroupAvatar}
+      disabled={!isOwner}
+      style={{
+        width: 88,
+        height: 88,
+        borderRadius: th === "modern" ? RASTER.tileRadius : 0,
+        overflow: "hidden",
+        backgroundColor: color("ink", "postRule"),
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: th === "kleur" ? 1.5 : 0,
+        borderColor: color("ink"),
+      }}
+    >
+      {groupAvatarUrl ? (
+        <Image source={{ uri: groupAvatarUrl, cacheKey: groupAvatarUrl.split("?")[0] }} cachePolicy="disk" style={{ width: 88, height: 88 }} contentFit="cover" />
+      ) : (
+        <Ionicons name="people" color={color("ink")} size={30} />
+      )}
+      {isOwner ? (
+        <View style={{ position: "absolute", right: 0, bottom: 0, width: 28, height: 28, borderRadius: th === "kleur" ? 0 : 14, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}>
+          {avatarUploading ? <ActivityIndicator size="small" color={color("paper")} /> : <Ionicons name="camera" color={color("paper")} size={13} />}
+        </View>
+      ) : null}
+    </Pressable>
+  );
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-      <View className="flex-row items-center px-4 py-3">
-        <Pressable
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Terug"
-          onPress={() => safeBack(router, `/chat/${chatId}`)}
-          className="w-9 h-9 bg-paper-soft items-center justify-center"
-        >
-          <Ionicons name="chevron-back" color={feed.ink} size={20} />
-        </Pressable>
-        <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">Groep info</Text>
-      </View>
+    <SubPage
+      title={editingName ? "Groepsnaam" : chat.isLoading ? "…" : name}
+      kicker="Groep"
+      sub={`${memberList.length} ${memberList.length === 1 ? "lid" : "leden"}`}
+      back={`/chat/${chatId}`}
+      tab="chats"
+      hue={hueFor(chatId)}
+      keyboard
+      right={photo}
+    >
+      {editingName ? (
+        <Section pad>
+          <Field label="Groepsnaam" value={nameDraft} onChangeText={setNameDraft} maxLength={64} autoFocus onSubmitEditing={onSaveName} returnKeyType="done" />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button
+              label="Annuleer"
+              grow
+              onPress={() => {
+                setEditingName(false);
+                setNameDraft(chat.data?.name ?? "");
+                setError(null);
+              }}
+            />
+            <Button label={savingName ? "Bezig…" : "Bewaren"} tone="primary" grow busy={savingName} onPress={onSaveName} />
+          </View>
+        </Section>
+      ) : isOwner && isGroup ? (
+        <View style={{ flexDirection: "row" }}>
+          <Button label="Naam wijzigen" icon="pencil" small onPress={() => setEditingName(true)} />
+        </View>
+      ) : null}
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      {!editingName && error ? <Note tone="red">{error}</Note> : null}
+
+      <Section
+        label={`Leden · ${memberList.length}`}
+        action={isOwner && isGroup ? { label: "Voeg toe", icon: "person-add-outline", onPress: () => router.push(`/group-add/${chatId}`) } : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-          {/* Hero */}
-          <View className="bg-paper p-6 items-center">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Groepsfoto wijzigen"
-              onPress={onPickGroupAvatar}
-              disabled={!isOwner}
-              className="relative mb-3"
-            >
-              <View className="w-20 h-20 bg-paper-warm items-center justify-center overflow-hidden">
-                {groupAvatarUrl ? (
-                  <Image
-                    source={{ uri: groupAvatarUrl, cacheKey: groupAvatarUrl.split("?")[0] }}
-                    cachePolicy="disk"
-                    style={{ width: 80, height: 80 }}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Ionicons name="people" color={feed.ink} size={32} />
-                )}
-              </View>
-              {isOwner && (
-                <View className="absolute bottom-0 right-0 w-7 h-7 bg-ink border-2 border-paper items-center justify-center">
-                  {avatarUploading
-                    ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
-                    : <Ionicons name="camera" color={creamOnDark.DEFAULT} size={14} />
-                  }
-                </View>
-              )}
-            </Pressable>
+        {members.isLoading ? (
+          <ListRow title="Laden…" first />
+        ) : (
+          memberList.map((m, i) => (
+            <MemberRow
+              key={m.user_id}
+              member={m}
+              first={i === 0}
+              isMe={m.user_id === myUserId}
+              canRemove={isOwner && isGroup && m.user_id !== myUserId}
+              onPress={() => m.profile?.username && router.push(`/user/${m.profile.username}`)}
+              onRemove={() => onRemove(m)}
+            />
+          ))
+        )}
+      </Section>
 
-            {editingName ? (
-              <View className="w-full">
-                <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2 text-center">
-                  Groepsnaam
-                </Text>
-                <TextInput
-                  value={nameDraft}
-                  onChangeText={setNameDraft}
-                  maxLength={64}
-                  autoFocus
-                  className="bg-paper-light text-ink text-center text-xl font-bold px-4 py-3 border border-line-paper"
-                />
-                <View className="flex-row gap-2 mt-3">
-                  <Pressable
-                    onPress={() => {
-                      setEditingName(false);
-                      setNameDraft(chat.data?.name ?? "");
-                      setError(null);
-                    }}
-                    className="flex-1 border border-ink/30 py-2.5 items-center"
-                  >
-                    <Text className="text-ink font-semibold">Annuleer</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={onSaveName}
-                    disabled={savingName}
-                    className="flex-1 bg-ink active:bg-ink-soft py-2.5 items-center"
-                  >
-                    <Text className="text-cream font-semibold">
-                      {savingName ? "Bezig…" : "Bewaren"}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : chat.isLoading ? (
-              <Skeleton className="w-40 h-6 bg-paper-warm" />
-            ) : (
-              <View className="flex-row items-center">
-                <Text className="text-3xl font-bold tracking-tight text-ink">
-                  {chat.data?.name ?? "Groep"}
-                </Text>
-                {isOwner && isGroup && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Groepsnaam bewerken"
-                    onPress={() => setEditingName(true)}
-                    hitSlop={8}
-                    className="ml-2 p-1"
-                  >
-                    <Ionicons name="pencil" color={feed.inkDim} size={18} />
-                  </Pressable>
-                )}
-              </View>
-            )}
-
-            <Text className="text-ink-soft text-sm mt-1">
-              {(members.data?.length ?? 0)} leden
-            </Text>
-
-            {!editingName && error && (
-              <Text className="text-red-700 text-sm mt-3 text-center">{error}</Text>
-            )}
-          </View>
-
-          {/* Members */}
-          <View className="mt-6">
-            <View className="flex-row items-end justify-between mb-3 px-1">
-              <Text className="text-xs uppercase tracking-wider text-desk-muted">
-                Leden
-              </Text>
-              {isOwner && isGroup && (
-                <Pressable
-                  onPress={() => router.push(`/group-add/${chatId}`)}
-                  className="flex-row items-center bg-desk-ink active:bg-desk-soft px-3 py-1"
-                >
-                  <Ionicons name="person-add" color={desk.DEFAULT} size={14} />
-                  <Text className="text-desk font-semibold text-xs ml-1.5">
-                    Voeg toe
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-
-            {members.isLoading ? (
-              <SkeletonListCard rows={3} />
-            ) : (
-              <View className="bg-paper-soft overflow-hidden">
-                {(members.data ?? []).map((m, i) => (
-                  <MemberRow
-                    key={m.user_id}
-                    member={m}
-                    isMe={m.user_id === myUserId}
-                    canRemove={isOwner && isGroup && m.user_id !== myUserId}
-                    isLast={i === (members.data?.length ?? 0) - 1}
-                    onPress={() =>
-                      m.profile?.username &&
-                      router.push(`/user/${m.profile.username}`)
-                    }
-                    onRemove={() => onRemove(m)}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* Leave */}
-          <View className="mt-8">
-            <Pressable
-              onPress={onLeave}
-              className="bg-paper-soft border border-line-paper/80 px-4 py-4 flex-row items-center justify-center"
-            >
-              <Ionicons name="exit-outline" color="#B23A1C" size={18} />
-              <Text className="font-semibold ml-2" style={{ color: "#B23A1C" }}>
-                Verlaat groep
-              </Text>
-            </Pressable>
-            <Text className="text-desk-muted text-xs text-center mt-2 leading-5">
-              Je oude berichten worden ontoegankelijk omdat je toestel ze niet meer kan ontsleutelen voor nieuwe sleutels.
-            </Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      </ScreenContainer>
-    </SafeAreaView>
+      <Button label="Verlaat groep" icon="exit-outline" tone="danger" onPress={onLeave} />
+      <Note center>Je oude berichten worden ontoegankelijk omdat je toestel ze niet meer kan ontsleutelen voor nieuwe sleutels.</Note>
+    </SubPage>
   );
 }
 
 function MemberRow({
   member,
+  first,
   isMe,
   canRemove,
-  isLast,
   onPress,
   onRemove,
 }: {
   member: ChatMemberRow;
+  first: boolean;
   isMe: boolean;
   canRemove: boolean;
-  isLast: boolean;
   onPress: () => void;
   onRemove: () => void;
 }) {
-  const name =
-    member.profile?.display_name ?? member.profile?.username ?? "Onbekend";
+  const name = member.profile?.display_name ?? member.profile?.username ?? "Onbekend";
   return (
-    <View
-      className={`flex-row items-center px-4 py-3 ${
-        isLast ? "" : "border-b border-line-paper/60"
-      }`}
-    >
-      <Pressable onPress={onPress} className="flex-row items-center flex-1" hitSlop={4}>
-        <Avatar name={name} avatarUrl={member.profile?.avatar_url} size="md" />
-        <View className="flex-1 ml-3">
-          <View className="flex-row items-center">
-            <Text className="text-ink font-semibold">{name}</Text>
-            {isMe && (
-              <View className="bg-paper-warm px-2 py-0.5 ml-2">
-                <Text className="text-ink text-[10px] font-bold uppercase tracking-wider">
-                  Jij
-                </Text>
-              </View>
-            )}
-          </View>
-          <Text className="text-ink-muted text-xs">
-            @{member.profile?.username ?? "?"}
-            {member.role === "owner" ? " • Eigenaar" : ""}
-          </Text>
-        </View>
-      </Pressable>
-      {canRemove && (
-        <IconButton
-          name="remove-circle-outline"
-          label="Dit lid uit de groep verwijderen"
-          onPress={onRemove}
-          size={20}
-          color={flameDeep}
-        />
-      )}
-    </View>
+    <ListRow
+      first={first}
+      title={name}
+      badge={isMe ? "Jij" : member.role === "owner" ? "Eigenaar" : undefined}
+      sub={`@${member.profile?.username ?? "?"}${isMe && member.role === "owner" ? " · eigenaar" : ""}`}
+      left={<Avatar name={name} avatarUrl={member.profile?.avatar_url} size="md" />}
+      onPress={onPress}
+      right={canRemove ? <IconBtn icon="remove" label={`${name} uit de groep verwijderen`} tone="danger" onPress={onRemove} /> : null}
+    />
   );
 }
-
