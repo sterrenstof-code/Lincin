@@ -1,25 +1,22 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { Button, Field, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { safeBack } from "@/lib/nav";
-import { contributeToEvent } from "@/lib/api/events";
-import { feed } from "@/lib/design/type";
+import { contributeToEvent, type EventWithMeta } from "@/lib/api/events";
+import { hueFor } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
 
+/**
+ * Een link toevoegen aan een event, in de vorm van het thema
+ * (components/lincin/SubPage).
+ *
+ * De kleur van de pagina is die van de gastheer, net als op de
+ * eventpagina. Het event staat meestal al in de cache (je komt hier
+ * vandaan); via een deep-link valt hij terug op de kleur van het event.
+ */
 export default function EventLinkComposeScreen() {
   usePageTitle("Event delen");
   const router = useRouter();
@@ -57,87 +54,48 @@ export default function EventLinkComposeScreen() {
     }
   }
 
+  const host = qc.getQueryData<EventWithMeta | null>(["event", eventId])?.host_user_id;
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-row items-center px-4 py-3">
-          <Pressable
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Sluiten"
-            onPress={() => safeBack(router, `/event/${eventId}`)}
-            className="w-9 h-9 bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="close" color={feed.ink} size={20} />
-          </Pressable>
-          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-            Voeg link toe
-          </Text>
-          <Pressable
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            className={` px-4 py-2 ${
-              canSubmit ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                canSubmit ? "text-desk" : "text-desk-muted"
-              }`}
-            >
-              {submitting ? "Bezig…" : "Plaats"}
-            </Text>
-          </Pressable>
-        </View>
+    <SubPage
+      title="Voeg link toe"
+      kicker="Event"
+      back={`/event/${eventId}`}
+      tab="events"
+      hue={hueFor(host ?? eventId)}
+      keyboard
+    >
+      <Section pad>
+        <Field
+          label="Link"
+          value={link}
+          onChangeText={setLink}
+          placeholder="https://…"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+        />
+        <Field
+          label="Bijschrift (optioneel)"
+          value={caption}
+          onChangeText={setCaption}
+          placeholder="Wat is dit?"
+          multiline
+          maxLength={300}
+          style={{ minHeight: 60 }}
+        />
+      </Section>
 
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View className="bg-paper p-6">
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Link
-              </Text>
-              <View className="flex-row items-center bg-paper-light px-4 border border-line-paper">
-                <Ionicons name="link" color={feed.inkDim} size={16} />
-                <TextInput
-                  value={link}
-                  onChangeText={setLink}
-                  placeholder="https://…"
-                  placeholderTextColor={feed.inkDim}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  className="flex-1 text-ink text-base py-3 pl-2"
-                />
-              </View>
+      {error ? <Note tone="red">{error}</Note> : null}
 
-              <View className="h-5" />
-
-              <Text className="text-xs uppercase tracking-wider text-ink-muted mb-2">
-                Bijschrift (optioneel)
-              </Text>
-              <TextInput
-                value={caption}
-                onChangeText={setCaption}
-                placeholder="Wat is dit?"
-                placeholderTextColor={feed.inkDim}
-                multiline
-                maxLength={300}
-                className="bg-paper-light text-ink text-base px-4 py-3 border border-line-paper"
-                style={{ minHeight: 60, textAlignVertical: "top" }}
-              />
-            </View>
-
-            {error && (
-              <View className="bg-red-100 border border-red-300 px-4 py-3 mt-4">
-                <Text className="text-red-800 text-sm">{error}</Text>
-              </View>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ScreenContainer>
-    </SafeAreaView>
+      <Button
+        label={submitting ? "Bezig…" : "Plaats"}
+        icon="link"
+        tone="primary"
+        busy={submitting}
+        disabled={!canSubmit}
+        onPress={onSubmit}
+      />
+    </SubPage>
   );
 }

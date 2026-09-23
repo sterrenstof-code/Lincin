@@ -1,31 +1,32 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
-import { DetailState } from "@/components/DetailState";
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { safeBack } from "@/lib/nav";
+import { bodyStyle, Button, labelStyle, Note, Panel, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { buildEventJoinUrl, getEvent } from "@/lib/api/events";
 import { copyToClipboard, shareText } from "@/lib/share";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { color, friendColor, hueFor, ON_DARK, ON_LIGHT, RASTER, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { mono, serif } from "@/lib/design/type";
 import { NL } from "@/lib/locale";
 import { usePageTitle } from "@/lib/page-title";
 
 const QR_SIZE = 260;
 
+/**
+ * Uitnodigen voor een event, in de vorm van het thema
+ * (components/lincin/SubPage).
+ *
+ * De kop is het event zelf, in de kleur van de gastheer. Daaronder de
+ * code: in magazine op een volvlaks kleurvlak, in kleur in een inktkader,
+ * in modern op een tegel. De code zelf is altijd donker op licht
+ * (ON_LIGHT op ON_DARK), ook in de donkere stand: een camera leest een
+ * omgekeerde code slecht.
+ */
 export default function EventQrScreen() {
   usePageTitle("Uitnodigen");
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const eventId = id!;
   const { session } = useAuth();
@@ -59,6 +60,9 @@ export default function EventQrScreen() {
     if (await copyToClipboard(url)) flashHint("Link gekopieerd");
   }
 
+  const th = useThemeSpec().id;
+  const scheme = useScheme();
+
   /**
    * Een schijfje in het midden van een leeg scherm, en geen uitweg.
    *
@@ -68,121 +72,121 @@ export default function EventQrScreen() {
    * dus ook geen sluitknop: dit scherm wordt vanaf de eventpagina geopend,
    * maar je komt er ook via een deep-link, en dan was er niets.
    *
-   * `DetailState` scheidt de drie standen en brengt de balk mee. Zie
-   * components/DetailState.tsx.
+   * Hier blijven de drie standen gescheiden, en de pagina draagt altijd de
+   * weg terug naar het event in zijn kop.
    */
   if (event.isLoading || event.isError || !event.data) {
+    const kind = event.isLoading ? "loading" : event.isError ? "error" : "missing";
+    const detail = (event.error as Error | null)?.message;
     return (
-      <DetailState
-        kind={event.isLoading ? "loading" : event.isError ? "error" : "missing"}
-        subject="Dit event"
-        error={event.error}
-        onRetry={() => event.refetch()}
-        backLabel="Terug"
-        onBack={() => safeBack(router, `/event/${eventId}`)}
-      />
+      <SubPage
+        title={kind === "loading" ? "…" : kind === "error" ? "Niet geladen" : "Niet gevonden"}
+        kicker="Uitnodigen"
+        back={`/event/${eventId}`}
+        tab="events"
+        hue={hueFor(eventId)}
+      >
+        {kind === "loading" ? (
+          <Note>Dit event laden…</Note>
+        ) : kind === "error" ? (
+          <Section pad>
+            <Text style={bodyStyle(th, 15)}>Dit event kon niet geladen worden.</Text>
+            {detail ? <Text style={labelStyle(th, 9, color("ink", "inkDim"))}>{detail}</Text> : null}
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Opnieuw" icon="refresh" small onPress={() => event.refetch()} />
+            </View>
+          </Section>
+        ) : (
+          <Section pad>
+            <Text style={bodyStyle(th, 15)}>Dit event bestaat niet meer</Text>
+            <Text style={bodyStyle(th, 13, color("ink", "inkDim"))}>
+              Hij is verwijderd, of je hebt er geen toegang (meer) toe. De
+              link klopt misschien nog wel, maar er staat niets meer achter.
+            </Text>
+          </Section>
+        )}
+      </SubPage>
     );
   }
 
   const ev = event.data;
   const url = buildEventJoinUrl(ev.join_code);
+  const hue = hueFor(ev.host_user_id);
+  const fc = friendColor(hue, scheme);
+  const sub = `${new Date(ev.starts_at).toLocaleDateString(NL, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  })} · ${ev.members_count} ${ev.members_count === 1 ? "gast" : "gasten"}`;
+  const explain =
+    ev.join_policy === "closed"
+      ? "Laat iemand deze code scannen met hun camera, of stuur de link door. Dit is een gesloten event: hun verzoek komt eerst bij jou terecht."
+      : "Laat iemand deze code scannen met hun camera, of stuur de link door. Ze worden automatisch toegevoegd aan het event.";
+
+  // De code op zijn eigen lichte vlak, in elk thema.
+  const code = (
+    <View
+      style={{
+        padding: 16,
+        backgroundColor: ON_DARK,
+        borderRadius: th === "modern" ? 14 : 0,
+        borderWidth: th === "kleur" ? 1.5 : 0,
+        borderColor: color("ink"),
+      }}
+    >
+      <QRCode
+        value={url}
+        size={QR_SIZE}
+        color={ON_LIGHT}
+        backgroundColor={ON_DARK}
+        logo={require("../../assets/images/icon.png")}
+        logoSize={56}
+        logoBackgroundColor={ON_DARK}
+        logoBorderRadius={12}
+        logoMargin={4}
+        ecl="H"
+      />
+    </View>
+  );
+
+  const labelColor = th === "magazine" ? fc.ink : color("ink", "inkDim");
+  const textColor = th === "magazine" ? fc.ink : color("ink", "inkDim");
+  const codeBlockInner = (
+    <View style={{ alignItems: "center", gap: 16, paddingVertical: th === "modern" ? RASTER.tilePadLarge : 24, paddingHorizontal: 18 }}>
+      <Text style={labelStyle(th, th === "magazine" ? 9 : 10, labelColor)}>Scan om mee te doen</Text>
+      {code}
+      <Text
+        style={[
+          th === "magazine" ? { ...serif(true), fontSize: 16, lineHeight: 22 } : bodyStyle(th, 12.5),
+          { color: textColor, textAlign: "center", maxWidth: 360 },
+        ]}
+      >
+        {explain}
+      </Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-row items-center px-4 py-3">
-          <Pressable
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Sluiten"
-            onPress={() => safeBack(router, `/event/${eventId}`)}
-            className="w-9 h-9 bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="close" color={feed.ink} size={20} />
-          </Pressable>
-          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-            Uitnodigen
-          </Text>
-        </View>
+    <SubPage title={ev.name} kicker="Uitnodigen" sub={sub} back={`/event/${eventId}`} tab="events" hue={hue}>
+      {/* Magazine: de code op een volvlaks kleurvlak, zoals een spread. */}
+      {th === "magazine" ? <View style={{ backgroundColor: fc.fill }}>{codeBlockInner}</View> : <Panel>{codeBlockInner}</Panel>}
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-          <View className="bg-paper p-6 items-center">
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-              Scan om mee te doen
-            </Text>
-            <Text
-              className="text-2xl font-bold tracking-tight text-ink mb-1 text-center"
-              numberOfLines={2}
-            >
-              {ev.name}
-            </Text>
-            <Text className="text-ink-soft text-sm text-center mb-5">
-              {new Date(ev.starts_at).toLocaleDateString(NL, {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-              {" · "}
-              {ev.members_count} {ev.members_count === 1 ? "gast" : "gasten"}
-            </Text>
+      <Section label="Join-link" pad>
+        <Text numberOfLines={1} style={{ ...mono(400), fontSize: 13, lineHeight: 18, color: color("ink") }}>
+          {url}
+        </Text>
+      </Section>
 
-            <View className="bg-paper-light p-5 border border-line-paper">
-              <QRCode
-                value={url}
-                size={QR_SIZE}
-                color={feed.ink}
-                backgroundColor={feed.panel}
-                logo={require("../../assets/images/icon.png")}
-                logoSize={56}
-                logoBackgroundColor={feed.panel}
-                logoBorderRadius={12}
-                logoMargin={4}
-                ecl="H"
-              />
-            </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button label="Deel link" icon="share-outline" tone="primary" grow onPress={onShare} />
+        <Button label="Kopieer" icon="link-outline" grow onPress={onCopy} />
+      </View>
 
-            <Text className="text-ink-muted text-xs text-center mt-5 leading-5">
-              {ev.join_policy === "closed"
-                ? "Laat iemand deze code scannen met hun camera, of stuur de link door. Dit is een gesloten event: hun verzoek komt eerst bij jou terecht."
-                : "Laat iemand deze code scannen met hun camera, of stuur de link door. Ze worden automatisch toegevoegd aan het event."}
-            </Text>
-          </View>
-
-          <View className="bg-paper-light border border-line-paper px-4 py-3 mt-4">
-            <Text className="text-xs uppercase tracking-wider text-ink-muted mb-1">
-              Join-link
-            </Text>
-            <Text className="text-ink text-sm font-mono" numberOfLines={1}>
-              {url}
-            </Text>
-          </View>
-
-          <View className="flex-row gap-2 mt-4">
-            <Pressable
-              onPress={onShare}
-              className="flex-1 flex-row items-center justify-center bg-ink active:bg-ink-soft px-4 py-3"
-            >
-              <Ionicons name="share-outline" color={creamOnDark.DEFAULT} size={16} />
-              <Text className="text-cream font-semibold ml-2">Deel link</Text>
-            </Pressable>
-            <Pressable
-              onPress={onCopy}
-              className="flex-1 flex-row items-center justify-center border border-desk-muted px-4 py-3"
-            >
-              <Ionicons name="link-outline" color={desk.ink} size={16} />
-              <Text className="text-desk-ink font-semibold ml-2">Kopieer</Text>
-            </Pressable>
-          </View>
-
-          {copyHint && (
-            <View className="items-center mt-3">
-              <View className="bg-paper-warm px-3 py-1">
-                <Text className="text-ink text-xs font-medium">✓ {copyHint}</Text>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-      </ScreenContainer>
-    </SafeAreaView>
+      {copyHint ? (
+        <Note center tone="ink">
+          ✓ {copyHint}
+        </Note>
+      ) : null}
+    </SubPage>
   );
 }

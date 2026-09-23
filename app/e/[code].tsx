@@ -2,14 +2,16 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { bodyStyle, Button, labelStyle, Panel, titleStyle } from "@/components/lincin/SubPage";
+import { VerticalLabel } from "@/components/lincin/ui";
 import { useAuth } from "@/lib/auth/provider";
 import { rememberPendingInvite } from "@/lib/pending-invite";
 import { joinEventByCode } from "@/lib/api/events";
-import { creamOnDark, feed } from "@/lib/design/type";
+import { color, friendColor, hueFor, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { serif } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -44,6 +46,12 @@ function joinErrorText(raw: unknown): string {
  * naar /event/{id}. Bij een **gesloten** event is er nog niets om naartoe te
  * gaan — je verzoek staat bij de host — dus blijft dit scherm staan met de
  * uitleg. Bij niet-ingelogd: eerst naar login.
+ *
+ * Deze route staat buiten de sessiewacht (app/_layout.tsx): wie de link
+ * opent is misschien nog niet ingelogd, of nog geen lid. Daarom geen
+ * `SubPage` — die hangt aan `LincinScreen` met zijn kop en tabbladen —
+ * maar een kaal blad in de papierkleur van het thema, met de onderdelen
+ * uit de kit erop.
  */
 export default function JoinEventScreen() {
   usePageTitle("Uitnodiging");
@@ -92,68 +100,115 @@ export default function JoinEventScreen() {
     })();
   }, [code, loading, session, router, qc]);
 
+  const insets = useSafeAreaInsets();
+  const hue = hueFor(code);
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      <ScreenContainer>
-        <View className="flex-1 items-center justify-center px-6">
+    <View style={{ flex: 1, backgroundColor: color("paper"), paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
+        <View style={{ width: "100%", maxWidth: 440 }}>
           {error ? (
-            <View className="bg-paper p-8 w-full items-center">
-              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="alert-circle-outline" color={feed.ink} size={24} />
-              </View>
-              <Text className="text-ink font-bold text-xl text-center mb-1">
-                Kon niet meedoen
-              </Text>
-              <Text className="text-ink-soft text-sm text-center leading-5">
-                {error}
-              </Text>
-              <Pressable
-                onPress={() => router.replace("/(app)/feed")}
-                className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
-              >
-                <Text className="text-cream font-semibold">Naar Lincin</Text>
-              </Pressable>
-            </View>
+            <InviteCard
+              hue={hue}
+              icon="alert-circle-outline"
+              title="Kon niet meedoen"
+              body={error}
+              action={{ label: "Naar Lincin", onPress: () => router.replace("/(app)/feed") }}
+            />
           ) : pending ? (
-            <View className="bg-paper p-8 w-full items-center">
-              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="hourglass-outline" color={feed.ink} size={24} />
-              </View>
-              <Text className="text-ink font-bold text-xl text-center mb-1">
-                Verzoek verstuurd
-              </Text>
-              <Text className="text-ink-soft text-sm text-center leading-5">
-                Dit is een gesloten event. De organisator kreeg je verzoek en
-                laat je binnen zodra hij het goedkeurt — je krijgt er een
-                melding van.
-              </Text>
-              <Pressable
-                onPress={() => router.replace("/(app)/events")}
-                className="mt-5 bg-ink active:bg-ink-soft px-6 py-3"
-              >
-                <Text className="text-cream font-semibold">Naar Lincin</Text>
-              </Pressable>
-            </View>
+            <InviteCard
+              hue={hue}
+              icon="hourglass-outline"
+              title="Verzoek verstuurd"
+              body="Dit is een gesloten event. De organisator kreeg je verzoek en laat je binnen zodra hij het goedkeurt — je krijgt er een melding van."
+              action={{ label: "Naar Lincin", onPress: () => router.replace("/(app)/events") }}
+            />
           ) : (
-            <View className="bg-paper p-8 w-full items-center">
-              <View className="w-14 h-14 bg-flame items-center justify-center mb-3">
-                <Ionicons name="sparkles" color={creamOnDark.DEFAULT} size={24} />
-              </View>
-              {/* "Je doet mee" was de standaardtak, dus hij stond er
-                  vóórdat de RPC iets teruggegeven had — ook op het moment
-                  dat het antwoord "je verzoek staat bij de host" of "dit
-                  event bestaat niet" ging worden. Een scherm hoort geen
-                  uitkomst te melden die het nog niet weet. */}
-              <Text className="text-ink font-bold text-xl text-center mb-1">
-                Je aanmelding loopt
-              </Text>
-              <Text className="text-ink-soft text-sm text-center">
-                Even één moment — we kijken of dit event nog openstaat.
-              </Text>
-            </View>
+            // "Je doet mee" was de standaardtak, dus hij stond er vóórdat
+            // de RPC iets teruggegeven had — ook op het moment dat het
+            // antwoord "je verzoek staat bij de host" of "dit event bestaat
+            // niet" ging worden. Een scherm hoort geen uitkomst te melden
+            // die het nog niet weet.
+            <InviteCard
+              hue={hue}
+              icon="sparkles"
+              title="Je aanmelding loopt"
+              body="Even één moment — we kijken of dit event nog openstaat."
+            />
           )}
         </View>
-      </ScreenContainer>
-    </SafeAreaView>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Het blok met de uitkomst.
+ *
+ *   kleur     een kader van inkt; het icoon op een vlak in de kleur,
+ *             de kop in Archivo smal kapitaal, de knop zuurgeel.
+ *   magazine  een volvlaks kleurvlak als een spread: rail met de kicker,
+ *             de kop in serif, de uitleg cursief; de knop eronder.
+ *   modern    een tegel, het icoon in een rondje in de kleur, pillen.
+ */
+function InviteCard({
+  hue,
+  icon,
+  title,
+  body,
+  action,
+}: {
+  hue: Hue;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  body: string;
+  action?: { label: string; onPress: () => void };
+}) {
+  const th = useThemeSpec().id;
+  const scheme = useScheme();
+  const fc = friendColor(hue, scheme);
+  const button = action ? <Button label={action.label} tone="primary" onPress={action.onPress} /> : null;
+
+  if (th === "magazine") {
+    return (
+      <View style={{ gap: RASTER.seam }}>
+        <View style={{ backgroundColor: fc.fill, flexDirection: "row", minHeight: 240 }}>
+          <View style={{ width: RASTER.rail, overflow: "hidden" }}>
+            <VerticalLabel text="Uitnodiging" width={RASTER.rail} height={240} color={fc.ink} style={{ letterSpacing: 1.9, textTransform: "uppercase" }} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0, paddingVertical: 22, paddingRight: 20, paddingLeft: 6, justifyContent: "flex-end", gap: 12 }}>
+            <Ionicons name={icon} color={fc.ink} size={26} />
+            <Text style={{ ...serif(), fontSize: 44, lineHeight: 44, letterSpacing: -1.2, color: fc.ink }}>{title}</Text>
+            <Text style={{ ...serif(true), fontSize: 18, lineHeight: 24, color: fc.ink, opacity: 0.86 }}>{body}</Text>
+          </View>
+        </View>
+        {button}
+      </View>
+    );
+  }
+
+  return (
+    <Panel style={{ padding: th === "modern" ? RASTER.tilePadLarge : 24, gap: 14 }}>
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: th === "kleur" ? 0 : 28,
+          backgroundColor: fc.fill,
+          borderWidth: th === "kleur" ? 1.5 : 0,
+          borderColor: color("ink"),
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} color={fc.ink} size={24} />
+      </View>
+      <View style={{ gap: 8 }}>
+        <Text style={labelStyle(th, 10, color("ink", "inkDim"))}>Uitnodiging</Text>
+        <Text style={titleStyle(th, 32)}>{title}</Text>
+        <Text style={bodyStyle(th, 14, color("ink", "inkDim"))}>{body}</Text>
+      </View>
+      {button}
+    </Panel>
   );
 }

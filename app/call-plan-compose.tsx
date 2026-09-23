@@ -1,30 +1,28 @@
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useState, type ReactNode } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { FormError } from "@/components/FormError";
-import { IconButton } from "@/components/IconButton";
-import { ScreenContainer } from "@/components/ScreenContainer";
 import { Avatar } from "@/components/Avatar";
+import { Button, Field, labelStyle, Note, Section, SubPage, titleStyle } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { createCallPlan } from "@/lib/api/call-plans";
 import { sendMessage } from "@/lib/api/messages";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
+import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { NL } from "@/lib/locale";
 import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Een videocall plannen, in de vorm van het thema
+ * (components/lincin/SubPage). Vanuit een chat in de kleur van die chat.
+ *
+ * Onderwerp en toelichting, dan de tijdsloten als tabs: het actieve slot
+ * kies je met een datum (de dag in de kleur van de pagina) en een
+ * begintijd. Onderaan wie je uitnodigt — een gekozen vriend krijgt een
+ * ring en een vinkje in zijn eigen kleur.
+ */
 
 type SlotDraft = {
   id: string;
@@ -141,202 +139,253 @@ export default function CallPlanComposeScreen() {
     }
   }
 
+  const hue = hueFor(chatId);
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScreenContainer>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
+    <SubPage
+      title={chatId ? "Call plannen in chat" : "Videocall plannen"}
+      kicker="Videocall"
+      sub="Stel een paar momenten voor; de anderen kiezen."
+      back={chatId ? `/chat/${chatId}` : "/(app)/feed"}
+      tab={chatId ? "chats" : "feed"}
+      hue={hue}
+      keyboard
+    >
+      <Section label="Onderwerp" pad>
+        <Field
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Onderwerp, bijv. Catch-up"
+        />
+        <Field
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Toelichting (optioneel)"
+          multiline
+        />
+      </Section>
 
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
-              <Pressable
-                hitSlop={4}
-                accessibilityRole="button"
-                accessibilityLabel="Terug"
-                onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color={desk.ink} size={22} />
-              </Pressable>
-              <Text className="text-desk-ink font-bold text-lg">
-                {chatId ? "Call plannen in chat" : "Videocall plannen"}
-              </Text>
-              <Pressable
-                onPress={onSubmit}
-                disabled={!canSubmit}
-                className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
-              >
-                {submitting
-                  ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
-                  : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
-                      {chatId ? "Versturen" : "Plaatsen"}
-                    </Text>
-                }
-              </Pressable>
-            </View>
-
-            <View className="px-5 gap-4">
-              {/* Titel */}
-              <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Onderwerp, bijv. Catch-up"
-                placeholderTextColor={feed.inkDim}
-                className="bg-paper-soft px-4 py-3 text-ink text-base"
-                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-              />
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Toelichting (optioneel)"
-                placeholderTextColor={feed.inkDim}
-                multiline
-                className="bg-paper-soft px-4 py-3 text-ink text-base"
-                style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-              />
-            </View>
-
-            {/* Tijdsloten — tabbladen */}
-            <View className="mt-5 px-5">
-              <Text className="text-desk-soft text-xs uppercase tracking-wider mb-3">Tijdsloten</Text>
-
-              {/* Slot tabs */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
-                {slots.map((slot, i) => {
-                  const active = slot.id === activeSlotId;
-                  return (
+      {/* Tijdsloten — tabbladen */}
+      <Section
+        label={`Tijdsloten · ${slots.length}`}
+        action={slots.length < 8 ? { label: "Voeg toe", icon: "add", onPress: addSlot } : undefined}
+        pad
+      >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {slots.map((slot) => {
+            const active = slot.id === activeSlotId;
+            return (
+              <Chip
+                key={slot.id}
+                selected={active}
+                onPress={() => setActiveSlotId(slot.id)}
+                trailing={
+                  slots.length > 1 ? (
                     <Pressable
-                      key={slot.id}
-                      onPress={() => setActiveSlotId(slot.id)}
-                      className={`flex-row items-center gap-1.5 px-4 py-2 border ${active ? "bg-desk-ink border-desk-ink" : "bg-paper-soft border-paper-soft"}`}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dit tijdslot verwijderen"
+                      onPress={() => removeSlot(slot.id)}
                     >
-                      <Text className={`text-sm font-semibold ${active ? "text-desk" : "text-ink-muted"}`}>
-                        {slot.date.toLocaleDateString(NL, { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
-                      </Text>
-                      {slots.length > 1 && (
-                        <IconButton
-                          name="close-circle"
-                          label="Dit tijdslot verwijderen"
-                          onPress={() => removeSlot(slot.id)}
-                          size={14}
-                          color={feed.inkDim}
-                          dense
-                        />
-                      )}
+                      <Ionicons name="close-circle" size={15} color={active ? color("paper") : color("ink", "inkDim")} />
                     </Pressable>
-                  );
-                })}
-                {slots.length < 8 && (
-                  <Pressable onPress={addSlot} className="flex-row items-center gap-1.5 px-4 py-2 bg-paper-soft border border-paper-soft">
-                    <Ionicons name="add" color={feed.inkDim} size={16} />
-                    <Text className="text-ink-muted text-sm font-semibold">Voeg toe</Text>
-                  </Pressable>
-                )}
-              </ScrollView>
+                  ) : null
+                }
+              >
+                {slot.date.toLocaleDateString(NL, { weekday: "short", day: "numeric", month: "short" })} · {slot.startHour}:00
+              </Chip>
+            );
+          })}
+        </ScrollView>
+      </Section>
 
-              {/* Datum-grid — volgende 28 dagen */}
-              <View className="bg-paper-soft p-4 mb-4">
-                <Text className="text-ink-muted text-xs mb-3">Datum</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                  {DAY_OPTIONS.map((opt) => {
-                    const selected = isSameDay(activeSlot.date, opt.date);
-                    return (
-                      <Pressable
-                        key={opt.date.toISOString()}
-                        onPress={() => updateActive({ date: new Date(opt.date) })}
-                        className={`items-center px-3 py-2 min-w-[52px] ${selected ? "bg-flame" : "bg-paper"}`}
-                      >
-                        <Text className={`text-[10px] font-semibold uppercase ${selected ? "text-cream/80" : "text-ink-muted"}`}>
-                          {opt.date.toLocaleDateString(NL, { weekday: "short" })}
-                        </Text>
-                        <Text className={`text-base font-bold mt-0.5 ${selected ? "text-cream" : "text-ink"}`}>
-                          {opt.date.getDate()}
-                        </Text>
-                        <Text className={`text-[9px] ${selected ? "text-cream/70" : "text-ink-muted"}`}>
-                          {opt.date.toLocaleDateString(NL, { month: "short" })}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
+      {/* Datum — volgende 28 dagen */}
+      <Section label="Datum" pad>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          {DAY_OPTIONS.map((opt) => (
+            <DayTile
+              key={opt.date.toISOString()}
+              date={opt.date}
+              hue={hue}
+              selected={isSameDay(activeSlot.date, opt.date)}
+              onPress={() => updateActive({ date: new Date(opt.date) })}
+            />
+          ))}
+        </ScrollView>
+      </Section>
 
-              {/* Begintijd */}
-              <View className="bg-paper-soft p-4">
-                <Text className="text-ink-muted text-xs mb-3">Begintijd</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {HOUR_OPTIONS.map((h) => {
-                    const selected = activeSlot.startHour === h;
-                    return (
-                      <Pressable
-                        key={h}
-                        onPress={() => updateActive({ startHour: h })}
-                        className={`px-4 py-2 ${selected ? "bg-ink" : "bg-paper"}`}
-                      >
-                        <Text className={`text-sm font-semibold ${selected ? "text-cream" : "text-ink-muted"}`}>
-                          {h}:00
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-                <Text className="text-ink-muted text-xs mt-2">
-                  Duurt 1 uur · eindigt om {activeSlot.startHour + 1}:00
-                </Text>
-              </View>
-            </View>
+      {/* Begintijd */}
+      <Section label="Begintijd" pad>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {HOUR_OPTIONS.map((h) => (
+            <Chip key={h} selected={activeSlot.startHour === h} onPress={() => updateActive({ startHour: h })}>
+              {`${h}:00`}
+            </Chip>
+          ))}
+        </ScrollView>
+        <Note>Duurt 1 uur · eindigt om {activeSlot.startHour + 1}:00</Note>
+      </Section>
 
-            {/* Uitnodigen — enkel zichtbaar als je vrienden hebt */}
-            {friends.length > 0 && (
-              <View className="mt-5 px-5">
-                <Text className="text-desk-soft text-xs uppercase tracking-wider mb-3">
-                  Uitnodigen
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-                  {friends.map((f) => {
-                    const p = f.other;
-                    const selected = invitedIds.includes(p.id);
-                    return (
-                      <Pressable
-                        key={p.id}
-                        onPress={() =>
-                          setInvitedIds((prev) =>
-                            selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
-                          )
-                        }
-                        className="items-center gap-1.5"
-                      >
-                        <View className={` p-0.5 ${selected ? "bg-flame" : "bg-transparent"}`}>
-                          <Avatar
-                            name={p.display_name ?? p.username}
-                            avatarUrl={p.avatar_url ?? null}
-                            size="md"
-                          />
-                        </View>
-                        <Text className={`text-[11px] font-semibold max-w-[56px] text-center ${selected ? "text-flame" : "text-desk-soft"}`} numberOfLines={1}>
-                          {p.display_name ?? p.username}
-                        </Text>
-                        {selected && (
-                          <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-flame items-center justify-center">
-                            <Ionicons name="checkmark" color={creamOnDark.DEFAULT} size={10} />
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-                {invitedIds.length > 0 && (
-                  <Text className="text-desk-soft text-xs mt-2">
-                    {invitedIds.length} {invitedIds.length === 1 ? "persoon" : "personen"} uitgenodigd · anderen zien deze call niet
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {error ? (
-              <FormError tone="desk" style={{ marginHorizontal: 20 }}>{error}</FormError>
-            ) : null}
+      {/* Uitnodigen — enkel zichtbaar als je vrienden hebt */}
+      {friends.length > 0 && (
+        <Section label={invitedIds.length > 0 ? `Uitnodigen · ${invitedIds.length}` : "Uitnodigen"} pad>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingTop: 4 }}>
+            {friends.map((f) => {
+              const p = f.other;
+              const selected = invitedIds.includes(p.id);
+              return (
+                <PersonChip
+                  key={p.id}
+                  friend={f}
+                  selected={selected}
+                  onPress={() =>
+                    setInvitedIds((prev) =>
+                      selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                    )
+                  }
+                />
+              );
+            })}
           </ScrollView>
-        </ScreenContainer>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          {invitedIds.length > 0 && (
+            <Note>
+              {invitedIds.length} {invitedIds.length === 1 ? "persoon" : "personen"} uitgenodigd · anderen zien deze call niet
+            </Note>
+          )}
+        </Section>
+      )}
+
+      {error ? <Note tone="red">{error}</Note> : null}
+
+      <Button
+        label={chatId ? "Versturen" : "Plaatsen"}
+        tone="primary"
+        icon="videocam-outline"
+        busy={submitting}
+        disabled={!canSubmit}
+        onPress={onSubmit}
+      />
+    </SubPage>
+  );
+}
+
+/**
+ * Een keuze in een rij: een tijdslot, een uur. Gekozen in inkt. Een kader
+ * zonder ronding in kleur, een pil in magazine en modern.
+ */
+function Chip({
+  selected,
+  onPress,
+  trailing,
+  children,
+}: {
+  selected: boolean;
+  onPress: () => void;
+  trailing?: ReactNode;
+  children: ReactNode;
+}) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const ink = color("ink");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 40,
+        paddingHorizontal: 14,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: th === "kleur" ? 0 : 999,
+        borderWidth: th === "kleur" ? spec.border : 1,
+        borderColor: selected ? ink : th === "kleur" ? ink : color("ink", "postRule"),
+        backgroundColor: selected ? ink : pressed ? color("ink", "postRule") : "transparent",
+      })}
+    >
+      <Text numberOfLines={1} style={labelStyle(th, 9.5, selected ? color("paper") : ink)}>
+        {children}
+      </Text>
+      {trailing}
+    </Pressable>
+  );
+}
+
+/** Een dag om te kiezen: gekozen in de kleur van de pagina. */
+function DayTile({ date, hue, selected, onPress }: { date: Date; hue: Hue; selected: boolean; onPress: () => void }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const fc = friendColor(hue, useScheme());
+  const fg = selected ? fc.ink : color("ink");
+  const dim = selected ? fc.ink : color("ink", "inkDim");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={date.toLocaleDateString(NL, { weekday: "long", day: "numeric", month: "long" })}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minWidth: 54,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        alignItems: "center",
+        gap: 2,
+        borderRadius: th === "modern" ? 14 : 0,
+        borderWidth: th === "kleur" ? spec.border : selected ? 0 : 1,
+        borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+        backgroundColor: selected ? fc.fill : "transparent",
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Text style={labelStyle(th, 8.5, dim)}>{date.toLocaleDateString(NL, { weekday: "short" })}</Text>
+      <Text style={titleStyle(th, 22, fg)}>{date.getDate()}</Text>
+      <Text style={labelStyle(th, 8, dim)}>{date.toLocaleDateString(NL, { month: "short" })}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Een vriend om uit te nodigen: zijn avatar met de naam eronder. Gekozen
+ * krijgt hij een ring en een vinkje in zijn eigen vriendkleur.
+ */
+function PersonChip({ friend, selected, onPress }: { friend: FriendshipWithProfile; selected: boolean; onPress: () => void }) {
+  const th = useThemeSpec().id;
+  const fc = friendColor(hueFor(friend.other.id), useScheme());
+  const name = friend.other.display_name ?? friend.other.username;
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={name}
+      onPress={onPress}
+      style={({ pressed }) => ({ alignItems: "center", gap: 6, width: 60, opacity: pressed ? 0.7 : 1 })}
+    >
+      <View style={{ padding: 2, borderRadius: 999, borderWidth: 2, borderColor: selected ? fc.fill : "transparent" }}>
+        <Avatar name={name} avatarUrl={friend.other.avatar_url ?? null} size="md" />
+      </View>
+      {selected ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 4,
+            width: 18,
+            height: 18,
+            borderRadius: th === "kleur" ? 0 : 9,
+            backgroundColor: fc.fill,
+            borderWidth: 1.5,
+            borderColor: th === "kleur" ? color("ink") : color("paper"),
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="checkmark" color={fc.ink} size={11} />
+        </View>
+      ) : null}
+      <Text numberOfLines={1} style={[labelStyle(th, 8.5, selected ? color("ink") : color("ink", "inkDim")), { maxWidth: 60, textAlign: "center" }]}>
+        {name}
+      </Text>
+    </Pressable>
   );
 }

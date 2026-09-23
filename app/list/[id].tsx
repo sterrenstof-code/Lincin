@@ -1,22 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useState } from "react";
+import { Pressable, Text, View, type ViewStyle } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
-import { IconButton } from "@/components/IconButton";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { bodyStyle, Button, Field, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getSharedListWithDetails,
@@ -28,18 +17,28 @@ import {
   type ListItem,
 } from "@/lib/api/shared-lists";
 import { confirm } from "@/lib/confirm";
+import { color, friendColor, hueFor, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/lib/toast";
-import { creamOnDark, desk, feed } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Een gedeelde lijst, in de vorm van het thema (components/lincin/SubPage),
+ * in de kleur van de lijst.
+ *
+ * De kop is de lijst zelf: titel, hoeveel er gedaan is, het icoon ernaast.
+ * Daaronder een veld om iets toe te voegen, de voortgang met wie er
+ * meedoet, de open items en onderaan wat al gedaan is. Een afgevinkt item
+ * krijgt de kleur van de lijst.
+ */
+
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
   const myUserId = session!.user.id;
-  const inputRef = useRef<TextInput>(null);
 
   const [list, setList] = useState<SharedListWithDetails | null>(null);
   /**
@@ -185,98 +184,142 @@ export default function ListDetailScreen() {
   const unchecked = list.items.filter((i) => !i.checked);
   const checked = list.items.filter((i) => i.checked);
 
+  const hue = hueFor(list.id);
+  const people = [list.author, ...list.members].filter(Boolean);
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
-      <ScreenContainer>
-        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-
-            {/* Header */}
-            <View className="flex-row items-center mb-4 gap-3">
-              <Pressable
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Terug"
-                onPress={() => safeBack(router, "/lists")} className="w-9 h-9 items-center justify-center">
-                <Ionicons name="arrow-back" color={desk.ink} size={22} />
-              </Pressable>
-              <Text style={{ fontSize: 28 }}>{list.emoji}</Text>
-              <Text className="text-desk-ink font-bold text-xl flex-1" numberOfLines={2}>{list.title}</Text>
-            </View>
-
-            {/* Progress */}
-            {total > 0 && (
-              <View className="mb-4">
-                <View className="flex-row items-center justify-between mb-1.5">
-                  <Text className="text-desk-soft text-xs">{done} van {total} gedaan</Text>
-                  <Text className="text-desk-soft text-xs font-bold">{pct}%</Text>
-                </View>
-                <View className="h-2 bg-paper overflow-hidden">
-                  <View className="h-full bg-teal-500" style={{ width: `${pct}%` }} />
-                </View>
-              </View>
-            )}
-
-            {/* Members */}
-            <View className="flex-row items-center gap-1.5 mb-5">
-              {[list.author, ...list.members].filter(Boolean).map((p, i) => (
-                <Avatar key={p!.id} name={p!.display_name ?? p!.username} avatarUrl={p!.avatar_url ?? null} size="xs" lastSeenAt={p!.last_seen_at} />
-              ))}
-            </View>
-
-            {/* Items — unchecked first */}
-            <View className="gap-2 mb-4">
-              {unchecked.map((item) => (
-                <ItemRow key={item.id} item={item} onToggle={() => onToggle(item)} onDelete={() => onDelete(item.id)} canDelete={isOwner || item.user_id === myUserId} />
-              ))}
-            </View>
-
-            {/* Checked items */}
-            {checked.length > 0 && (
-              <View>
-                <Text className="text-ink-muted text-xs uppercase tracking-wider mb-2">Gedaan</Text>
-                <View className="gap-2 opacity-60">
-                  {checked.map((item) => (
-                    <ItemRow key={item.id} item={item} onToggle={() => onToggle(item)} onDelete={() => onDelete(item.id)} canDelete={isOwner || item.user_id === myUserId} />
-                  ))}
-                </View>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* Add item bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-desk border-t border-line px-4 py-3 flex-row items-center gap-3">
-            <TextInput
-              ref={inputRef}
+    <SubPage
+      title={list.title}
+      kicker="Lijst"
+      sub={total > 0 ? `${done} van ${total} gedaan` : "Nog leeg"}
+      back="/lists"
+      tab="feed"
+      hue={hue}
+      keyboard
+      right={<Text style={{ fontSize: 40, lineHeight: 48 }}>{list.emoji}</Text>}
+    >
+      <Section pad>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Field
               value={draft}
               onChangeText={setDraft}
               placeholder="Voeg item toe…"
-              placeholderTextColor={feed.inkDim}
               returnKeyType="done"
               onSubmitEditing={onAddItem}
-              className="flex-1 bg-paper-soft px-4 py-2.5 text-ink text-sm"
-              style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
             />
-            <Pressable
-              hitSlop={4}
-              accessibilityRole="button"
-              accessibilityLabel="Item toevoegen"
-              onPress={onAddItem}
-              disabled={!draft.trim() || adding}
-              className={`w-10 h-10 items-center justify-center ${draft.trim() ? "bg-flame" : "bg-paper-soft"}`}
-            >
-              {adding ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} /> : <Ionicons name="add" color={draft.trim() ? creamOnDark.DEFAULT : feed.inkDim} size={20} />}
-            </Pressable>
           </View>
-        </KeyboardAvoidingView>
-      </ScreenContainer>
-    </SafeAreaView>
+          <Button
+            label="Voeg toe"
+            icon="add"
+            tone="primary"
+            busy={adding}
+            disabled={!draft.trim() || adding}
+            onPress={onAddItem}
+          />
+        </View>
+      </Section>
+
+      <Section label={total > 0 ? `Voortgang · ${pct}%` : "Leden"} pad>
+        {total > 0 ? <Progress pct={pct} hue={hue} /> : null}
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+          {people.map((p) => (
+            <Avatar key={p!.id} name={p!.display_name ?? p!.username} avatarUrl={p!.avatar_url ?? null} size="xs" lastSeenAt={p!.last_seen_at} />
+          ))}
+        </View>
+      </Section>
+
+      {/* Open items eerst */}
+      {unchecked.length > 0 ? (
+        <Section label={`Te doen · ${unchecked.length}`}>
+          {unchecked.map((item, i) => (
+            <ItemRow key={item.id} item={item} hue={hue} first={i === 0} onToggle={() => onToggle(item)} onDelete={() => onDelete(item.id)} canDelete={isOwner || item.user_id === myUserId} />
+          ))}
+        </Section>
+      ) : null}
+
+      {/* Afgevinkte items */}
+      {checked.length > 0 ? (
+        <Section label={`Gedaan · ${checked.length}`}>
+          <View style={{ opacity: 0.6 }}>
+            {checked.map((item, i) => (
+              <ItemRow key={item.id} item={item} hue={hue} first={i === 0} onToggle={() => onToggle(item)} onDelete={() => onDelete(item.id)} canDelete={isOwner || item.user_id === myUserId} />
+            ))}
+          </View>
+        </Section>
+      ) : null}
+    </SubPage>
   );
 }
 
-function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onToggle: () => void; onDelete: () => void; canDelete: boolean }) {
+/**
+ * De voortgangsbalk in de kleur van de lijst: een kader van 1.5 (kleur),
+ * een platte strook (magazine), een pil (modern).
+ */
+function Progress({ pct, hue }: { pct: number; hue: Hue }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const fill = friendColor(hue, useScheme()).fill;
+  const h = th === "kleur" ? 14 : th === "magazine" ? RASTER.seam * 2 : 8;
   return (
-    <View className={`flex-row items-center gap-3 px-4 py-3 ${item.checked ? "bg-paper-soft/50" : "bg-paper-soft"}`}>
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: pct }}
+      style={{
+        height: h,
+        overflow: "hidden",
+        borderRadius: th === "modern" ? h / 2 : 0,
+        borderWidth: th === "kleur" ? spec.border : 0,
+        borderColor: color("ink"),
+        backgroundColor: th === "kleur" ? color("paper") : color("ink", "postRule"),
+      }}
+    >
+      <View style={{ height: "100%", width: `${pct}%`, backgroundColor: fill }} />
+    </View>
+  );
+}
+
+function ItemRow({
+  item,
+  hue,
+  first,
+  onToggle,
+  onDelete,
+  canDelete,
+}: {
+  item: ListItem;
+  hue: Hue;
+  first: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+  canDelete: boolean;
+}) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const fc = friendColor(hue, useScheme());
+  const dim = color("ink", "inkDim");
+  const box = 24;
+  // Dezelfde scheidingslijn als `ListRow`.
+  const rule: ViewStyle = first
+    ? {}
+    : th === "kleur"
+      ? { borderTopWidth: spec.border, borderTopColor: color("ink") }
+      : th === "magazine"
+        ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
+        : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
+  return (
+    <View
+      style={{
+        minHeight: 56,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingHorizontal: th === "magazine" ? 0 : 14,
+        marginHorizontal: th === "magazine" ? 18 : 0,
+        paddingVertical: 10,
+        ...rule,
+      }}
+    >
       <Pressable
         hitSlop={12}
         accessibilityRole="checkbox"
@@ -284,22 +327,40 @@ function ItemRow({ item, onToggle, onDelete, canDelete }: { item: ListItem; onTo
         accessibilityLabel={`${item.text} — ${
           item.checked ? "vinkje weghalen" : "afvinken"
         }`}
-        onPress={onToggle} className={`w-5 h-5 border-2 items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500" : "border-ink-muted"}`}>
-        {item.checked && <Ionicons name="checkmark" color="#fff" size={11} />}
+        onPress={onToggle}
+        style={{
+          width: box,
+          height: box,
+          borderRadius: th === "kleur" ? 0 : box / 2,
+          borderWidth: th === "kleur" ? spec.border : item.checked ? 0 : 1.5,
+          borderColor: th === "kleur" ? color("ink") : dim,
+          backgroundColor: item.checked ? fc.fill : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {item.checked ? <Ionicons name="checkmark" color={fc.ink} size={14} /> : null}
       </Pressable>
-      <Text className={`flex-1 text-sm ${item.checked ? "text-ink-muted line-through" : "text-ink"}`}>
+      <Text
+        style={[
+          bodyStyle(th, 15, item.checked ? dim : color("ink")),
+          { flex: 1, minWidth: 0 },
+          item.checked ? { textDecorationLine: "line-through" } : null,
+        ]}
+      >
         {item.text}
       </Text>
-      {canDelete && (
-        <IconButton
-          name="trash-outline"
-          label="Item verwijderen"
+      {canDelete ? (
+        <Pressable
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Item verwijderen"
           onPress={onDelete}
-          size={15}
-          color={feed.inkDim}
-          dense
-        />
-      )}
+          style={({ pressed }) => ({ width: 32, height: 32, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons name="trash-outline" size={16} color={dim} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

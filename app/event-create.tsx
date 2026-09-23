@@ -3,42 +3,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { createElement, useState } from "react";
+import { Platform, Pressable, Text, View, type ViewStyle } from "react-native";
 
-import { FormError } from "@/components/FormError";
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { useWide } from "@/components/Editorial";
+import { bodyStyle, Button, Field, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import {
   createEvent,
   type EventJoinPolicy,
   type EventRevealMode,
 } from "@/lib/api/events";
-import {
-  creamOnDark,
-  feed,
-  FEED_BORDER,
-  feedType,
-  flameDeep,
-  gutter,
-  rule,
-  sheetWidth,
-  space,
-} from "@/lib/design/type";
-import { safeBack } from "@/lib/nav";
+import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { head, sans, serif } from "@/lib/design/type";
 import { useUnsavedGuard } from "@/lib/unsaved";
-import { CharCount } from "@/components/CharCount";
 import { usePageTitle } from "@/lib/page-title";
 
 function plusHours(date: Date, hours: number): Date {
@@ -51,42 +28,27 @@ function toLocalISO(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/**
+ * Hoeveel tekens je nog hebt — pas vanaf het laatste vijfde, zoals
+ * `CharCount` het elders doet: een teller die vanaf het eerste teken
+ * meeloopt maakt van schrijven een wedstrijd.
+ */
+function charsLeft(value: string, max: number): string | undefined {
+  if (value.length < max * 0.8) return undefined;
+  const left = max - value.length;
+  return left <= 0 ? "Maximum bereikt" : `Nog ${left} tekens`;
+}
 
 /**
- * Het formulier op het systeem.
+ * Nieuw event, in de vorm van het thema (components/lincin/SubPage).
  *
- * Elke groep stond op een gevuld `bg-paper`-vlak met 24 punten rondom —
- * zes zwevende kaartjes onder elkaar op een lavendel pagina. DESIGN.md §4
- * zegt precies het tegenovergestelde: een kaart heeft geen vulling, de
- * opbouw draagt hem. Vandaar hier geen vlakken maar een lijn boven elke
- * groep; dat scheelt ook de vraag hoeveel ruimte er tússen zes vlakken moet.
- *
- * De velden hadden elk een eigen kadertje met een lichte vulling. Eén
- * haarlijn eronder is genoeg om te zeggen "hier typ je": dat is wat de
- * composer al doet, en twee schermen die hetzelfde vragen horen er hetzelfde
- * uit te zien.
+ * Het formulier staat in rubrieken: wat, cover, wanneer, wie, foto's,
+ * gasten. De hoofdknop staat onderaan. De kleur van de pagina is die van
+ * jou: jij wordt de gastheer, dus het event krijgt straks dezelfde kleur.
  */
-const GROUP = {
-  borderTopWidth: FEED_BORDER,
-  borderTopColor: feed.ink,
-  paddingTop: space.lg,
-  marginTop: space.xl,
-} as const;
-
-/** De eerste groep heeft de kopbalk boven zich en dus geen eigen lijn nodig. */
-const GROUP_FIRST = { paddingTop: space.sm } as const;
-
-const FIELD = {
-  paddingVertical: 10,
-  borderBottomWidth: StyleSheet.hairlineWidth,
-  borderBottomColor: rule.soft,
-  ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as any) : {}),
-};
-
 export default function EventCreateScreen() {
   usePageTitle("Nieuw event");
   const router = useRouter();
-  const wide = useWide();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -183,352 +145,338 @@ export default function EventCreateScreen() {
     }
   }
 
+  const th = useThemeSpec().id;
+  const hue = hueFor(myUserId);
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top", "left", "right"]}>
-      {/**
-        * De kopbalk staat búiten de formulierkolom.
-        *
-        * Hij zat in `ScreenContainer`, en die kapt op 600 — de kolom waarvan
-        * `Sheet` in zijn eigen commentaar zegt dat dit ontwerp ervan af is.
-        * Daardoor was de kop op dit scherm 600 breed en overal elders 1250,
-        * precies het verspringen dat de kop nergens hoort te doen. Het
-        * fórmulier blijft wél smal: invoervelden van 1250 punten lees je niet
-        * meer terug.
-        */}
-      <View
-        style={{
-          width: "100%",
-          maxWidth: sheetWidth(wide),
-          alignSelf: "center",
-          paddingHorizontal: gutter(wide),
-          borderBottomWidth: FEED_BORDER,
-          borderBottomColor: feed.ink,
-        }}
-      >
-        <View className="flex-row items-center py-3">
-          <Pressable
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Sluiten"
-            onPress={() => safeBack(router, "/(app)/events")}
-            className="w-9 h-9 bg-paper-soft items-center justify-center"
-          >
-            <Ionicons name="close" color={feed.ink} size={20} />
-          </Pressable>
-          <Text className="flex-1 text-desk-ink text-lg font-semibold ml-3">
-            Nieuw event
-          </Text>
-          <Pressable
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            className={` px-4 py-2 ${
-              canSubmit ? "bg-desk-ink active:bg-desk-soft" : "bg-desk-panel"
-            }`}
-          >
-            <Text className={`font-semibold ${canSubmit ? "text-desk" : "text-desk-muted"}`}>
-              {submitting ? "Bezig…" : "Maak"}
-            </Text>
-          </Pressable>
+    <SubPage title="Nieuw event" kicker="Event" back="/(app)/events" tab="events" hue={hue} keyboard>
+      <Section label="Wat" pad>
+        <Field
+          label="Naam"
+          value={name}
+          onChangeText={setName}
+          placeholder="bv. Paris 2025, Tom's verjaardag…"
+          maxLength={80}
+        />
+        <Field
+          label="Beschrijving (optioneel)"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Een paar lijnen over je event"
+          multiline
+          maxLength={500}
+          hint={charsLeft(description, 500)}
+          style={{ minHeight: 84 }}
+        />
+        <Field
+          label="Plek (optioneel)"
+          value={place}
+          onChangeText={setPlace}
+          placeholder="bv. Marken, Paradiso, bij Noor thuis"
+          maxLength={80}
+        />
+      </Section>
+
+      <Section label="Cover (optioneel)" pad>
+        {coverUri ? (
+          <View style={{ gap: 10 }}>
+            <Image
+              source={{ uri: coverUri }}
+              style={{ width: "100%", height: 190, borderRadius: th === "modern" ? 14 : 0 }}
+              contentFit="cover"
+            />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Button label="Vervang" icon="image-outline" small grow onPress={pickCover} />
+              <Button
+                label="Verwijder"
+                icon="trash-outline"
+                small
+                grow
+                onPress={() => {
+                  setCoverUri(null);
+                  setCoverMime(null);
+                }}
+              />
+            </View>
+          </View>
+        ) : (
+          <CoverPicker hue={hue} onPress={pickCover} />
+        )}
+      </Section>
+
+      <Section label="Wanneer" pad>
+        <DateInput label="Start" value={startsAt} onChange={setStartsAt} />
+        <DateInput label="Einde" value={endsAt} onChange={setEndsAt} />
+      </Section>
+
+      {/* Toegang — open of gesloten groep */}
+      <Section label="Wie mag meedoen" pad>
+        <Text style={bodyStyle(th, 13, color("ink", "inkDim"))}>
+          De link en QR blijven in beide gevallen deelbaar. Het verschil is
+          wat er gebeurt wanneer iemand erop tikt.
+        </Text>
+        <View style={{ gap: th === "kleur" ? 0 : 6 }}>
+          <ChoiceOption
+            hue={hue}
+            first
+            active={joinPolicy === "closed"}
+            onPress={() => setJoinPolicy("closed")}
+            title="Gesloten groep"
+            subtitle="Jij keurt elk verzoek goed — geen ongenode gasten"
+          />
+          <ChoiceOption
+            hue={hue}
+            active={joinPolicy === "open"}
+            onPress={() => setJoinPolicy("open")}
+            title="Open groep"
+            subtitle="Iedereen met de link komt meteen binnen"
+          />
         </View>
-      </View>
+      </Section>
 
-      <ScreenContainer>
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            <View style={GROUP_FIRST}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Naam
-              </Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="bv. Paris 2025, Tom's verjaardag…"
-                placeholderTextColor={feed.inkDim}
-                maxLength={80}
-                className="text-ink text-base"
-                style={FIELD}
-              />
+      {/* Onthulling */}
+      <Section label="Foto's zichtbaar" pad>
+        <Text style={bodyStyle(th, 13, color("ink", "inkDim"))}>
+          Wanneer mogen gasten elkaars bijdragen zien?
+        </Text>
+        <View style={{ gap: th === "kleur" ? 0 : 6 }}>
+          <ChoiceOption
+            hue={hue}
+            first
+            active={reveal === "during"}
+            onPress={() => setReveal("during")}
+            title="Tijdens het event"
+            subtitle="Iedereen ziet alles realtime"
+          />
+          <ChoiceOption
+            hue={hue}
+            active={reveal === "after"}
+            onPress={() => setReveal("after")}
+            title="Na het event"
+            subtitle="Surprise-onthulling op het eind"
+          />
+          <ChoiceOption
+            hue={hue}
+            active={reveal === "delayed"}
+            onPress={() => setReveal("delayed")}
+            title="Na vertraging"
+            subtitle="X uur na het einde"
+          />
+        </View>
 
-              <View className="h-5" />
+        {reveal === "delayed" && (
+          <Field label="Vertraging (uren)" value={delayHours} onChangeText={setDelayHours} keyboardType="number-pad" />
+        )}
+      </Section>
 
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Beschrijving (optioneel)
-              </Text>
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Een paar lijnen over je event"
-                placeholderTextColor={feed.inkDim}
-                multiline
-                maxLength={500}
-                className="text-ink text-base"
-                style={[FIELD, { minHeight: 84, textAlignVertical: "top" }]}
-              />
-              <CharCount value={description} max={500} />
+      <Section label="Gasten" pad>
+        <Field
+          label="Aantal gasten (max)"
+          value={maxGuests}
+          onChangeText={setMaxGuests}
+          keyboardType="number-pad"
+          hint={
+            joinPolicy === "closed"
+              ? "1–1000. Ook goedgekeurde verzoeken tellen mee tot deze limiet."
+              : "1–1000. Iedereen kan via een gedeelde link of QR meedoen tot deze limiet."
+          }
+        />
+      </Section>
 
-              <View className="h-5" />
+      {error ? <Note tone="red">{error}</Note> : null}
 
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Plek (optioneel)
-              </Text>
-              <TextInput
-                value={place}
-                onChangeText={setPlace}
-                placeholder="bv. Marken, Paradiso, bij Noor thuis"
-                placeholderTextColor={feed.inkDim}
-                maxLength={80}
-                className="text-ink text-base"
-                style={FIELD}
-              />
-            </View>
-
-            {/* Cover (optioneel) */}
-            <View style={GROUP}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Cover (optioneel)
-              </Text>
-              {coverUri ? (
-                <View>
-                  <Image
-                    source={{ uri: coverUri }}
-                    style={{ width: "100%", height: 190 }}
-                    contentFit="cover"
-                  />
-                  <View className="flex-row gap-2 mt-3">
-                    <Pressable
-                      onPress={pickCover}
-                      className="flex-1 border border-line-paper py-2.5 items-center"
-                    >
-                      <Text className="text-ink font-semibold text-sm">Vervang</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => { setCoverUri(null); setCoverMime(null); }}
-                      className="flex-1 border border-line-paper py-2.5 items-center"
-                    >
-                      <Text className="text-ink font-semibold text-sm">Verwijder</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={pickCover}
-                  className="active:bg-feed-panel py-10 items-center justify-center"
-                  style={{ borderWidth: FEED_BORDER, borderColor: feed.ink }}
-                >
-                  <Ionicons name="image-outline" color={feed.inkDim} size={26} />
-                  <Text className="text-ink-soft text-sm mt-2">Kies een cover-foto</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Datum en tijd */}
-            <View style={GROUP}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Start
-              </Text>
-              <DateInput value={startsAt} onChange={setStartsAt} />
-
-              <View className="h-5" />
-
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Einde
-              </Text>
-              <DateInput value={endsAt} onChange={setEndsAt} />
-            </View>
-
-            {/* Toegang — open of gesloten groep */}
-            <View style={GROUP}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 }]}>
-                Wie mag meedoen
-              </Text>
-              <Text className="text-ink-soft text-sm mb-3">
-                De link en QR blijven in beide gevallen deelbaar. Het verschil is
-                wat er gebeurt wanneer iemand erop tikt.
-              </Text>
-              <View className="gap-2">
-                <ChoiceOption
-                  active={joinPolicy === "closed"}
-                  onPress={() => setJoinPolicy("closed")}
-                  title="Gesloten groep"
-                  subtitle="Jij keurt elk verzoek goed — geen ongenode gasten"
-                />
-                <ChoiceOption
-                  active={joinPolicy === "open"}
-                  onPress={() => setJoinPolicy("open")}
-                  title="Open groep"
-                  subtitle="Iedereen met de link komt meteen binnen"
-                />
-              </View>
-            </View>
-
-            {/* Onthulling */}
-            <View style={GROUP}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 6 }]}>
-                Foto's zichtbaar
-              </Text>
-              <Text className="text-ink-soft text-sm mb-3">
-                Wanneer mogen gasten elkaars bijdragen zien?
-              </Text>
-              <View className="gap-2">
-                <ChoiceOption
-                  active={reveal === "during"}
-                  onPress={() => setReveal("during")}
-                  title="Tijdens het event"
-                  subtitle="Iedereen ziet alles realtime"
-                />
-                <ChoiceOption
-                  active={reveal === "after"}
-                  onPress={() => setReveal("after")}
-                  title="Na het event"
-                  subtitle="Surprise-onthulling op het eind"
-                />
-                <ChoiceOption
-                  active={reveal === "delayed"}
-                  onPress={() => setReveal("delayed")}
-                  title="Na vertraging"
-                  subtitle="X uur na het einde"
-                />
-              </View>
-
-              {reveal === "delayed" && (
-                <View className="mt-4">
-                  <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                    Vertraging (uren)
-                  </Text>
-                  <TextInput
-                    value={delayHours}
-                    onChangeText={setDelayHours}
-                    keyboardType="number-pad"
-                    className="text-ink text-base"
-                style={FIELD}
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Aantal gasten */}
-            <View style={GROUP}>
-              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
-                Aantal gasten (max)
-              </Text>
-              <TextInput
-                value={maxGuests}
-                onChangeText={setMaxGuests}
-                keyboardType="number-pad"
-                className="text-ink text-base"
-                style={FIELD}
-              />
-              <Text className="text-ink-muted text-xs mt-2">
-                {joinPolicy === "closed"
-                  ? "1–1000. Ook goedgekeurde verzoeken tellen mee tot deze limiet."
-                  : "1–1000. Iedereen kan via een gedeelde link of QR meedoen tot deze limiet."}
-              </Text>
-            </View>
-
-            {error && (
-              <FormError tone="desk">{error}</FormError>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ScreenContainer>
-    </SafeAreaView>
+      <Button
+        label={submitting ? "Bezig…" : "Maak event"}
+        icon="add"
+        tone="primary"
+        busy={submitting}
+        disabled={!canSubmit}
+        onPress={onSubmit}
+      />
+    </SubPage>
   );
+}
+
+/**
+ * Het vak waar je een cover kiest. Magazine zet het in de kleur van de
+ * pagina, als een spread zonder beeld; kleur en modern houden het bij een
+ * kader.
+ */
+function CoverPicker({ hue, onPress }: { hue: Hue; onPress: () => void }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const scheme = useScheme();
+  const fc = friendColor(hue, scheme);
+  const fg = th === "magazine" ? fc.ink : color("ink", "inkDim");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Kies een cover-foto"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        height: 150,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        opacity: pressed ? 0.8 : 1,
+        ...(th === "magazine"
+          ? { backgroundColor: fc.fill }
+          : th === "kleur"
+            ? { borderWidth: spec.border, borderColor: color("ink"), borderStyle: "dashed" }
+            : { borderRadius: 14, borderWidth: 1, borderColor: color("ink", "postRule"), borderStyle: "dashed", backgroundColor: color("paper") }),
+      })}
+    >
+      <Ionicons name="image-outline" color={fg} size={26} />
+      <Text style={th === "magazine" ? { ...serif(true), fontSize: 19, lineHeight: 24, color: fg } : labelStyle(th, 10, fg)}>
+        Kies een cover-foto
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Het vak rond een invoerveld, zoals `Field` het tekent. */
+function fieldBox(th: ReturnType<typeof useThemeSpec>["id"], border: number): ViewStyle {
+  return {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: th === "magazine" ? 0 : 14,
+    borderRadius: th === "modern" ? 14 : 0,
+    borderWidth: th === "kleur" ? border : th === "magazine" ? 0 : 1,
+    borderBottomWidth: th === "magazine" ? 1 : th === "kleur" ? border : 1,
+    borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+    backgroundColor: th === "magazine" ? "transparent" : color("paper"),
+  };
 }
 
 /** Cross-platform datetime input. Op web: native HTML datetime-local. Op native: text. */
 function DateInput({
+  label,
   value,
   onChange,
 }: {
+  label: string;
   value: string;
   onChange: (v: string) => void;
 }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
   if (Platform.OS === "web") {
     // Render een HTML5 datetime-local input via createElement zodat we niet
-    // tegen react-native-web's TextInput sanitizers oplopen.
+    // tegen react-native-web's TextInput sanitizers oplopen. Het vak eromheen
+    // heeft de vorm van `Field`; het veld zelf is kaal. De browser tekent
+    // zijn eigen focusring, dus `outline` blijft uit.
+    const font = th === "magazine" ? serif() : sans(400);
     return (
-      <View
-        // @ts-ignore — web-only style
-        style={{
-          display: "flex",
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: rule.soft,
-        }}
-      >
-        {require("react").createElement("input", {
-          type: "datetime-local",
-          value,
-          onChange: (e: any) => onChange(e.target.value),
-          /**
-           * Stond op `borderRadius: 999` met een rand in #D8C29B — een pil
-           * in een kleur die nergens in het palet voorkomt. Nu dezelfde vorm
-           * als elk ander veld in de app: geen vulling, geen rand, één
-           * haarlijn eronder. De browser tekent zijn eigen focusring, dus
-           * `outline` blijft uit.
-           */
-          style: {
-            backgroundColor: "transparent",
-            color: feed.ink,
-            border: "none",
-            borderRadius: 0,
-            padding: "10px 0",
-            fontSize: 16,
-            fontFamily: "inherit",
-            outline: "none",
-            width: "100%",
-            boxSizing: "border-box",
-          },
-        })}
+      <View style={{ gap: 6 }}>
+        <Text style={labelStyle(th, 9, color("ink", "inkDim"))}>{label}</Text>
+        <View style={fieldBox(th, spec.border)}>
+          {createElement("input", {
+            type: "datetime-local",
+            value,
+            "aria-label": label,
+            onChange: (e: any) => onChange(e.target.value),
+            style: {
+              backgroundColor: "transparent",
+              color: color("ink"),
+              border: "none",
+              borderRadius: 0,
+              padding: "12px 0",
+              fontSize: th === "magazine" ? 20 : 15,
+              fontFamily: font.fontFamily,
+              outline: "none",
+              width: "100%",
+              boxSizing: "border-box",
+            },
+          })}
+        </View>
       </View>
     );
   }
   return (
-    <TextInput
+    <Field
+      label={label}
       value={value}
       onChangeText={onChange}
       placeholder="yyyy-mm-ddThh:mm"
-      placeholderTextColor={feed.inkDim}
       autoCapitalize="none"
       autoCorrect={false}
-      className="text-ink text-base"
-                style={FIELD}
     />
   );
 }
 
+/**
+ * Eén keuze met een regel uitleg eronder.
+ *
+ * `Choice` uit de kit is een segmentrij met alleen een label; hier moet
+ * de uitleg erbij, dus staan de opties onder elkaar. De gekozen optie is
+ * inkt in kleur en modern, en in magazine de kleur van de pagina.
+ */
 function ChoiceOption({
+  hue,
   active,
+  first = false,
   onPress,
   title,
   subtitle,
 }: {
+  hue: Hue;
   active: boolean;
+  first?: boolean;
   onPress: () => void;
   title: string;
   subtitle: string;
 }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const scheme = useScheme();
+  const fc = friendColor(hue, scheme);
+  const ink = color("ink");
+  const bg = active ? (th === "magazine" ? fc.fill : ink) : "transparent";
+  const fg = active ? (th === "magazine" ? fc.ink : color("paper")) : ink;
+  const dim = active ? fg : color("ink", "inkDim");
+  const frame: ViewStyle =
+    th === "kleur"
+      ? { borderWidth: spec.border, borderColor: ink, marginTop: first ? 0 : -spec.border }
+      : th === "magazine"
+        ? active
+          ? {}
+          : { borderTopWidth: 1, borderBottomWidth: 1, borderColor: color("ink", "postRule") }
+        : { borderRadius: 14, borderWidth: 1, borderColor: active ? ink : color("ink", "postRule") };
   return (
     <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={title}
       onPress={onPress}
-      className={`flex-row items-center px-4 py-3 ${
-        active ? "bg-ink" : "bg-paper-soft active:bg-paper-warm"
-      }`}
+      style={({ pressed }) => [
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          minHeight: 60,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          backgroundColor: bg,
+          opacity: pressed ? 0.8 : 1,
+        },
+        frame,
+      ]}
     >
-      <Ionicons
-        name={active ? "radio-button-on" : "radio-button-off"}
-        color={active ? creamOnDark.DEFAULT : feed.inkDim}
-        size={20}
-      />
-      <View className="flex-1 ml-3">
-        <Text className={`font-semibold ${active ? "text-cream" : "text-ink"}`}>
+      <Ionicons name={active ? "radio-button-on" : "radio-button-off"} color={dim} size={20} />
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Text
+          style={[
+            th === "magazine"
+              ? { ...serif(), fontSize: 20, lineHeight: 24 }
+              : th === "modern"
+                ? { ...sans(400), fontSize: 15.5, lineHeight: 20, letterSpacing: -0.3 }
+                : { ...head(), fontSize: 18, lineHeight: 19 },
+            { color: fg },
+          ]}
+        >
           {title}
         </Text>
-        <Text className={`text-xs mt-0.5 ${active ? "text-cream-soft" : "text-ink-muted"}`}>
-          {subtitle}
-        </Text>
+        <Text style={labelStyle(th, 9, dim)}>{subtitle}</Text>
       </View>
     </Pressable>
   );

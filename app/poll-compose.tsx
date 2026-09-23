@@ -1,27 +1,24 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { ScreenContainer } from "@/components/ScreenContainer";
+import { Button, Field, IconBtn, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
-import { CONTROL_H, creamOnDark, desk, feed } from "@/lib/design/type";
+import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { usePageTitle } from "@/lib/page-title";
+
+/**
+ * Een nieuwe poll, in de vorm van het thema (components/lincin/SubPage).
+ * Vanuit een chat in de kleur van die chat, anders in de feed.
+ *
+ * Een vraag, twee tot zes opties — elke optie met zijn nummer in de kleur
+ * van de pagina — en onderaan Versturen of Plaatsen.
+ */
 
 export default function PollComposeScreen() {
   const router = useRouter();
@@ -104,96 +101,82 @@ export default function PollComposeScreen() {
     }
   }
 
+  const hue = hueFor(chatId);
+
   return (
-    <SafeAreaView className="flex-1 bg-desk" edges={["top"]}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <SubPage
+      title={chatId ? "Poll in chat" : "Nieuwe stemming"}
+      kicker="Poll"
+      sub="Een vraag en minstens twee opties."
+      back={chatId ? `/chat/${chatId}` : "/(app)/feed"}
+      tab={chatId ? "chats" : "feed"}
+      hue={hue}
+      keyboard
+    >
+      <Section label="Vraag" pad>
+        <Field
+          value={question}
+          onChangeText={setQuestion}
+          placeholder="Stel je vraag…"
+          multiline
+        />
+      </Section>
+
+      <Section
+        label={`Opties · ${options.length}`}
+        action={options.length < 6 ? { label: "Optie toevoegen", icon: "add", onPress: addOption } : undefined}
+        pad
       >
-        <ScreenContainer>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-            {/* Header */}
-            <View className="flex-row items-center justify-between mb-6">
-              <Pressable
-                hitSlop={4}
-                accessibilityRole="button"
-                accessibilityLabel="Terug"
-                onPress={() => safeBack(router, chatId ? `/chat/${chatId}` : "/(app)/feed")} className="w-10 h-10 items-center justify-center">
-                <Ionicons name="arrow-back" color={desk.ink} size={22} />
-              </Pressable>
-              <Text className="text-desk-ink font-bold text-lg">
-                {chatId ? "Poll in chat" : "Nieuwe stemming"}
-              </Text>
-              <Pressable
-                onPress={onSubmit}
-                disabled={!canSubmit}
-                className={`px-4 py-2 ${canSubmit ? "bg-flame" : "bg-paper"}`}
-              >
-                {submitting
-                  ? <ActivityIndicator size="small" color={creamOnDark.DEFAULT} />
-                  : <Text className={`font-semibold text-sm ${canSubmit ? "text-cream" : "text-ink-muted"}`}>
-                      {chatId ? "Versturen" : "Plaatsen"}
-                    </Text>
-                }
-              </Pressable>
+        {options.map((opt, i) => (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <OptionNumber n={i + 1} hue={hue} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Field
+                value={opt}
+                onChangeText={(v) => updateOption(i, v)}
+                placeholder={`Optie ${i + 1}`}
+              />
             </View>
-
-            {/* Vraag */}
-            <Text className="text-desk-soft text-xs uppercase tracking-wider mb-2">Vraag</Text>
-            <TextInput
-              value={question}
-              onChangeText={setQuestion}
-              placeholder="Stel je vraag…"
-              placeholderTextColor={feed.inkDim}
-              multiline
-              className="bg-paper-soft px-4 py-3 text-ink text-base mb-6"
-              style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-            />
-
-            {/* Opties */}
-            <Text className="text-desk-soft text-xs uppercase tracking-wider mb-2">Opties</Text>
-            <View className="gap-2 mb-3">
-              {options.map((opt, i) => (
-                <View key={i} className="flex-row items-center gap-2">
-                  <TextInput
-                    value={opt}
-                    onChangeText={(v) => updateOption(i, v)}
-                    placeholder={`Optie ${i + 1}`}
-                    placeholderTextColor={feed.inkDim}
-                    className="flex-1 bg-paper-soft px-4 py-3 text-ink text-base"
-                    style={Platform.OS === "web" ? { outlineWidth: 0 } as any : {}}
-                  />
-                  {options.length > 2 && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Deze optie verwijderen"
-                      onPress={() => removeOption(i)}
-                      className="items-center justify-center bg-paper-soft"
-                      style={{ width: CONTROL_H, height: CONTROL_H }}
-                    >
-                      <Ionicons name="close" color={feed.inkDim} size={16} />
-                    </Pressable>
-                  )}
-                </View>
-              ))}
-            </View>
-
-            {options.length < 6 && (
-              <Pressable
-                onPress={addOption}
-                className="flex-row items-center gap-2 py-3 px-4 bg-paper-soft mb-6"
-              >
-                <Ionicons name="add-circle-outline" color={feed.inkDim} size={18} />
-                <Text className="text-ink-muted text-sm">Optie toevoegen</Text>
-              </Pressable>
+            {options.length > 2 && (
+              <IconBtn icon="close" label="Deze optie verwijderen" onPress={() => removeOption(i)} />
             )}
+          </View>
+        ))}
+      </Section>
 
-            {error && (
-              <Text className="text-red-400 text-sm mt-2">{error}</Text>
-            )}
-          </ScrollView>
-        </ScreenContainer>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      {error ? <Note tone="red">{error}</Note> : null}
+
+      <Button
+        label={chatId ? "Versturen" : "Plaatsen"}
+        tone="primary"
+        icon="stats-chart-outline"
+        busy={submitting}
+        disabled={!canSubmit}
+        onPress={onSubmit}
+      />
+    </SubPage>
+  );
+}
+
+/** Het nummer van een optie, als vlakje in de kleur van de pagina. */
+function OptionNumber({ n, hue }: { n: number; hue: Hue }) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const fc = friendColor(hue, useScheme());
+  return (
+    <View
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: th === "kleur" ? 0 : 15,
+        borderWidth: th === "kleur" ? spec.border : 0,
+        borderColor: color("ink"),
+        backgroundColor: fc.fill,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={[labelStyle(th, 10, fc.ink), { letterSpacing: 0 }]}>{n}</Text>
+    </View>
   );
 }

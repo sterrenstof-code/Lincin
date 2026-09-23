@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, forwardRef, useContext, type ReactNode } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -545,13 +545,10 @@ export function IconBtn({
 // ---------------------------------------------------------------
 
 /** Een label met een invoerveld eronder, in de vorm van het thema. */
-export function Field({
-  label,
-  hint,
-  error,
-  style,
-  ...input
-}: TextInputProps & { label?: string; hint?: string; error?: string | null; style?: StyleProp<TextStyle> }) {
+export const Field = forwardRef<TextInput, TextInputProps & { label?: string; hint?: string; error?: string | null; style?: StyleProp<TextStyle> }>(function Field(
+  { label, hint, error, style, ...input },
+  ref,
+) {
   const spec = useThemeSpec();
   const th = spec.id;
   const ink = color("ink");
@@ -560,6 +557,7 @@ export function Field({
     <View style={{ gap: 6 }}>
       {label ? <Text style={labelStyle(th, 9, dim)}>{label}</Text> : null}
       <TextInput
+        ref={ref}
         placeholderTextColor={dim}
         {...input}
         style={[
@@ -583,7 +581,7 @@ export function Field({
       {error ? <Text style={[labelStyle(th, 9, color("red")), { textTransform: "none", letterSpacing: 0.3 }]}>{error}</Text> : hint ? <Text style={[bodyStyle(th, 12, dim)]}>{hint}</Text> : null}
     </View>
   );
-}
+});
 
 /** Een korte regel: uitleg, een fout, een bevestiging. */
 export function Note({ children, tone = "dim", center = false }: { children: ReactNode; tone?: "dim" | "red" | "ink"; center?: boolean }) {
