@@ -14,6 +14,8 @@ import { supabase } from "@/lib/supabase/client";
  *   openDefault  vrienden in de feed staan standaard open (uit: ingeklapt)
  *   feedView     editie | friends | time; leeg = de standaard van het toestel
  *   openFriends  per vriend (of groep) je eigen keuze: open of dicht
+ *   edition      het editienummer: de hoeveelste dag dat je Lincin opent
+ *               ("Editie wo 23 sep · № 38"), met de dag van de laatste
  *
  * Lokaal gecachet per gebruiker (AsyncStorage) zodat de app meteen goed
  * opent, en bewaard in `user_prefs` (0070) zodat een tweede toestel
@@ -32,6 +34,7 @@ export type Prefs = {
   openDefault: boolean;
   feedView: FeedView | null;
   openFriends: Record<string, boolean>;
+  edition: { n: number; day: string } | null;
 };
 
 /** De schakelaars van Instellingen: alleen de booleans. */
@@ -45,6 +48,7 @@ const DEFAULTS: Prefs = {
   openDefault: false,
   feedView: null,
   openFriends: {},
+  edition: null,
 };
 
 const cache = new Map<string, Prefs>();
@@ -64,6 +68,8 @@ function clean(raw: unknown): Partial<Prefs> {
   }
   if (r.feedView === "editie" || r.feedView === "friends" || r.feedView === "time") out.feedView = r.feedView;
   if (r.openFriends && typeof r.openFriends === "object") out.openFriends = r.openFriends as Record<string, boolean>;
+  const e = r.edition as { n?: unknown; day?: unknown } | undefined;
+  if (e && typeof e.n === "number" && typeof e.day === "string") out.edition = { n: e.n, day: e.day };
   return out;
 }
 
@@ -103,6 +109,7 @@ function load(userId: string): Promise<void> {
       if (l === "nl" || l === "en" || l === "de") setLang(l as Lang, { quiet: true });
       emit();
     }
+    bumpEdition(userId);
   })().catch(() => {});
   loading.set(userId, p);
   return p;
@@ -126,6 +133,25 @@ function persist(userId: string) {
         .then(() => {}, () => {});
     }, 600),
   );
+}
+
+/** De dag van vandaag op dit toestel, als "2026-09-23". */
+function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Een nieuwe dag is een nieuwe editie. Pas nadat de database antwoordde,
+ * zodat een tweede toestel verder telt in plaats van opnieuw bij 1 begint.
+ */
+function bumpEdition(userId: string) {
+  const cur = cache.get(userId) ?? DEFAULTS;
+  const day = today();
+  if (cur.edition?.day === day) return;
+  cache.set(userId, { ...cur, edition: { n: (cur.edition?.n ?? 0) + 1, day } });
+  emit();
+  persist(userId);
 }
 
 export function setPref<K extends keyof Prefs>(userId: string, name: K, value: Prefs[K]) {

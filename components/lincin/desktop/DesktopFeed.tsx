@@ -110,7 +110,7 @@ function Head({ f }: { f: Feed }) {
   const date = now.toLocaleDateString(lang === "nl" ? "nl-BE" : lang === "de" ? "de-DE" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
   const kicker =
     view === "editie"
-      ? `${t.editie} ${date} · ${f.byTime.length} ${t.postsFrom} ${f.groups.length} ${t.friends}`
+      ? `${t.editie} ${date}${f.edition ? ` · № ${f.edition}` : ""} · ${f.byTime.length} ${t.postsFrom} ${f.groups.length} ${t.friends}`
       : view === "friends"
         ? t.kickerFriends
         : t.kickerTime;

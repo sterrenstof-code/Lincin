@@ -200,7 +200,8 @@ function ListHead({ f }: { f: Feed }) {
     <View style={{ paddingTop: 40, paddingHorizontal: 32, paddingBottom: 26, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 32 }}>
       <View style={{ gap: 12 }}>
         <Text style={label(10, color("ink", "inkDim"))}>
-          {t.editie} · {f.fresh ? `${f.fresh} ${t.new}` : t.upToDate}
+          {t.editie}
+          {f.edition ? ` · № ${f.edition}` : ""} · {f.fresh ? `${f.fresh} ${t.new}` : t.upToDate}
         </Text>
         <Text numberOfLines={1} style={[serif(), { fontSize: 96, lineHeight: 84, letterSpacing: -3.4, color: color("ink") }]}>
           {a} <Text style={serif(true)}>{b.join(" ")}</Text>
@@ -481,7 +482,11 @@ function Chapter({ f, g, isNew, idx, total }: { f: Feed; g: FriendGroup; isNew: 
             {g.name}
           </Text>
         </Pressable>
-        {g.isGroup ? <Text style={[serif(true), { fontSize: 17, lineHeight: 22, color: color("ink", "inkDim") }]}>{t.group}</Text> : null}
+        {g.bio || g.isGroup ? (
+          <Text numberOfLines={3} style={[serif(true), { fontSize: 17, lineHeight: 22, color: color("ink", "inkDim") }]}>
+            {g.bio || t.group}
+          </Text>
+        ) : null}
         <View style={{ borderTopWidth: 1, borderTopColor: color("ink", "linePaper") }}>
           {facts.map((fa) => (
             <View key={fa.k} style={{ flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: color("ink", "linePaper") }}>

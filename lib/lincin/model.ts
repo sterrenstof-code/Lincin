@@ -40,6 +40,8 @@ export type CardPost = {
   authorUsername: string | null;
   initial: string;
   avatarUrl: string | null;
+  /** De eerste regel van de bio van de maker, zonder opmaak; leeg als er geen is. */
+  authorBio: string;
   createdAt: string;
   title: string;
   /**
@@ -60,6 +62,20 @@ export type CardPost = {
 };
 
 /** De naam zoals hij op de band staat. */
+/**
+ * De bio als één regel (de ondertitel van een vriend in magazine): de
+ * eerste niet-lege regel, zonder markdown-tekens, hoogstens 140 tekens.
+ */
+export function bioLine(bio: string | null | undefined): string {
+  const first = (bio ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+  const plain = first
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^[#>\-*+\s]+/, "")
+    .replace(/[*_`~]/g, "")
+    .trim();
+  return plain.length > 140 ? `${plain.slice(0, 139)}…` : plain;
+}
+
 export function displayName(p: { display_name?: string | null; username?: string | null } | null | undefined): string {
   return p?.display_name?.trim() || p?.username || "?";
 }
@@ -185,6 +201,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     authorUsername: p.author?.username ?? null,
     initial: name.slice(0, 1).toUpperCase(),
     avatarUrl: p.author?.avatar_url ?? null,
+    authorBio: bioLine(p.author?.bio),
     createdAt: p.created_at,
     title,
     untitled: !!untitled,
@@ -210,6 +227,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     authorUsername: p.author?.username ?? null,
     initial: name.slice(0, 1).toUpperCase(),
     avatarUrl: p.author?.avatar_url ?? null,
+    authorBio: bioLine(p.author?.bio),
     createdAt: p.created_at,
     title: p.question,
     untitled: false,
@@ -247,6 +265,8 @@ export type FriendGroup = {
   username: string | null;
   initial: string;
   avatarUrl: string | null;
+  /** De bio van de vriend in één regel (`bioLine`). */
+  bio: string;
   hue: Hue;
   isGroup: boolean;
   posts: CardPost[];
@@ -267,6 +287,7 @@ export function groupByFriend(cards: CardPost[]): FriendGroup[] {
         username: c.authorUsername,
         initial: c.initial,
         avatarUrl: c.avatarUrl,
+        bio: c.authorBio,
         hue: hueFor(c.authorId),
         isGroup: false,
         posts: [],

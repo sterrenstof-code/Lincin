@@ -12,7 +12,7 @@ import { RASTER, color, friendColor, hueFor, inkOn, pageTint, useHueChoices, use
 import { FONT, capf, head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
-import { setFriendOpen, setPref } from "@/lib/lincin/prefs";
+import { setFriendOpen, setPref, usePrefs } from "@/lib/lincin/prefs";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
 import { useSeenPosts } from "@/lib/read-state";
 
@@ -304,6 +304,8 @@ function headKleur(): TextStyle {
 
 function NavMagazine({ active, tint, hideMark }: { active: Tab; tint: string | null; hideMark: boolean }) {
   const t = useT();
+  const { session } = useAuth();
+  const edition = usePrefs(session?.user.id ?? "anon").edition?.n;
   const router = useRouter();
   const { width } = useWindowDimensions();
   const nav = useNav(active);
@@ -330,6 +332,7 @@ function NavMagazine({ active, tint, hideMark }: { active: Tab; tint: string | n
         {hideMark ? null : <Text style={[serif(), { fontSize: 32, lineHeight: 32, letterSpacing: -0.64, color: ink }]}>Lincin</Text>}
         <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
           {date}
+          {edition ? ` · № ${edition}` : ""}
           {fresh ? ` · ${fresh} ${t.new}` : ""}
         </Text>
       </Pressable>

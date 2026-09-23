@@ -234,6 +234,8 @@ export function useFeed() {
     isMine,
     compose,
     empty,
+    /** Het editienummer: de hoeveelste dag dat je Lincin opent (№ 38). */
+    edition: prefs.edition?.n ?? null,
   };
 }
 
