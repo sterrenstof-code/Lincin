@@ -601,22 +601,28 @@ export const HUES: Hue[] = ["orange", "blue", "ochre", "green", "red", "acid"];
 /** Het vlak en de inkt erop. */
 type FriendColor = { fill: string; ink: string };
 
+/**
+ * Het gedempte palet van de handoff van 23 sep (HANDOFF.md §Kleur van de
+ * vriend, mobile-app.dc.html `C`): in alle drie de thema's hetzelfde. Het
+ * felle palet van eerder (#F06A2B, #2F5BFF…) heet in het prototype "hard"
+ * en is niet meer de standaard.
+ */
 const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
   light: {
-    orange: { fill: "#F06A2B", ink: "#141414" },
-    blue: { fill: "#2F5BFF", ink: "#F2EFE8" },
-    ochre: { fill: "#E0B64A", ink: "#141414" },
-    green: { fill: "#4C9A63", ink: "#F2EFE8" },
-    red: { fill: "#D8321F", ink: "#F2EFE8" },
-    acid: { fill: "#E5FF3A", ink: "#141414" },
+    orange: { fill: "#B4623F", ink: "#F4F1E8" },
+    blue: { fill: "#3F5E86", ink: "#F4F1E8" },
+    ochre: { fill: "#C6B26A", ink: "#1A1208" },
+    green: { fill: "#7C8A63", ink: "#1A1208" },
+    red: { fill: "#9C3B2E", ink: "#F4F1E8" },
+    acid: { fill: "#D8C67A", ink: "#1A1208" },
   },
   dark: {
-    orange: { fill: "#D9764A", ink: "#1A1917" },
-    blue: { fill: "#5F7FE6", ink: "#1A1917" },
-    ochre: { fill: "#C9A94F", ink: "#1A1917" },
-    green: { fill: "#5E9C72", ink: "#1A1917" },
-    red: { fill: "#CF5442", ink: "#1A1917" },
-    acid: { fill: "#D2E85A", ink: "#1A1917" },
+    orange: { fill: "#C1724E", ink: "#17120F" },
+    blue: { fill: "#6E8A97", ink: "#17120F" },
+    ochre: { fill: "#C9B77F", ink: "#17120F" },
+    green: { fill: "#8A9273", ink: "#17120F" },
+    red: { fill: "#A9503F", ink: "#17120F" },
+    acid: { fill: "#C9B77F", ink: "#17120F" },
   },
 };
 

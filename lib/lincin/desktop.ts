@@ -3,7 +3,7 @@ import { useWindowDimensions } from "react-native";
 
 /**
  * Desktop (Lincin Desktop.dc.html, model 3c "Prikbord + lade"): vanaf
- * 1100px breed een rail van 196 met de navigatie en de hoofdkolom; in de
+ * 1024px breed een rail van 196 met de navigatie en de hoofdkolom; in de
  * feed staat rechts de gesprekkenlijst van 300.
  *
  * Een bijdrage en een gesprek nemen het hele venster (3d/3e): de rail
@@ -13,7 +13,7 @@ import { useWindowDimensions } from "react-native";
  * staat: de URL is waar je bent, en de terugknop van de browser werkt.
  */
 
-const DESKTOP_MIN = 1100;
+const DESKTOP_MIN = 1024;
 /** De rail in rust. */
 export const RAIL_W = 196;
 /** De rail op volle breedte (bijdrage, gesprek). */
