@@ -89,8 +89,8 @@ export type Database = {
           hero_url: string | null;
           /** 0054_profile_hero_links — hoogstens tien {label, url}. */
           links: { label: string; url: string }[];
-          /** 0058_profile_theme, 0067_restore_modern_theme — kleur | magazine | modern. */
-          theme: "kleur" | "magazine" | "modern";
+          /** 0058, 0067, 0071 — kleur | magazine | modern; leeg = nooit gekozen (modern). */
+          theme: "kleur" | "magazine" | "modern" | null;
         };
         Insert: {
           id: string;
@@ -104,7 +104,7 @@ export type Database = {
           bio?: string | null;
           hero_url?: string | null;
           links?: { label: string; url: string }[];
-          theme?: "kleur" | "magazine" | "modern";
+          theme?: "kleur" | "magazine" | "modern" | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];

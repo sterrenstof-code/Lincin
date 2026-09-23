@@ -4,7 +4,7 @@ import { listFriendColors } from "@/lib/api/friend-colors";
 import { getProfileTheme, setProfileTheme } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { syncUserPrefs } from "@/lib/lincin/prefs";
-import { setHueChoices, setTheme, setThemeFromProfile, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
+import { localThemeChoice, setHueChoices, setTheme, setThemeFromProfile, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
 
 /**
  * Het thema van de app: kleur, magazine of modern (2.2 §6).
@@ -47,7 +47,14 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     let alive = true;
     getProfileTheme(userId).then((remote) => {
-      if (alive && remote) setThemeFromProfile(remote);
+      if (!alive) return;
+      if (remote) setThemeFromProfile(remote);
+      else {
+        // Leeg profiel (0071): nooit gekozen — tenzij je op dít toestel wél
+        // koos. Dan schrijven we die keuze terug, zodat hij niet verloren gaat.
+        const local = localThemeChoice();
+        if (local) setProfileTheme(userId, local).catch(() => {});
+      }
     });
     // Jouw kleur per persoon (0062): de database wint van de lokale kopie.
     listFriendColors(userId).then((choices) => {

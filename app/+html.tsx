@@ -50,7 +50,7 @@ export default function Root({ children }: PropsWithChildren) {
     p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   var t = localStorage.getItem('lincin-thema');
-  if (t !== 'magazine' && t !== 'modern') t = 'kleur';
+  if (t !== 'kleur' && t !== 'magazine' && t !== 'modern') t = 'modern';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;

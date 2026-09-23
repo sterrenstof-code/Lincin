@@ -10,14 +10,14 @@ import { Appearance, Platform } from "react-native";
  * Het palet uit `HANDOFF.md` en `WIJZIGINGEN-2.2.md`. Twee standen,
  * "licht" en "donker", en drie thema's die de héle app veranderen:
  *
- *   KLEUR     (standaard) papier #F2EFE8 / inkt #141414, kaders 1.5px
+ *   KLEUR     papier #F2EFE8 / inkt #141414, kaders 1.5px
  *             inkt, koppen Archivo 900 smal kapitaal, geen ronding,
  *             vriendbanden gevuld, actieve tab = inktvlak, het blad tint
  *             mee met de vriend in beeld — als kleur van boven (2.2 §4).
  *   MAGAZINE  papier #F7F4EE / #14120E, haarlijnen 1px inkt, koppen
  *             Instrument Serif (geen kapitaal), poster-spreads met een
  *             naad van 6px, accent #F06A2B / #D9A05B (2.2 §2).
- *   MODERN    papier #F4F1EB / #0C0C0D, een bento-rooster van tegels op
+ *   MODERN    (standaard, 0071) papier #F4F1EB / #0C0C0D, een bento-rooster van tegels op
  *             een zachte kleurhaze, koppen in gewone Archivo (2.2 §1).
  *
  * Wat een thema vastlegt staat in `SPEC` (maten, stijlen) en in
@@ -850,7 +850,9 @@ function storedTheme(): LincinTheme | null {
 
 let preference: ThemePreference = initialPreference();
 let scheme: Scheme = preference === "system" ? systemScheme() : preference;
-let theme: LincinTheme = storedTheme() ?? "kleur";
+/** Wie nooit een thema koos, krijgt modern (0071). */
+export const DEFAULT_THEME: LincinTheme = "modern";
+let theme: LincinTheme = storedTheme() ?? DEFAULT_THEME;
 /**
  * Heeft de gebruiker op dít toestel zelf een thema gekozen? (2.2 §6)
  *
@@ -941,6 +943,11 @@ export function setTheme(next: LincinTheme) {
  * gebruiker op dit toestel níets koos: een eigen keuze wint altijd (2.2 §6).
  * Geeft terug of hij is toegepast.
  */
+/** Het thema dat op dit toestel zelf gekozen is, of `null`. */
+export function localThemeChoice(): LincinTheme | null {
+  return themeChosen ? theme : null;
+}
+
 export function setThemeFromProfile(next: LincinTheme): boolean {
   if (themeChosen) return false;
   if (next === theme) return true;
