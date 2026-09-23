@@ -14,6 +14,7 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 import { EmptyFeed } from "../feed/EmptyFeed";
 import type { Feed } from "../feed/useFeed";
 import type { EditionData, Tile } from "./DesktopFeed";
+import { UpToDateMark } from "@/components/lincin/UpToDateMark";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -164,9 +165,7 @@ function Front({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
               </Pressable>
             ))
           ) : (
-            <Text style={[serif(true), { paddingVertical: 10, borderTopWidth: 1, borderTopColor: color("ink", "linePaper"), fontSize: 19, lineHeight: 24, color: color("ink", "inkDim") }]}>
-              {t.upToDateDot} {t.allSeenBelow}
-            </Text>
+            <UpToDateMark />
           )}
         </View>
       </View>
@@ -447,7 +446,7 @@ function Chapter({ f, g, isNew, idx, total }: { f: Feed; g: FriendGroup; isNew: 
         { k: t.secNew, v: `${fresh.length} / ${g.posts.length}` },
         { k: "·", v: timeLabel(g.latest, t, lang) },
       ]
-    : [{ k: t.read, v: `${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}` }];
+    : [{ k: "", v: `${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}` }];
   const two = (n: number) => String(n).padStart(2, "0");
   return (
     <View

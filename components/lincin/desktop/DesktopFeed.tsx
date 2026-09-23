@@ -14,6 +14,7 @@ import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed, type Feed } from "../feed/useFeed";
 import { DesktopFeedMagazine } from "./DesktopFeedMagazine";
 import { DesktopFeedModern } from "./DesktopFeedModern";
+import { UpToDateMark } from "@/components/lincin/UpToDateMark";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -296,10 +297,7 @@ function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
               </Pressable>
             ))
           ) : (
-            <View style={{ flex: 1, padding: 24, justifyContent: "center", gap: 10 }}>
-              <Text style={[head(), { fontSize: 32, lineHeight: 30, color: color("ink") }]}>{t.upToDateDot}</Text>
-              <Text style={[capf(true), { fontSize: 18, lineHeight: 22, color: color("ink", "inkDim") }]}>{t.allSeenBelow}</Text>
-            </View>
+            <UpToDateMark />
           )}
           <View style={{ paddingVertical: 16, paddingHorizontal: 24, flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={metaStyle(10, color("ink", "inkDim"), 0.8, 500)}>{n ? `${n} ${t.unreadN}` : t.allRead}</Text>
@@ -454,15 +452,13 @@ function Band({ f, g, isNew, open }: { f: Feed; g: FriendGroup; isNew: boolean; 
   const { t } = f;
   const spec = useThemeSpec();
   const scheme = useScheme();
-  const lang = useLang();
   const fc = friendColor(g.hue, scheme);
   const filled = isNew && spec.bandFilled;
   const bg = filled ? fc.fill : spec.cardFill === "tile" ? color("tile", "tileFill") : color("paper");
   const ink = filled ? fc.ink : color("ink");
   const fresh = f.freshIn(g);
-  const status = isNew
-    ? [`${fresh.length} ${t.new}`, ...fresh.map((p) => p.title || `${p.kind} ${timeLabel(p.createdAt, t, lang)}`)].join(" · ")
-    : t.read;
+  // Alleen als er iets nieuw is, en zonder titels: die zie je als je openklapt.
+  const status = isNew ? `${fresh.length} ${t.new}` : "";
   const n = g.posts.length;
   const mine = f.isMine(g.authorId);
   return (
@@ -508,9 +504,11 @@ function Band({ f, g, isNew, open }: { f: Feed; g: FriendGroup; isNew: boolean; 
           <Text style={metaStyle(9, ink, 0.72, 600)}>{t.group}</Text>
         </View>
       ) : null}
-      <Text numberOfLines={1} style={[metaStyle(10, ink, 1, 600), { flexShrink: 1, minWidth: 0 }]}>
-        {status}
-      </Text>
+      {status ? (
+        <Text numberOfLines={1} style={[metaStyle(10, ink, 1, 600), { flexShrink: 1, minWidth: 0 }]}>
+          {status}
+        </Text>
+      ) : null}
       <View style={{ flex: 1 }} />
       <Text style={[metaStyle(10, ink, 0.6, 500), { opacity: 0.8 }]}>
         {n} {n === 1 ? t.post1 : t.posts}
@@ -685,7 +683,7 @@ function SeenRow({ f, g, top }: { f: Feed; g: FriendGroup; top: boolean }) {
       <View style={{ flex: 1 }} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
         <Text style={metaStyle(10, color("ink", "inkDim"), 0.6, 500)}>
-          {t.read} · {n} {n === 1 ? t.post1 : t.posts} · {timeLabel(g.latest, t, lang)}
+          {n} {n === 1 ? t.post1 : t.posts} · {timeLabel(g.latest, t, lang)}
         </Text>
         <Toggle open={false} ink={color("ink")} label={t.openAll} />
       </View>

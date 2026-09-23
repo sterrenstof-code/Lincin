@@ -20,12 +20,13 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 export const BAND_H = 56;
 
 /**
- * "2 nieuw" of "Gelezen · 3 bijdragen" — alleen de status. De titels
+ * "2 nieuw" of "3 bijdragen" — alleen de status; "gelezen" is de gewone
+ * stand en hoeft er niet te staan. De titels
  * stonden erachter, maar een dichte vriend hoort dicht te zijn: wat hij
  * deelde zie je als je openklapt.
  */
 export function statusLine(fresh: CardPost[], all: CardPost[], t: ReturnType<typeof useT>): string {
-  return fresh.length ? `${fresh.length} ${t.new}` : `${t.read} · ${all.length} ${all.length === 1 ? t.post1 : t.posts}`;
+  return fresh.length ? `${fresh.length} ${t.new}` : `${all.length} ${all.length === 1 ? t.post1 : t.posts}`;
 }
 
 export function SectionHead({

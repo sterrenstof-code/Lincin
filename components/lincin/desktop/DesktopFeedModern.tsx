@@ -12,6 +12,7 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 import { EmptyFeed } from "../feed/EmptyFeed";
 import type { Feed } from "../feed/useFeed";
 import type { EditionData, Tile } from "./DesktopFeed";
+import { UpToDateMark } from "@/components/lincin/UpToDateMark";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -230,11 +231,7 @@ function AlsoNew({ f, ed }: { f: Feed; ed: EditionData }) {
       {ed.alsoNew.length ? (
         ed.alsoNew.slice(0, 4).map((p) => <MiniRow key={p.id} f={f} p={p} size={44} radius={12} bg={color("paper")} />)
       ) : (
-        <View style={{ padding: 14, borderRadius: 14, backgroundColor: color("paper") }}>
-          <Text style={[sans(400), { fontSize: 15, lineHeight: 20, color: color("ink", "inkDim") }]}>
-            {t.upToDateDot} {t.allSeenBelow}
-          </Text>
-        </View>
+        <UpToDateMark />
       )}
     </View>
   );
@@ -355,7 +352,8 @@ function FriendRow({ f, g, isNew, open, width }: { f: Feed; g: FriendGroup; isNe
   const n = g.posts.length;
   const status = [
     g.isGroup ? t.group : null,
-    isNew ? `${fresh.length} ${t.new}` : t.read,
+    // Alleen iets zeggen als er iets nieuw is; "gelezen" is de gewone stand.
+    isNew ? `${fresh.length} ${t.new}` : null,
     `${n} ${n === 1 ? t.post1 : t.posts}`,
     timeLabel(g.latest, t, lang),
   ]
