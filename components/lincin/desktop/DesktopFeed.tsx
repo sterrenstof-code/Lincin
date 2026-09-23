@@ -30,10 +30,18 @@ import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
  * boven en "wie · soort · tijd" gedraaid, het beeld (carrousel bij een
  * album), titel en bijschrift, en een voetregel met de reacties en
  * REACTIE · n. Een tik opent de bijdrage op volle breedte.
+ *
+ * Per vriend staat de naam niet meer als band bóven de kaarten maar als
+ * kolom ernaast, op dezelfde regel: zo lees je vriend en bijdragen als één
+ * rij. Elke kaart heeft dezelfde vaste hoogte — een foto wordt bijgesneden
+ * in plaats van zijn eigen verhouding te krijgen — zodat de rijen gelijk
+ * lopen en er meer bijdragen tegelijk in beeld passen.
  */
 
-const MIN_CARD = 330;
-const CARD_H = 248;
+const MIN_CARD = 220;
+const CARD_H = 280;
+/** De kolom met de naam links van de kaarten van een vriend. */
+const HEAD_W = 200;
 /**
  * De kaartrug is 34 in kleur en magazine, 26 in modern (2.2 §9); hij komt
  * nu uit `spec.spine`. De constante blijft als terugval voor wie hem buiten
@@ -62,8 +70,14 @@ export function DesktopFeed() {
    * dragen hun eigen vlak.
    */
   const seam = spec.gap;
-  const cols = Math.max(1, Math.floor((gridW + seam) / (MIN_CARD + seam)));
-  const cardW = gridW ? (gridW - (cols - 1) * seam) / cols : MIN_CARD;
+  /** De kaarten van één rij, `avail` breed. */
+  const cardWidth = (avail: number) => {
+    const cols = Math.max(1, Math.floor((avail + seam) / (MIN_CARD + seam)));
+    return avail > 0 ? (avail - (cols - 1) * seam) / cols : MIN_CARD;
+  };
+  // Op tijd: het hele blad min de naad links en rechts. Per vriend: min de naamkolom.
+  const cardW = cardWidth(gridW - 2 * seam);
+  const friendCardW = cardWidth(gridW - 3 * seam - HEAD_W);
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const hueOf = (p: CardPost): Hue => groups.find((g) => g.key === p.authorId)?.hue ?? "orange";
@@ -72,25 +86,23 @@ export function DesktopFeed() {
   const children: ReactNode[] = [];
   const noFriends = f.empty && f.friendCount === 0;
 
-  const grid = (posts: CardPost[]) => (
+  const grid = (posts: CardPost[], width = cardW, padded = true) => (
     <View
       style={{
         flexDirection: "row",
         flexWrap: "wrap",
         gap: seam,
-        // De haarlijn komt uit de ondergrond; in modern is er geen lijn.
-        backgroundColor: seam > 1 ? "transparent" : color("ink", "postRule"),
-        paddingHorizontal: seam > 1 ? seam : 0,
-        paddingBottom: seam > 1 ? seam : 0,
-        borderBottomWidth: seam > 1 ? 0 : spec.border,
-        borderBottomColor: ink,
+        paddingHorizontal: padded ? seam : 0,
+        paddingBottom: padded ? seam : 0,
+        flex: padded ? undefined : 1,
+        minWidth: 0,
       }}
     >
       {posts.map((p) => (
         <Card
           key={p.id}
           post={p}
-          width={cardW}
+          width={width}
           number={numberOf(p.id)}
           hue={hueOf(p)}
           reactions={p.reactable ? reactions.grouped(p.id) : []}
@@ -125,24 +137,32 @@ export function DesktopFeed() {
         : unseen.length
           ? [`${unseen.length} ${t.new}`, ...unseen.map((p) => `${p.kind} ${timeLabel(p.createdAt, t, lang)}`)].join(" · ")
           : t.read;
-      sticky.push(children.length);
+      const open = !f.collapsed[g.key];
+      const bandProps = {
+        name: g.name,
+        sub,
+        count: `${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}`,
+        bg: spec.bandFilled ? fc.fill : spec.layout === "bento" ? color("tile", "tileFill") : color("paper"),
+        fg: spec.bandFilled ? fc.ink : ink,
+        bar: spec.bandFilled ? null : fc.fill,
+        onName: () => f.openProfile(g),
+        onPrivate: f.isMine(g.authorId) ? undefined : () => f.privateAbout(g),
+        open,
+        onToggle: () => f.toggleCollapsed(g.key),
+      };
+      // Ingeklapt: alleen de band over de volle breedte, zodat je een
+      // gekleurde lijst van vrienden ziet. Uitgeklapt: de naam links, de
+      // kaarten ernaast op dezelfde regel.
+      if (!open) {
+        children.push(<Band key={`band-${g.key}`} {...bandProps} />);
+        return;
+      }
       children.push(
-        <Band
-          key={`band-${g.key}`}
-          name={g.name}
-          sub={sub}
-          count={`${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}`}
-          bg={spec.bandFilled ? fc.fill : color("paper")}
-          fg={spec.bandFilled ? fc.ink : ink}
-          bar={spec.bandFilled ? null : fc.fill}
-          onName={() => f.openProfile(g)}
-          onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g)}
-          open={!f.collapsed[g.key]}
-          onToggle={() => f.toggleCollapsed(g.key)}
-        />,
+        <View key={`row-${g.key}`} style={{ flexDirection: "row", alignItems: "stretch", gap: seam, paddingTop: seam, paddingHorizontal: seam }}>
+          <FriendHead {...bandProps} />
+          {grid(g.posts, friendCardW, false)}
+        </View>,
       );
-      // Ingeklapt: alleen de band, zodat je een gekleurde lijst van vrienden ziet.
-      children.push(<View key={`grid-${g.key}`}>{f.collapsed[g.key] ? null : grid(g.posts)}</View>);
     });
   } else {
     timeGroups.forEach((g) => {
@@ -283,6 +303,86 @@ function Band({
   );
 }
 
+/**
+ * De naamkolom van een vriend, links naast zijn kaarten: kleurbalk en naam,
+ * wat er nieuw is, het aantal en BERICHT, en rechtsboven in-/uitklappen.
+ */
+function FriendHead({
+  name,
+  sub,
+  count,
+  bg,
+  fg,
+  bar,
+  onName,
+  onPrivate,
+  open,
+  onToggle,
+}: {
+  name: string;
+  sub: string;
+  count: string;
+  bg: string;
+  fg: string;
+  bar: string | null;
+  onName: () => void;
+  onPrivate?: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const t = useT();
+  const spec = useThemeSpec();
+  const round = spec.layout === "bento";
+  const shape = cardStyle();
+  const label = (s: string, extra: object = {}) => (
+    <Text numberOfLines={3} style={[mono(500), { fontSize: 9, lineHeight: 13, letterSpacing: 0.9, textTransform: "uppercase", color: fg }, extra]}>
+      {s}
+    </Text>
+  );
+  return (
+    <View
+      style={{
+        width: HEAD_W,
+        padding: 14,
+        gap: 10,
+        backgroundColor: bg,
+        borderRadius: shape.borderRadius,
+        // Kleur en magazine: dezelfde inktrand als de kaarten ernaast.
+        borderWidth: round || spec.bandFilled ? 0 : shape.borderWidth,
+        borderColor: shape.borderColor,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+        {bar ? <View style={{ width: 6, height: 22, borderRadius: round ? 3 : 0, backgroundColor: bar }} /> : null}
+        <Pressable accessibilityRole="link" onPress={onName} style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={[headStep(18), { color: fg }]}>
+            {name}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={open ? "Inklappen" : "Uitklappen"}
+          accessibilityState={{ expanded: open }}
+          onPress={onToggle}
+          hitSlop={6}
+          style={{ width: 24, height: 24, ...(round ? { borderRadius: 12, borderWidth: 1 } : { borderWidth: 1.5 }), borderColor: fg, alignItems: "center", justifyContent: "center", transform: [{ rotate: open ? "45deg" : "0deg" }] }}
+        >
+          <Text style={[mono(500), { fontSize: 14, lineHeight: 16, color: fg }]}>+</Text>
+        </Pressable>
+      </View>
+      {sub ? label(sub, { opacity: 0.85 }) : null}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+        {label(count, { letterSpacing: 0.54 })}
+        {onPrivate ? (
+          <Pressable accessibilityRole="button" onPress={onPrivate}>
+            {label(t.privateMsg, { letterSpacing: 0.9, textDecorationLine: "underline" })}
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 function Card({
   post: p,
   width,
@@ -312,10 +412,10 @@ function Card({
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const [mediaH, setMediaH] = useState(0);
-  // Een foto krijgt zijn eigen verhouding (Instagram, 4:5–1.91:1); de kaart
-  // wordt dan zo hoog als hij moet zijn en de rug meet mee.
+  // Elke kaart is even hoog; een foto wordt bijgesneden en opent op volle
+  // breedte in zijn eigen verhouding.
   const photo = p.media.kind === "foto";
-  const [cardH, setCardH] = useState(CARD_H);
+  const cardH = CARD_H;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
@@ -326,10 +426,9 @@ function Card({
     <Pressable
       accessibilityLabel={`${p.title}, ${p.authorName}`}
       onPress={onOpen}
-      onLayout={photo ? (e) => setCardH(Math.round(e.nativeEvent.layout.height)) : undefined}
       style={{
         width,
-        height: photo ? undefined : CARD_H,
+        height: CARD_H,
         flexDirection: "row",
         backgroundColor: shape.backgroundColor,
         borderRadius: shape.borderRadius,
@@ -353,17 +452,15 @@ function Card({
         </View>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        {photo ? (
-          // De muis wordt hier "post lezen": de hele kaart opent de bijdrage.
-          <View ref={read.ref as never}>
-            <Media media={p.media} height={CARD_H} hue={hue} postId={p.id} myUserId={myUserId} photoFit="ratio" />
-            {read.label}
-          </View>
-        ) : (
-          <View style={{ flex: 1, minHeight: 0, overflow: "hidden" }} onLayout={(e) => setMediaH(Math.round(e.nativeEvent.layout.height))}>
-            {mediaH > 0 ? <Media media={p.media} height={mediaH} hue={hue} postId={p.id} myUserId={myUserId} /> : null}
-          </View>
-        )}
+        {/* Bij een foto wordt de muis "post lezen": de hele kaart opent de bijdrage. */}
+        <View
+          ref={photo ? (read.ref as never) : undefined}
+          style={{ flex: 1, minHeight: 0, overflow: "hidden" }}
+          onLayout={(e) => setMediaH(Math.round(e.nativeEvent.layout.height))}
+        >
+          {mediaH > 0 ? <Media media={p.media} height={mediaH} hue={hue} postId={p.id} myUserId={myUserId} /> : null}
+          {photo ? read.label : null}
+        </View>
         <View style={{ paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: rule }}>
           <Text numberOfLines={2} style={[head(), { fontSize: 18, lineHeight: 18, letterSpacing: -0.09, color: ink }]}>
             {p.title}
