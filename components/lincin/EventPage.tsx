@@ -6,7 +6,6 @@ import { Platform, Pressable, Text, View, type StyleProp, type TextStyle, type V
 
 import { Avatar } from "@/components/Avatar";
 import type { ContributionWithAuthor } from "@/lib/api/events";
-import type { RsvpStatus } from "@/lib/api/event-rsvps";
 import { color, ON_DARK, ON_LIGHT, RASTER, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
@@ -20,8 +19,8 @@ import { useT } from "@/lib/i18n";
  *
  *   kleur     inktkaders van 1.5, geen ronding. Links het datumblok in de
  *             kleur van wie uitnodigt, de titel in Archivo 900 smal, mono
- *             labels. Antwoorden en acties als vakken in één band; de
- *             hoofdactie zuurgeel.
+ *             labels. De acties als vakken in één band; de hoofdactie
+ *             zuurgeel.
  *   magazine  vlakken op het tweede papier met een naad van 6 en een rug
  *             van 5 in de kleur. De dag als serif in de kleur, de titel in
  *             Instrument Serif, labels in Archivo 9–10 op .2em. Pillen;
@@ -47,7 +46,6 @@ export type EventFacts = {
   place: string;
   status: string;
   live: boolean;
-  past: boolean;
   guests: number;
   contributions: number;
   open: boolean;
@@ -405,67 +403,29 @@ function HeroModern({ f, wide, cover, faces, onGuests }: HeroProps) {
 }
 
 // ---------------------------------------------------------------
-// ANTWOORD EN ACTIES
+// ACTIES
 // ---------------------------------------------------------------
 
-export function EventActions({
-  wide,
-  rsvp,
-  actions,
-}: {
-  wide: boolean;
-  /** Weg bij een voorbij event. */
-  rsvp: { mine: RsvpStatus | null; onAnswer: (next: RsvpStatus | null) => void } | null;
-  actions: EventAction[];
-}) {
+/**
+ * Wat je met het event kunt doen. Geen "ik kom" / "misschien": wie
+ * uitgenodigd is, is erbij — er valt niets te antwoorden.
+ */
+export function EventActions({ wide, actions }: { wide: boolean; actions: EventAction[] }) {
   const th = useTh();
-  if (th === "magazine") return <ActionsMagazine wide={wide} rsvp={rsvp} actions={actions} />;
-  if (th === "modern") return <ActionsModern wide={wide} rsvp={rsvp} actions={actions} />;
-  return <ActionsKleur wide={wide} rsvp={rsvp} actions={actions} />;
+  if (th === "magazine") return <ActionsMagazine wide={wide} actions={actions} />;
+  if (th === "modern") return <ActionsModern wide={wide} actions={actions} />;
+  return <ActionsKleur wide={wide} actions={actions} />;
 }
 
 type ActionsProps = Parameters<typeof EventActions>[0];
 
-function ActionsKleur({ wide, rsvp, actions }: ActionsProps) {
-  const t = useT();
+function ActionsKleur({ wide, actions }: ActionsProps) {
   const spec = useThemeSpec();
   const ink = color("ink");
   const B = spec.border;
-  const answer = (label: string, s: RsvpStatus, first: boolean) => {
-    const on = rsvp?.mine === s;
-    return (
-      <Pressable
-        key={s}
-        accessibilityRole="button"
-        accessibilityState={{ selected: on }}
-        onPress={() => rsvp?.onAnswer(on ? null : s)}
-        style={({ pressed }) => ({
-          flex: 1,
-          minHeight: wide ? 64 : 52,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: wide ? 24 : 14,
-          backgroundColor: on ? ink : pressed ? color("ink", "postRule") : "transparent",
-          ...(first ? null : { borderLeftWidth: B, borderLeftColor: ink }),
-        })}
-      >
-        <Text style={[head(), { fontSize: wide ? 24 : 18, lineHeight: wide ? 24 : 18, color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>
-          {label}
-        </Text>
-        <Text style={[head(), { fontSize: wide ? 24 : 18, lineHeight: wide ? 24 : 18, color: color("paper") }]}>{on ? "✓" : ""}</Text>
-      </Pressable>
-    );
-  };
   return (
-    <Panel style={{ flexDirection: wide ? "row" : "column" }}>
-      {rsvp ? (
-        <View style={{ flexDirection: "row", flex: wide ? 1 : undefined, ...(wide ? { borderRightWidth: B, borderRightColor: ink } : { borderBottomWidth: B, borderBottomColor: ink }) }}>
-          {answer(t.imIn, "yes", true)}
-          {answer(t.maybe, "maybe", false)}
-        </View>
-      ) : null}
-      <View style={{ flexDirection: "row", flex: wide ? 1.4 : undefined }}>
+    <Panel>
+      <View style={{ flexDirection: "row" }}>
         {actions.map((a, i) => (
           <Pressable
             key={a.label}
@@ -498,34 +458,12 @@ function ActionsKleur({ wide, rsvp, actions }: ActionsProps) {
   );
 }
 
-function ActionsMagazine({ wide, rsvp, actions }: ActionsProps) {
-  const t = useT();
+function ActionsMagazine({ wide, actions }: ActionsProps) {
   const ink = color("ink");
   const primary = actions.find((a) => a.primary);
   const rest = actions.filter((a) => !a.primary);
-  const pill = (label: string, s: RsvpStatus) => {
-    const on = rsvp?.mine === s;
-    return (
-      <Pressable
-        key={s}
-        accessibilityRole="button"
-        accessibilityState={{ selected: on }}
-        onPress={() => rsvp?.onAnswer(on ? null : s)}
-        style={{ flex: 1, height: 44, borderRadius: 22, borderWidth: 1, borderColor: s === "yes" || on ? ink : color("ink", "postRule"), backgroundColor: on ? ink : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}
-      >
-        <Text style={kicker(10, on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink)}>{label}</Text>
-        <Text style={{ fontSize: 12, color: color("paper") }}>{on ? "✓" : ""}</Text>
-      </Pressable>
-    );
-  };
   return (
     <Panel style={{ flexDirection: wide ? "row" : "column", alignItems: wide ? "center" : "stretch", paddingVertical: wide ? 22 : 18, paddingHorizontal: wide ? 36 : 20, gap: wide ? 32 : 16 }}>
-      {rsvp ? (
-        <View style={{ flexDirection: "row", gap: 10, width: wide ? 380 : undefined }}>
-          {pill(t.imIn, "yes")}
-          {pill(t.maybe, "maybe")}
-        </View>
-      ) : null}
       <View style={{ flex: wide ? 1 : undefined, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 22 }}>
         {rest.map((a) => (
           <Pressable key={a.label} accessibilityRole="button" accessibilityLabel={a.label} onPress={a.onPress} disabled={a.disabled} style={{ paddingVertical: 14, marginVertical: -8 }}>
@@ -548,8 +486,7 @@ function ActionsMagazine({ wide, rsvp, actions }: ActionsProps) {
   );
 }
 
-function ActionsModern({ wide, rsvp, actions }: ActionsProps) {
-  const t = useT();
+function ActionsModern({ wide, actions }: ActionsProps) {
   const ink = color("ink");
   const pill = (key: string, label: string, onPress: () => void, on: boolean, opts: { dim?: boolean; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; grow?: boolean } = {}) => (
     <Pressable
@@ -580,13 +517,6 @@ function ActionsModern({ wide, rsvp, actions }: ActionsProps) {
   );
   return (
     <Panel style={{ padding: wide ? 22 : RASTER.tilePad, flexDirection: wide ? "row" : "column", alignItems: wide ? "center" : "stretch", gap: wide ? 24 : 14 }}>
-      {rsvp ? (
-        <View style={{ flexDirection: "row", gap: SEAM, width: wide ? 340 : undefined }}>
-          {pill("yes", `${t.imIn}${rsvp.mine === "yes" ? " ✓" : ""}`, () => rsvp.onAnswer(rsvp.mine === "yes" ? null : "yes"), rsvp.mine === "yes", { grow: true })}
-          {pill("maybe", `${t.maybe}${rsvp.mine === "maybe" ? " ✓" : ""}`, () => rsvp.onAnswer(rsvp.mine === "maybe" ? null : "maybe"), rsvp.mine === "maybe", { dim: true, grow: true })}
-        </View>
-      ) : null}
-      {rsvp && wide ? <View style={{ width: 1, alignSelf: "stretch", borderLeftWidth: 1, borderStyle: "dashed", borderLeftColor: color("ink", "dash") }} /> : null}
       <View style={{ flex: wide ? 1 : undefined, flexDirection: "row", flexWrap: "wrap", gap: SEAM, justifyContent: wide ? "flex-end" : "flex-start" }}>
         {actions.map((a) => pill(a.label, a.label, a.onPress, !!a.primary, { icon: a.icon, disabled: a.disabled, grow: !wide }))}
       </View>

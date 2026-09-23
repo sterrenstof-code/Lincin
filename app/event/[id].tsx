@@ -24,7 +24,6 @@ import {
   type Face,
 } from "@/components/lincin/EventPage";
 import { openLightbox } from "@/components/lincin/Lightbox";
-import { listRsvps, setRsvp, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
 import {
   approveEventJoinRequest,
   contributeToEvent,
@@ -56,7 +55,6 @@ import { supabase } from "@/lib/supabase/client";
 import { usePageTitle } from "@/lib/page-title";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
-import { useToast } from "@/lib/toast";
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
@@ -66,7 +64,6 @@ export default function EventDetailScreen() {
   const t = useT();
   const lang = useLang();
   const scheme = useScheme();
-  const toast = useToast();
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
   // De grote vorm alleen op desktop: op de telefoon staat de pagina in de
@@ -126,13 +123,6 @@ export default function EventDetailScreen() {
   const members = useQuery({
     queryKey: ["event-members", eventId],
     queryFn: () => listEventMembers(eventId),
-    enabled: !!eventId,
-  });
-
-  /** "Ik kom" / "Misschien" (0072), dezelfde antwoorden als op Events. */
-  const rsvps = useQuery({
-    queryKey: ["event-rsvps", [eventId]],
-    queryFn: () => listRsvps([eventId]),
     enabled: !!eventId,
   });
 
@@ -344,21 +334,6 @@ export default function EventDetailScreen() {
   }
 
 
-  async function onAnswer(next: RsvpStatus | null) {
-    const key = ["event-rsvps", [eventId]];
-    const prev = qc.getQueryData<EventRsvp[]>(key) ?? [];
-    const rest = prev.filter((r) => r.user_id !== myUserId);
-    qc.setQueryData<EventRsvp[]>(key, next ? [...rest, { event_id: eventId, user_id: myUserId, status: next }] : rest);
-    try {
-      await setRsvp(eventId, myUserId, next);
-      // Events toont hetzelfde antwoord; die lijst hoort het ook te weten.
-      qc.invalidateQueries({ queryKey: ["event-rsvps"] });
-    } catch (e: any) {
-      qc.setQueryData(key, prev);
-      toast.error(e?.message ?? t.failed);
-    }
-  }
-
   usePageTitle(event.data?.name ?? null);
   const back = useBackTarget(router, "/events");
 
@@ -403,15 +378,12 @@ export default function EventDetailScreen() {
   const locale = LOCALE[lang];
   const weekday = (d: Date) => d.toLocaleDateString(locale, { weekday: "short" }).replace(".", "");
   const sameDay = start.toDateString() === end.toDateString();
-  const past = end.getTime() <= Date.now();
   const memberList = members.data ?? [];
   const nameOf = (userId: string) => {
     if (userId === myUserId) return t.me.toLowerCase();
     const m = memberList.find((x) => x.user_id === userId);
     return m?.profile?.display_name ?? m?.profile?.username ?? "linc";
   };
-  const going = (rsvps.data ?? []).filter((r) => r.status === "yes").map((r) => nameOf(r.user_id));
-  const mine = (rsvps.data ?? []).find((r) => r.user_id === myUserId)?.status ?? null;
   const facts: EventFacts = {
     title: ev.name,
     description: ev.description?.trim() || null,
@@ -423,11 +395,13 @@ export default function EventDetailScreen() {
     place: ev.place?.trim() ?? "",
     status,
     live: ev.is_active,
-    past,
     guests: ev.members_count,
     contributions: ev.contributions_count,
     open: ev.join_policy !== "closed",
-    whoGo: going.length ? going.join(", ") : `${ev.members_count} ${ev.members_count === 1 ? "linc" : "lincs"}`,
+    // Wie uitgenodigd is, is erbij: er valt niets te antwoorden.
+    whoGo: memberList.length
+      ? memberList.map((m) => nameOf(m.user_id)).slice(0, 4).join(", ") + (memberList.length > 4 ? ` +${memberList.length - 4}` : "")
+      : `${ev.members_count} ${ev.members_count === 1 ? "linc" : "lincs"}`,
     fill: friendColor(hueFor(ev.host_user_id), scheme),
   };
   const faces: Face[] = memberList.map((m) => ({
@@ -486,7 +460,7 @@ export default function EventDetailScreen() {
   const body = (
     <EventSheet wide={wide}>
       <EventHero f={facts} wide={wide} cover={cover} faces={faces} onGuests={() => setGuestsOpen(true)} />
-      <EventActions wide={wide} rsvp={past ? null : { mine, onAnswer }} actions={actions} />
+      <EventActions wide={wide} actions={actions} />
 
       {error ? <EventNotice text={error} tone="red" /> : null}
       {/* Event-media is niet end-to-end versleuteld zoals je chats. */}
