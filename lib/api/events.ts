@@ -25,6 +25,8 @@ export type EventRow = {
   host_user_id: string;
   name: string;
   description: string | null;
+  /** 0073 — waar het is, vrije tekst. */
+  place: string | null;
   cover_image_path: string | null;
   starts_at: string;
   ends_at: string;
@@ -185,6 +187,7 @@ export async function createEvent(args: {
   hostUserId: string;
   name: string;
   description?: string | null;
+  place?: string | null;
   startsAt: Date;
   endsAt: Date;
   reveal: EventRevealMode;
@@ -201,6 +204,7 @@ export async function createEvent(args: {
       host_user_id: args.hostUserId,
       name: args.name.trim(),
       description: args.description?.trim() || null,
+      place: args.place?.trim() || null,
       starts_at: args.startsAt.toISOString(),
       ends_at: args.endsAt.toISOString(),
       reveal: args.reveal,
@@ -210,7 +214,7 @@ export async function createEvent(args: {
       join_policy: args.joinPolicy ?? "closed",
     })
     .select(
-      "id, host_user_id, name, description, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, join_policy, created_at"
+      "id, host_user_id, name, description, place, cover_image_path, starts_at, ends_at, reveal, reveal_delay_hours, max_guests, join_code, join_policy, created_at"
     )
     .single();
   if (error) throw error;

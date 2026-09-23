@@ -96,6 +96,7 @@ export default function EventCreateScreen() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [place, setPlace] = useState("");
   const [startsAt, setStartsAt] = useState(toLocalISO(defaultStart));
   const [endsAt, setEndsAt] = useState(toLocalISO(defaultEnd));
   const [reveal, setReveal] = useState<EventRevealMode>("after");
@@ -163,6 +164,7 @@ export default function EventCreateScreen() {
         hostUserId: myUserId,
         name: trimmedName,
         description: description || null,
+        place: place || null,
         startsAt: start,
         endsAt: end,
         reveal,
@@ -266,6 +268,21 @@ export default function EventCreateScreen() {
                 style={[FIELD, { minHeight: 84, textAlignVertical: "top" }]}
               />
               <CharCount value={description} max={500} />
+
+              <View className="h-5" />
+
+              <Text style={[feedType.kicker, { color: flameDeep, letterSpacing: 0.55, marginBottom: 8 }]}>
+                Plek (optioneel)
+              </Text>
+              <TextInput
+                value={place}
+                onChangeText={setPlace}
+                placeholder="bv. Marken, Paradiso, bij Noor thuis"
+                placeholderTextColor={feed.inkDim}
+                maxLength={80}
+                className="text-ink text-base"
+                style={FIELD}
+              />
             </View>
 
             {/* Cover (optioneel) */}

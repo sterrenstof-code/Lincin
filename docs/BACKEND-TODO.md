@@ -17,7 +17,7 @@ níets (geen verzonnen tekst). Hieronder wat er was, en wat ermee gebeurde.
 | Wat het prototype toont | Stand |
 |---|---|
 | "Ik kom" / "Misschien" en wie er komt ("jij, Noor, Sem") | **Geleverd.** Tabel `event_rsvps` (0072): één antwoord per lid per event, leesbaar voor leden en host (`lib/api/event-rsvps.ts`). Wie "ik kom" zei, staat bij het event; zonder antwoorden het aantal leden. |
-| De plek ("◎ Marken") | **Ontbreekt.** Een event heeft geen plek-veld; de app toont de eerste regel van de beschrijving op die plaats. Nodig: `events.place text` en een veld bij Nieuw event. |
+| De plek ("◎ Marken") | **Geleverd.** `events.place` (0073, vrije tekst, hoogstens 80), een veld "Plek" bij Nieuw event, en mee in `list_my_events` / `get_event_meta`. Oudere events zonder plek tonen de eerste regel van hun beschrijving. |
 | Wie uitnodigt ("Noor nodigt uit") | **Geleverd** uit bestaande data: de naam van de host via `getProfiles`. |
 
 ## Voorkeuren

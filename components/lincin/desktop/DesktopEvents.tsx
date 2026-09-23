@@ -99,7 +99,8 @@ export function DesktopEvents() {
         month: start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", ""),
         when: sameDay ? `${wd} ${hhmm(e.starts_at)}` : `${wd} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "")}`,
         host: e.is_host ? t.me : nameOf(e.host_user_id),
-        place: (e.description ?? "").split("\n")[0].trim(),
+        // De plek (0073); voor oudere events de eerste regel van de beschrijving.
+        place: e.place?.trim() || (e.description ?? "").split("\n")[0].trim(),
         whoGo: going.length ? going.join(", ") : `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`,
         mine: list.find((r) => r.user_id === myUserId)?.status ?? null,
         past: new Date(e.ends_at).getTime() <= now,

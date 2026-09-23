@@ -313,6 +313,7 @@ export type Database = {
           host_user_id: string;
           name: string;
           description: string | null;
+          place: string | null;
           cover_image_path: string | null;
           starts_at: string;
           ends_at: string;
@@ -328,6 +329,7 @@ export type Database = {
           host_user_id: string;
           name: string;
           description?: string | null;
+          place?: string | null;
           cover_image_path?: string | null;
           starts_at: string;
           ends_at: string;
