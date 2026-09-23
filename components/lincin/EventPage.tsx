@@ -6,9 +6,11 @@ import { Modal, Platform, Pressable, ScrollView, Text, View, type StyleProp, typ
 
 import { Avatar } from "@/components/Avatar";
 import type { ContributionWithAuthor } from "@/lib/api/events";
-import { color, ON_DARK, ON_LIGHT, RASTER, useThemeSpec } from "@/lib/design/theme";
+import { color, friendColor, ON_DARK, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
+
+import { Spread } from "./magazine/Spread";
 
 /**
  * De bladzijde van één event, per thema (HANDOFF.md §Thema's).
@@ -724,6 +726,8 @@ export type EventMenuItem = {
   sub?: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
+  /** De kleur van het vlak in magazine: van de persoon, of anders per regel een andere. */
+  hue?: Hue;
 };
 
 /**
@@ -734,8 +738,9 @@ export type EventMenuItem = {
  *
  *   kleur     kader van 1.5 inkt op papier; de kop in mono, de regels in
  *             Archivo 900 smal met een inktlijn ertussen.
- *   magazine  het tweede papier zonder kader; de kop in serif, de uitleg
- *             cursief, de regels in serif met een haarlijn.
+ *   magazine  zoals de voorpagina op de telefoon: elke keuze een eigen
+ *             kleurvlak met een naad van 6, een verticale rail met het
+ *             nummer, de keuze groot in serif en het icoon in een rondje.
  *   modern    een tegel van 18; de regels als eigen tegels met het icoon
  *             in een rondje.
  */
@@ -757,13 +762,13 @@ export function EventMenu({
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const B = spec.border;
-  const rule = th === "kleur" ? ink : color("ink", "postRule");
   const pick = (item: EventMenuItem) => {
     onClose();
     // Kleine vertraging zodat dit venster weg is voor er een volgend opent
     // (de camera, de bibliotheek, een profiel).
     setTimeout(item.onPress, 60);
   };
+  if (th === "magazine") return <MenuMagazine visible={visible} onClose={onClose} title={title} subtitle={subtitle} items={items} pick={pick} />;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "center", padding: 18 }}>
@@ -779,7 +784,7 @@ export function EventMenu({
             maxWidth: 520,
             maxHeight: "86%",
             alignSelf: "center",
-            backgroundColor: th === "magazine" ? color("paper2") : color("paper"),
+            backgroundColor: color("paper"),
             borderWidth: th === "kleur" ? B : 0,
             borderColor: ink,
             borderRadius: th === "modern" ? RASTER.tileRadius : 0,
@@ -799,11 +804,7 @@ export function EventMenu({
           >
             <Text
               style={[
-                th === "magazine"
-                  ? { ...serif(), fontSize: 32, lineHeight: 34, letterSpacing: -0.6, color: ink }
-                  : th === "modern"
-                    ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7, color: ink }
-                    : meta(10, dim, 1),
+                th === "modern" ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7, color: ink } : meta(10, dim, 1),
                 { flex: 1 },
               ]}
             >
@@ -820,7 +821,7 @@ export function EventMenu({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: th === "kleur" ? 0 : 16,
-                borderWidth: th === "magazine" ? 0 : th === "kleur" ? B : 1,
+                borderWidth: th === "kleur" ? B : 1,
                 borderColor: th === "kleur" ? ink : color("ink", "postRule"),
               }}
             >
@@ -831,7 +832,7 @@ export function EventMenu({
           {subtitle ? (
             <Text
               style={[
-                th === "magazine" ? { ...serif(true), fontSize: 17, lineHeight: 23 } : { ...sans(400), fontSize: 13.5, lineHeight: 19 },
+                { ...sans(400), fontSize: 13.5, lineHeight: 19 },
                 {
                   color: dim,
                   paddingHorizontal: th === "modern" ? 22 : 18,
@@ -847,7 +848,7 @@ export function EventMenu({
 
           <ScrollView
             style={{ flexGrow: 0 }}
-            contentContainerStyle={th === "modern" ? { padding: SEAM, gap: SEAM } : th === "magazine" ? { paddingBottom: 8 } : undefined}
+            contentContainerStyle={th === "modern" ? { padding: SEAM, gap: SEAM } : undefined}
           >
             {items.map((item, i) => (
               <Pressable
@@ -866,11 +867,7 @@ export function EventMenu({
                     ? { borderRadius: 14, backgroundColor: pressed ? color("ink", "postRule") : color("tile", "tileFill") }
                     : {
                         backgroundColor: pressed ? color("ink", "postRule") : "transparent",
-                        ...(th === "magazine"
-                          ? { borderTopWidth: 1, borderTopColor: rule, marginHorizontal: 18, paddingHorizontal: 0 }
-                          : i === 0
-                            ? null
-                            : { borderTopWidth: B, borderTopColor: ink }),
+                        ...(i === 0 ? null : { borderTopWidth: B, borderTopColor: ink }),
                       }),
                 })}
               >
@@ -887,9 +884,7 @@ export function EventMenu({
                   <Text
                     numberOfLines={1}
                     style={
-                      th === "magazine"
-                        ? { ...serif(), fontSize: 22, lineHeight: 26, color: ink }
-                        : th === "modern"
+                      th === "modern"
                           ? { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3, color: ink }
                           : { ...head(), fontSize: 19, lineHeight: 20, color: ink }
                     }
@@ -897,7 +892,7 @@ export function EventMenu({
                     {item.label}
                   </Text>
                   {item.sub ? (
-                    <Text numberOfLines={1} style={th === "magazine" ? kicker(9, dim) : meta(9, dim, 0.9)}>
+                    <Text numberOfLines={1} style={meta(9, dim, 0.9)}>
                       {item.sub}
                     </Text>
                   ) : null}
@@ -905,6 +900,88 @@ export function EventMenu({
                 <Text style={[meta(12, dim, 0), { textTransform: "none" }]}>→</Text>
               </Pressable>
             ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** De kleuren van de keuzes, om beurten — dezelfde vier als de vrienden. */
+const MENU_HUES: Hue[] = ["orange", "blue", "ochre", "green", "red"];
+
+/**
+ * Magazine: de keuzes als kleurvlakken, zoals de spreads op de voorpagina.
+ * De rail wisselt van kant en elk vlak heeft zijn eigen kleur; de kop
+ * staat groot in serif op het papier erboven.
+ */
+function MenuMagazine({
+  visible,
+  onClose,
+  title,
+  subtitle,
+  items,
+  pick,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  items: EventMenuItem[];
+  pick: (item: EventMenuItem) => void;
+}) {
+  const scheme = useScheme();
+  const ink = color("ink");
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: "center", padding: 18 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
+          onPress={onClose}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(11,10,12,0.55)" }}
+        />
+        <View style={{ width: "100%", maxWidth: 520, maxHeight: "88%", alignSelf: "center", backgroundColor: color("paper") }}>
+          <View style={{ paddingTop: 22, paddingHorizontal: 22, paddingBottom: 18, gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={kicker(9, color("ink", "inkDim"))}>{`${items.length} ${items.length === 1 ? "keuze" : "keuzes"}`}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Sluiten" onPress={onClose} hitSlop={10}>
+                <Text style={[kicker(9.5, ink), { textDecorationLine: "underline" }]}>Sluit</Text>
+              </Pressable>
+            </View>
+            <Text style={[serif(), { fontSize: 46, lineHeight: 42, letterSpacing: -1.4, color: ink }]}>{title}</Text>
+            {subtitle ? <Text style={[serif(true), { fontSize: 18, lineHeight: 23, color: color("ink", "inkDim") }]}>{subtitle}</Text> : null}
+          </View>
+          <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: SEAM, paddingTop: 0, gap: SEAM }}>
+            {items.map((item, i) => {
+              const fc = friendColor(item.hue ?? MENU_HUES[i % MENU_HUES.length], scheme);
+              const tall = items.length <= 4;
+              return (
+                <Spread
+                  key={`${item.label}-${i}`}
+                  index={i}
+                  page="notes"
+                  height={tall ? 112 : 84}
+                  fill={fc.fill}
+                  ink={fc.ink}
+                  rail={`№ ${String(i + 1).padStart(2, "0")}`}
+                  onPress={() => pick(item)}
+                  accessibilityLabel={item.label}
+                >
+                  <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                    <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                      {item.sub ? <Text style={kicker(8.5, fc.ink)}>{item.sub}</Text> : null}
+                      <Text numberOfLines={2} style={[serif(), { fontSize: tall ? 30 : 25, lineHeight: tall ? 30 : 25, letterSpacing: -0.6, color: fc.ink }]}>
+                        {item.label}
+                      </Text>
+                    </View>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: fc.ink, alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name={item.icon} size={18} color={fc.ink} />
+                    </View>
+                  </View>
+                </Spread>
+              );
+            })}
           </ScrollView>
         </View>
       </View>

@@ -504,6 +504,7 @@ export default function EventDetailScreen() {
           label: m.profile?.display_name ?? m.profile?.username ?? "Onbekend",
           sub: [m.role === "host" ? "gastheer" : null, m.profile?.username ? `@${m.profile.username}` : null].filter(Boolean).join(" · ") || undefined,
           icon: "person-outline" as const,
+          hue: hueFor(m.user_id),
           onPress: () => {
             const handle = m.profile?.username;
             if (handle) router.push(`/user/${handle}`);
