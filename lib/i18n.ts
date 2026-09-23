@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  firstComment: "Nog niemand zei iets. Jij als eerste?", writeBack: "Schrijf iets terug…", 
   inThisA: "In deze", inThisB: "editie", 
   kickerFriends: "01 · Feed · per vriend · geen algoritme", kickerTime: "01 · Feed · op tijd · nieuwste eerst", restOfEdition: "Rest van de editie", alreadySeen: "al gezien", upToDateDot: "Je bent bij.", allSeenBelow: "Alles hieronder heb je al gezien.", postsFrom: "bijdragen van", newFront: "Nieuw · voorpagina", seenFront: "Voorpagina · gezien", 
   upToDate: "Je bent bij", secNew: "Nieuw", secSeen: "Gezien", allRead: "Alles gelezen", folded: "ingeklapt", markAllRead: "Markeer als gelezen", openAll: "Alles openen", closeAll: "Alles inklappen", caughtUp: "Je bent helemaal bij. Jouw beurt?", openDef: "Bijdragen staan open", openDefSub: "Banden op de feed beginnen uitgeklapt", editie: "Editie", alsoNew: "Ook nieuw", frontPage: "Voorpagina", unreadN: "ongelezen", editionEnd: "— einde van de editie · morgen weer —",
@@ -60,6 +61,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  firstComment: "Nobody said anything yet. You first?", writeBack: "Write something back…", 
   inThisA: "In this", inThisB: "edition", 
   kickerFriends: "01 · Feed · by friend · no algorithm", kickerTime: "01 · Feed · by time · newest first", restOfEdition: "Rest of the edition", alreadySeen: "already seen", upToDateDot: "You're up to date.", allSeenBelow: "You've seen everything below.", postsFrom: "posts from", newFront: "New · front page", seenFront: "Front page · seen", 
   upToDate: "You're up to date", secNew: "New", secSeen: "Seen", allRead: "All read", folded: "folded", markAllRead: "Mark as read", openAll: "Open all", closeAll: "Fold all", caughtUp: "You're all caught up. Your turn?", openDef: "Posts start open", openDefSub: "Friend bands on the feed begin expanded", editie: "Edition", alsoNew: "Also new", frontPage: "Front page", unreadN: "unread", editionEnd: "— end of the edition · more tomorrow —",
@@ -103,6 +105,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  firstComment: "Noch hat niemand etwas gesagt. Du zuerst?", writeBack: "Schreib etwas zurück…", 
   inThisA: "In dieser", inThisB: "Ausgabe", 
   kickerFriends: "01 · Feed · nach Freund · kein Algorithmus", kickerTime: "01 · Feed · nach Zeit · neueste zuerst", restOfEdition: "Rest der Ausgabe", alreadySeen: "schon gesehen", upToDateDot: "Du bist auf dem Stand.", allSeenBelow: "Alles darunter hast du schon gesehen.", postsFrom: "Beiträge von", newFront: "Neu · Titelseite", seenFront: "Titelseite · gesehen", 
   upToDate: "Du bist auf dem Stand", secNew: "Neu", secSeen: "Gesehen", allRead: "Alles gelesen", folded: "eingeklappt", markAllRead: "Als gelesen markieren", openAll: "Alle öffnen", closeAll: "Alle einklappen", caughtUp: "Du bist auf dem Stand. Du bist dran?", openDef: "Beiträge stehen offen", openDefSub: "Bänder im Feed beginnen ausgeklappt", editie: "Ausgabe", alsoNew: "Auch neu", frontPage: "Titelseite", unreadN: "ungelesen", editionEnd: "— Ende der Ausgabe · morgen wieder —",
