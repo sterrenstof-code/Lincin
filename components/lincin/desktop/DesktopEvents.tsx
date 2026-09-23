@@ -5,12 +5,14 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { capf, mono, sans } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
 
 import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
+
+const SEAM = RASTER.seam;
 
 /**
  * Events op desktop (Lincin Desktop.dc.html, EVENTS): titel serif 40 met
@@ -21,6 +23,9 @@ import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
  *
  * Het ontwerp heeft IK KOM / MISSCHIEN; de backend kent geen rsvp, dus
  * staan hier — zoals op de telefoon — OPEN → en, voor de gastheer, DEEL CODE.
+ *
+ * Modern: geen haarlijnen maar losse tegels met een ronding van 18 en een
+ * naad van 6, zoals de rail ernaast.
  */
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
@@ -32,9 +37,13 @@ export function DesktopEvents() {
   const router = useRouter();
   const t = useT();
   const spec = useThemeSpec();
+  const round = spec.id === "modern";
   const [gridW, setGridW] = useState(0);
-  const cols = Math.max(1, Math.floor((gridW + 1) / (MIN + 1)));
-  const cardW = gridW ? (gridW - (cols - 1)) / cols : MIN;
+  // De naad tussen twee kaarten: een haarlijn van 1, of 6 in modern (met 6 rondom).
+  const seam = round ? SEAM : 1;
+  const inner = round ? gridW - 2 * SEAM : gridW;
+  const cols = Math.max(1, Math.floor((inner + seam) / (MIN + seam)));
+  const cardW = gridW ? (inner - (cols - 1) * seam) / cols : MIN;
 
   const events = useQuery({ queryKey: ["events", myUserId], queryFn: () => listMyEvents(myUserId), refetchOnWindowFocus: true });
   const data = events.data ?? [];
@@ -60,9 +69,14 @@ export function DesktopEvents() {
           {events.isLoading ? (
             <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: color("ink", "inkDim"), padding: 24, textTransform: "uppercase", letterSpacing: 1 }]}>{t.loading}</Text>
           ) : (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: color("ink") }}>
+            <View
+              style={[
+                { flexDirection: "row", flexWrap: "wrap", gap: seam },
+                round ? { padding: SEAM } : { backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: color("ink") },
+              ]}
+            >
               {[...active, ...upcoming, ...past].map((e) => (
-                <Card key={e.id} event={e} width={cardW} past={!e.is_active && new Date(e.ends_at).getTime() <= now} />
+                <Card key={e.id} event={e} width={cardW} round={round} past={!e.is_active && new Date(e.ends_at).getTime() <= now} />
               ))}
             </View>
           )}
@@ -72,7 +86,7 @@ export function DesktopEvents() {
   );
 }
 
-function Card({ event: e, width, past }: { event: EventWithMeta; width: number; past: boolean }) {
+function Card({ event: e, width, round, past }: { event: EventWithMeta; width: number; round: boolean; past: boolean }) {
   const router = useRouter();
   const t = useT();
   const lang = useLang();
@@ -93,10 +107,14 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
     <Pressable
       accessibilityLabel={e.name}
       onPress={() => router.push(`/event/${e.id}` as never)}
-      style={{ width, minHeight: 180, backgroundColor: color("paper"), flexDirection: "row", gap: 20, paddingVertical: 22, paddingHorizontal: 24, opacity: past ? 0.6 : 1 }}
+      style={{
+        width,
+        minHeight: 180,
+        ...(round ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : { backgroundColor: color("paper") }),
+        flexDirection: "row", gap: 20, paddingVertical: 22, paddingHorizontal: 24, opacity: past ? 0.6 : 1 }}
     >
       <View style={{ width: 76, gap: 6 }}>
-        <View style={{ width: 10, height: 10, backgroundColor: fc.fill }} />
+        <View style={{ width: 10, height: 10, borderRadius: round ? 5 : 0, backgroundColor: fc.fill }} />
         <Text style={[capf(false, true), { fontSize: 52, lineHeight: 44, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: dim }]}>
           {start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")}
@@ -118,7 +136,7 @@ function Card({ event: e, width, past }: { event: EventWithMeta; width: number; 
           {e.description ? `${e.description.split("\n")[0]} · ` : ""}
           {who}
         </Text>
-        <View style={{ flexDirection: "row", gap: 16, marginTop: "auto", paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}>
+        <View style={{ flexDirection: "row", gap: 16, marginTop: "auto", paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}>
           <MonoLink label="Open →" active onPress={() => router.push(`/event/${e.id}` as never)} />
           {e.is_host && !past ? <MonoLink label="Deel code" on={false} active onPress={() => router.push(`/event-link/${e.id}` as never)} /> : null}
         </View>

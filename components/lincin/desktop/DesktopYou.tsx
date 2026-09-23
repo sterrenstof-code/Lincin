@@ -9,7 +9,7 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { ON_DARK, THEMES, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, RASTER, THEMES, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { capf, mono, sans } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
@@ -17,7 +17,7 @@ import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
 
 import { useUnread } from "@/lib/lincin/unread";
 
-import { DesktopShell, MonoLink } from "./Shell";
+import { DesktopShell, MonoLink, edgeColor } from "./Shell";
 import { listMySharedLists } from "@/lib/api/shared-lists";
 
 /**
@@ -27,6 +27,9 @@ import { listMySharedLists } from "@/lib/api/shared-lists";
  * samen): elke groep een cursieve serif-kop van 20 op een inktlijn, rijen
  * van 13 hoog-en-laag op haarlijnen, rechts de waarde in mono — "AAN",
  * "TOESTEL", "NL". Instellingen is op desktop geen apart scherm.
+ *
+ * Modern: elke groep is een tegel met een ronding van 18, de rijen staan
+ * op gestippelde lijnen en aan/uit is een pilletje — geen inktlijnen.
  */
 
 /** toestel → licht → donker, zoals de rail. */
@@ -61,6 +64,7 @@ export function DesktopYou() {
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
+  const round = spec.id === "modern";
   const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
   const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
 
@@ -74,7 +78,7 @@ export function DesktopYou() {
   return (
     <DesktopShell active="you">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: spec.border, borderBottomColor: edgeColor(round), paddingBottom: 16 }}>
           {/* Je naam opent je profiel; bewerken staat onder Account. */}
           <Pressable
             accessibilityRole="link"
@@ -92,7 +96,7 @@ export function DesktopYou() {
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 24, marginTop: 26, maxWidth: 900 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: round ? RASTER.seam : 24, marginTop: round ? 18 : 26, maxWidth: 900 }}>
           <Group title={t.lookTitle}>
             <Row label={t.theme} sub={t.themeSub}>
               <View style={{ flexDirection: "row", gap: 12 }}>
@@ -125,7 +129,7 @@ export function DesktopYou() {
             <Row label={t.notifications} sub={unread.notifications ? `${unread.notifications} ${t.new}` : ""} onPress={() => router.push("/notifications")} last>
               {unread.notifications > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5 }}>
+                  <View style={{ backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5, borderRadius: round ? 999 : 0 }}>
                     <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: ON_DARK }]}>{unread.notifications}</Text>
                   </View>
                   <MonoLink label="→" active on />
@@ -168,8 +172,21 @@ export function DesktopYou() {
 
   function Group({ title, children }: { title: string; children: ReactNode }) {
     return (
-      <View style={{ flexGrow: 1, flexBasis: 280, minWidth: 280 }}>
-        <Text style={[capf(true, true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>{title}</Text>
+      <View
+        style={[
+          { flexGrow: 1, flexBasis: 280, minWidth: 280 },
+          round ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), paddingTop: RASTER.tilePad, paddingHorizontal: RASTER.tilePad, paddingBottom: 4 } : null,
+        ]}
+      >
+        <Text
+          style={[
+            capf(true, true),
+            { fontSize: 20, lineHeight: 22, color: ink, paddingBottom: 8 },
+            round ? { borderBottomWidth: 1, borderBottomColor: rule, borderStyle: "dashed" } : { borderBottomWidth: spec.border, borderBottomColor: ink },
+          ]}
+        >
+          {title}
+        </Text>
         <View>{children}</View>
       </View>
     );
@@ -181,7 +198,7 @@ export function DesktopYou() {
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={label}
         onPress={onPress}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule, borderStyle: round ? "dashed" : "solid" }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
@@ -193,6 +210,14 @@ export function DesktopYou() {
   }
 
   function Switch({ on }: { on: boolean }) {
+    if (round) {
+      // Modern: een pilletje van 34 × 20 met een knop die opzij schuift.
+      return (
+        <View accessibilityLabel={on ? t.on : t.off} style={{ width: 34, height: 20, borderRadius: 10, padding: 3, backgroundColor: on ? ink : rule, alignItems: on ? "flex-end" : "flex-start" }}>
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color("paper") }} />
+        </View>
+      );
+    }
     return (
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 8, height: 8, borderWidth: 1, borderColor: ink, backgroundColor: on ? ink : "transparent" }} />
