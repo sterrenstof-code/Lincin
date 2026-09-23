@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  upToDate: "Je bent bij", secNew: "Nieuw", secSeen: "Gezien", allRead: "Alles gelezen", folded: "ingeklapt", markAllRead: "Markeer als gelezen", openAll: "Alles openen", closeAll: "Alles inklappen", caughtUp: "Je bent helemaal bij. Jouw beurt?", openDef: "Bijdragen staan open", openDefSub: "Banden op de feed beginnen uitgeklapt", editie: "Editie", alsoNew: "Ook nieuw", frontPage: "Voorpagina", unreadN: "ongelezen", editionEnd: "— einde van de editie · morgen weer —",
   editPost: "Bewerk", save: "Bewaar", saving: "Bewaren…", textPh: "De tekst zelf…",
   addPhoto: "foto erbij", dropMany: "sleep meerdere foto's — tot 6", pollOptions: "Keuzes", pollAdd: "Keuze erbij", pollOne: "één stem per linc", pollMulti: "meerdere keuzes", pollPh1: "Tent", pollPh2: "Geen tent, auto", pollPhN: "Nog een keuze…", landscape: "liggend", portrait: "staand", square: "vierkant", noImage: "nog geen afbeelding",
   feedA: "Wat je vrienden", feedB: "maken", perFriend: "Per vriend", byTime: "Op tijd",
@@ -57,6 +58,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  upToDate: "You're up to date", secNew: "New", secSeen: "Seen", allRead: "All read", folded: "folded", markAllRead: "Mark as read", openAll: "Open all", closeAll: "Fold all", caughtUp: "You're all caught up. Your turn?", openDef: "Posts start open", openDefSub: "Friend bands on the feed begin expanded", editie: "Edition", alsoNew: "Also new", frontPage: "Front page", unreadN: "unread", editionEnd: "— end of the edition · more tomorrow —",
   editPost: "Edit", save: "Save", saving: "Saving…", textPh: "The text itself…",
   addPhoto: "add photo", dropMany: "drop several photos — up to 6", pollOptions: "Choices", pollAdd: "Add choice", pollOne: "one vote per linc", pollMulti: "multiple choices", pollPh1: "Tent", pollPh2: "No tent, car", pollPhN: "Another choice…", landscape: "landscape", portrait: "portrait", square: "square", noImage: "no image yet",
   feedA: "What your friends", feedB: "make", perFriend: "By friend", byTime: "By time",
@@ -97,6 +99,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  upToDate: "Du bist auf dem Stand", secNew: "Neu", secSeen: "Gesehen", allRead: "Alles gelesen", folded: "eingeklappt", markAllRead: "Als gelesen markieren", openAll: "Alle öffnen", closeAll: "Alle einklappen", caughtUp: "Du bist auf dem Stand. Du bist dran?", openDef: "Beiträge stehen offen", openDefSub: "Bänder im Feed beginnen ausgeklappt", editie: "Ausgabe", alsoNew: "Auch neu", frontPage: "Titelseite", unreadN: "ungelesen", editionEnd: "— Ende der Ausgabe · morgen wieder —",
   editPost: "Bearbeiten", save: "Speichern", saving: "Speichern…", textPh: "Der Text selbst…",
   addPhoto: "Foto hinzufügen", dropMany: "mehrere Fotos ablegen — bis 6", pollOptions: "Auswahl", pollAdd: "Auswahl hinzufügen", pollOne: "eine Stimme pro Linc", pollMulti: "mehrere Auswahlen", pollPh1: "Zelt", pollPh2: "Kein Zelt, Auto", pollPhN: "Noch eine Auswahl…", landscape: "liegend", portrait: "stehend", square: "quadratisch", noImage: "noch kein Bild",
   feedA: "Was deine Freunde", feedB: "machen", perFriend: "Nach Freund", byTime: "Nach Zeit",
@@ -165,9 +168,21 @@ export function getLang(): Lang {
   return lang;
 }
 
-export function setLang(next: Lang) {
+/** Wie wil weten dat jíj van taal wisselde (lib/lincin/prefs.ts bewaart hem). */
+const choiceListeners = new Set<() => void>();
+
+export function subscribeLang(fn: () => void) {
+  choiceListeners.add(fn);
+  return () => {
+    choiceListeners.delete(fn);
+  };
+}
+
+/** `quiet`: de taal komt uit de database en hoeft niet terug te worden geschreven. */
+export function setLang(next: Lang, opts?: { quiet?: boolean }) {
   if (next === lang) return;
   lang = next;
+  if (!opts?.quiet) for (const fn of choiceListeners) fn();
   AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   if (Platform.OS === "web" && typeof localStorage !== "undefined") {
     try {

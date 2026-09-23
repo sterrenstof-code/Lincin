@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { color, setPreference, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
-import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
+import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 import { listMySharedLists } from "@/lib/api/shared-lists";
@@ -76,7 +76,7 @@ function SettingsMobile() {
     if (ok) signOut();
   }
 
-  const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
+  const toggle = (name: TogglePref) => () => setPref(myUserId, name, !prefs[name]);
 
   /**
    * De vier groepen als gegevens. Kleur en magazine zetten ze in kaders,
@@ -135,6 +135,7 @@ function SettingsMobile() {
             </Mono>
           ),
         },
+        { key: "openDefault", label: t.openDef, sub: t.openDefSub, onPress: toggle("openDefault"), right: <Toggle on={prefs.openDefault} /> },
         { key: "tint", label: t.tint, sub: t.tintSub, onPress: toggle("tint"), right: <Toggle on={prefs.tint} /> },
       ],
     },
@@ -226,6 +227,9 @@ function SettingsMobile() {
             <Mono variant="meta" style={{ textTransform: "none" }}>
               {themeLabel} →
             </Mono>
+          </Row>
+          <Row label={t.openDef} sub={t.openDefSub} onPress={toggle("openDefault")}>
+            <Toggle on={prefs.openDefault} />
           </Row>
           <Row label={t.tint} sub={t.tintSub} onPress={toggle("tint")} last>
             <Toggle on={prefs.tint} />

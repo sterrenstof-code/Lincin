@@ -152,7 +152,7 @@ export function DesktopFeed() {
         : unseen.length
           ? [`${unseen.length} ${t.new}`, ...unseen.map((p) => `${p.kind} ${timeLabel(p.createdAt, t, lang)}`)].join(" · ")
           : t.read;
-      const open = !f.collapsed[g.key];
+      const open = f.isOpen(g.key);
       const bandProps = {
         name: g.name,
         sub,
@@ -164,7 +164,7 @@ export function DesktopFeed() {
         onName: () => f.openProfile(g),
         onPrivate: f.isMine(g.authorId) ? undefined : () => f.privateAbout(g),
         open,
-        onToggle: () => f.toggleCollapsed(g.key),
+        onToggle: () => f.toggleOpen(g.key),
       };
       // Ingeklapt: alleen de band over de volle breedte, zodat je een
       // gekleurde lijst van vrienden ziet. Uitgeklapt: de naam links, de

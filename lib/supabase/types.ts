@@ -910,6 +910,13 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["bug_confirms"]["Insert"]>;
         Relationships: [];
       };
+      /** 0070 — voorkeuren per gebruiker, alleen leesbaar voor de eigenaar. */
+      user_prefs: {
+        Row: { user_id: string; prefs: Record<string, unknown>; updated_at: string };
+        Insert: { user_id: string; prefs?: Record<string, unknown>; updated_at?: string };
+        Update: Partial<{ user_id: string; prefs: Record<string, unknown>; updated_at: string }>;
+        Relationships: [];
+      };
       link_previews: {
         Row: {
           url_hash: string;

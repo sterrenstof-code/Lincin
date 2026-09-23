@@ -1,33 +1,25 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  AccessibilityInfo,
-  Animated,
-  Easing,
-  Platform,
-  Pressable,
   ScrollView,
-  Text,
   useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
 
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-
 import { LincinScreen, columnWidth, vfade } from "@/components/lincin/Chrome";
 import { CARD_W, PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
-import { BORDER, Box, Btn, Chip, DashedCard, GAP, GUTTER, Head, Initial, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
+import { BORDER, Box, Btn, DashedCard, GAP, GUTTER, Head, line, Mono, Segment, Serif, SquareBtn } from "@/components/lincin/ui";
 import { ON_LIGHT, color, friendColor, useScheme } from "@/lib/design/theme";
-import { mono } from "@/lib/design/type";
-import { useLang, useT } from "@/lib/i18n";
-import { timeLabel, two, type FriendGroup, type TimeGroup } from "@/lib/lincin/model";
+import { useT } from "@/lib/i18n";
+import { two, type FriendGroup, type TimeGroup } from "@/lib/lincin/model";
 import { usePrefs } from "@/lib/lincin/prefs";
 import { markSeen } from "@/lib/read-state";
 import { registerScroller, unregisterScroller } from "@/lib/scroll-top";
 
 import { EmptyFeed } from "./EmptyFeed";
+import { BAND_H, FriendBand, SectionHead, SeenRow, statusLine } from "./FriendBlocks";
 import { useFeed } from "./useFeed";
 
 /**
@@ -43,11 +35,6 @@ import { useFeed } from "./useFeed";
  */
 
 const PULL_H = 56;
-/**
- * De hoogte van een band. Gemeten wordt niet de band zelf maar de rij
- * eronder: een kleefkop zit in een eigen wikkel en meldt zijn y als 0.
- */
-const BAND_H = 56;
 const TIME_BAND_H = 44;
 
 /** Hoeveel van de volgende kaart in een rij zichtbaar blijft. */
@@ -60,7 +47,9 @@ const ROW_PHOTO_MAX = 0.85;
 
 export function FeedKleur() {
   const f = useFeed();
-  const { t, view, changeView, feed, groups, timeGroups, reactions, seen, myUserId, sheet, setSheet } = f;
+  const { t, view, changeView, feed, groups, timeGroups, reactions, myUserId, sheet, setSheet } = f;
+  // De volgorde op het blad: eerst Nieuw, dan Gezien.
+  const order = useMemo(() => [...f.sections.neu, ...f.sections.old], [f.sections]);
   const scheme = useScheme();
   const prefs = usePrefs(myUserId);
   // Een kaart in een rij laat altijd het begin van de volgende zien (PEEK),
@@ -83,6 +72,7 @@ export function FeedKleur() {
    * bovenaan élk bezoek een instructie die je niet vroeg.
    */
   const [pullNear, setPullNear] = useState(false);
+  const [viewportH, setViewportH] = useState(0);
   const settled = useRef(false);
 
   useEffect(() => {
@@ -97,11 +87,12 @@ export function FeedKleur() {
     setIdx(0);
   }, [view]);
 
-  const settle = useCallback(() => {
-    if (settled.current) return;
+  const settle = useCallback((_w: number, h: number) => {
+    // Pas als het blad hoog genoeg is om onder de trekzone te beginnen.
+    if (settled.current || !viewportH || h < viewportH + PULL_H) return;
     settled.current = true;
     scrollRef.current?.scrollTo({ y: PULL_H, animated: false });
-  }, []);
+  }, [viewportH]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -129,7 +120,7 @@ export function FeedKleur() {
       setIdx((prev) => {
         if (prev === i) return prev;
         if (view === "friends") {
-          const newly = groups.slice(0, i).filter((g) => !passed.has(g.key));
+          const newly = order.slice(0, i).filter((g) => !passed.has(g.key));
           if (newly.length) {
             setPassed((p) => new Set([...p, ...newly.map((g) => g.key)]));
             newly.forEach((g) => g.posts.forEach((p) => markSeen(p.id)));
@@ -138,17 +129,20 @@ export function FeedKleur() {
         return i;
       });
     },
-    [refresh, refreshing, view, groups, passed],
+    [refresh, refreshing, view, order, passed],
   );
 
   // ---- de bladzijde ----
-  const current = view === "friends" ? groups[idx] : undefined;
-  const next = view === "friends" ? groups[idx + 1] : undefined;
+  const current = view === "friends" ? order[idx] : undefined;
+  const next = view === "friends" ? order[idx + 1] : undefined;
   const currentFill = current ? friendColor(current.hue, scheme).fill : null;
-  const tint = prefs.tint ? currentFill : null;
+  // Het blad kleurt alleen mee met een vriend die iets nieuws heeft; is alles
+  // gelezen, dan blijft het papier (mobile-kleur-home: `tintFill`).
+  const currentIsNew = !!current && f.sections.neu.includes(current);
+  const tint = prefs.tint && currentIsNew ? currentFill : null;
   // Het verloop kijkt vooruit: onderaan de tint van wie hierna komt.
-  const tintNext = tint && next ? friendColor(next.hue, scheme).fill : null;
-  const counter = view === "friends" && groups.length ? `${two(Math.min(idx + 1, groups.length))} / ${two(groups.length)}` : t.tabFeed;
+  const tintNext = tint && next && f.sections.neu.includes(next) ? friendColor(next.hue, scheme).fill : null;
+  const counter = view === "friends" && order.length ? `${two(Math.min(idx + 1, order.length))} / ${two(order.length)}` : t.tabFeed;
 
   const children: ReactNode[] = [];
   const sticky: number[] = [];
@@ -185,69 +179,109 @@ export function FeedKleur() {
   } else if (noFriends) {
     children.push(<EmptyFeed key="empty" />);
   } else if (view === "friends") {
-    groups.forEach((g, i) => {
-      const fresh = g.posts.filter((p) => !seen.has(p.id)).length;
-      const isSeen = fresh === 0 || passed.has(g.key);
-      const open = !f.collapsed[g.key];
+    // Nieuw en Gezien (HANDOFF 23 sep): nieuwe vrienden eerst, elk in een
+    // eigen getinte band; daaronder de geziene, ingeklapt tot één rij.
+    const { neu, old } = f.sections;
+    const row = (g: FriendGroup) => {
+      const i = order.indexOf(g);
+      return (
+        <ScrollView
+          key={`row-${g.key}`}
+          onLayout={(e) => {
+            tops.current[i] = e.nativeEvent.layout.y - BAND_H;
+          }}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={rowCardW + GAP}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          // Elke kaart zo hoog als haar inhoud; alleen "Zeg iets tegen" rekt mee.
+          contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 12, paddingBottom: 18, gap: GAP, alignItems: "flex-start" }}
+        >
+          {g.posts.map((p) => (
+            <PostCard
+              key={p.id}
+              post={p}
+              number={f.numberOf(p.id)}
+              hue={g.hue}
+              width={rowCardW}
+              maxPhotoH={Math.round(rowCardW * ROW_PHOTO_MAX)}
+              myUserId={myUserId}
+              reactions={reactions.grouped(p.id)}
+              onReact={(emoji) => reactions.toggle(p.id, emoji)}
+              onOpen={() => f.openPost(p)}
+              onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g, p)}
+              onProfile={() => f.openProfile(g)}
+            />
+          ))}
+          {f.isMine(g.authorId) ? null : (
+            <DashedCard width={110} style={{ alignSelf: "stretch" }} onPress={() => f.privateAbout(g)}>
+              {t.sayTo} {g.name} →
+            </DashedCard>
+          )}
+        </ScrollView>
+      );
+    };
+    const marker = (g: FriendGroup) => (
+      <View
+        key={`at-${g.key}`}
+        onLayout={(e) => {
+          tops.current[order.indexOf(g)] = e.nativeEvent.layout.y;
+        }}
+      />
+    );
+
+    if (neu.length) {
+      const n = neu.reduce((s, g) => s + f.freshIn(g).length, 0);
+      children.push(
+        <SectionHead key="sec-new" label={t.secNew} isNew meta={`${n} ${n === 1 ? t.post1 : t.posts}`} action={t.markAllRead} onAction={f.markAllRead} />,
+      );
+    }
+    neu.forEach((g) => {
+      const open = f.isOpen(g.key);
       sticky.push(children.length);
       children.push(
-        <Band
+        <FriendBand
           key={`band-${g.key}`}
           group={g}
-          seen={isSeen}
-          fresh={isSeen ? 0 : fresh}
+          isNew
+          status={statusLine(f.freshIn(g), g.posts, t)}
           open={open}
-          onToggle={() => f.toggleCollapsed(g.key)}
+          onToggle={() => f.toggleOpen(g.key)}
           onProfile={() => f.openProfile(g)}
         />,
       );
-      if (open) {
+      children.push(open ? row(g) : marker(g));
+    });
+
+    if (old.length) {
+      children.push(
+        <SectionHead
+          key="sec-seen"
+          label={neu.length ? t.secSeen : t.allRead}
+          meta={`${old.length} · ${t.folded}`}
+          style={neu.length ? { paddingTop: 22 } : undefined}
+        />,
+      );
+    }
+    old.forEach((g, k) => {
+      if (f.isOpen(g.key)) {
+        sticky.push(children.length);
         children.push(
-          <ScrollView
-            key={`row-${g.key}`}
-            onLayout={(e) => {
-              tops.current[i] = e.nativeEvent.layout.y - BAND_H;
-            }}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={rowCardW + GAP}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            // Elke kaart zo hoog als haar inhoud; alleen "Zeg iets tegen" rekt mee.
-            contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 14, paddingBottom: 16, gap: GAP, alignItems: "flex-start" }}
-          >
-            {g.posts.map((p) => (
-              <PostCard
-                key={p.id}
-                post={p}
-                number={f.numberOf(p.id)}
-                hue={g.hue}
-                width={rowCardW}
-                maxPhotoH={Math.round(rowCardW * ROW_PHOTO_MAX)}
-                myUserId={myUserId}
-                reactions={reactions.grouped(p.id)}
-                onReact={(emoji) => reactions.toggle(p.id, emoji)}
-                onOpen={() => f.openPost(p)}
-                onPrivate={f.isMine(g.authorId) ? undefined : () => f.privateAbout(g, p)}
-                onProfile={() => f.openProfile(g)}
-              />
-            ))}
-            {f.isMine(g.authorId) ? null : (
-              <DashedCard width={120} style={{ alignSelf: "stretch" }} onPress={() => f.privateAbout(g)}>
-                {t.sayTo} {g.name} →
-              </DashedCard>
-            )}
-          </ScrollView>,
-        );
-      } else {
-        children.push(
-          <View
-            key={`row-${g.key}`}
-            onLayout={(e) => {
-              tops.current[i] = e.nativeEvent.layout.y - BAND_H;
-            }}
+          <FriendBand
+            key={`band-${g.key}`}
+            group={g}
+            isNew={false}
+            status={statusLine([], g.posts, t)}
+            open
+            onToggle={() => f.toggleOpen(g.key)}
+            onProfile={() => f.openProfile(g)}
           />,
         );
+        children.push(row(g));
+      } else {
+        children.push(marker(g));
+        children.push(<SeenRow key={`seen-${g.key}`} group={g} top={k === 0 || f.isOpen(old[k - 1].key)} onToggle={() => f.toggleOpen(g.key)} />);
       }
     });
   } else {
@@ -287,224 +321,65 @@ export function FeedKleur() {
   }
 
   return (
-    <LincinScreen tab="feed" tint={tint} tintNext={tintNext} tabTint={currentFill} counter={counter}>
-      <View
-        style={{
-          paddingTop: 8,
-          paddingHorizontal: GUTTER,
-          flexDirection: "row",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <Serif variant="pageTitle" style={{ flex: 1, minWidth: 0 }}>
-          {t.feedA} <Serif variant="pageTitleItalic">{t.feedB}</Serif>
+    <LincinScreen tab="feed" tint={tint} tintNext={tintNext} tabTint={tint} counter={counter}>
+      <View style={{ paddingTop: 6, paddingHorizontal: GUTTER }}>
+        <Serif variant="pageTitle" numberOfLines={1} style={{ fontSize: 34, lineHeight: 36 }}>
+          {t.feedA} <Serif variant="pageTitleItalic" style={{ fontSize: 34, lineHeight: 36 }}>{t.feedB}</Serif>
         </Serif>
-        <Segment
-          options={[
-            { value: "friends", label: t.perFriend },
-            { value: "time", label: t.byTime },
-          ]}
-          value={view}
-          onChange={changeView}
-        />
+        <View
+          style={{
+            marginTop: 14,
+            height: 38,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            borderTopWidth: BORDER,
+            borderTopColor: line(),
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderWidth: 1.5,
+                borderColor: f.fresh ? color("red") : color("ink", "inkDim"),
+                backgroundColor: f.fresh ? color("red") : "transparent",
+              }}
+            />
+            <Mono variant="micro" tone="ink" style={{ fontSize: 9.5, fontWeight: "600", letterSpacing: 0.6 }}>
+              {f.fresh ? `${f.fresh} ${t.new}` : t.upToDate}
+            </Mono>
+          </View>
+          <Segment
+            compact
+            options={[
+              { value: "friends", label: t.perFriend },
+              { value: "time", label: t.byTime },
+            ]}
+            value={view === "time" ? "time" : "friends"}
+            onChange={changeView}
+          />
+        </View>
       </View>
       <ScrollView
         ref={scrollRef}
-        style={[{ flex: 1, marginTop: 12 }, vfade()]}
+        style={[{ flex: 1 }, vfade()]}
         stickyHeaderIndices={sticky}
         onScroll={onScroll}
         scrollEventThrottle={32}
         onContentSizeChange={settle}
+        onLayout={(e) => setViewportH(e.nativeEvent.layout.height)}
+        // Altijd iets om te scrollen: anders blijft de trekzone van 56 boven
+        // een korte feed staan als lege strook.
+        contentContainerStyle={{ minHeight: viewportH + PULL_H }}
         showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </LincinScreen>
-  );
-}
-
-// ---------------------------------------------------------------
-// De band van een vriend
-// ---------------------------------------------------------------
-
-function Band({
-  group: g,
-  seen,
-  fresh,
-  open,
-  onToggle,
-  onProfile,
-}: {
-  group: FriendGroup;
-  seen: boolean;
-  fresh: number;
-  open: boolean;
-  onToggle: () => void;
-  onProfile: () => void;
-}) {
-  const t = useT();
-  const lang = useLang();
-  const scheme = useScheme();
-  const fc = friendColor(g.hue, scheme);
-  const bandBg = seen ? color("paper") : fc.fill;
-  const bandInk = seen ? color("ink") : fc.ink;
-  const n = g.posts.length;
-  // 2.1: een band met iets ongelezens draagt geen rode chip en geen
-  // telling meer, maar een lopende regel van wat er nieuw is.
-  const ticker = fresh > 0;
-  return (
-    <View
-      style={{
-        height: BAND_H,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingHorizontal: GUTTER,
-        backgroundColor: bandBg,
-        borderTopWidth: 3,
-        borderTopColor: fc.fill,
-        borderBottomWidth: BORDER,
-        borderBottomColor: line(),
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${g.name}, ${t.viewProfile}`}
-        onPress={onProfile}
-        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}
-      >
-        <Initial
-          letter={g.initial}
-          size={30}
-          round={!g.isGroup}
-          bg={seen ? fc.fill : color("paper")}
-          fg={seen ? fc.ink : color("ink")}
-        />
-        <Head
-          variant="band"
-          color={bandInk}
-          numberOfLines={1}
-          style={ticker ? { flexShrink: 0, maxWidth: 150, textDecorationLine: "underline" } : { flexShrink: 1, textDecorationLine: "underline" }}
-        >
-          {g.name}
-        </Head>
-        {g.isGroup ? <Chip label={t.group} tone="outline" inkColor={bandInk} /> : null}
-        {seen ? <Chip label={t.read} tone="plain" inkColor={bandInk} /> : null}
-        {ticker ? (
-          <Ticker
-            text={`${fresh} ${t.new} · ${g.posts.map((p) => `${p.kind} ${timeLabel(p.createdAt, t, lang)}`).join(" · ")} · \u00a0\u00a0 `}
-            ink={bandInk}
-            bg={bandBg}
-          />
-        ) : null}
-      </Pressable>
-      {ticker ? null : (
-        <View style={{ alignItems: "flex-end", opacity: 0.8 }}>
-          <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
-            {n} {n === 1 ? t.post1 : t.posts}
-          </Mono>
-          <Mono variant="micro" color={bandInk} style={{ textTransform: "none", letterSpacing: 0 }}>
-            {timeLabel(g.latest, t, lang)}
-          </Mono>
-        </View>
-      )}
-      <SquareBtn
-        glyph="+"
-        size={30}
-        fontSize={16}
-        onPress={onToggle}
-        accessibilityLabel={open ? "Inklappen" : "Uitklappen"}
-        style={{ borderWidth: 1.5, borderColor: bandInk, transform: [{ rotate: open ? "45deg" : "0deg" }] }}
-      />
-    </View>
-  );
-}
-
-/**
- * De lopende regel in een ongelezen band (HANDOFF 2.1 §Motion — Ticker).
- *
- * Mono 600 9px kapitaal op .1em, aan beide kanten 10% uitgevaagd:
- * `2 NIEUW · FOTO 22:41 · PLEK 22:58 ·` twee keer achter elkaar, die
- * lineair van 0 naar −50% schuift, dus naadloos rondloopt. Duur:
- * max(7s, 0.28s × tekens). Staat stil als "beweging verminderen" aan is.
- */
-function Ticker({ text, ink, bg }: { text: string; ink: string; bg: string }) {
-  const [w, setW] = useState(0);
-  const [still, setStill] = useState(false);
-  const x = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    let alive = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((on) => alive && setStill(on))
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setStill);
-    return () => {
-      alive = false;
-      sub.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    x.setValue(0);
-    if (!w || still) return;
-    const loop = Animated.loop(
-      Animated.timing(x, {
-        toValue: -w / 2,
-        duration: Math.max(7, text.length * 0.28) * 1000,
-        easing: Easing.linear,
-        useNativeDriver: Platform.OS !== "web",
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [w, still, text, x]);
-
-  const style = { ...mono(600), fontSize: 9, lineHeight: 12, letterSpacing: 0.9, textTransform: "uppercase" as const, color: ink };
-  const fadeWeb =
-    Platform.OS === "web"
-      ? ({
-          maskImage: "linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)",
-          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)",
-        } as object)
-      : null;
-
-  return (
-    <View style={[{ flex: 1, minWidth: 0, height: 12, overflow: "hidden" }, fadeWeb]}>
-      {/* Een ruim spoor, zodat de regel nergens afbreekt; gemeten wordt de
-          tekst zelf, niet het spoor. */}
-      <Animated.View
-        style={{ position: "absolute", left: 0, top: 0, width: 10000, flexDirection: "row", alignItems: "flex-start", transform: [{ translateX: x }] }}
-      >
-        <Text
-          onLayout={(e) => setW(e.nativeEvent.layout.width)}
-          style={[style, Platform.OS === "web" ? ({ whiteSpace: "pre" } as object) : null]}
-        >
-          {text}
-          {text}
-        </Text>
-      </Animated.View>
-      {Platform.OS === "web" ? null : (
-        // Native kent geen masker: twee verlopen in de kleur van de band erover.
-        <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }} width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="tick-l" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset={0} stopColor={bg} stopOpacity={1} />
-              <Stop offset={1} stopColor={bg} stopOpacity={0} />
-            </LinearGradient>
-            <LinearGradient id="tick-r" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset={0} stopColor={bg} stopOpacity={0} />
-              <Stop offset={1} stopColor={bg} stopOpacity={1} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="10%" height="100%" fill="url(#tick-l)" />
-          <Rect x="90%" y="0" width="10%" height="100%" fill="url(#tick-r)" />
-        </Svg>
-      )}
-    </View>
   );
 }
 
@@ -540,14 +415,14 @@ function TimeBand({ group: g }: { group: TimeGroup }) {
 function EndCard({ onCompose }: { onCompose: () => void }) {
   const t = useT();
   return (
-    <View style={{ paddingHorizontal: GUTTER, paddingTop: 18, paddingBottom: 20, gap: 12, borderTopWidth: BORDER, borderTopColor: line() }}>
+    <View style={{ paddingHorizontal: GUTTER, paddingTop: 22, paddingBottom: 20, gap: 12 }}>
       <Mono variant="micro" tone="dim" style={{ textAlign: "center", textTransform: "none" }}>
         {t.endLine}
       </Mono>
       <Box fill="acid" style={{ paddingVertical: 16, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Head variant="endTitle" color={ON_LIGHT}>
-            {t.endTitle}
+            {t.caughtUp}
           </Head>
           <Serif variant="asideSmall" color={ON_LIGHT} style={{ fontSize: 15, lineHeight: 19, marginTop: 6 }}>
             {t.endSub}

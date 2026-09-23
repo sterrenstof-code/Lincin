@@ -275,6 +275,7 @@ export function SquareBtn({
   style,
   accessibilityLabel,
   borderless = false,
+  ink,
 }: {
   glyph: string;
   onPress?: () => void;
@@ -286,6 +287,8 @@ export function SquareBtn({
   style?: StyleProp<ViewStyle>;
   accessibilityLabel: string;
   borderless?: boolean;
+  /** De kleur van het teken en de rand, als hij op een gekleurde band staat. */
+  ink?: string;
 }) {
   return (
     <Pressable
@@ -314,7 +317,7 @@ export function SquareBtn({
           lineHeight: fontSize ? fontSize + 2 : Math.round(size * 0.55),
           letterSpacing: 0,
           textTransform: "none",
-          color: fill ? color("paper") : color("ink"),
+          color: ink ?? (fill ? color("paper") : color("ink")),
         }}
       >
         {glyph}
@@ -483,13 +486,45 @@ export function Segment<T extends string>({
   options,
   value,
   onChange,
+  compact = false,
   style,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  /**
+   * De weergaveschakelaar van de feed (mobile-kleur-home.dc.html): 28 hoog,
+   * een haarlijn in plaats van een kader, mono 600 9px.
+   */
+  compact?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  if (compact) {
+    return (
+      <View style={[{ flexDirection: "row", height: 28, borderWidth: 1, borderColor: color("ink", "linePaper"), overflow: "hidden" }, style]}>
+        {options.map((o, i) => {
+          const on = o.value === value;
+          return (
+            <Pressable
+              key={o.value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              onPress={() => onChange(o.value)}
+              style={{
+                paddingHorizontal: 8,
+                justifyContent: "center",
+                backgroundColor: on ? color("ink") : "transparent",
+                borderLeftWidth: i ? 1 : 0,
+                borderLeftColor: color("ink", "linePaper"),
+              }}
+            >
+              <Text style={[lincinType.action, { fontSize: 9, lineHeight: 11, letterSpacing: 0.4, color: on ? color("paper") : color("ink") }]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
   return (
     <View style={[{ flexDirection: "row", borderWidth: BORDER, borderColor: line() }, style]}>
       {options.map((o, i) => {

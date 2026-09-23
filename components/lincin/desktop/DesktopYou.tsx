@@ -13,7 +13,7 @@ import { ON_DARK, RASTER, THEMES, color, friendColor, hueFor, setPreference, typ
 import { capf, mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
-import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
+import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 
 import { useUnread } from "@/lib/lincin/unread";
 
@@ -71,7 +71,7 @@ export function DesktopYou() {
   const round = spec.id === "modern";
   const spread = spec.layout === "spread";
   const mine = friendColor(hueFor(myUserId), scheme);
-  const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
+  const toggle = (name: TogglePref) => () => setPref(myUserId, name, !prefs[name]);
   const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
 
   async function logout() {
@@ -129,6 +129,9 @@ export function DesktopYou() {
             </Row>
             <Row label={t.lightDark} sub={t.followsDevice} onPress={() => setPreference(THEME_NEXT[pref])}>
               <MonoLink label={standLabel} />
+            </Row>
+            <Row label={t.openDef} sub={t.openDefSub} onPress={toggle("openDefault")}>
+              <Switch on={prefs.openDefault} />
             </Row>
             <Row label={t.tint} sub={t.tintSub} onPress={toggle("tint")} last>
               <Switch on={prefs.tint} />

@@ -1,7 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 
 import type { PrivateTarget } from "@/components/lincin/PrivateSheet";
@@ -9,9 +8,10 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { listUnifiedFeed, type FeedItem } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { useLang, useT, type Dict } from "@/lib/i18n";
-import { openPost as openPostAnywhere, openProfile as openProfileAnywhere } from "@/lib/lincin/desktop";
+import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { useHueChoices } from "@/lib/design/theme";
-import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost } from "@/lib/lincin/model";
+import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost, type FriendGroup } from "@/lib/lincin/model";
+import { isFriendOpen, setFriendOpen, setFriendsOpen, setPref, usePrefs, type FeedView } from "@/lib/lincin/prefs";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
 
@@ -29,7 +29,7 @@ import { markSeen, useSeenPosts } from "@/lib/read-state";
  * hier elk hun eigen blad omheen.
  */
 
-type FeedView = "friends" | "time";
+export type { FeedView } from "@/lib/lincin/prefs";
 
 export function useFeed() {
   const { session } = useAuth();
@@ -38,90 +38,31 @@ export function useFeed() {
   const qc = useQueryClient();
   const t = useT();
   const lang = useLang();
+  const desktop = useIsDesktop();
 
-  // ---- de weergave: per vriend of op tijd, onthouden per gebruiker ----
-  const viewKey = `lincin.feed.view.${myUserId}`;
-  const [view, setView] = useState<FeedView>("friends");
-  useEffect(() => {
-    AsyncStorage.getItem(viewKey)
-      .then((v) => {
-        if (v === "friends" || v === "time") setView(v);
-      })
-      .catch(() => {});
-  }, [viewKey]);
-  const changeView = useCallback(
-    (v: FeedView) => {
-      setView(v);
-      AsyncStorage.setItem(viewKey, v).catch(() => {});
-    },
-    [viewKey],
-  );
+  // ---- de weergave en wie er open staat: per gebruiker, ook op de server ----
+  const prefs = usePrefs(myUserId);
+  /**
+   * Editie bestaat alleen op desktop; daar is hij ook de standaard. Een
+   * telefoon die "editie" erft van desktop toont Per vriend.
+   */
+  const stored = prefs.feedView ?? (desktop ? "editie" : "friends");
+  const view: FeedView = !desktop && stored === "editie" ? "friends" : stored;
+  const changeView = useCallback((v: FeedView) => setPref(myUserId, "feedView", v), [myUserId]);
 
   /**
-   * Ingeklapt: welke vrienden je klein houdt, onthouden per gebruiker.
-   *
-   * STANDAARD STAAT ALLES UITGEKLAPT. `{}` betekent: niemand ingeklapt.
-   * Alleen een vriend die je zelf dichtklapte staat in de lijst, en die
-   * keuze komt terug bij het volgende bezoek. Klap je iedereen in, dan is
-   * de feed een gekleurde lijst van je vrienden.
-   *
-   * Twee dingen die eerder niet klopten:
-   *
-   * 1. Het bewaren gebeurde ín de `setState`-functie. Die hoort zuiver te
-   *    zijn — React mag hem twee keer aanroepen of zijn uitkomst weggooien,
-   *    en dan schreven we een staat weg die nooit op het scherm kwam. Het
-   *    schrijven staat nu in een effect dat de staat volgt.
-   * 2. Het lezen kon een keuze overschrijven die je net had gemaakt: klapte
-   *    je iets dicht vóórdat de opslag antwoordde, dan won de opslag. Nu
-   *    wint jouw tik — dezelfde regel als bij het thema.
+   * Ingeklapt of open (HANDOFF 23 sep): STANDAARD STAAT ELKE VRIEND
+   * INGEKLAPT — naam, status en de titels van zijn bijdragen. Een tik opent
+   * de tegels, en die keuze blijft staan (`prefs.openFriends`), ook op een
+   * ander toestel. "Bijdragen staan open" in Instellingen draait de
+   * standaard om.
    */
-  const collapsedKey = `lincin.feed.collapsed.${myUserId}`;
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  /** Heb je in deze sessie zelf iets in- of uitgeklapt? */
-  const collapseTouched = useRef(false);
-  /** Heeft de opslag geantwoord? Pas daarna mogen we erin schrijven. */
-  const collapseLoaded = useRef(false);
-
-  useEffect(() => {
-    let alive = true;
-    collapseTouched.current = false;
-    collapseLoaded.current = false;
-    AsyncStorage.getItem(collapsedKey)
-      .then((raw) => {
-        if (!alive) return;
-        if (raw && !collapseTouched.current) {
-          try {
-            setCollapsed(JSON.parse(raw) as Record<string, boolean>);
-          } catch {
-            // Onleesbaar bewaard? Dan begint hij gewoon uitgeklapt.
-          }
-        }
-        collapseLoaded.current = true;
-      })
-      .catch(() => {
-        collapseLoaded.current = true;
-      });
-    return () => {
-      alive = false;
-    };
-  }, [collapsedKey]);
-
-  // Bewaren zodra de staat verandert — maar nooit vóór het lezen klaar is,
-  // anders overschrijft de lege beginstaat wat er al lag.
-  useEffect(() => {
-    if (!collapseLoaded.current) return;
-    AsyncStorage.setItem(collapsedKey, JSON.stringify(collapsed)).catch(() => {});
-  }, [collapsed, collapsedKey]);
-
-  const toggleCollapsed = useCallback((key: string) => {
-    collapseTouched.current = true;
-    setCollapsed((c) => {
-      const next = { ...c };
-      if (next[key]) delete next[key];
-      else next[key] = true;
-      return next;
-    });
-  }, []);
+  const isOpen = useCallback((key: string) => isFriendOpen(prefs, key), [prefs]);
+  const toggleOpen = useCallback(
+    (key: string) => setFriendOpen(myUserId, key, !isFriendOpen(prefs, key)),
+    [myUserId, prefs],
+  );
+  const setAllOpen = useCallback((keys: string[], open: boolean) => setFriendsOpen(myUserId, keys, open), [myUserId]);
 
   // ---- gegevens ----
   const feed = useQuery({
@@ -188,6 +129,38 @@ export function useFeed() {
   );
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
 
+  /**
+   * Nieuw en Gezien (HANDOFF 23 sep): twee groepen, nieuwe vrienden eerst.
+   *
+   * Een vriend blijft tijdens een bezoek in de groep waar hij begon: wie een
+   * bijdrage opent of voorbij scrolt, springt niet onder je vinger naar
+   * Gezien. Hij verhuist pas bij "Markeer als gelezen", of bij het volgende
+   * bezoek. Komt er iets nieuws bij, dan gaat hij wél naar Nieuw.
+   */
+  const placed = useRef(new Map<string, { isNew: boolean; fresh: number }>());
+  const [placeTick, setPlaceTick] = useState(0);
+  const sections = useMemo(() => {
+    const neu: FriendGroup[] = [];
+    const old: FriendGroup[] = [];
+    for (const g of groups) {
+      const n = g.posts.filter((p) => !seen.has(p.id)).length;
+      const was = placed.current.get(g.key);
+      const isNew = was ? was.isNew || n > was.fresh : n > 0;
+      placed.current.set(g.key, { isNew, fresh: Math.max(n, was && !was.isNew ? 0 : was?.fresh ?? 0) });
+      (isNew ? neu : old).push(g);
+    }
+    return { neu, old };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, seen, placeTick]);
+  const freshIn = useCallback((g: FriendGroup) => g.posts.filter((p) => !seen.has(p.id)), [seen]);
+  const markAllRead = useCallback(() => {
+    for (const g of sections.neu) {
+      for (const p of g.posts) markSeen(p.id);
+      placed.current.set(g.key, { isNew: false, fresh: 0 });
+    }
+    setPlaceTick((n) => n + 1);
+  }, [sections]);
+
   const refresh = useCallback(
     () => Promise.all([qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] }), reactions.refetch()]),
     [qc, myUserId, reactions],
@@ -241,8 +214,13 @@ export function useFeed() {
     timeGroups,
     byTime,
     heroPost,
-    collapsed,
-    toggleCollapsed,
+    isOpen,
+    toggleOpen,
+    setAllOpen,
+    sections,
+    freshIn,
+    markAllRead,
+    desktop,
     numberOf,
     reactions,
     seen,

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, type ReactN
 import { listFriendColors } from "@/lib/api/friend-colors";
 import { getProfileTheme, setProfileTheme } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
+import { syncUserPrefs } from "@/lib/lincin/prefs";
 import { setHueChoices, setTheme, setThemeFromProfile, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
 
 /**
@@ -56,6 +57,9 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
       alive = false;
     };
   }, [userId]);
+
+  // Je voorkeuren (0070): weergave, open vrienden, taal, schakelaars.
+  useEffect(() => (userId ? syncUserPrefs(userId) : undefined), [userId]);
 
   const choose = useCallback(
     (next: LincinTheme) => {
