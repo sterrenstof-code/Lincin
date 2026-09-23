@@ -1,28 +1,30 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { ActionSheet } from "@/components/ActionSheet";
-import { PageScroll, useChromeScroll } from "@/components/AppChrome";
-import { CloseBox, DesktopShell, MonoLink, TopBar } from "@/components/lincin/desktop/Shell";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
+import { LincinScreen, vfade } from "@/components/lincin/Chrome";
+import { CloseBox, DesktopShell, MonoLink, TopBar } from "@/components/lincin/desktop/Shell";
+import {
+  ContributionGrid,
+  ContributionsHead,
+  EventActions,
+  EventEmpty,
+  EventHero,
+  EventNotice,
+  EventSheet,
+  type EventAction,
+  type EventFacts,
+  type Face,
+} from "@/components/lincin/EventPage";
 import { openLightbox } from "@/components/lincin/Lightbox";
-import { useWide } from "@/components/Editorial";
+import { listRsvps, setRsvp, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
 import {
   approveEventJoinRequest,
   contributeToEvent,
@@ -42,23 +44,35 @@ import {
 } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
+import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { head, mono, sans, serif } from "@/lib/design/type";
 import { useHeroTag } from "@/lib/hero-transition";
 import { humanizeError } from "@/lib/errors";
+import { useLang, useT, type Lang } from "@/lib/i18n";
 import { plural } from "@/lib/plural";
 import { safeBack, useBackTarget } from "@/lib/nav";
 import { copyToClipboard } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
-import { creamOnDark, feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
-import { NL } from "@/lib/locale";
+import { useToast } from "@/lib/toast";
+
+const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
 export default function EventDetailScreen() {
   const router = useRouter();
-  const wide = useWide();
-  const chrome = useChromeScroll();
   const qc = useQueryClient();
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const toast = useToast();
+  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  useHueChoices();
+  // De grote vorm alleen op desktop: op de telefoon staat de pagina in de
+  // kolom van LincinScreen, ook op een tablet.
+  const desktop = useIsDesktop();
+  const wide = desktop;
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -112,6 +126,13 @@ export default function EventDetailScreen() {
   const members = useQuery({
     queryKey: ["event-members", eventId],
     queryFn: () => listEventMembers(eventId),
+    enabled: !!eventId,
+  });
+
+  /** "Ik kom" / "Misschien" (0072), dezelfde antwoorden als op Events. */
+  const rsvps = useQuery({
+    queryKey: ["event-rsvps", [eventId]],
+    queryFn: () => listRsvps([eventId]),
     enabled: !!eventId,
   });
 
@@ -322,8 +343,23 @@ export default function EventDetailScreen() {
     }
   }
 
+
+  async function onAnswer(next: RsvpStatus | null) {
+    const key = ["event-rsvps", [eventId]];
+    const prev = qc.getQueryData<EventRsvp[]>(key) ?? [];
+    const rest = prev.filter((r) => r.user_id !== myUserId);
+    qc.setQueryData<EventRsvp[]>(key, next ? [...rest, { event_id: eventId, user_id: myUserId, status: next }] : rest);
+    try {
+      await setRsvp(eventId, myUserId, next);
+      // Events toont hetzelfde antwoord; die lijst hoort het ook te weten.
+      qc.invalidateQueries({ queryKey: ["event-rsvps"] });
+    } catch (e: any) {
+      qc.setQueryData(key, prev);
+      toast.error(e?.message ?? t.failed);
+    }
+  }
+
   usePageTitle(event.data?.name ?? null);
-  const desktop = useIsDesktop();
   const back = useBackTarget(router, "/events");
 
   // Drie standen, geen één. Zolang dit `isLoading || !data` was, las een
@@ -337,10 +373,11 @@ export default function EventDetailScreen() {
         <DesktopShell active="events" mode="full">
           <TopBar left={<MonoLink label={`← ${back.label}`} active onPress={back.go} />} />
           <View style={{ padding: 24, gap: 12, alignItems: "flex-start" }}>
-            <Text style={[feedType.label, { color: feed.inkDim }]}>
-              {event.isLoading ? "Laden…" : event.isError ? "Dit event kon niet laden." : "Dit event bestaat niet meer."}
-            </Text>
-            {event.isError ? <MonoLink label="Opnieuw" active onPress={() => event.refetch()} /> : null}
+            <MonoLink
+              on={false}
+              label={event.isLoading ? t.loading : event.isError ? "Dit event kon niet laden." : "Dit event bestaat niet meer."}
+            />
+            {event.isError ? <MonoLink label={t.retry} active onPress={() => event.refetch()} /> : null}
           </View>
         </DesktopShell>
       );
@@ -362,492 +399,183 @@ export default function EventDetailScreen() {
   const revealed = contributions.data?.revealed ?? false;
   const status = eventStatusLabel(ev);
   const start = new Date(ev.starts_at);
+  const end = new Date(ev.ends_at);
+  const locale = LOCALE[lang];
+  const weekday = (d: Date) => d.toLocaleDateString(locale, { weekday: "short" }).replace(".", "");
+  const sameDay = start.toDateString() === end.toDateString();
+  const past = end.getTime() <= Date.now();
+  const memberList = members.data ?? [];
+  const nameOf = (userId: string) => {
+    if (userId === myUserId) return t.me.toLowerCase();
+    const m = memberList.find((x) => x.user_id === userId);
+    return m?.profile?.display_name ?? m?.profile?.username ?? "linc";
+  };
+  const going = (rsvps.data ?? []).filter((r) => r.status === "yes").map((r) => nameOf(r.user_id));
+  const mine = (rsvps.data ?? []).find((r) => r.user_id === myUserId)?.status ?? null;
+  const facts: EventFacts = {
+    title: ev.name,
+    description: ev.description?.trim() || null,
+    day: String(start.getDate()).padStart(2, "0"),
+    month: start.toLocaleDateString(locale, { month: "short" }).replace(".", ""),
+    when: sameDay ? `${weekday(start)} ${hhmm(ev.starts_at)}` : `${weekday(start)} — ${weekday(end)}`,
+    date: `${start.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })} · ${hhmm(ev.starts_at)}`,
+    host: ev.is_host ? t.me : nameOf(ev.host_user_id),
+    place: ev.place?.trim() ?? "",
+    status,
+    live: ev.is_active,
+    past,
+    guests: ev.members_count,
+    contributions: ev.contributions_count,
+    open: ev.join_policy !== "closed",
+    whoGo: going.length ? going.join(", ") : `${ev.members_count} ${ev.members_count === 1 ? "linc" : "lincs"}`,
+    fill: friendColor(hueFor(ev.host_user_id), scheme),
+  };
+  const faces: Face[] = memberList.map((m) => ({
+    id: m.user_id,
+    name: m.profile?.display_name ?? m.profile?.username,
+    avatarUrl: m.profile?.avatar_url,
+  }));
+
+  // Het beeld. `heroStyle` maakt hem het gedeelde element met de cover van
+  // de eventkaart: op web morpht de browser het ene naar het andere. Zie
+  // lib/hero-transition.
+  const cover = ev.cover_url ? (
+    <Pressable
+      accessibilityRole="imagebutton"
+      accessibilityLabel={ev.name}
+      onPress={() => openLightbox({ uris: [ev.cover_url], author: ev.name, kind: "event", time: hhmm(ev.starts_at), title: ev.description ?? "" })}
+      style={[{ width: "100%", height: "100%", ...heroStyle }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
+    >
+      <Image source={{ uri: ev.cover_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} />
+    </Pressable>
+  ) : null;
+
+  // Wat je met dit event kunt doen. "Kopieer link" heette "Bewaren", met
+  // een downloadpijl, en er werd niets bewaard. Wat de host instelt — wie
+  // er binnen mag, wie er wacht — zit achter "Instellingen", met een teller
+  // als er iemand wacht.
+  const actions: EventAction[] = [
+    { label: copied ? "Gekopieerd" : "Kopieer link", icon: "link-outline", onPress: onCopyInvite },
+    { label: "Uitnodigen", icon: "qr-code-outline", onPress: onOpenInvite },
+    ...(ev.is_host
+      ? [{ label: pendingCount > 0 ? `Instellingen · ${pendingCount}` : "Instellingen", icon: "options-outline" as const, onPress: () => setSettingsOpen(true) }]
+      : []),
+    {
+      label: uploadProgress ? `${uploadProgress.done} van ${uploadProgress.total}` : uploading ? "Bezig…" : "Voeg toe",
+      icon: "add",
+      onPress: () => setAddMenuOpen(true),
+      primary: true,
+      disabled: uploading,
+    },
+  ];
+
+  const openPhoto = (c: ContributionWithAuthor) => {
+    // Alle foto's van het event als diavoorstelling, vanaf deze.
+    const photos = contribs.filter((x) => x.media_type !== "video" && x.image_url);
+    openLightbox({
+      uris: photos.map((x) => x.image_url),
+      cacheKeys: photos.map((x) => x.image_path ?? undefined),
+      index: photos.indexOf(c),
+      author: c.author?.display_name ?? c.author?.username ?? "",
+      kind: "foto",
+      time: hhmm(c.created_at),
+      title: ev.name,
+    });
+  };
 
   const body = (
-        <View>
-          {/* ============ HERO ============
-              Zelfde opbouw als de uitgelichte vondst in de feed: kicker en
-              kop links, de feiten rechts, en het beeld eronder dat de rest
-              van het scherm vult. Zie DESIGN.md §5, "Layout, top to
-              bottom", punt 3. */}
-          <View
-            style={{
-              paddingHorizontal: wide ? 32 : 18,
-              paddingTop: 20,
-              paddingBottom: 28,
-              borderBottomWidth: FEED_BORDER,
-              borderBottomColor: feed.ink,
-            }}
-          >
-            {/* Hier stond een tweede "Alle events" met hetzelfde doel als
-                die van `PageScroll` hierboven — twee keer dezelfde terugweg
-                onder elkaar. De kop van de chrome draagt hem al. */}
-            <View
-              style={{
-                flexDirection: wide ? "row" : "column",
-                justifyContent: "space-between",
-                alignItems: wide ? "flex-start" : "stretch",
-                marginBottom: 22,
-              }}
-            >
-              <View style={wide ? { flex: 1, maxWidth: 640, paddingRight: 24 } : undefined}>
-                <Text
-                  style={[
-                    feedType.kicker,
-                    { color: flameDeep, letterSpacing: 0.55, fontSize: 11, marginBottom: 10 },
-                  ]}
-                >
-                  {`EVENT · ${status.toUpperCase()}`}
-                </Text>
-                <Text
-                  style={[wide ? feedType.hero : feedType.heroSmall, { color: feed.ink }]}
-                  numberOfLines={3}
-                >
-                  {ev.name}
-                </Text>
-                {ev.description ? (
-                  <Text
-                    style={[feedType.body, { color: feed.inkDim, marginTop: 14, maxWidth: 560 }]}
-                  >
-                    {ev.description}
-                  </Text>
-                ) : null}
-              </View>
+    <EventSheet wide={wide}>
+      <EventHero f={facts} wide={wide} cover={cover} faces={faces} onGuests={() => setGuestsOpen(true)} />
+      <EventActions wide={wide} rsvp={past ? null : { mine, onAnswer }} actions={actions} />
 
-              {/* De feitenkolom rechts — dezelfde plek waar de feed de deler
-                  en de bron zet. */}
-              <View style={wide ? { alignItems: "flex-end", paddingTop: 4 } : { marginTop: 20 }}>
-                <Text
-                  style={[
-                    feedType.label,
-                    { fontSize: 15, fontWeight: "700", color: feed.ink, marginBottom: 6,
-                      textAlign: wide ? "right" : "left" },
-                  ]}
-                >
-                  {start.toLocaleString(NL, {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </Text>
-                <Text
-                  style={[
-                    feedType.label,
-                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
-                  ]}
-                >
-                  {start.toLocaleTimeString(NL, { hour: "2-digit", minute: "2-digit" })}
-                </Text>
-                <Text
-                  style={[
-                    feedType.label,
-                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
-                  ]}
-                >
-                  {`${plural(ev.members_count, "gast", "gasten")} · ${plural(
-                    ev.contributions_count,
-                    "bijdrage",
-                    "bijdragen"
-                  )}`}
-                </Text>
+      {error ? <EventNotice text={error} tone="red" /> : null}
+      {/* Event-media is niet end-to-end versleuteld zoals je chats. */}
+      <EventNotice text="Event-media is niet end-to-end versleuteld zoals je chats." />
 
-                {/* En wie dat dan zijn. Een aantal zegt hoevéél mensen er
-                    komen; de gezichten zeggen of jouw mensen erbij zijn, en
-                    dat is wat je wil weten. */}
-                {(members.data ?? []).length > 0 ? (
-                  <Pressable
-                    onPress={() => setGuestsOpen(true)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      alignSelf: wide ? "flex-end" : "flex-start",
-                      marginTop: space.sm,
-                    }}
-                  >
-                    {(members.data ?? []).slice(0, 6).map((m, i) => (
-                      <View key={m.user_id} style={{ marginLeft: i === 0 ? 0 : -space.sm }}>
-                        <Avatar
-                          name={m.profile?.display_name ?? m.profile?.username}
-                          avatarUrl={m.profile?.avatar_url}
-                          size="sm"
-                          tint="light"
-                        />
-                      </View>
-                    ))}
-                    {(members.data ?? []).length > 6 ? (
-                      <Text style={[feedType.label, { color: feed.ink, marginLeft: space.sm }]}>
-                        {`+${(members.data ?? []).length - 6}`}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                ) : null}
-                <Text
-                  style={[
-                    feedType.label,
-                    { color: "#3A3540", lineHeight: 16, textAlign: wide ? "right" : "left" },
-                  ]}
-                >
-                  {ev.join_policy === "closed"
-                    ? "Gesloten · op goedkeuring"
-                    : "Open · iedereen met de link"}
-                </Text>
-              </View>
-            </View>
+      <ContributionsHead count={contribs.length} wide={wide} />
+      {!revealed ? (
+        <EventEmpty
+          icon="lock-closed"
+          title="Onthulling vergrendeld"
+          body={`${
+            ev.reveal === "after"
+              ? "Foto's worden onthuld na afloop van het event."
+              : ev.reveal === "delayed"
+                ? `Foto's worden onthuld ${ev.reveal_delay_hours}u na afloop.`
+                : "Foto's worden zichtbaar tijdens het event."
+          } Toevoegen kan nu al: maak een foto met de camera, of kies foto's en video's uit je bibliotheek.`}
+        />
+      ) : contribs.length === 0 ? (
+        <EventEmpty
+          icon="images-outline"
+          title="Nog niets toegevoegd"
+          body={`Wees de eerste. Tik op "Voeg toe": maak een foto met de camera, of kies foto's en video's uit je bibliotheek.`}
+        />
+      ) : (
+        <ContributionGrid
+          items={contribs}
+          wide={wide}
+          canDelete={(c) => c.user_id === myUserId || ev.is_host}
+          onDelete={onDeleteContribution}
+          onOpen={openPhoto}
+        />
+      )}
 
-            {/* Het beeld vult de rest van de hero. `heroTag` maakt hem het
-                gedeelde element met de cover van de eventkaart: op web morpht
-                de browser het ene naar het andere. Zie lib/hero-transition. */}
-            <View
-              style={{
-                width: "100%",
-                aspectRatio: wide ? 16 / 7 : 4 / 3,
-                borderWidth: FEED_BORDER,
-                borderColor: feed.ink,
-                backgroundColor: feed.postFill,
-                ...heroStyle,
-              }}
-            >
-              {ev.cover_url ? (
-                <Pressable
-                  accessibilityRole="imagebutton"
-                  accessibilityLabel={ev.name}
-                  onPress={() =>
-                    openLightbox({ uris: [ev.cover_url], author: ev.name, kind: "event", time: hhmm(ev.starts_at), title: ev.description ?? "" })
-                  }
-                  style={[{ width: "100%", height: "100%" }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
-                >
-                  <Image
-                    source={{ uri: ev.cover_url }}
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="cover"
-                    transition={150}
-                  />
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
+      {/* De volledige gastenlijst. */}
+      <ActionSheet
+        visible={guestsOpen}
+        onClose={() => setGuestsOpen(false)}
+        title={`Gasten (${memberList.length})`}
+        actions={memberList.map((m) => ({
+          label: `${m.profile?.display_name ?? m.profile?.username ?? "Onbekend"}${m.role === "host" ? " · gastheer" : ""}`,
+          icon: "person-outline" as const,
+          onPress: () => {
+            const handle = m.profile?.username;
+            if (handle) router.push(`/user/${handle}`);
+          },
+        }))}
+      />
 
-          {/* ============ ACTIES — één kader ============
-              Alles wat je met dit event kunt doen staat in hetzelfde kader,
-              op één rij van gelijke cellen. Wat de host instelt — wie er
-              binnen mag, wie er staat te wachten — zat eerder als tweede
-              omkaderd blok eronder; dat is beheer en geen actie, en het
-              hoort dus niet in de leesrichting van de pagina. Het zit nu
-              achter de laatste cel, met een teller als er iemand wacht. */}
-          <View
-            style={{
-              marginHorizontal: wide ? space.xxxl : space.lg,
-              marginTop: space.xl,
-              borderWidth: FEED_BORDER,
-              borderColor: feed.ink,
-              flexDirection: "row",
-            }}
-          >
-            {/* Heette "Bewaren", met een downloadpijl ernaast, en kopieerde
-                de uitnodigingslink naar je klembord. Drie keer hetzelfde
-                misverstand: het woord, het icoon, en het feit dat er
-                helemaal niets bewaard wordt. */}
-            <ActionCell label="Kopieer link" onPress={onCopyInvite} icon="link-outline" />
-            <ActionCell label="Uitnodigen" onPress={onOpenInvite} icon="qr-code-outline" />
-            {ev.is_host ? (
-              <ActionCell
-                label={
-                  pendingCount > 0 ? `Instellingen · ${pendingCount}` : "Instellingen"
-                }
-                onPress={() => setSettingsOpen(true)}
-                icon="options-outline"
-              />
-            ) : null}
-            <ActionCell
-              label={
-                uploadProgress
-                  ? `${uploadProgress.done} van ${uploadProgress.total}`
-                  : uploading
-                    ? "Bezig…"
-                    : "Voeg toe"
-              }
-              onPress={() => setAddMenuOpen(true)}
-              icon="add"
-              filled
-              disabled={uploading}
-              last
-            />
-          </View>
+      <AccessModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        policy={ev.join_policy}
+        onPolicy={onChangeJoinPolicy}
+        requests={joinRequests.data ?? []}
+        onApprove={onApproveRequest}
+        onDecline={onDeclineRequest}
+      />
 
-          {copied ? (
-            <Text
-              style={[
-                feedType.label,
-                { color: flameDeep, textAlign: "center", paddingTop: space.md },
-              ]}
-            >
-              Link gekopieerd
-            </Text>
-          ) : null}
-          {error ? (
-            <Text
-              style={[
-                feedType.label,
-                { color: flameDeep, textAlign: "center", paddingTop: space.md },
-              ]}
-            >
-              {error}
-            </Text>
-          ) : null}
-
-          {/* Privacy note: event media is not end-to-end encrypted like chats. */}
-          <View className="flex-row items-center justify-center mt-3 px-4">
-            <Ionicons name="information-circle-outline" color={feed.inkDim} size={13} />
-            <Text className="text-ink-muted text-[11px] ml-1.5 text-center">
-              Event-media is niet end-to-end versleuteld zoals je chats.
-            </Text>
-          </View>
-
-          {/* De volledige gastenlijst. */}
-          <ActionSheet
-            visible={guestsOpen}
-            onClose={() => setGuestsOpen(false)}
-            title={`Gasten (${(members.data ?? []).length})`}
-            actions={(members.data ?? []).map((m) => ({
-              label: `${m.profile?.display_name ?? m.profile?.username ?? "Onbekend"}${
-                m.role === "host" ? " · gastheer" : ""
-              }`,
-              icon: "person-outline" as const,
-              onPress: () => {
-                const handle = m.profile?.username;
-                if (handle) router.push(`/user/${handle}`);
-              },
-            }))}
-          />
-
-          {/* Beheer van de host: wie mag binnen, en wie wacht. */}
-          <Modal
-            visible={settingsOpen}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setSettingsOpen(false)}
-          >
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Pressable
-                onPress={() => setSettingsOpen(false)}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(11,10,12,0.55)",
-                }}
-              />
-              <View
-                style={{
-                  width: "100%",
-                  maxWidth: 520,
-                  alignSelf: "center",
-                  marginHorizontal: space.lg,
-                  backgroundColor: feed.lav,
-                  borderWidth: FEED_BORDER,
-                  borderColor: feed.ink,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: space.lg,
-                    paddingVertical: space.lg,
-                    borderBottomWidth: FEED_BORDER,
-                    borderBottomColor: feed.ink,
-                  }}
-                >
-                  <Text
-                    style={[
-                      feedType.kicker,
-                      { color: flameDeep, letterSpacing: 0.55, flex: 1 },
-                    ]}
-                  >
-                    TOEGANG
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Sluiten"
-                    onPress={() => setSettingsOpen(false)} hitSlop={8}>
-                    <Ionicons name="close" color={feed.ink} size={20} />
-                  </Pressable>
-                </View>
-
-                <View style={{ paddingHorizontal: space.lg, paddingVertical: space.lg }}>
-                  <Text
-                    style={[feedType.body, { fontSize: 13, lineHeight: 19, color: feed.inkDim }]}
-                  >
-                    {ev.join_policy === "closed"
-                      ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
-                      : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    flexDirection: "row",
-                    borderTopWidth: FEED_BORDER,
-                    borderTopColor: feed.ink,
-                  }}
-                >
-                  <PolicyCell
-                    label="Gesloten"
-                    active={ev.join_policy === "closed"}
-                    onPress={() => onChangeJoinPolicy("closed")}
-                  />
-                  <PolicyCell
-                    label="Open"
-                    active={ev.join_policy === "open"}
-                    onPress={() => onChangeJoinPolicy("open")}
-                    last
-                  />
-                </View>
-
-                {pendingCount > 0 ? (
-                  <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
-                    <View
-                      style={{
-                        paddingHorizontal: space.lg,
-                        paddingTop: space.md,
-                        paddingBottom: space.sm,
-                      }}
-                    >
-                      <Text style={[feedType.kicker, { color: feed.ink, letterSpacing: 0.55 }]}>
-                        {`${pendingCount} WACHT${pendingCount === 1 ? "" : "EN"} OP JE`}
-                      </Text>
-                    </View>
-                    {(joinRequests.data ?? []).map((request) => (
-                      <JoinRequestRow
-                        key={request.user_id}
-                        request={request}
-                        onApprove={() => onApproveRequest(request)}
-                        onDecline={() => onDeclineRequest(request)}
-                      />
-                    ))}
-                  </View>
-                ) : (
-                  <View
-                    style={{
-                      borderTopWidth: FEED_BORDER,
-                      borderTopColor: feed.ink,
-                      paddingHorizontal: space.lg,
-                      paddingVertical: space.lg,
-                    }}
-                  >
-                    <Text style={[feedType.label, { color: feed.inkDim }]}>
-                      Geen openstaande verzoeken.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </Modal>
-
-          <ActionSheet
-            visible={addMenuOpen}
-            onClose={() => setAddMenuOpen(false)}
-            title="Bijdrage toevoegen"
-            subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
-            actions={[
-              {
-                label: "Maak een foto met de camera",
-                icon: "camera-outline",
-                onPress: onOpenCamera,
-              },
-              {
-                label: "Kies uit je foto's en video's",
-                icon: "images-outline",
-                onPress: () => pickFromGallery(),
-              },
-              {
-                label: "Voeg link toe",
-                icon: "link-outline",
-                onPress: onOpenLinkCompose,
-              },
-            ]}
-          />
-
-          {/* Photo grid / reveal lock */}
-          {!revealed ? (
-            <View className="mt-5 bg-paper-soft p-6 items-center">
-              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="lock-closed" color={feed.ink} size={24} />
-              </View>
-              <Text className="text-ink font-semibold text-lg text-center mb-1">
-                Onthulling vergrendeld
-              </Text>
-              <Text className="text-ink-soft text-sm text-center leading-5">
-                {ev.reveal === "after"
-                  ? "Foto's worden onthuld na afloop van het event."
-                  : ev.reveal === "delayed"
-                    ? `Foto's worden onthuld ${ev.reveal_delay_hours}u na afloop.`
-                    : "Foto's worden zichtbaar tijdens het event."}
-                {"\n"}Toevoegen kan nu al: maak een foto met de camera, of kies
-                foto's en video's uit je bibliotheek.
-              </Text>
-            </View>
-          ) : contribs.length === 0 ? (
-            <View className="mt-5 bg-paper-soft p-6 items-center">
-              <View className="w-14 h-14 bg-paper-warm items-center justify-center mb-3">
-                <Ionicons name="images-outline" color={feed.ink} size={24} />
-              </View>
-              <Text className="text-ink font-semibold text-base mb-1">
-                Nog niets toegevoegd
-              </Text>
-              <Text className="text-ink-soft text-sm text-center leading-5">
-                Wees de eerste. Tap "Voeg toe" bovenaan: maak een foto met de
-                camera, of kies foto's en video's uit je bibliotheek.
-              </Text>
-            </View>
-          ) : (
-            <View className="mt-5 flex-row flex-wrap" style={{ marginHorizontal: -3 }}>
-              {contribs.map((c) => (
-                <ContributionTile
-                  key={c.id}
-                  contribution={c}
-                  canDelete={c.user_id === myUserId || ev.is_host}
-                  onDelete={() => onDeleteContribution(c)}
-                  onOpen={() => {
-                    // Alle foto's van het event als diavoorstelling, vanaf deze.
-                    const photos = contribs.filter((x) => x.media_type !== "video" && x.image_url);
-                    openLightbox({
-                      uris: photos.map((x) => x.image_url),
-                      cacheKeys: photos.map((x) => x.image_path ?? undefined),
-                      index: photos.indexOf(c),
-                      author: c.author?.display_name ?? c.author?.username ?? "",
-                      kind: "foto",
-                      time: hhmm(c.created_at),
-                      title: ev.name,
-                    });
-                  }}
-                />
-              ))}
-            </View>
-          )}
-        </View>
+      <ActionSheet
+        visible={addMenuOpen}
+        onClose={() => setAddMenuOpen(false)}
+        title="Bijdrage toevoegen"
+        subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
+        actions={[
+          { label: "Maak een foto met de camera", icon: "camera-outline", onPress: onOpenCamera },
+          { label: "Kies uit je foto's en video's", icon: "images-outline", onPress: () => pickFromGallery() },
+          { label: "Voeg link toe", icon: "link-outline", onPress: onOpenLinkCompose },
+        ]}
+      />
+    </EventSheet>
   );
 
   // Op het brede scherm staat een event in de Lincin-rail, net als de
-  // vondsten en gesprekken die je daar opent. Hier stond op elke breedte de
-  // oude kop (`AppChrome`) met een eigen tabbalk zonder Meldingen, en daar
-  // bovenop nog een tweede "Alle events" — je stapte vanuit Events in een
-  // andere app. De inhoud is voor beide vormen dezelfde.
+  // vondsten en gesprekken die je daar opent. De inhoud is voor beide
+  // vormen dezelfde; het thema bepaalt de vorm (components/lincin/EventPage).
   if (desktop) {
     return (
-      <DesktopShell active="events" mode="full">
+      <DesktopShell active="events" mode="full" tint={facts.fill.fill} tabTint={facts.fill.fill}>
         <TopBar
           left={
             <>
               <MonoLink label={`← ${back.label}`} active onPress={back.go} />
-              <MonoLink numberOfLines={1} label={`Event · ${ev.name}`} />
+              <MonoLink numberOfLines={1} on={false} label={`Event · ${ev.name}`} />
             </>
           }
           right={<CloseBox label="Sluit" onPress={() => safeBack(router, "/events")} />}
         />
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {body}
         </ScrollView>
       </DesktopShell>
@@ -855,294 +583,161 @@ export default function EventDetailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-feed-lav" edges={["top", "left", "right"]}>
-      <PageScroll
-        wide={wide}
-        progress={chrome.progress}
-        onScroll={chrome.onScroll}
-        scrollEventThrottle={chrome.scrollEventThrottle}
-        compact
-        backLabel="Alle events"
-        onBack={() => safeBack(router, "/(app)/events")}
-        gutter={false}
-        contentStyle={{ paddingBottom: 100 }}
-      >
+    <LincinScreen tab="events" tint={facts.fill.fill} counter="Event" back="/events">
+      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {body}
-      </PageScroll>
-    </SafeAreaView>
+      </ScrollView>
+    </LincinScreen>
   );
 }
 
-/** Eén helft van de open/gesloten-schakelaar. Dezelfde vorm als de actierij. */
-function PolicyCell({
-  label,
-  active,
-  onPress,
-  last = false,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  last?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={active}
-      style={({ pressed }) => ({
-        flex: 1,
-        alignItems: "center",
-        paddingVertical: 13,
-        backgroundColor: active ? feed.ink : pressed ? feed.panel : "transparent",
-        ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
-      })}
-    >
-      <Text
-        style={[
-          feedType.label,
-          { fontSize: 12, fontWeight: "700", color: active ? creamOnDark.DEFAULT : feed.ink },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** Eén openstaand toegangsverzoek: wie het is, en de twee knoppen. */
-function JoinRequestRow({
-  request,
+/**
+ * Beheer van de host: wie mag binnen, en wie wacht. Een blad in de vorm van
+ * het thema: kader (kleur), tweede papier (magazine), tegel (modern).
+ */
+function AccessModal({
+  visible,
+  onClose,
+  policy,
+  onPolicy,
+  requests,
   onApprove,
   onDecline,
 }: {
-  request: EventJoinRequest;
-  onApprove: () => void;
-  onDecline: () => void;
+  visible: boolean;
+  onClose: () => void;
+  policy: EventJoinPolicy;
+  onPolicy: (p: EventJoinPolicy) => void;
+  requests: EventJoinRequest[];
+  onApprove: (r: EventJoinRequest) => void;
+  onDecline: (r: EventJoinRequest) => void;
 }) {
-  const name =
-    request.profile?.display_name ?? request.profile?.username ?? "Onbekend";
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 18,
-        paddingVertical: 12,
-      }}
-    >
-      <Avatar
-        name={name}
-        avatarUrl={request.profile?.avatar_url ?? null}
-        size="sm"
-        tint="light"
-      />
-      <View style={{ flex: 1, paddingHorizontal: 12 }}>
-        <Text
-          style={[feedType.label, { fontSize: 13, fontWeight: "700", color: feed.ink }]}
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-        {request.profile?.username ? (
-          <Text style={[feedType.label, { color: feed.inkDim, marginTop: 2 }]} numberOfLines={1}>
-            {`@${request.profile.username}`}
-          </Text>
-        ) : null}
-      </View>
-      <Pressable
-        onPress={onDecline}
-        style={({ pressed }) => ({
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          marginRight: 8,
-          borderWidth: FEED_BORDER,
-          borderColor: feed.ink,
-          backgroundColor: pressed ? feed.panel : "transparent",
-        })}
-      >
-        <Text style={[feedType.label, { fontSize: 12, color: feed.ink }]}>Weiger</Text>
-      </Pressable>
-      <Pressable
-        onPress={onApprove}
-        style={({ pressed }) => ({
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          backgroundColor: pressed ? flameDeep : feed.ink,
-        })}
-      >
-        <Text style={[feedType.label, { fontSize: 12, fontWeight: "700", color: creamOnDark.DEFAULT }]}>
-          Toelaten
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
-
-/**
- * Eén tegel in de bijdrage-grid: foto, video (met play-badge) of tekst/link.
- * Toont een verwijder-knopje wanneer de kijker de bijdrage mag verwijderen
- * (eigen bijdrage of host).
- */
-function ContributionTile({
-  contribution: c,
-  canDelete,
-  onDelete,
-  onOpen,
-}: {
-  contribution: ContributionWithAuthor;
-  canDelete: boolean;
-  onDelete: () => void;
-  /** Een foto opent in de lichtbak. */
-  onOpen: () => void;
-}) {
-  return (
-    <View className="w-1/2 p-[3px]">
-      <View
-        className="bg-paper-warm overflow-hidden"
-        // Alles in dit systeem is vierkant (§7); dit was de enige ronding
-        // op de pagina.
-        style={{ aspectRatio: 1 }}
-      >
-        {c.media_type === "video" && c.image_url ? (
-          <>
-            <VideoTile uri={c.image_url} />
-            <View
-              pointerEvents="none"
-              className="absolute top-2 left-2 bg-shell/70 px-2 py-0.5 flex-row items-center"
-            >
-              <Ionicons name="videocam" color={creamOnDark.DEFAULT} size={11} />
-            </View>
-          </>
-        ) : c.image_url ? (
-          <Pressable
-            accessibilityRole="imagebutton"
-            accessibilityLabel={c.caption ?? "Foto"}
-            onPress={onOpen}
-            style={[{ width: "100%", height: "100%" }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
-          >
-            <Image
-              source={{ uri: c.image_url }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-              transition={150}
-            />
-          </Pressable>
-        ) : (
-          <View className="flex-1 items-center justify-center p-3">
-            <Text className="text-ink text-sm" numberOfLines={4}>
-              {c.caption ?? c.link_url ?? ""}
-            </Text>
-          </View>
-        )}
-
-        {canDelete && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Bijdrage verwijderen"
-            onPress={onDelete}
-            hitSlop={8}
-            className="absolute top-2 right-2 w-7 h-7 bg-shell/70 items-center justify-center"
-          >
-            <Ionicons name="trash-outline" color={creamOnDark.DEFAULT} size={14} />
-          </Pressable>
-        )}
-      </View>
-      <Text className="text-ink-muted text-[11px] mt-1 px-1" numberOfLines={1}>
-        {c.author?.display_name ?? c.author?.username ?? "Onbekend"}
-      </Text>
-    </View>
-  );
-}
-
-/**
- * Eén cel in de actierij onder de hero. De cellen delen hun kaders, net als
- * de tegelrij in de feed: geen losse knoppen met tussenruimte maar één
- * doorlopende band.
- */
-function ActionCell({
-  label,
-  icon,
-  onPress,
-  filled = false,
-  disabled = false,
-  last = false,
-}: {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void;
-  filled?: boolean;
-  disabled?: boolean;
-  last?: boolean;
-}) {
-  const { width } = useWindowDimensions();
-  /**
-   * Onder de 520 punten staat het label ónder het icoon.
-   *
-   * Vier cellen naast elkaar met icoon en tekst op één regel vroeg meer
-   * breedte dan er was. En omdat de cel geen `minWidth: 0` had, mocht de
-   * tekst niet krimpen: hij liep gewoon door over de scheidingslijn heen,
-   * de buurcel in. Dat is wat je zag — geen tekst die te lang was, maar een
-   * cel die weigerde smaller te worden dan zijn inhoud.
-   *
-   * Gestapeld krijgt elk woord de volle celbreedte in plaats van de helft.
-   */
-  const stacked = width < 520;
-
-  return (
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const ink = color("ink");
+  const rule = th === "kleur" ? ink : color("ink", "postRule");
+  const B = spec.border;
+  const round = th === "modern";
+  const label = (size: number, c: string) =>
+    th === "magazine"
+      ? { ...sans(500), fontSize: size, lineHeight: size + 4, letterSpacing: size * 0.2, textTransform: "uppercase" as const, color: c }
+      : { ...mono(500), fontSize: size, lineHeight: size + 4, letterSpacing: size * 0.1, textTransform: "uppercase" as const, color: c };
+  const btn = (text: string, onPress: () => void, filled: boolean, key?: string) => (
     <Pressable
+      key={key ?? text}
+      accessibilityRole="button"
       onPress={onPress}
-      disabled={disabled}
-      accessibilityLabel={label}
       style={({ pressed }) => ({
-        flex: filled ? 1.3 : 1,
-        // Zonder dit weigert een flex-kind smaller te worden dan zijn
-        // inhoud, en dan helpt afkappen niets.
-        minWidth: 0,
-        flexDirection: stacked ? "column" : "row",
-        alignItems: "center",
+        height: 36,
+        paddingHorizontal: 14,
         justifyContent: "center",
-        gap: stacked ? 5 : 0,
-        paddingVertical: stacked ? 12 : 16,
-        paddingHorizontal: 6,
-        backgroundColor: filled ? (pressed ? flameDeep : feed.ink) : "transparent",
-        ...(last ? null : { borderRightWidth: FEED_BORDER, borderRightColor: feed.ink }),
-        opacity: disabled ? 0.5 : 1,
+        borderRadius: round || th === "magazine" ? 999 : 0,
+        borderWidth: filled ? 0 : B,
+        borderColor: rule,
+        backgroundColor: filled ? ink : "transparent",
+        opacity: pressed ? 0.75 : 1,
       })}
     >
-      <Ionicons name={icon} color={filled ? creamOnDark.DEFAULT : feed.ink} size={stacked ? 17 : 15} />
-      <Text
-        numberOfLines={1}
-        style={[
-          feedType.label,
-          {
-            fontSize: stacked ? 11 : 13,
-            fontWeight: "700",
-            color: filled ? creamOnDark.DEFAULT : feed.ink,
-            marginLeft: stacked ? 0 : 8,
-            flexShrink: 1,
-            textAlign: "center",
-          },
-        ]}
-      >
-        {label}
-      </Text>
+      <Text style={label(9.5, filled ? color("paper") : ink)}>{text}</Text>
     </Pressable>
   );
-}
-
-/** Een video op een tegel: stil, met de systeembediening om hem te starten. */
-function VideoTile({ uri }: { uri: string }) {
-  const player = useVideoPlayer(uri, (p) => {
-    p.muted = true;
-  });
   return (
-    <VideoView
-      player={player}
-      style={{ width: "100%", height: "100%" }}
-      contentFit="cover"
-      nativeControls
-    />
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: "center", padding: 18 }}>
+        <Pressable onPress={onClose} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(11,10,12,0.55)" }} />
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 520,
+            alignSelf: "center",
+            backgroundColor: th === "magazine" ? color("paper2") : color("paper"),
+            borderWidth: th === "kleur" ? B : 0,
+            borderColor: ink,
+            borderRadius: round ? RASTER.tileRadius : 0,
+            overflow: "hidden",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", padding: 18, borderBottomWidth: B, borderBottomColor: rule }}>
+            <Text
+              style={[
+                th === "magazine" ? { ...serif(), fontSize: 30, lineHeight: 32 } : th === "modern" ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7 } : { ...head(), fontSize: 26, lineHeight: 26 },
+                { color: ink, flex: 1 },
+              ]}
+            >
+              Toegang
+            </Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Sluiten" onPress={onClose} hitSlop={8}>
+              <Ionicons name="close" color={ink} size={20} />
+            </Pressable>
+          </View>
+
+          <Text style={[th === "magazine" ? { ...serif(true), fontSize: 17, lineHeight: 23 } : { ...sans(400), fontSize: 13, lineHeight: 19 }, { color: color("ink", "inkDim"), padding: 18 }]}>
+            {policy === "closed"
+              ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
+              : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: round || th === "magazine" ? 6 : 0, paddingHorizontal: th === "kleur" ? 0 : 18, paddingBottom: th === "kleur" ? 0 : 18, borderTopWidth: th === "kleur" ? B : 0, borderTopColor: ink }}>
+            {(["closed", "open"] as const).map((p, i) => {
+              const on = policy === p;
+              return (
+                <Pressable
+                  key={p}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => onPolicy(p)}
+                  disabled={on}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    height: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: on ? ink : pressed ? color("ink", "postRule") : "transparent",
+                    borderRadius: th === "kleur" ? 0 : 999,
+                    borderWidth: th === "kleur" ? 0 : 1,
+                    borderColor: on ? ink : rule,
+                    ...(th === "kleur" && i > 0 ? { borderLeftWidth: B, borderLeftColor: ink } : null),
+                  })}
+                >
+                  <Text style={label(10, on ? color("paper") : ink)}>{p === "closed" ? "Gesloten" : "Open"}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={{ borderTopWidth: B, borderTopColor: rule, paddingVertical: 8 }}>
+            {requests.length ? (
+              <>
+                <Text style={[label(9.5, ink), { paddingHorizontal: 18, paddingVertical: 8 }]}>
+                  {`${requests.length} ${requests.length === 1 ? "wacht" : "wachten"} op je`}
+                </Text>
+                {requests.map((r) => {
+                  const name = r.profile?.display_name ?? r.profile?.username ?? "Onbekend";
+                  return (
+                    <View key={r.user_id} style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 18, paddingVertical: 8, gap: 10 }}>
+                      <Avatar name={name} avatarUrl={r.profile?.avatar_url ?? null} size="sm" tint="light" />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={1} style={[sans(500), { fontSize: 14, lineHeight: 18, color: ink }]}>
+                          {name}
+                        </Text>
+                        {r.profile?.username ? (
+                          <Text numberOfLines={1} style={label(9, color("ink", "inkDim"))}>
+                            {`@${r.profile.username}`}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {btn("Weiger", () => onDecline(r), false, `d-${r.user_id}`)}
+                      {btn("Toelaten", () => onApprove(r), true, `a-${r.user_id}`)}
+                    </View>
+                  );
+                })}
+              </>
+            ) : (
+              <Text style={[label(9.5, color("ink", "inkDim")), { padding: 18, paddingVertical: 10 }]}>Geen openstaande verzoeken.</Text>
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
