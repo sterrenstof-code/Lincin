@@ -11,6 +11,7 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed, type Feed } from "../feed/useFeed";
+import { DesktopFeedMagazine } from "./DesktopFeedMagazine";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -44,12 +45,13 @@ export function DesktopFeed() {
   const spec = useThemeSpec();
   const ed = useEdition(f);
 
+  if (spec.id === "magazine") return <DesktopFeedMagazine f={f} ed={ed} />;
+
   const noFriends = f.empty && f.friendCount === 0;
   const firstNew = f.sections.neu[0];
   // Per vriend kleurt het blad met de eerste nieuwe vriend (kleur); de editie
-  // blijft papier. Magazine zet de kleur van de voorpagina op het tabblad.
+  // blijft papier.
   const tint = view === "friends" && firstNew ? friendColor(firstNew.hue, scheme).fill : null;
-  const tabTint = spec.id === "magazine" && view === "editie" && ed.hero ? friendColor(ed.hero.hue, scheme).fill : null;
 
   let body: ReactNode;
   if (feed.isLoading) body = <Note text={t.loading} />;
@@ -60,7 +62,7 @@ export function DesktopFeed() {
   else body = <ByTime f={f} />;
 
   return (
-    <DesktopShell active="feed" tint={tint} tabTint={tabTint}>
+    <DesktopShell active="feed" tint={tint}>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <Head f={f} />
         {body}
@@ -75,7 +77,7 @@ export function DesktopFeed() {
 // De editie: wat er op de voorpagina staat
 // ---------------------------------------------------------------
 
-type Tile = CardPost & { hue: Hue; isNew: boolean };
+export type Tile = CardPost & { hue: Hue; isNew: boolean };
 
 function useEdition(f: Feed) {
   const { byTime, groups, seen, isMine } = f;
@@ -92,7 +94,7 @@ function useEdition(f: Feed) {
   }, [byTime, groups, seen, isMine]);
 }
 
-type EditionData = ReturnType<typeof useEdition>;
+export type EditionData = ReturnType<typeof useEdition>;
 
 // ---------------------------------------------------------------
 // De kop: kicker, titel, teller en de weergaveschakelaar
