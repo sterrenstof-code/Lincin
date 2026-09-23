@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  togetherIn: "Samen in", messageTo: "Bericht aan", allPosts: "Alle bijdragen", newestFirst: "nieuwste eerst", lincPortrait: "Linc · portret", aboutTitle: "Over", fromName: "van", 
   invites: "nodigt uit", upcomingN: "komend", newEventPlus: "Nieuw event +", eventsTitle: "Events", 
   firstComment: "Nog niemand zei iets. Jij als eerste?", writeBack: "Schrijf iets terug…", 
   inThisA: "In deze", inThisB: "editie", 
@@ -62,6 +63,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  togetherIn: "Together in", messageTo: "Message", allPosts: "All posts", newestFirst: "newest first", lincPortrait: "Linc · portrait", aboutTitle: "About", fromName: "by", 
   invites: "invites you", upcomingN: "upcoming", newEventPlus: "New event +", eventsTitle: "Events", 
   firstComment: "Nobody said anything yet. You first?", writeBack: "Write something back…", 
   inThisA: "In this", inThisB: "edition", 
@@ -107,6 +109,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  togetherIn: "Zusammen in", messageTo: "Nachricht an", allPosts: "Alle Beiträge", newestFirst: "neueste zuerst", lincPortrait: "Linc · Porträt", aboutTitle: "Über", fromName: "von", 
   invites: "lädt ein", upcomingN: "kommend", newEventPlus: "Neues Event +", eventsTitle: "Events", 
   firstComment: "Noch hat niemand etwas gesagt. Du zuerst?", writeBack: "Schreib etwas zurück…", 
   inThisA: "In dieser", inThisB: "Ausgabe", 
