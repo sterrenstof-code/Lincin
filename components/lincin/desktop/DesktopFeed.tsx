@@ -15,7 +15,10 @@ import { useLang, useT } from "@/lib/i18n";
 import { timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
+import { SEEN_OPACITY } from "../feed/FeedMagazine";
 import { EmptyFeed } from "../feed/EmptyFeed";
+import { Spread, SpreadCaption, SpreadKicker, SpreadTitle } from "../magazine/Spread";
+import { KindPreview } from "../modern/KindPreview";
 import { useFeed } from "../feed/useFeed";
 import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
 
@@ -36,12 +39,19 @@ import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
  * rij. Elke kaart heeft dezelfde vaste hoogte — een foto wordt bijgesneden
  * in plaats van zijn eigen verhouding te krijgen — zodat de rijen gelijk
  * lopen en er meer bijdragen tegelijk in beeld passen.
+ *
+ * Magazine legt hetzelfde rooster, maar met de poster-spreads van de
+ * telefoon (2.2 §2): elk item een volvlaks kleurvlak van de vriend, een
+ * verticale metarail die van kant wisselt, een serif-kop, een cursief
+ * onderschrift en rechts het beeld. Ook de naamkolom is daar een kleurvlak.
  */
 
 const MIN_CARD = 220;
 const CARD_H = 280;
 /** De kolom met de naam links van de kaarten van een vriend. */
 const HEAD_W = 200;
+/** Magazine: een spread is breder (hij draagt een beeldkolom) en even hoog als een kaart. */
+const MIN_SPREAD = 340;
 /**
  * De kaartrug is 34 in kleur en magazine, 26 in modern (2.2 §9); hij komt
  * nu uit `spec.spine`. De constante blijft als terugval voor wie hem buiten
@@ -71,9 +81,11 @@ export function DesktopFeed() {
    */
   const seam = spec.gap;
   /** De kaarten van één rij, `avail` breed. */
+  const spread = spec.layout === "spread";
+  const minW = spread ? MIN_SPREAD : MIN_CARD;
   const cardWidth = (avail: number) => {
-    const cols = Math.max(1, Math.floor((avail + seam) / (MIN_CARD + seam)));
-    return avail > 0 ? (avail - (cols - 1) * seam) / cols : MIN_CARD;
+    const cols = Math.max(1, Math.floor((avail + seam) / (minW + seam)));
+    return avail > 0 ? (avail - (cols - 1) * seam) / cols : minW;
   };
   // Op tijd: het hele blad min de naad links en rechts. Per vriend: min de naamkolom.
   const cardW = cardWidth(gridW - 2 * seam);
@@ -98,7 +110,10 @@ export function DesktopFeed() {
         minWidth: 0,
       }}
     >
-      {posts.map((p) => (
+      {posts.map((p, i) =>
+        spread ? (
+          <PostSpread key={p.id} post={p} index={i} width={width} number={numberOf(p.id)} hue={hueOf(p)} seen={seen.has(p.id)} f={f} />
+        ) : (
         <Card
           key={p.id}
           post={p}
@@ -111,7 +126,8 @@ export function DesktopFeed() {
           myUserId={myUserId}
           framed={seam > 1}
         />
-      ))}
+        ),
+      )}
     </View>
   );
 
@@ -142,9 +158,10 @@ export function DesktopFeed() {
         name: g.name,
         sub,
         count: `${g.posts.length} ${g.posts.length === 1 ? t.post1 : t.posts}`,
-        bg: spec.bandFilled ? fc.fill : spec.layout === "bento" ? color("tile", "tileFill") : color("paper"),
-        fg: spec.bandFilled ? fc.ink : ink,
-        bar: spec.bandFilled ? null : fc.fill,
+        // Magazine: een volvlaks kleurvlak, zoals de spreads ernaast.
+        bg: spec.bandFilled || spread ? fc.fill : spec.layout === "bento" ? color("tile", "tileFill") : color("paper"),
+        fg: spec.bandFilled || spread ? fc.ink : ink,
+        bar: spec.bandFilled || spread ? null : fc.fill,
         onName: () => f.openProfile(g),
         onPrivate: f.isMine(g.authorId) ? undefined : () => f.privateAbout(g),
         open,
@@ -348,7 +365,7 @@ function FriendHead({
         backgroundColor: bg,
         borderRadius: shape.borderRadius,
         // Kleur en magazine: dezelfde inktrand als de kaarten ernaast.
-        borderWidth: round || spec.bandFilled ? 0 : shape.borderWidth,
+        borderWidth: round || spec.bandFilled || spec.layout === "spread" ? 0 : shape.borderWidth,
         borderColor: shape.borderColor,
       }}
     >
@@ -380,6 +397,71 @@ function FriendHead({
         ) : null}
       </View>
     </View>
+  );
+}
+
+/** Magazine: één bijdrage als poster-spread, zoals de inhoudsopgave op de telefoon. */
+function PostSpread({
+  post: p,
+  index,
+  width,
+  number,
+  hue,
+  seen,
+  f,
+}: {
+  post: CardPost;
+  index: number;
+  width: number;
+  number: string;
+  hue: Hue;
+  seen: boolean;
+  f: ReturnType<typeof useFeed>;
+}) {
+  const t = useT();
+  const lang = useLang();
+  const scheme = useScheme();
+  const fc = friendColor(hue, scheme);
+  return (
+    <Spread
+      index={index}
+      page="feed"
+      fill={fc.fill}
+      ink={fc.ink}
+      rail={`№ ${number} · ${p.authorName} · ${timeLabel(p.createdAt, t, lang)}`}
+      onPress={() => f.openPost(p)}
+      accessibilityLabel={p.title}
+      height={CARD_H}
+      mediaWidth={Math.round(width * 0.42)}
+      media={<KindPreview post={p} scheme={scheme} variant="papier" />}
+      // Al gezien: licht gedempt, zodat het nieuwe opvalt.
+      style={{ width, marginHorizontal: 0, marginBottom: 0, opacity: seen ? SEEN_OPACITY : 1 }}
+    >
+      <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
+      <SpreadTitle ink={fc.ink} size={26}>
+        {p.untitled ? p.caption || p.kind : p.title}
+      </SpreadTitle>
+      <View style={{ gap: 10 }}>
+        {p.caption && !p.untitled ? (
+          <SpreadCaption ink={fc.ink} numberOfLines={2}>
+            {p.caption}
+          </SpreadCaption>
+        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${t.comment} ${p.commentCount}`} onPress={() => f.openPost(p)}>
+            <SpreadKicker ink={fc.ink}>
+              {t.comment}
+              {p.commentCount ? ` · ${p.commentCount}` : ""}
+            </SpreadKicker>
+          </Pressable>
+          {f.isMine(p.authorId) ? null : (
+            <Pressable accessibilityRole="button" accessibilityLabel={t.privateMsg} onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}>
+              <SpreadKicker ink={fc.ink}>{t.privateShort}</SpreadKicker>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </Spread>
   );
 }
 

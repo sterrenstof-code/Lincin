@@ -69,6 +69,7 @@ export function Spread({
   children,
   media,
   mediaWidth = 138,
+  height: fixedH,
   onPress,
   accessibilityLabel,
   style,
@@ -85,12 +86,14 @@ export function Spread({
   /** De beeldkolom; in de feed 138 px breed. */
   media?: React.ReactNode;
   mediaWidth?: number;
+  /** Een vaste hoogte in plaats van die van de pagina (desktop: een rooster met gelijke rijen). */
+  height?: number;
   onPress?: () => void;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const side = railSide(index);
-  const height = spreadHeight(page, index);
+  const height = fixedH ?? spreadHeight(page, index);
 
   const railCol = (
     <View style={{ flexShrink: 0, width: RASTER.rail }}>

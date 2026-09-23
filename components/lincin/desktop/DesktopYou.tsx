@@ -9,8 +9,8 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { ON_DARK, RASTER, THEMES, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { capf, mono, sans } from "@/lib/design/type";
+import { ON_DARK, RASTER, THEMES, color, friendColor, hueFor, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { capf, mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
 import { setPref, usePrefs, type Prefs } from "@/lib/lincin/prefs";
@@ -30,6 +30,10 @@ import { listMySharedLists } from "@/lib/api/shared-lists";
  *
  * Modern: elke groep is een tegel met een ronding van 18, de rijen staan
  * op gestippelde lijnen en aan/uit is een pilletje — geen inktlijnen.
+ *
+ * Magazine: zoals Jij op de telefoon — elke groep een papieren vlak met een
+ * naad van 6, de kop groot in serif, de rijen in serif op haarlijnen, en
+ * bovenaan een kleurvlak in jouw kleur met je naam.
  */
 
 /** toestel → licht → donker, zoals de rail. */
@@ -65,6 +69,8 @@ export function DesktopYou() {
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
   const round = spec.id === "modern";
+  const spread = spec.layout === "spread";
+  const mine = friendColor(hueFor(myUserId), scheme);
   const toggle = (name: keyof Prefs) => () => setPref(myUserId, name, !prefs[name]);
   const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
 
@@ -73,20 +79,29 @@ export function DesktopYou() {
     if (ok) signOut();
   }
 
-  const stat = (label: string) => <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>{label}</Text>;
+  const stat = (label: string) => (
+    <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: spread ? mine.ink : dim }]}>{label}</Text>
+  );
 
   return (
     <DesktopShell active="you">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900, borderBottomWidth: spec.border, borderBottomColor: edgeColor(round), paddingBottom: 16 }}>
+        <View
+          style={[
+            { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 20, maxWidth: 900 },
+            spread
+              ? { backgroundColor: mine.fill, paddingTop: 34, paddingHorizontal: 20, paddingBottom: 18 }
+              : { borderBottomWidth: spec.border, borderBottomColor: edgeColor(round), paddingBottom: 16 },
+          ]}
+        >
           {/* Je naam opent je profiel; bewerken staat onder Account. */}
           <Pressable
             accessibilityRole="link"
             onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile-edit") as never)}
             style={{ flexShrink: 1 }}
           >
-            <Text style={[capf(false, true), { fontSize: 46, lineHeight: 44, color: ink }]}>
-              {first} {last ? <Text style={[capf(true, true), { color: dim }]}>{last}</Text> : null}
+            <Text style={[capf(false, true), { fontSize: spread ? 58 : 46, lineHeight: spread ? 54 : 44, letterSpacing: spread ? -1.4 : 0, color: spread ? mine.ink : ink }]}>
+              {first} {last ? <Text style={[capf(true, true), { color: spread ? mine.ink : dim, opacity: spread ? 0.8 : 1 }]}>{last}</Text> : null}
             </Text>
           </Pressable>
           <View style={{ flexDirection: "row", gap: 24, paddingBottom: 6 }}>
@@ -96,7 +111,7 @@ export function DesktopYou() {
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: round ? RASTER.seam : 24, marginTop: round ? 18 : 26, maxWidth: 900 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: round || spread ? RASTER.seam : 24, marginTop: round ? 18 : spread ? RASTER.seam : 26, maxWidth: 900 }}>
           <Group title={t.lookTitle}>
             <Row label={t.theme} sub={t.themeSub}>
               <View style={{ flexDirection: "row", gap: 12 }}>
@@ -176,13 +191,18 @@ export function DesktopYou() {
         style={[
           { flexGrow: 1, flexBasis: 280, minWidth: 280 },
           round ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), paddingTop: RASTER.tilePad, paddingHorizontal: RASTER.tilePad, paddingBottom: 4 } : null,
+          spread ? { backgroundColor: color("paper2"), paddingTop: 22, paddingHorizontal: 18, paddingBottom: 6 } : null,
         ]}
       >
         <Text
           style={[
             capf(true, true),
             { fontSize: 20, lineHeight: 22, color: ink, paddingBottom: 8 },
-            round ? { borderBottomWidth: 1, borderBottomColor: rule, borderStyle: "dashed" } : { borderBottomWidth: spec.border, borderBottomColor: ink },
+            spread
+              ? { ...serif(), fontSize: 32, lineHeight: 31, letterSpacing: -0.64, paddingBottom: 10 }
+              : round
+                ? { borderBottomWidth: 1, borderBottomColor: rule, borderStyle: "dashed" }
+                : { borderBottomWidth: spec.border, borderBottomColor: ink },
           ]}
         >
           {title}
@@ -201,8 +221,8 @@ export function DesktopYou() {
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule, borderStyle: round ? "dashed" : "solid" }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
-          {sub ? <Text style={[sans(), { fontSize: 12, lineHeight: 16, color: dim }]}>{sub}</Text> : null}
+          <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }, spread ? { ...serif(), fontSize: 20, lineHeight: 22 } : null]}>{label}</Text>
+          {sub ? <Text style={[sans(), { fontSize: 12, lineHeight: 16, color: dim }, spread ? { ...serif(true), fontSize: 13.5, lineHeight: 18 } : null]}>{sub}</Text> : null}
         </View>
         {children}
       </Pressable>

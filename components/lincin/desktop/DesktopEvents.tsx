@@ -6,7 +6,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { useAuth } from "@/lib/auth/provider";
 import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { capf, mono, sans } from "@/lib/design/type";
+import { capf, mono, sans, serif } from "@/lib/design/type";
+import { EventSpread, type EventSpreadData } from "@/components/lincin/magazine/Pages";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { hhmm } from "@/lib/lincin/model";
 
@@ -26,6 +27,11 @@ const SEAM = RASTER.seam;
  *
  * Modern: geen haarlijnen maar losse tegels met een ronding van 18 en een
  * naad van 6, zoals de rail ernaast.
+ *
+ * Magazine: de spreads van de telefoon in een rooster — per event een
+ * volvlaks kleurvlak van de gastheer met de metarail, de dag groot in
+ * serif, de titel en een cursief onderschrift. Onderaan "Plan iets nieuws"
+ * als papieren vlak.
  */
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
@@ -38,10 +44,13 @@ export function DesktopEvents() {
   const t = useT();
   const spec = useThemeSpec();
   const round = spec.id === "modern";
+  const spread = spec.layout === "spread";
+  const lang = useLang();
+  const scheme = useScheme();
   const [gridW, setGridW] = useState(0);
-  // De naad tussen twee kaarten: een haarlijn van 1, of 6 in modern (met 6 rondom).
-  const seam = round ? SEAM : 1;
-  const inner = round ? gridW - 2 * SEAM : gridW;
+  // De naad tussen twee kaarten: een haarlijn van 1, of 6 in modern en magazine (met 6 rondom).
+  const seam = round || spread ? SEAM : 1;
+  const inner = round || spread ? gridW - 2 * SEAM : gridW;
   const cols = Math.max(1, Math.floor((inner + seam) / (MIN + seam)));
   const cardW = gridW ? (inner - (cols - 1) * seam) / cols : MIN;
 
@@ -68,6 +77,27 @@ export function DesktopEvents() {
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           {events.isLoading ? (
             <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: color("ink", "inkDim"), padding: 24, textTransform: "uppercase", letterSpacing: 1 }]}>{t.loading}</Text>
+          ) : spread ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: seam, padding: SEAM }}>
+              {[...active, ...upcoming, ...past].map((e, i) => (
+                <EventSpread
+                  key={e.id}
+                  e={spreadData(e, !e.is_active && new Date(e.ends_at).getTime() <= now, t, lang, router)}
+                  index={i}
+                  scheme={scheme}
+                  height={220}
+                  style={{ width: cardW, marginHorizontal: 0, marginBottom: 0 }}
+                />
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.planNew}
+                onPress={() => router.push("/event-create")}
+                style={({ pressed }) => ({ width: cardW, minHeight: 220, backgroundColor: color("paper2"), alignItems: "center", justifyContent: "center", padding: 20, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Text style={{ ...serif(true), fontSize: 22, lineHeight: 28, color: color("ink", "inkDim") }}>{t.planNew}</Text>
+              </Pressable>
+            </View>
           ) : (
             <View
               style={[
@@ -84,6 +114,30 @@ export function DesktopEvents() {
       </View>
     </DesktopShell>
   );
+}
+
+/** Magazine: dezelfde gegevens als de spread op de telefoon (`app/(app)/events.tsx`). */
+function spreadData(e: EventWithMeta, past: boolean, t: ReturnType<typeof useT>, lang: Lang, router: ReturnType<typeof useRouter>): EventSpreadData {
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+  const sameDay = start.toDateString() === end.toDateString();
+  const day = start.toLocaleDateString(LOCALE[lang], { weekday: "short" });
+  const who = `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`;
+  return {
+    key: e.id,
+    hostId: e.host_user_id,
+    day: String(start.getDate()).padStart(2, "0"),
+    month: start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", ""),
+    by: e.is_host ? t.me : "linc",
+    when: sameDay ? `${day} ${hhmm(e.starts_at)}` : `${day} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" })}`,
+    title: e.name,
+    sub: `${e.description ? `${e.description.split("\n")[0]} · ` : ""}${who}`,
+    past,
+    actions: [
+      { label: "Open →", onPress: () => router.push(`/event/${e.id}` as never) },
+      ...(e.is_host && !past ? [{ label: "Deel code", onPress: () => router.push(`/event-link/${e.id}` as never) }] : []),
+    ],
+  };
 }
 
 function Card({ event: e, width, round, past }: { event: EventWithMeta; width: number; round: boolean; past: boolean }) {

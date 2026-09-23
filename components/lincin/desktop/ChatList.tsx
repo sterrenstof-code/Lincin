@@ -8,7 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { color, friendColor, hueFor, listSeam, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { capf, mono, sans } from "@/lib/design/type";
+import { capf, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
@@ -25,6 +25,10 @@ import { edgeColor, MonoLink } from "./Shell";
  * volle breedte. Op Gesprekken zelf staat de open rij in de kleur van de
  * ander, met een inktbalk; daar komen ook de lincs zonder gesprek en
  * "Nieuwe groep →" onderaan.
+ *
+ * Magazine: elke rij is een volvlaks kleurvlak van de ander met een naad
+ * van 6, de naam in serif en de laatste regel cursief — de spreads van
+ * Gesprekken op de telefoon. De open rij staat in inkt.
  */
 
 export function useSortedChats() {
@@ -152,6 +156,49 @@ function Row({
   const spec = useThemeSpec();
   const ink = active ? fill.ink : color("ink");
   const dim = active ? fill.ink : color("ink", "inkDim");
+  if (spec.layout === "spread") {
+    // Op een kleurvlak is de inkt die van die kleur (2.2 §5); de open rij is inkt op papier omgekeerd.
+    const bg = active ? color("ink") : fill.fill;
+    const fg = active ? color("paper") : fill.ink;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={unread ? `${name}, ${right} ${t.unread}` : name}
+        onPress={onPress}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "stretch",
+          minHeight: 92,
+          marginHorizontal: 6,
+          marginTop: 6,
+          backgroundColor: bg,
+          opacity: pressed ? 0.82 : 1,
+        })}
+      >
+        <View style={{ flex: 1, minWidth: 0, paddingVertical: 14, paddingHorizontal: 14, justifyContent: "space-between", gap: 6 }}>
+          <Text numberOfLines={1} style={{ ...serif(), fontSize: 24, lineHeight: 24, letterSpacing: -0.48, color: fg }}>
+            {name}
+          </Text>
+          <Text numberOfLines={2} style={{ ...serif(true), fontSize: 14, lineHeight: 18, color: fg, opacity: 0.86 }}>
+            {preview}
+          </Text>
+        </View>
+        {right ? (
+          unread ? (
+            // Ongelezen: het getal groot op papier, zoals op de telefoon.
+            <View style={{ width: 48, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ ...serif(), fontSize: 24, lineHeight: 28, color: fill.fill }}>{right}</Text>
+            </View>
+          ) : (
+            <Text style={{ ...sans(500), fontSize: 8, lineHeight: 11, letterSpacing: 1.6, textTransform: "uppercase", color: fg, opacity: 0.78, paddingTop: 16, paddingRight: 14 }}>
+              {right}
+            </Text>
+          )
+        ) : null}
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"

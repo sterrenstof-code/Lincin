@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
@@ -171,7 +171,20 @@ export function EventsMagazine({
   );
 }
 
-function EventSpread({ e, index, scheme }: { e: EventSpreadData; index: number; scheme: Scheme }) {
+/** Eén event als spread. Desktop legt ze in een rooster met een vaste hoogte en breedte. */
+export function EventSpread({
+  e,
+  index,
+  scheme,
+  height,
+  style,
+}: {
+  e: EventSpreadData;
+  index: number;
+  scheme: Scheme;
+  height?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
   const fc = friendColor(hueFor(e.hostId), scheme);
   return (
     <Spread
@@ -180,7 +193,8 @@ function EventSpread({ e, index, scheme }: { e: EventSpreadData; index: number; 
       fill={fc.fill}
       ink={fc.ink}
       rail={`${e.by} · ${e.when}`}
-      style={{ opacity: e.past ? 0.6 : 1 }}
+      height={height}
+      style={[{ opacity: e.past ? 0.6 : 1 }, style]}
     >
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
         <Text style={{ ...serif(), fontSize: 40, lineHeight: 36, letterSpacing: -1.2, color: fc.ink }}>{e.day}</Text>
