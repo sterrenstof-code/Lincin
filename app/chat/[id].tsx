@@ -1061,7 +1061,17 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   // Eén doorlopende rij van 44 (prototype §05): de knoppen links zonder
   // rechterrand, zodat ze aan het invoerveld vastzitten en er geen dubbele
   // kaders ontstaan.
-  const aux = { ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() } as const;
+  /**
+   * Modern kent geen vakjes: de invoer is één pil op papier, de knoppen
+   * erin rond (desktop-modern-pages, "Schrijf aan …"). Kleur en magazine
+   * houden de gekaderde vakken naast elkaar.
+   */
+  const pill = spec.id === "modern";
+  const aux = pill
+    ? ({ ...AUX_BUTTON, borderRadius: 999 } as const)
+    : ({ ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() } as const);
+  /** De laatste knop sluit de rij af met een rand — behalve in de pil. */
+  const auxEnd = pill ? aux : { ...aux, borderRightWidth: BORDER };
 
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
@@ -1534,6 +1544,17 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     <MessageBubble
                       msg={item}
                       accent={partner.fill}
+                      // Desktop (desktop-*-pages): in kleur de bubbel van een ander in zijn
+                      // eigen kleur, in modern een wit tegelvlak. Op de telefoon het blad.
+                      fill={
+                        !embedded || isMine
+                          ? undefined
+                          : spec.id === "kleur"
+                            ? friendColor(hueFor(item.sender_id), schemeNow)
+                            : spec.id === "modern"
+                              ? { fill: color("tile"), ink: color("ink") }
+                              : undefined
+                      }
                       isMine={isMine}
                       isGroup={!!isGroup}
                       showSenderHeader={showSenderHeader}
@@ -1744,7 +1765,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               kop. De rollen zijn nu omgedraaid: `shell` is de balk, en wat
               erin zit (het tekstveld) draagt `shell-soft`.
           */}
-          <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
+          <View style={pill ? { paddingBottom: 4 } : { borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
             {/* De inhoud van de balk volgt dezelfde maat; het vlak eronder
                 loopt wél door tot de rand, want dat is de bodem van het
                 scherm en geen kolom. */}
@@ -1829,11 +1850,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
 
             <ComposerInset style={{ paddingVertical: space.md }}>
              <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-end",
-                gap: 0,
-              }}
+              style={[
+                {
+                  flexDirection: "row",
+                  alignItems: "flex-end",
+                  gap: 0,
+                },
+                pill ? { alignItems: "center", minHeight: 56, paddingHorizontal: 6, gap: 4, borderRadius: 28, backgroundColor: color("paper") } : null,
+              ]}
              >
               {!recording && (
                 <Pressable
@@ -1889,7 +1913,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   // het hele scherm, en dus het luidste. `shell-soft` is
                   // waar §2 een vlak bínnen de balk heen stuurt.
                   className="flex-1 max-h-32 justify-center"
-                  style={{ minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() }}
+                  style={pill ? { minHeight: CONTROL_H, paddingHorizontal: space.md } : { minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() }}
                 >
                   <TextInput
                     ref={inputRef}
@@ -1957,7 +1981,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                       ? "bg-paper2"
                       : "bg-ink"
                   }
-                  style={{ ...aux, borderRightWidth: BORDER }}
+                  style={auxEnd}
                 >
                   <Ionicons
                     name="arrow-up"
@@ -1977,7 +2001,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   // Net als de twee knoppen links: het icoon draagt zichzelf
                   // op de balk. Zodra er iets te versturen valt neemt de
                   // oranje knop deze plek over — dán is er een vlak.
-                  style={({ pressed }) => [aux, { borderRightWidth: BORDER }, pressed && AUX_PRESSED]}
+                  style={({ pressed }) => [auxEnd, pressed && AUX_PRESSED]}
                 >
                   <Ionicons name="mic" color={color("ink")} size={21} />
                 </Pressable>
@@ -2417,10 +2441,13 @@ function MessageBubble({
   selected,
   onSelect,
   accent,
+  fill,
 }: {
   msg: DecryptedMessage;
   /** De kleur van de ander: de rand van een aangetikte bubbel, de kantlijn van een vermelding. */
   accent?: string;
+  /** Het vlak van de bubbel en de inkt erop (desktop kleur); anders het blad. */
+  fill?: { fill: string; ink: string };
   isMine: boolean;
   isGroup?: boolean;
   showSenderHeader?: boolean;
@@ -2633,6 +2660,7 @@ function MessageBubble({
                 backgroundColor: failed ? color("red") : isMine ? color("ink") : color("ink", "onDark"),
               }
             : null,
+          fill && !failed ? { backgroundColor: fill.fill } : null,
         ]}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
@@ -2733,7 +2761,10 @@ function MessageBubble({
                   // Een URL zonder spaties is één woord; zonder deze regel
                   // bepaalt zijn lengte de minimumbreedte van de bubbel en
                   // loopt die de kolom uit. `anywhere` breekt hem waar nodig.
-                  style={Platform.OS === "web" ? ({ overflowWrap: "anywhere", wordBreak: "break-word" } as object) : undefined}
+                  style={[
+                    Platform.OS === "web" ? ({ overflowWrap: "anywhere", wordBreak: "break-word" } as object) : null,
+                    fill ? { color: fill.ink } : null,
+                  ]}
                   className={`${
                     /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text!)
                       ? "text-[34px] leading-[40px]"

@@ -532,6 +532,80 @@ function NavModern({ active }: { active: Tab }) {
 // Bouwstenen van de hoofdkolom
 // ---------------------------------------------------------------
 
+/**
+ * De kop van een hoofdpagina (desktop-*-pages.dc.html `head`): nummer,
+ * titel, een regel meta en hoogstens één handeling.
+ *
+ *   kleur     104 hoog, "02" in mono naast GESPREKKEN in Archivo 900 smal 64,
+ *             meta en een gekaderde knop rechts, inktlijn eronder.
+ *   magazine  "02 · meta" boven een serif van 88, de handeling als
+ *             onderstreepte serif, een haarlijn in inkt eronder.
+ *   modern    een tegel: rood stipje en meta, Archivo 400 64, een inktpil.
+ */
+export function PageHead({ num, title, sub, action }: { num: string; title: string; sub?: string; action?: { label: string; onPress: () => void } }) {
+  const spec = useThemeSpec();
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  if (spec.id === "magazine") {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingTop: 40, paddingHorizontal: 32, paddingBottom: 22, borderBottomWidth: 1, borderBottomColor: ink }}>
+        <View style={{ gap: 12, flexShrink: 1 }}>
+          <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 2, textTransform: "uppercase", color: dim }]}>
+            {num}
+            {sub ? ` · ${sub}` : ""}
+          </Text>
+          <Text numberOfLines={1} style={[serif(), { fontSize: 88, lineHeight: 80, letterSpacing: -2.6, color: ink }]}>
+            {title}
+          </Text>
+        </View>
+        {action ? (
+          <Pressable accessibilityRole="button" onPress={action.onPress} style={{ paddingBottom: 8 }}>
+            <Text style={[serif(), { fontSize: 21, lineHeight: 26, color: ink, textDecorationLine: "underline" }]}>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+  if (spec.id === "modern") {
+    return (
+      <View style={[tileStyle(), { paddingTop: 26, paddingHorizontal: 26, paddingBottom: 22, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24 }]}>
+        <View style={{ gap: 12, flexShrink: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color("red") }} />
+            <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.44, textTransform: "uppercase", color: dim }]}>{sub || num}</Text>
+          </View>
+          <Text numberOfLines={1} style={[sans(400), { fontSize: 64, lineHeight: 64, letterSpacing: -2.9, color: ink }]}>
+            {title}
+          </Text>
+        </View>
+        {action ? (
+          <Pressable accessibilityRole="button" onPress={action.onPress} style={{ height: 44, paddingHorizontal: 20, borderRadius: 999, justifyContent: "center", backgroundColor: ink }}>
+            <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("paper") }]}>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ height: 104, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingHorizontal: 32, paddingBottom: 18, borderBottomWidth: spec.border, borderBottomColor: ink }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 18, flexShrink: 1 }}>
+        <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 0.88, paddingBottom: 8, color: ink }]}>{num}</Text>
+        <Text numberOfLines={1} style={[headKleur(), { fontSize: 64, lineHeight: 56, color: ink }]}>
+          {title}
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+        {sub ? <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>{sub}</Text> : null}
+        {action ? (
+          <Pressable accessibilityRole="button" onPress={action.onPress} style={{ height: 40, paddingHorizontal: 16, justifyContent: "center", borderWidth: spec.border, borderColor: ink }}>
+            <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: ink }]}>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 /** De titelrij van feed en events: serif 40 links, mono-links rechts, inktlijn eronder. */
 export function DesktopTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   const spec = useThemeSpec();

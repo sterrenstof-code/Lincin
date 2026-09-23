@@ -7,28 +7,27 @@ import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWi
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
-import { color, friendColor, hueFor, listSeam, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { capf, mono, sans, serif } from "@/lib/design/type";
+import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
-import { edgeColor, MonoLink } from "./Shell";
+import { MonoLink } from "./Shell";
 
 /**
- * De gesprekken als lijst (Lincin Desktop.dc.html, GESPREKKENPANEEL en
- * GESPREKKEN): een kop van 56 met "Gesprekken" en "n ongelezen" in rood,
- * dan rijen met een kleurbalk van 10×38, de naam in serif 19, de laatste
- * regel in 12.5 gedempt, en rechts het aantal ongelezen (rood) of de tijd.
+ * De gesprekken als lijst (desktop-*-pages.dc.html, GESPREKKEN).
  *
- * Rechts van de feed is het een wegwijzer — een tik opent het gesprek op
- * volle breedte. Op Gesprekken zelf staat de open rij in de kleur van de
- * ander, met een inktbalk; daar komen ook de lincs zonder gesprek en
- * "Nieuwe groep →" onderaan.
+ *   kleur     rijen van 84 met inktlijnen, links een blok van 64 in de kleur
+ *             van de ander met de initiaal; naam in Archivo 900 smal, tijd
+ *             in mono (rood als er iets ongelezen is), een rood blokje met
+ *             het aantal. De open rij op het tweede vlak.
+ *   magazine  een rug van 5 in de kleur van de ander, een omlijnde
+ *             initiaal, de naam in serif 26 (cursief als hij open is), het
+ *             aantal ongelezen als rode serif.
+ *   modern    tegels met een ronde avatar van 52 en een teller erop.
  *
- * Magazine: elke rij is een volvlaks kleurvlak van de ander met een naad
- * van 6, de naam in serif en de laatste regel cursief — de spreads van
- * Gesprekken op de telefoon. De open rij staat in inkt.
+ * Daaronder de lincs zonder gesprek, en "Nieuwe groep →".
  */
 
 export function useSortedChats() {
@@ -45,24 +44,6 @@ export function useSortedChats() {
 
 export function chatHue(c: ChatWithMembers, myUserId: string) {
   return c.type === "group" ? "green" : hueFor(otherMember(c, myUserId)?.id);
-}
-
-export function ChatListHead({ link = false }: { link?: boolean }) {
-  const t = useT();
-  const router = useRouter();
-  const spec = useThemeSpec();
-  const { list } = useSortedChats();
-  const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
-  return (
-    <View style={{ height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, borderBottomWidth: spec.border, borderBottomColor: edgeColor(spec.id === "modern") }}>
-      {link ? (
-        <MonoLink label={t.chats} active onPress={() => router.push("/chats")} />
-      ) : (
-        <MonoLink label={t.chats} />
-      )}
-      <MonoLink label={`${unread} ${t.unread}`} tone={color("red")} />
-    </View>
-  );
 }
 
 export function ChatList({ activeId, onOpen, full = false }: { activeId: string | null; onOpen: (chatId: string) => void; full?: boolean }) {
@@ -91,8 +72,13 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
   }
 
   const dim = color("ink", "inkDim");
+  const spec = useThemeSpec();
   return (
-    <ScrollView style={{ flex: 1, minHeight: 0 }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={{ flex: 1, minHeight: 0 }}
+      contentContainerStyle={spec.id === "kleur" ? undefined : { gap: 6 }}
+      showsVerticalScrollIndicator={false}
+    >
       {chats.isLoading ? (
         <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim, padding: 16 }]}>{t.loading}</Text>
       ) : null}
@@ -103,11 +89,12 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
         return (
           <Row
             key={c.id}
+            initial={chatTitle(c, myUserId).slice(0, 1).toUpperCase()}
             fill={friendColor(chatHue(c, myUserId), scheme)}
             name={chatTitle(c, myUserId)}
             preview={preview}
-            right={n ? String(n) : c.last_message_at ? shortAgo(c.last_message_at, t, lang) : ""}
-            unread={n > 0}
+            time={c.last_message_at ? shortAgo(c.last_message_at, t, lang) : ""}
+            unread={n}
             active={full && c.id === activeId}
             onPress={() => onOpen(c.id)}
           />
@@ -117,10 +104,11 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
         <Row
           key={f.id}
           fill={friendColor(hueFor(f.other.id), scheme)}
+          initial={displayName(f.other).slice(0, 1).toUpperCase()}
           name={displayName(f.other)}
           preview="Nog geen berichten"
-          right=""
-          unread={false}
+          time=""
+          unread={0}
           active={false}
           onPress={() => openWith(f.other.id)}
         />
@@ -137,107 +125,121 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
 
 function Row({
   fill,
+  initial,
   name,
   preview,
-  right,
+  time,
   unread,
   active,
   onPress,
 }: {
   fill: { fill: string; ink: string };
+  initial: string;
   name: string;
   preview: string;
-  right: string;
-  unread: boolean;
+  time: string;
+  unread: number;
   active: boolean;
   onPress: () => void;
 }) {
   const t = useT();
   const spec = useThemeSpec();
-  const ink = active ? fill.ink : color("ink");
-  const dim = active ? fill.ink : color("ink", "inkDim");
-  if (spec.layout === "spread") {
-    // Op een kleurvlak is de inkt die van die kleur (2.2 §5); de open rij is inkt op papier omgekeerd.
-    const bg = active ? color("ink") : fill.fill;
-    const fg = active ? color("paper") : fill.ink;
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const label = unread ? `${name}, ${unread} ${t.unread}` : name;
+  const timeFg = unread ? color("red") : dim;
+
+  if (spec.id === "magazine") {
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={unread ? `${name}, ${right} ${t.unread}` : name}
+        accessibilityLabel={label}
         onPress={onPress}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "stretch",
-          minHeight: 92,
-          marginHorizontal: 6,
-          marginTop: 6,
-          backgroundColor: bg,
-          opacity: pressed ? 0.82 : 1,
-        })}
+        style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 18, paddingRight: 22, paddingLeft: 17, borderLeftWidth: 5, borderLeftColor: fill.fill, backgroundColor: active ? color("paper2") : "transparent" }}
       >
-        <View style={{ flex: 1, minWidth: 0, paddingVertical: 14, paddingHorizontal: 14, justifyContent: "space-between", gap: 6 }}>
-          <Text numberOfLines={1} style={{ ...serif(), fontSize: 24, lineHeight: 24, letterSpacing: -0.48, color: fg }}>
-            {name}
-          </Text>
-          <Text numberOfLines={2} style={{ ...serif(true), fontSize: 14, lineHeight: 18, color: fg, opacity: 0.86 }}>
-            {preview}
-          </Text>
+        <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
+          <Text style={[serif(), { fontSize: 22, lineHeight: 26, color: fill.fill }]}>{initial}</Text>
         </View>
-        {right ? (
-          unread ? (
-            // Ongelezen: het getal groot op papier, zoals op de telefoon.
-            <View style={{ width: 48, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ ...serif(), fontSize: 24, lineHeight: 28, color: fill.fill }}>{right}</Text>
-            </View>
-          ) : (
-            <Text style={{ ...sans(500), fontSize: 8, lineHeight: 11, letterSpacing: 1.6, textTransform: "uppercase", color: fg, opacity: 0.78, paddingTop: 16, paddingRight: 14 }}>
-              {right}
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <Text numberOfLines={1} style={[serif(active), { flexShrink: 1, fontSize: 26, lineHeight: 28, color: ink }]}>
+              {name}
             </Text>
-          )
-        ) : null}
+            {time ? <Text style={[sans(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.44, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
+            <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: color("inkSoft") }]}>
+              {preview}
+            </Text>
+            {unread ? <Text style={[serif(), { fontSize: 18, lineHeight: 20, color: color("red") }]}>{unread}</Text> : null}
+          </View>
+        </View>
       </Pressable>
     );
   }
+
+  if (spec.id === "modern") {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={label}
+        onPress={onPress}
+        style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 18, backgroundColor: active ? color("tile") : color("tile", "pill") }}
+      >
+        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
+          <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
+          {unread ? (
+            <View style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 999, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
+              <Text style={[mono(600), { fontSize: 9, lineHeight: 11, color: color("paper") }]}>{unread}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 18, lineHeight: 20, letterSpacing: -0.36, color: ink }]}>
+              {name}
+            </Text>
+            {time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
+          </View>
+          <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }]}>
+            {preview}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      accessibilityLabel={unread ? `${name}, ${right} ${t.unread}` : name}
+      accessibilityLabel={label}
       onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        backgroundColor: active ? fill.fill : "transparent",
-        // Kleur en magazine zetten een haarlijn tussen twee rijen; modern
-        // een naad van 6 met een ronding en géén lijn (2.2 §9).
-        borderRadius: spec.cardRadius,
-        ...listSeam(),
-        ...(spec.listGap > 1 ? { marginHorizontal: spec.gap } : null),
-      }}
+      style={{ flexDirection: "row", alignItems: "stretch", minHeight: 84, borderBottomWidth: spec.border, borderBottomColor: ink, backgroundColor: active ? color("paper2") : "transparent" }}
     >
-      {/* Op de open rij is de balk inkt (licht) of papier (donker), zoals het
-          prototype. De kleurrug volgt de ronding van de rij. */}
-      <View
-        style={{
-          width: 10,
-          height: 38,
-          borderRadius: spec.cardRadius ? 5 : 0,
-          backgroundColor: active ? color("ink") : fill.fill,
-        }}
-      />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={[capf(false, true), { fontSize: 19, lineHeight: 21, color: ink }]}>
-          {name}
-        </Text>
-        <Text numberOfLines={1} style={[sans(), { fontSize: 12.5, lineHeight: 17, color: dim }]}>
-          {preview}
-        </Text>
+      <View style={{ width: 64, backgroundColor: fill.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "center" }}>
+        <Text style={[head(), { fontSize: 28, lineHeight: 30, color: fill.ink }]}>{initial}</Text>
       </View>
-      {right ? <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: active ? fill.ink : unread ? color("red") : color("ink", "inkDim") }]}>{right}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 14, paddingHorizontal: 16, justifyContent: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <Text numberOfLines={1} style={[head(), { flexShrink: 1, fontSize: 20, lineHeight: 20, color: ink }]}>
+            {name}
+          </Text>
+          {time ? <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: timeFg }]}>{time}</Text> : null}
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }]}>
+            {preview}
+          </Text>
+          {unread ? (
+            <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+              <Text style={[mono(600), { fontSize: 11, lineHeight: 14, color: ON_DARK }]}>{unread}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
     </Pressable>
   );
 }
