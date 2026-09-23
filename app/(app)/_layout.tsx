@@ -225,6 +225,9 @@ export default function AppLayout() {
     <>
     <InstallBanner />
     <Tabs
+      // Begint de navigator opnieuw, dan op de feed — niet op het eerste
+      // scherm in de lijst hieronder (Meldingen).
+      initialRouteName="feed"
       // Een tabwissel krijgt van deze navigator zelf geen animatie: hij
       // toont en verbergt gemounte schermen. Op web dekt de View
       // Transition dat af (de tabs navigeren via router.push in AppChrome),

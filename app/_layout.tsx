@@ -54,13 +54,21 @@ const MODAL = {
  * wie in Instellingen van thema wisselt, blijft in Instellingen. Op web
  * blijft de paginaovergang (`PageTransition`) eromheen staan.
  */
-function ThemedScreen({ children }: { children: ReactNode }) {
+function ThemedScreen({ children, remount = true }: { children: ReactNode; remount?: boolean }) {
   const theme = useTheme();
   const body = Platform.OS === "web" ? <PageTransition>{children}</PageTransition> : children;
-  return <Fragment key={theme}>{body}</Fragment>;
+  return <Fragment key={remount ? theme : "vast"}>{body}</Fragment>;
 }
 
-const themedScreenLayout = ({ children }: { children: ReactNode }) => <ThemedScreen>{children}</ThemedScreen>;
+/**
+ * De tabbladen (`(app)`) krijgen hier géén sleutel: hun "scherm" is de hele
+ * Tabs-navigator, en die opnieuw beginnen zette je na een themawissel op
+ * zijn eerste tabblad (Meldingen). Elk tabblad hertekent zichzelf al
+ * (`ThemedTab` in app/(app)/_layout.tsx).
+ */
+const themedScreenLayout = ({ children, route }: { children: ReactNode; route: { name: string } }) => (
+  <ThemedScreen remount={route.name !== "(app)"}>{children}</ThemedScreen>
+);
 
 export default function RootLayout() {
   const scheme = useScheme();
