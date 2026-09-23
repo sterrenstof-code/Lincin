@@ -2,25 +2,17 @@ import { router } from "expo-router";
 import { useWindowDimensions } from "react-native";
 
 /**
- * Desktop (Lincin Desktop.dc.html, model 3c "Prikbord + lade"): vanaf
- * 1024px breed een rail van 196 met de navigatie en de hoofdkolom; in de
- * feed staat rechts de gesprekkenlijst van 300.
+ * Desktop (handoff 23 sep): vanaf 1024px breed een balk bovenaan met de
+ * vier tabbladen (components/lincin/desktop/Shell.tsx) en daaronder de
+ * pagina, hoogstens 1440 breed.
  *
- * Een bijdrage en een gesprek nemen het hele venster (3d/3e): de rail
- * klapt in tot 64 en de lijst rechts verdwijnt. Dat zijn gewoon schermen
- * — `/post/[id]`, `/chat/[id]`, `/user/[username]` — die op desktop hun
- * desktopvorm tekenen. Er is geen paneel meer dat onthoudt wat er open
- * staat: de URL is waar je bent, en de terugknop van de browser werkt.
+ * Een bijdrage, een gesprek of een profiel zijn gewone schermen —
+ * `/post/[id]`, `/chat/[id]`, `/user/[username]` — die op desktop hun
+ * desktopvorm tekenen. De URL is waar je bent, en de terugknop van de
+ * browser werkt.
  */
 
 const DESKTOP_MIN = 1024;
-/** De rail in rust. */
-export const RAIL_W = 196;
-/** De rail op volle breedte (bijdrage, gesprek). */
-export const RAIL_NARROW = 64;
-/** De gesprekkenlijst rechts van de feed: minmax(240px, 300px). */
-export const CHATS_W = 300;
-export const CHATS_MIN = 240;
 /** De lijst links op Gesprekken. */
 export const LIST_W = 280;
 /** De commentkolom op een bijdrage. */

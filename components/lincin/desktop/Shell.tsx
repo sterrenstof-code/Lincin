@@ -1,316 +1,370 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "expo-router";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, useWindowDimensions, View, type TextStyle } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { SafeImage } from "@/components/SafeImage";
-import { listMyFriendships } from "@/lib/api/friends";
-import { listUnifiedFeed, listUserPosts } from "@/lib/api/posts";
+import { listUnifiedFeed } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { ON_DARK, RASTER, THEMES, color, pageTint, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { useLincinTheme } from "@/components/lincin/ThemeProvider";
-import { capf, head, mono } from "@/lib/design/type";
-import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
-import { CHATS_MIN, CHATS_W, RAIL_NARROW, RAIL_W } from "@/lib/lincin/desktop";
-import { displayName, toCardPost } from "@/lib/lincin/model";
+import { RASTER, color, friendColor, hueFor, inkOn, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { FONT, capf, head, mono, sans, serif } from "@/lib/design/type";
+import { useLang, useT, type Lang } from "@/lib/i18n";
+import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
+import { setFriendOpen, setPref } from "@/lib/lincin/prefs";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
 import { useSeenPosts } from "@/lib/read-state";
 
-import { ChatList, ChatListHead } from "./ChatList";
-
 /**
- * Desktop, model 3c (Lincin Desktop.dc.html):
+ * Desktop (handoff 23 sep, desktop-{kleur,magazine,modern}-*.dc.html):
  *
- *   feed        ┌──────┬─────────────────────────────┬──────────┐
- *               │ rail │ feed                        │ gesprek- │
- *               │ 196  │                             │ ken 300  │
- *               └──────┴─────────────────────────────┴──────────┘
- *   rust        rail 196 · hoofdkolom (profiel, events, jij, nieuw)
- *   volle       ┌──┬─────────────────────────────────────────────┐
- *   breedte     │64│ bijdrage of gesprek over het hele venster   │
- *               └──┴─────────────────────────────────────────────┘
+ *   ┌─────────────────────────────────────────────────────────────┐
+ *   │ Lincin · datum │ 01 Feed │ 02 Gesprekken │ … │  ◉  + │ J    │  balk
+ *   ├─────────────────────────────────────────────────────────────┤
+ *   │ de pagina, hoogstens 1440 breed                              │
+ *   └─────────────────────────────────────────────────────────────┘
  *
- * Lijnen zijn de kaderdikte van het thema (1.5 in kleur). Het blad kleurt
- * in kleur mee met wie in beeld is — vlak, niet als verloop: 26% van de
- * vriendkleur op papier, 14% in donker.
+ * Eén balk bovenaan in plaats van de rail links. Elk thema tekent hem zelf:
  *
- * Modern heeft geen inktlijnen: de rail en de gesprekken zijn losse tegels
- * met een ronding van 18 en een naad van 6 rondom, de navigatie pillen.
+ *   kleur     64 hoog, inktlijn eronder; genummerde vakken van 148 in
+ *             Archivo 900 smal; het actieve vak inkt, of de vriendkleur
+ *             zodra er een bijdrage open staat.
+ *   magazine  72 hoog, haarlijn; vier tabs in Instrument Serif die van
+ *             onder staan, de actieve cursief op inkt of vriendkleur.
+ *   modern    losse tegels op de kleurhaze: merk en klok, de vrienden als
+ *             ronde chips, een pil met een schuivend inktvlak, ◉ en +.
+ *
+ * Taal, thema en licht/donker staan niet meer in de balk maar onder Jij
+ * (Instellingen), zoals in het prototype. Meldingen: de ◉ rechts.
  */
 
 type ShellMode = "rest" | "feed" | "full";
 
 const TAB_HREF: Record<Tab, string> = { feed: "/feed", chats: "/chats", events: "/events", you: "/profile" };
-/** Het woord bij een thema, in de taal die nu geldt. */
-function themeLabel(th: LincinTheme, t: ReturnType<typeof useT>): string {
-  return th === "kleur" ? t.themeKleur : th === "magazine" ? t.themeMagazine : t.themeModern;
-}
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
-/** De rail wisselt toestel → licht → donker (prototype `cycleStand`). */
-const STAND_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
 const DESKTOP_TINT = { light: 0.26, dark: 0.14 };
 const SEAM = RASTER.seam;
-
-/** Modern tekent tegels en pillen; kleur en magazine kaders en inktlijnen. */
-function useRound(): boolean {
-  return useThemeSpec().id === "modern";
-}
+/** De breedte van het blad in het prototype; breder schermen centreren. */
+const PAGE_MAX = 1440;
 
 /** De lijn onder een kop of naast een paneel: inkt, of de haarlijn in modern. */
 export function edgeColor(round: boolean): string {
   return round ? color("ink", "postRule") : color("ink");
 }
 
-/** Een tegel van de rail in modern. */
-const bubble = () => ({ borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") });
+const tileStyle = () => ({
+  borderRadius: RASTER.tileRadius,
+  backgroundColor: color("tile", "tileFill"),
+  ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)" } as object) : null),
+});
+
+/** De kleurhaze van modern (desktop-modern-home `pageBg`), alleen op web. */
+function modernHaze(bloom: string, next: string): object | null {
+  if (Platform.OS !== "web") return null;
+  return {
+    backgroundImage: [
+      `radial-gradient(70% 60% at 8% -6%, color-mix(in oklch, ${bloom} 40%, transparent) 0%, transparent 62%)`,
+      `radial-gradient(52% 44% at 104% 10%, color-mix(in oklch, ${bloom} 26%, transparent) 0%, transparent 66%)`,
+      `radial-gradient(80% 50% at 46% 104%, color-mix(in oklch, ${next} 30%, transparent) 0%, transparent 68%)`,
+    ].join(","),
+  } as object;
+}
 
 export function DesktopShell({
   active,
-  mode = "rest",
   tint,
+  hideMark = false,
   children,
 }: {
   active: Tab;
+  /** Oud: rail in rust, smal of met gesprekken. De balk kent maar één vorm. */
   mode?: ShellMode;
-  /** De vriendkleur (hex) van wie in beeld is; alleen kleur tint mee. */
+  /** De vriendkleur (hex) van wie in beeld is. */
   tint?: string | null;
+  /** Magazine: de editie draagt zelf het grote "Lincin"; de balk laat het weg. */
+  hideMark?: boolean;
   children: ReactNode;
 }) {
   const spec = useThemeSpec();
   const scheme = useScheme();
-  const { width } = useWindowDimensions();
-  const bg = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
-  // grid-template-columns: 196px minmax(0,1fr) minmax(240px,300px)
-  const chatsW = Math.max(CHATS_MIN, Math.min(CHATS_W, width - RAIL_W - 600));
   const round = spec.id === "modern";
+  const bloom = tint ?? friendColor("blue", scheme).fill;
+  const bg = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
   return (
     <View
       style={[
-        { flex: 1, flexDirection: "row", minHeight: 0, backgroundColor: bg },
-        round ? { padding: SEAM, gap: SEAM } : null,
+        { flex: 1, minHeight: 0, backgroundColor: bg },
+        round ? modernHaze(bloom, friendColor("ochre", scheme).fill) : null,
         Platform.OS === "web" ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object) : null,
       ]}
     >
-      {mode === "full" ? <RailNarrow active={active} /> : <Rail active={active} />}
-      <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
-      {mode === "feed" ? (
-        <View
-          style={[
-            { width: chatsW, minHeight: 0 },
-            round ? { ...bubble(), overflow: "hidden" } : { borderLeftWidth: spec.border, borderLeftColor: color("ink"), backgroundColor: color("paper") },
-          ]}
-        >
-          <ChatsPanel />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-/** Rechts van de feed: de gesprekken, en de noot dat een gesprek volle breedte opent. */
-function ChatsPanel() {
-  const t = useT();
-  const router = useRouter();
-  const round = useRound();
-  return (
-    <View style={{ flex: 1, minHeight: 0 }}>
-      <ChatListHead link />
-      <ChatList activeId={null} onOpen={(id) => router.push(`/chat/${id}` as never)} />
-      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}>
-        <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: color("ink", "inkDim") }]}>{t.panelNote}</Text>
+      <View style={[{ flex: 1, minHeight: 0, width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }, round ? { padding: SEAM, gap: SEAM } : null]}>
+        {spec.id === "magazine" ? (
+          <NavMagazine active={active} tint={tint ?? null} hideMark={hideMark} />
+        ) : round ? (
+          <NavModern active={active} />
+        ) : (
+          <NavKleur active={active} tint={tint ?? null} />
+        )}
+        <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
       </View>
     </View>
   );
 }
 
 // ---------------------------------------------------------------
-// De rail
+// Wat alle drie de balken lezen
 // ---------------------------------------------------------------
 
-type NavItem = { id: Tab | "notifications"; num: string; label: string; badge: number; href: string; on: boolean };
+type NavItem = { id: Tab; num: string; label: string; badge: boolean; href: string; on: boolean };
 
-/**
- * De vier tabbladen en, als vijfde, de meldingen. Die krijgen een eigen
- * plek met hun eigen teller: stond de teller op "Jij", dan zag je een 1
- * zonder te weten waar hij naartoe wees. Op de telefoon is dat de ◉ in de kop.
- *
- * "Jij" draagt daarnaast wél één getal, en precies één: het aantal mensen
- * dat je linc wil zijn. Dat is geen melding — die soort bestaat niet — en
- * het woont onder Jij → Mijn lincs, dus het wijst maar naar één plek en
- * blijft daarmee te lezen.
- */
 function useNav(active: Tab): NavItem[] {
   const t = useT();
   const unread = useUnread();
   const pathname = usePathname();
   const onNotes = pathname.startsWith("/notifications");
   return [
-    { id: "feed", num: "01", label: t.tabFeed, badge: 0, href: TAB_HREF.feed, on: active === "feed" },
-    { id: "chats", num: "02", label: t.tabChats, badge: active === "chats" ? 0 : unread.chats, href: TAB_HREF.chats, on: active === "chats" },
-    { id: "events", num: "03", label: t.tabEvents, badge: 0, href: TAB_HREF.events, on: active === "events" },
-    { id: "you", num: "04", label: t.tabYou, badge: active === "you" ? 0 : unread.friendRequests, href: TAB_HREF.you, on: !onNotes && (active === "you" || pathname.startsWith("/settings")) },
-    { id: "notifications", num: "05", label: t.notifications, badge: onNotes ? 0 : unread.notifications, href: "/notifications", on: onNotes },
+    { id: "feed", num: "01", label: t.tabFeed, badge: false, href: TAB_HREF.feed, on: !onNotes && active === "feed" },
+    { id: "chats", num: "02", label: t.tabChats, badge: active !== "chats" && unread.chats > 0, href: TAB_HREF.chats, on: active === "chats" },
+    { id: "events", num: "03", label: t.tabEvents, badge: false, href: TAB_HREF.events, on: active === "events" },
+    { id: "you", num: "04", label: t.tabYou, badge: active !== "you" && unread.friendRequests > 0, href: TAB_HREF.you, on: !onNotes && active === "you" },
   ];
 }
 
-/** Hoeveel bijdragen van vrienden je nog niet zag — "wo 16 sep · 4 nieuw". */
-function useFreshCount(): number {
+/** De feed als kaarten, en wat je daarvan nog niet zag. Dezelfde vraag als de feed. */
+function useFeedSummary() {
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "";
   const t = useT();
   const { isSeen } = useSeenPosts();
+  useHueChoices();
   const feed = useQuery({ queryKey: ["unified-feed", myUserId], queryFn: () => listUnifiedFeed(myUserId), enabled: !!myUserId, staleTime: 30_000 });
-  return useMemo(
-    () => (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c) => !!c && c.authorId !== myUserId && !isSeen(c.id, c.createdAt)).length,
-    [feed.data, t, myUserId, isSeen],
+  return useMemo(() => {
+    const cards = (feed.data ?? []).map((i) => toCardPost(i, t)).filter((c): c is CardPost => !!c && c.authorId !== myUserId);
+    const fresh = cards.filter((c) => !isSeen(c.id, c.createdAt));
+    const groups = groupByFriend(cards).map((g) => ({ ...g, fresh: g.posts.filter((p) => !isSeen(p.id, p.createdAt)).length }));
+    const newest = cards.reduce<string | null>((m, c) => (!m || c.createdAt > m ? c.createdAt : m), null);
+    return { cards, fresh: fresh.length, groups, newest };
+  }, [feed.data, t, myUserId, isSeen]);
+}
+
+function useDateLine(): string {
+  const lang = useLang();
+  const now = new Date();
+  return `${now.toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "")} ${now.getDate()} ${now
+    .toLocaleDateString(LOCALE[lang], { month: "short" })
+    .replace(".", "")}`;
+}
+
+/** Jij: je initiaal in je eigen kleur, of je foto. */
+function useMe() {
+  const { session } = useAuth();
+  const myUserId = session?.user.id ?? "anon";
+  const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId), enabled: !!session });
+  const name = displayName(profile.data ?? { username: session?.user.email ?? "" });
+  return { myUserId, name, avatar: profile.data?.avatar_url ?? null, hue: hueFor(myUserId) };
+}
+
+function MeButton({ size }: { size: number }) {
+  const router = useRouter();
+  const scheme = useScheme();
+  const t = useT();
+  const me = useMe();
+  const fc = friendColor(me.hue, scheme);
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={t.settings}
+      onPress={() => router.push("/settings")}
+      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: fc.fill, overflow: "hidden", alignItems: "center", justifyContent: "center" }}
+    >
+      {me.avatar ? (
+        <SafeImage uri={me.avatar} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+      ) : (
+        <Text style={[sans(700), { fontSize: 15, lineHeight: 18, color: fc.ink }]}>{me.name.slice(0, 1).toUpperCase()}</Text>
+      )}
+    </Pressable>
   );
 }
 
-function Rail({ active }: { active: Tab }) {
+const webPointer = Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null;
+
+// ---------------------------------------------------------------
+// KLEUR
+// ---------------------------------------------------------------
+
+function NavKleur({ active, tint }: { active: Tab; tint: string | null }) {
   const t = useT();
-  const lang = useLang();
   const router = useRouter();
-  const scheme = useScheme();
-  const pref = usePreference();
   const spec = useThemeSpec();
-  const lincin = useLincinTheme();
-  const { session } = useAuth();
-  const myUserId = session?.user.id ?? "anon";
+  const { width } = useWindowDimensions();
   const nav = useNav(active);
-  const fresh = useFreshCount();
-  const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId), enabled: !!session });
-  const posts = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 200), enabled: !!session, staleTime: 60_000 });
-  const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId), enabled: !!session, staleTime: 60_000 });
-  const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
-  const name = displayName(profile.data ?? { username: session?.user.email ?? "" });
-
-  const now = new Date();
-  const dateLine = `${now.toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "")} ${now.getDate()} ${now
-    .toLocaleDateString(LOCALE[lang], { month: "short" })
-    .replace(".", "")}${fresh ? ` · ${fresh} ${t.new}` : ""}`;
+  const unread = useUnread();
+  const { fresh } = useFeedSummary();
+  const date = useDateLine();
   const ink = color("ink");
-  const dim = color("ink", "inkDim");
-  const standLabel = pref === "system" ? t.device : scheme === "dark" ? t.dark : t.light;
-  const round = spec.id === "modern";
-  /** In modern: drie tegels onder elkaar (merk, navigatie, jij). */
-  const tile = round ? { ...bubble(), padding: 16 } : null;
-
+  const rule = color("ink", "postRule");
+  const narrow = width < 1240;
   return (
     <View
-      style={[
-        { width: RAIL_W, minHeight: 0 },
-        round ? { gap: SEAM } : { borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 26, paddingHorizontal: 20 },
-      ]}
+      style={{
+        height: 64,
+        flexDirection: "row",
+        alignItems: "stretch",
+        borderBottomWidth: spec.border,
+        borderBottomColor: ink,
+        backgroundColor: color("paper"),
+      }}
     >
-      <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} style={tile}>
-        <Text style={[capf(false, true), { fontSize: 27, lineHeight: 27, color: ink }]}>Lincin</Text>
-        <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, textTransform: "uppercase", color: dim, marginTop: 6 }]}>{dateLine}</Text>
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => router.push("/feed")}
+        style={{ width: narrow ? 180 : 220, paddingHorizontal: narrow ? 24 : 32, justifyContent: "center", gap: 3, borderRightWidth: 1, borderRightColor: rule }}
+      >
+        <Text style={[serif(), { fontSize: 28, lineHeight: 28, color: ink }]}>Lincin</Text>
+        <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          {date}
+          {fresh ? ` · ${fresh} ${t.new}` : ""}
+        </Text>
       </Pressable>
+      {nav.map((n) => {
+        const bg = n.on ? (tint ?? ink) : "transparent";
+        const fg = n.on ? (tint ? inkOn(tint) : color("paper")) : color("ink", "inkDim");
+        return (
+          <Pressable
+            key={n.id}
+            accessibilityRole="link"
+            accessibilityState={{ selected: n.on }}
+            onPress={() => router.push(n.href as never)}
+            style={{ width: narrow ? 124 : 148, paddingHorizontal: 16, justifyContent: "center", gap: 3, borderRightWidth: 1, borderRightColor: rule, backgroundColor: bg }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 0.72, color: fg }]}>{n.num}</Text>
+              {n.badge ? <View style={{ width: 6, height: 6, backgroundColor: color("red") }} /> : null}
+            </View>
+            <Text numberOfLines={1} style={[headKleur(), { fontSize: 15, lineHeight: 15, color: fg }]}>
+              {n.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: narrow ? 20 : 32 }}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={t.notifications}
+          onPress={() => router.push("/notifications")}
+          style={{ width: 40, height: 40, borderWidth: spec.border, borderColor: ink, alignItems: "center", justifyContent: "center" }}
+        >
+          <Text style={{ fontSize: 15, lineHeight: 18, color: ink }}>◉</Text>
+          {unread.notifications ? <View style={{ position: "absolute", top: -4, right: -4, width: 9, height: 9, backgroundColor: color("red") }} /> : null}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.newPost}
+          onPress={() => router.push("/post-compose")}
+          style={{ height: 40, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: ink }}
+        >
+          {narrow ? null : (
+            <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: color("paper") }]}>{t.newPost}</Text>
+          )}
+          <Text style={{ fontSize: 18, lineHeight: 20, color: color("paper") }}>+</Text>
+        </Pressable>
+        <View style={{ marginLeft: 6 }}>
+          <MeButton size={40} />
+        </View>
+      </View>
+    </View>
+  );
+}
 
-      <View style={round ? { ...tile, padding: 8 } : null}>
-      <View style={{ marginTop: round ? 0 : 30, gap: 2 }}>
+/** Archivo 900 smal, kapitaal — de tabletters van kleur, los van het thema. */
+function headKleur(): TextStyle {
+  return Platform.OS === "web"
+    ? ({ ...head(), fontFamily: FONT.head, fontWeight: "900", textTransform: "uppercase" } as TextStyle)
+    : { ...head(), fontFamily: FONT.head, textTransform: "uppercase" };
+}
+
+// ---------------------------------------------------------------
+// MAGAZINE
+// ---------------------------------------------------------------
+
+function NavMagazine({ active, tint, hideMark }: { active: Tab; tint: string | null; hideMark: boolean }) {
+  const t = useT();
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const nav = useNav(active);
+  const unread = useUnread();
+  const { fresh } = useFeedSummary();
+  const date = useDateLine();
+  const ink = color("ink");
+  const side = width < 1240 ? 230 : 320;
+  return (
+    <View
+      style={{
+        height: 72,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SEAM,
+        paddingLeft: 32,
+        paddingRight: 6,
+        backgroundColor: color("paper"),
+        borderBottomWidth: 1,
+        borderBottomColor: color("ink", "postRule"),
+      }}
+    >
+      <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} style={{ width: side - 32, flexDirection: "row", alignItems: "baseline", gap: 14, minWidth: 0 }}>
+        {hideMark ? null : <Text style={[serif(), { fontSize: 32, lineHeight: 32, letterSpacing: -0.64, color: ink }]}>Lincin</Text>}
+        <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          {date}
+          {fresh ? ` · ${fresh} ${t.new}` : ""}
+        </Text>
+      </Pressable>
+      <View style={{ flex: 1, flexDirection: "row", justifyContent: "center", gap: SEAM, height: 58 }}>
         {nav.map((n) => {
-          const on = n.on;
+          const bg = n.on ? (tint ?? ink) : color("paper2");
+          const fg = n.on ? (tint ? inkOn(tint) : color("paper")) : ink;
           return (
             <Pressable
               key={n.id}
               accessibilityRole="link"
-              accessibilityLabel={n.badge > 0 ? `${n.label}, ${n.badge} ${t.new}` : n.label}
-              accessibilityState={{ selected: on }}
+              accessibilityState={{ selected: n.on }}
               onPress={() => router.push(n.href as never)}
-              style={{ height: 40, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: round ? 14 : 10, borderRadius: round ? 999 : 0, backgroundColor: on ? ink : "transparent" }}
+              style={{ flex: 1, maxWidth: 150, flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 6, paddingBottom: 10, backgroundColor: bg }}
             >
-              <Text numberOfLines={1} style={[mono(600), { flexShrink: 1, fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: on ? color("paper") : dim }]}>
-                {n.num} {n.label}
+              <Text numberOfLines={1} style={[serif(n.on), { fontSize: 22, lineHeight: 22, color: fg }]}>
+                {n.label}
               </Text>
-              {n.badge > 0 ? (
-                <View style={{ marginLeft: "auto", backgroundColor: color("red"), paddingVertical: 1, paddingHorizontal: 5, borderRadius: round ? 999 : 0 }}>
-                  <Text style={[mono(600), { fontSize: 9, lineHeight: 12, color: ON_DARK }]}>{n.badge}</Text>
-                </View>
-              ) : null}
+              {n.badge ? <View style={{ width: 5, height: 5, borderRadius: 3, marginBottom: 4, backgroundColor: color("red") }} /> : null}
             </Pressable>
           );
         })}
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/post-compose")}
-        style={[
-          { height: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-          round
-            ? { marginTop: 10, borderRadius: 999, backgroundColor: color("ink", "postRule"), paddingLeft: 16, paddingRight: 6 }
-            : { marginTop: 24, borderWidth: spec.border, borderColor: ink, paddingHorizontal: 12 },
-        ]}
-      >
-        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: ink }]}>{t.newPost}</Text>
-        {round ? (
-          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 16, lineHeight: 18, color: color("paper") }}>+</Text>
-          </View>
-        ) : (
-          <Text style={{ fontSize: 16, lineHeight: 18, color: ink }}>+</Text>
-        )}
-      </Pressable>
-      </View>
-
-      <View style={[{ marginTop: "auto", gap: 12 }, tile]}>
-        <Text style={[capf(true, true), { fontSize: 14, lineHeight: 19.6, color: dim }]}>{t.noAlgo}</Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            {(["nl", "en", "de"] as Lang[]).map((l) => (
-              <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: l === lang }} onPress={() => setLang(l)}>
-                <Text style={[railLink(l === lang ? ink : dim), { textDecorationLine: l === lang ? "underline" : "none" }]}>{l}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={t.lightDark} onPress={() => setPreference(STAND_NEXT[pref])}>
-            <Text style={[railLink(ink), { textDecorationLine: "underline" }]}>{standLabel}</Text>
-          </Pressable>
-        </View>
-        {/* De themaschakelaar, onder taal en licht/donker (2.2 §9). Op de
-            telefoon staat hij in Instellingen; desktop heeft dat scherm
-            niet, dus hij hoort hier. */}
-        <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-          {THEMES.map((th) => {
-            const on = lincin.theme === th;
-            return (
-              <Pressable
-                key={th}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={`${t.theme}: ${themeLabel(th, t)}`}
-                onPress={() => lincin.choose(th)}
-              >
-                <Text style={[railLink(on ? ink : dim), { textDecorationLine: on ? "underline" : "none" }]}>
-                  {themeLabel(th, t)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      <View style={{ width: side, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 14, paddingRight: 26 }}>
         <Pressable
           accessibilityRole="link"
-          // Je naam opent je profiel, zoals bij een vriend.
-          onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile") as never)}
-          style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}
+          accessibilityLabel={t.notifications}
+          onPress={() => router.push("/notifications")}
+          style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: ink, alignItems: "center", justifyContent: "center" }}
         >
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color("paper2"), borderWidth: 1, borderColor: edgeColor(round), overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
-            {profile.data?.avatar_url ? (
-              <SafeImage uri={profile.data.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-            ) : (
-              <Text style={[head(), { fontSize: 15, lineHeight: 17, color: ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
-            )}
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[capf(false, true), { fontSize: 16, lineHeight: 16, color: ink }]}>
-              {name}
-            </Text>
-            <Text numberOfLines={1} style={[mono(500), { fontSize: 9, lineHeight: 12, color: dim }]}>
-              {posts.data?.length ?? 0} {t.posts} · {lincs} lincs
-            </Text>
+          <Text style={[serif(), { fontSize: 17, lineHeight: 20, color: ink }]}>✳</Text>
+          {unread.notifications ? (
+            <View style={{ position: "absolute", top: 1, right: 1, width: 7, height: 7, borderRadius: 4, backgroundColor: color("red"), borderWidth: 2, borderColor: color("paper") }} />
+          ) : null}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.newPost}
+          onPress={() => router.push("/post-compose")}
+          style={{ height: 36, paddingLeft: width < 1240 ? 6 : 16, paddingRight: 6, borderWidth: 1, borderColor: ink, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 12 }}
+        >
+          {width < 1240 ? null : (
+            <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, textTransform: "uppercase", color: ink }]}>{t.newPost}</Text>
+          )}
+          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
+            <Text style={[serif(), { fontSize: 18, lineHeight: 20, color: color("paper") }]}>+</Text>
           </View>
         </Pressable>
       </View>
@@ -318,69 +372,143 @@ function Rail({ active }: { active: Tab }) {
   );
 }
 
-const railLink = (c: string): TextStyle => ({
-  ...mono(500),
-  fontSize: 10,
-  lineHeight: 13,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  color: c,
-  ...(Platform.OS === "web" ? ({ textUnderlineOffset: 4 } as object) : null),
-});
+// ---------------------------------------------------------------
+// MODERN
+// ---------------------------------------------------------------
 
-/** De smalle rail van 64 op volle breedte: "L", vijf genummerde vakjes, en + onderaan. */
-function RailNarrow({ active }: { active: Tab }) {
+function NavModern({ active }: { active: Tab }) {
   const t = useT();
   const router = useRouter();
-  const spec = useThemeSpec();
+  const scheme = useScheme();
+  const { width } = useWindowDimensions();
   const nav = useNav(active);
+  const unread = useUnread();
+  const { session } = useAuth();
+  const myUserId = session?.user.id ?? "";
+  const { cards, groups, newest } = useFeedSummary();
+  const date = useDateLine();
+  const lang = useLang();
   const ink = color("ink");
-  const round = spec.id === "modern";
+  const dim = color("ink", "inkDim");
+  const idx = Math.max(0, nav.findIndex((n) => n.on));
+  const pillW = width < 1240 ? 400 : 520;
+  const [pillInner, setPillInner] = useState(0);
+  const openFriend = (key: string) => {
+    if (myUserId) {
+      setPref(myUserId, "feedView", "friends");
+      setFriendOpen(myUserId, key, true);
+    }
+    router.push("/feed");
+  };
   return (
-    <View
-      style={[
-        { width: RAIL_NARROW, minHeight: 0, alignItems: "center", paddingVertical: 18, gap: 14 },
-        round ? bubble() : { borderRightWidth: spec.border, borderRightColor: ink },
-      ]}
-    >
-      <Pressable accessibilityRole="link" accessibilityLabel="Lincin" onPress={() => router.push("/feed")}>
-        <Text style={[capf(false, true), { fontSize: 20, lineHeight: 24, color: ink }]}>L</Text>
+    <View style={{ height: 64, flexDirection: "row", gap: SEAM }}>
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => router.push("/feed")}
+        style={[tileStyle(), { width: width < 1240 ? 210 : 260, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}
+      >
+        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 2, textTransform: "uppercase", color: ink }]}>Lincin</Text>
+        <Text style={[mono(500), { fontSize: 9, lineHeight: 13.5, letterSpacing: 1.26, color: dim, textAlign: "right" }]}>
+          {date}
+          {newest ? ` · ${timeLabel(newest, t, lang)}` : ""}
+          {"\n"}
+          {cards.length} lincs · {groups.length} {t.friends}
+        </Text>
       </Pressable>
-      {nav.map((n) => {
-        const on = n.on;
-        return (
-          <Pressable
-            key={n.id}
-            accessibilityRole="link"
-            accessibilityLabel={n.badge > 0 ? `${n.label}, ${n.badge} ${t.new}` : n.label}
-            accessibilityState={{ selected: on }}
-            onPress={() => router.push(n.href as never)}
-            style={{
-              width: 34,
-              height: 34,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: round ? 17 : 0,
-              backgroundColor: on ? ink : "transparent",
-              borderWidth: on ? spec.border : 1,
-              borderColor: on ? ink : color("ink", "postRule"),
-            }}
-          >
-            <Text style={[mono(600), { fontSize: 10, lineHeight: 13, color: on ? color("paper") : color("ink", "inkDim") }]}>{n.num}</Text>
-            {n.badge > 0 ? <View style={{ position: "absolute", top: -3, right: -3, width: 6, height: 6, borderRadius: round ? 3 : 0, backgroundColor: color("red") }} /> : null}
-          </Pressable>
-        );
-      })}
+      <View style={[tileStyle(), { flex: 1, minWidth: 0, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 8, overflow: "hidden" }]}>
+        {groups.map((g) => {
+          const fc = friendColor(g.hue, scheme);
+          const on = g.fresh > 0;
+          return (
+            <Pressable
+              key={g.key}
+              accessibilityRole="button"
+              accessibilityLabel={on ? `${g.name}, ${g.fresh} ${t.new}` : g.name}
+              onPress={() => openFriend(g.key)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingRight: on ? 14 : 0, opacity: on ? 1 : 0.6 }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: on ? fc.fill : "transparent",
+                  borderWidth: 1,
+                  borderColor: color("ink", on ? "pill" : "pillSoft"),
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={[sans(500), { fontSize: 13, lineHeight: 16, color: on ? fc.ink : dim }]}>{g.initial}</Text>
+                {on ? (
+                  <View style={{ position: "absolute", top: -2, right: -2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
+                    <Text style={[mono(600), { fontSize: 9, lineHeight: 11, color: color("paper") }]}>{g.fresh}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {on ? (
+                <Text numberOfLines={1} style={[sans(500), { fontSize: 13, lineHeight: 16, letterSpacing: -0.13, color: ink }]}>
+                  {g.name}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      <View
+        onLayout={(e) => setPillInner(e.nativeEvent.layout.width - 12)}
+        style={[
+          { width: pillW, padding: 5, borderRadius: 999, borderWidth: 1, borderColor: color("ink", "cardEdge"), backgroundColor: color("paper", "glass") },
+          { borderColor: color("ink", "postRule") },
+          Platform.OS === "web" ? ({ backdropFilter: "blur(18px)" } as object) : null,
+        ]}
+      >
+        {pillInner ? (
+          <View
+            style={[
+              { position: "absolute", top: 5, bottom: 5, left: 5 + (pillInner / 4) * idx, width: pillInner / 4, borderRadius: 999, backgroundColor: ink },
+              Platform.OS === "web" ? ({ transitionProperty: "left", transitionDuration: "300ms" } as object) : null,
+            ]}
+          />
+        ) : null}
+        <View style={{ flex: 1, flexDirection: "row" }}>
+          {nav.map((n) => (
+            <Pressable
+              key={n.id}
+              accessibilityRole="link"
+              accessibilityState={{ selected: n.on }}
+              onPress={() => router.push(n.href as never)}
+              style={[{ flex: 1, borderRadius: 999, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }, webPointer]}
+            >
+              <Text numberOfLines={1} style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: n.on ? color("paper") : ink }]}>
+                {n.label}
+              </Text>
+              {n.badge ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: color("red") }} /> : null}
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={t.notifications}
+        onPress={() => router.push("/notifications")}
+        style={[tileStyle(), { width: 56, alignItems: "center", justifyContent: "center" }]}
+      >
+        <Svg width={17} height={17} viewBox="0 0 16 16" fill="none">
+          <Circle cx={8} cy={6.6} r={4.3} stroke={ink} strokeWidth={1.3} />
+          <Path d="M3.4 12.2h9.2" stroke={ink} strokeWidth={1.3} strokeLinecap="round" />
+        </Svg>
+        {unread.notifications ? <View style={{ position: "absolute", top: 16, right: 16, width: 7, height: 7, borderRadius: 4, backgroundColor: color("red") }} /> : null}
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t.newPost}
         onPress={() => router.push("/post-compose")}
-        style={[
-          { marginTop: "auto", width: 34, height: 34, alignItems: "center", justifyContent: "center" },
-          round ? { borderRadius: 17, backgroundColor: ink } : { borderWidth: spec.border, borderColor: ink },
-        ]}
+        style={{ width: 56, borderRadius: RASTER.tileRadius, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}
       >
-        <Text style={{ fontSize: 16, lineHeight: 18, color: round ? color("paper") : ink }}>+</Text>
+        <Svg width={18} height={18} viewBox="0 0 16 16" fill="none">
+          <Path d="M8 2.4v11.2M2.4 8h11.2" stroke={color("paper")} strokeWidth={1.5} strokeLinecap="round" />
+        </Svg>
       </Pressable>
     </View>
   );
