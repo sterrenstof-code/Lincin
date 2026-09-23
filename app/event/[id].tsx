@@ -6,7 +6,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-import { ActionSheet } from "@/components/ActionSheet";
 import { Avatar } from "@/components/Avatar";
 import { DetailState } from "@/components/DetailState";
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
@@ -17,6 +16,7 @@ import {
   EventActions,
   EventEmpty,
   EventHero,
+  EventMenu,
   EventNotice,
   EventSheet,
   type EventAction,
@@ -496,12 +496,13 @@ export default function EventDetailScreen() {
       )}
 
       {/* De volledige gastenlijst. */}
-      <ActionSheet
+      <EventMenu
         visible={guestsOpen}
         onClose={() => setGuestsOpen(false)}
-        title={`Gasten (${memberList.length})`}
-        actions={memberList.map((m) => ({
-          label: `${m.profile?.display_name ?? m.profile?.username ?? "Onbekend"}${m.role === "host" ? " · gastheer" : ""}`,
+        title={`Gasten · ${memberList.length}`}
+        items={memberList.map((m) => ({
+          label: m.profile?.display_name ?? m.profile?.username ?? "Onbekend",
+          sub: [m.role === "host" ? "gastheer" : null, m.profile?.username ? `@${m.profile.username}` : null].filter(Boolean).join(" · ") || undefined,
           icon: "person-outline" as const,
           onPress: () => {
             const handle = m.profile?.username;
@@ -520,12 +521,12 @@ export default function EventDetailScreen() {
         onDecline={onDeclineRequest}
       />
 
-      <ActionSheet
+      <EventMenu
         visible={addMenuOpen}
         onClose={() => setAddMenuOpen(false)}
         title="Bijdrage toevoegen"
         subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
-        actions={[
+        items={[
           { label: "Maak een foto met de camera", icon: "camera-outline", onPress: onOpenCamera },
           { label: "Kies uit je foto's en video's", icon: "images-outline", onPress: () => pickFromGallery() },
           { label: "Voeg link toe", icon: "link-outline", onPress: onOpenLinkCompose },

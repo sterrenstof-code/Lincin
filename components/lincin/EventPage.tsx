@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useState, type ReactNode } from "react";
-import { Platform, Pressable, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
 import type { ContributionWithAuthor } from "@/lib/api/events";
@@ -712,4 +712,202 @@ function VideoTile({ uri }: { uri: string }) {
     p.muted = true;
   });
   return <VideoView player={player} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls />;
+}
+
+// ---------------------------------------------------------------
+// MENU: bijdrage toevoegen, de gastenlijst
+// ---------------------------------------------------------------
+
+export type EventMenuItem = {
+  label: string;
+  /** Een tweede regel: "gastheer", "@noor". */
+  sub?: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+};
+
+/**
+ * Een keuzelijst in het midden van het scherm, in de vorm van het thema.
+ * Hier stond `ActionSheet` — het blad van vóór de drie thema's, met zijn
+ * eigen letter en lijnen, midden op een pagina die verder wél het thema
+ * droeg.
+ *
+ *   kleur     kader van 1.5 inkt op papier; de kop in mono, de regels in
+ *             Archivo 900 smal met een inktlijn ertussen.
+ *   magazine  het tweede papier zonder kader; de kop in serif, de uitleg
+ *             cursief, de regels in serif met een haarlijn.
+ *   modern    een tegel van 18; de regels als eigen tegels met het icoon
+ *             in een rondje.
+ */
+export function EventMenu({
+  visible,
+  onClose,
+  title,
+  subtitle,
+  items,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  items: EventMenuItem[];
+}) {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const B = spec.border;
+  const rule = th === "kleur" ? ink : color("ink", "postRule");
+  const pick = (item: EventMenuItem) => {
+    onClose();
+    // Kleine vertraging zodat dit venster weg is voor er een volgend opent
+    // (de camera, de bibliotheek, een profiel).
+    setTimeout(item.onPress, 60);
+  };
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: "center", padding: 18 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sluiten"
+          onPress={onClose}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(11,10,12,0.55)" }}
+        />
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 520,
+            maxHeight: "86%",
+            alignSelf: "center",
+            backgroundColor: th === "magazine" ? color("paper2") : color("paper"),
+            borderWidth: th === "kleur" ? B : 0,
+            borderColor: ink,
+            borderRadius: th === "modern" ? RASTER.tileRadius : 0,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingHorizontal: th === "modern" ? 22 : 18,
+              paddingTop: th === "kleur" ? 14 : 20,
+              paddingBottom: th === "kleur" ? 14 : 8,
+              ...(th === "kleur" ? { borderBottomWidth: B, borderBottomColor: ink } : null),
+            }}
+          >
+            <Text
+              style={[
+                th === "magazine"
+                  ? { ...serif(), fontSize: 32, lineHeight: 34, letterSpacing: -0.6, color: ink }
+                  : th === "modern"
+                    ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7, color: ink }
+                    : meta(10, dim, 1),
+                { flex: 1 },
+              ]}
+            >
+              {title}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sluiten"
+              onPress={onClose}
+              hitSlop={8}
+              style={{
+                width: 32,
+                height: 32,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: th === "kleur" ? 0 : 16,
+                borderWidth: th === "magazine" ? 0 : th === "kleur" ? B : 1,
+                borderColor: th === "kleur" ? ink : color("ink", "postRule"),
+              }}
+            >
+              <Ionicons name="close" color={ink} size={18} />
+            </Pressable>
+          </View>
+
+          {subtitle ? (
+            <Text
+              style={[
+                th === "magazine" ? { ...serif(true), fontSize: 17, lineHeight: 23 } : { ...sans(400), fontSize: 13.5, lineHeight: 19 },
+                {
+                  color: dim,
+                  paddingHorizontal: th === "modern" ? 22 : 18,
+                  paddingTop: th === "kleur" ? 12 : 0,
+                  paddingBottom: th === "kleur" ? 12 : 14,
+                  ...(th === "kleur" ? { borderBottomWidth: B, borderBottomColor: ink } : null),
+                },
+              ]}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
+
+          <ScrollView
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={th === "modern" ? { padding: SEAM, gap: SEAM } : th === "magazine" ? { paddingBottom: 8 } : undefined}
+          >
+            {items.map((item, i) => (
+              <Pressable
+                key={`${item.label}-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                onPress={() => pick(item)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                  minHeight: th === "kleur" ? 60 : 56,
+                  paddingHorizontal: th === "modern" ? 14 : 18,
+                  paddingVertical: 10,
+                  ...(th === "modern"
+                    ? { borderRadius: 14, backgroundColor: pressed ? color("ink", "postRule") : color("tile", "tileFill") }
+                    : {
+                        backgroundColor: pressed ? color("ink", "postRule") : "transparent",
+                        ...(th === "magazine"
+                          ? { borderTopWidth: 1, borderTopColor: rule, marginHorizontal: 18, paddingHorizontal: 0 }
+                          : i === 0
+                            ? null
+                            : { borderTopWidth: B, borderTopColor: ink }),
+                      }),
+                })}
+              >
+                <View
+                  style={
+                    th === "modern"
+                      ? { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: color("ink", "postRule"), alignItems: "center", justifyContent: "center" }
+                      : { width: 24, alignItems: "center" }
+                  }
+                >
+                  <Ionicons name={item.icon} size={th === "modern" ? 16 : 20} color={ink} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={
+                      th === "magazine"
+                        ? { ...serif(), fontSize: 22, lineHeight: 26, color: ink }
+                        : th === "modern"
+                          ? { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3, color: ink }
+                          : { ...head(), fontSize: 19, lineHeight: 20, color: ink }
+                    }
+                  >
+                    {item.label}
+                  </Text>
+                  {item.sub ? (
+                    <Text numberOfLines={1} style={th === "magazine" ? kicker(9, dim) : meta(9, dim, 0.9)}>
+                      {item.sub}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={[meta(12, dim, 0), { textTransform: "none" }]}>→</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 }
