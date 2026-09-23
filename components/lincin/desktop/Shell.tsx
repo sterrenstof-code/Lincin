@@ -8,12 +8,13 @@ import { SafeImage } from "@/components/SafeImage";
 import { listUnifiedFeed } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { RASTER, color, friendColor, hueFor, inkOn, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { OMSLAG, RASTER, color, friendColor, hueFor, inkOn, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { FONT, capf, head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
-import { setFriendOpen, setPref, usePrefs } from "@/lib/lincin/prefs";
+import { setFriendOpen, setPref } from "@/lib/lincin/prefs";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
+import { Label as OLabel, RedButton, RedDot, RoundGlyph, Wordmark, useOmslag } from "../magazine/Omslag";
 import { useSeenPosts } from "@/lib/read-state";
 
 /**
@@ -77,6 +78,7 @@ export function DesktopShell({
   tint,
   tabTint = null,
   hideMark = false,
+  navExtra = null,
   children,
 }: {
   active: Tab;
@@ -89,8 +91,10 @@ export function DesktopShell({
   tint?: string | null;
   /** Het actieve tabblad in de kleur van de vriend: een open bijdrage. Anders inkt. */
   tabTint?: string | null;
-  /** Magazine: de editie draagt zelf het grote "Lincin"; de balk laat het weg. */
+  /** Oud (magazine 2.2): de balk liet het woordmerk weg. De omslag houdt het altijd. */
   hideMark?: boolean;
+  /** Magazine: rechts in de balk, vóór ✳ — de weergaven van de feed. */
+  navExtra?: ReactNode;
   children: ReactNode;
 }) {
   const spec = useThemeSpec();
@@ -113,7 +117,7 @@ export function DesktopShell({
     >
       <View style={[{ flex: 1, minHeight: 0, width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }, round ? { padding: SEAM, gap: SEAM } : null]}>
         {spec.id === "magazine" ? (
-          <NavMagazine active={active} tint={tabTint} hideMark={hideMark} />
+          <NavMagazine active={active} extra={navExtra} />
         ) : round ? (
           <NavModern active={active} />
         ) : (
@@ -302,86 +306,60 @@ function headKleur(): TextStyle {
 // MAGAZINE
 // ---------------------------------------------------------------
 
-function NavMagazine({ active, tint, hideMark }: { active: Tab; tint: string | null; hideMark: boolean }) {
+function NavMagazine({ active, extra }: { active: Tab; extra: ReactNode }) {
   const t = useT();
-  const { session } = useAuth();
-  const edition = usePrefs(session?.user.id ?? "anon").edition?.n;
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const nav = useNav(active);
   const unread = useUnread();
-  const { fresh } = useFeedSummary();
-  const date = useDateLine();
-  const ink = color("ink");
-  const side = width < 1240 ? 230 : 320;
+  const o = useOmslag();
   return (
     <View
       style={{
-        height: 72,
+        height: 56,
         flexDirection: "row",
         alignItems: "center",
-        gap: SEAM,
-        paddingLeft: 32,
+        gap: 32,
+        paddingLeft: 40,
         paddingRight: 6,
-        backgroundColor: color("paper"),
-        borderBottomWidth: 1,
-        borderBottomColor: color("ink", "postRule"),
+        backgroundColor: o.paper,
+        borderBottomWidth: OMSLAG.rule,
+        borderBottomColor: o.ink,
+        zIndex: 30,
       }}
     >
-      <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} style={{ width: side - 32, flexDirection: "row", alignItems: "baseline", gap: 14, minWidth: 0 }}>
-        {hideMark ? null : <Text style={[serif(), { fontSize: 32, lineHeight: 32, letterSpacing: -0.64, color: ink }]}>Lincin</Text>}
-        <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
-          {date}
-          {edition ? ` · № ${edition}` : ""}
-          {fresh ? ` · ${fresh} ${t.new}` : ""}
-        </Text>
+      <Pressable accessibilityRole="link" accessibilityLabel="Lincin" onPress={() => router.push("/feed")} style={webPointer}>
+        <Wordmark size={28} />
       </Pressable>
-      <View style={{ flex: 1, flexDirection: "row", justifyContent: "center", gap: SEAM, height: 58 }}>
-        {nav.map((n) => {
-          const bg = n.on ? (tint ?? ink) : color("paper2");
-          const fg = n.on ? (tint ? inkOn(tint) : color("paper")) : ink;
-          return (
-            <Pressable
-              key={n.id}
-              accessibilityRole="link"
-              accessibilityState={{ selected: n.on }}
-              onPress={() => router.push(n.href as never)}
-              style={{ flex: 1, maxWidth: 150, flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 6, paddingBottom: 10, backgroundColor: bg }}
-            >
-              <Text numberOfLines={1} style={[serif(n.on), { fontSize: 22, lineHeight: 22, color: fg }]}>
-                {n.label}
-              </Text>
-              {n.badge ? <View style={{ width: 5, height: 5, borderRadius: 3, marginBottom: 4, backgroundColor: color("red") }} /> : null}
-            </Pressable>
-          );
-        })}
+      <View style={{ flexDirection: "row", gap: 28 }}>
+        {nav.map((n) => (
+          <Pressable
+            key={n.id}
+            accessibilityRole="link"
+            accessibilityState={{ selected: n.on }}
+            onPress={() => router.push(n.href as never)}
+            hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+            style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, webPointer]}
+          >
+            <OLabel size={12} ls={0.08} color={n.on ? o.red : o.ink}>
+              {n.label}
+            </OLabel>
+            {n.badge ? <RedDot size={6} /> : null}
+          </Pressable>
+        ))}
       </View>
-      <View style={{ width: side, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 14, paddingRight: 26 }}>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={t.notifications}
+      <View style={{ flex: 1 }} />
+      {extra}
+      <View style={{ marginLeft: extra ? 12 : 0 }}>
+        <RoundGlyph
+          glyph="✳"
+          size={36}
+          fontSize={17}
+          badge={unread.notifications > 0}
           onPress={() => router.push("/notifications")}
-          style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: ink, alignItems: "center", justifyContent: "center" }}
-        >
-          <Text style={[serif(), { fontSize: 17, lineHeight: 20, color: ink }]}>✳</Text>
-          {unread.notifications ? (
-            <View style={{ position: "absolute", top: 1, right: 1, width: 7, height: 7, borderRadius: 4, backgroundColor: color("red"), borderWidth: 2, borderColor: color("paper") }} />
-          ) : null}
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.newPost}
-          onPress={() => router.push("/post-compose")}
-          style={{ height: 36, paddingLeft: width < 1240 ? 6 : 16, paddingRight: 6, borderWidth: 1, borderColor: ink, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 12 }}
-        >
-          {width < 1240 ? null : (
-            <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, textTransform: "uppercase", color: ink }]}>{t.newPost}</Text>
-          )}
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
-            <Text style={[serif(), { fontSize: 18, lineHeight: 20, color: color("paper") }]}>+</Text>
-          </View>
-        </Pressable>
+          label={unread.notifications > 0 ? `${t.notifications}, ${unread.notifications} ${t.new}` : t.notifications}
+        />
       </View>
+      <RedButton label={t.newPost} onPress={() => router.push("/post-compose")} />
     </View>
   );
 }

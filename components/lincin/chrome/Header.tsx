@@ -9,6 +9,7 @@ import { safeBack } from "@/lib/nav";
 import { useUnread } from "@/lib/lincin/unread";
 
 import { GUTTER, SquareBtn } from "../ui";
+import { Wordmark } from "../magazine/Omslag";
 
 /**
  * De kopregel (WIJZIGINGEN-2.2 §5).
@@ -305,7 +306,7 @@ function HeaderKleur({ counter, back, actions = true }: { counter?: string; back
   );
 }
 
-/** De kolofonregel: "Lincin · teller" links, ✳ en + rechts. */
+/** De kolofonregel: LINCIN (rood) · teller links, ✳ en + rechts. */
 function HeaderMagazine({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -331,21 +332,26 @@ function HeaderMagazine({ counter, back, actions = true }: { counter?: string; b
       <Pressable
         accessibilityRole="link"
         onPress={() => router.push("/feed")}
-        style={{ flexShrink: 1, minWidth: 0, paddingVertical: 11, marginVertical: -11 }}
+        style={{ flexShrink: 1, minWidth: 0, paddingVertical: 11, marginVertical: -11, flexDirection: "row", alignItems: "baseline", gap: 10 }}
       >
-        <Text
-          numberOfLines={1}
-          style={{
-            ...sans(500),
-            fontSize: 9,
-            lineHeight: 12,
-            letterSpacing: 1.98, // .22em
-            textTransform: "uppercase",
-            color: color("ink", "inkDim"),
-          }}
-        >
-          {counter ? `Lincin · ${counter}` : "Lincin"}
-        </Text>
+        {/* De omslag: het rode woordmerk, en de teller ernaast. */}
+        <Wordmark size={22} />
+        {counter ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              ...sans(500),
+              flexShrink: 1,
+              fontSize: 9,
+              lineHeight: 12,
+              letterSpacing: 1.98, // .22em
+              textTransform: "uppercase",
+              color: color("ink", "inkDim"),
+            }}
+          >
+            {counter}
+          </Text>
+        ) : null}
       </Pressable>
       {actions ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 0 }}>

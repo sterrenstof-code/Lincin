@@ -9,7 +9,7 @@ import { listUnifiedFeed, type FeedItem } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { useLang, useT, type Dict } from "@/lib/i18n";
 import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
-import { useHueChoices } from "@/lib/design/theme";
+import { useHueChoices, useTheme } from "@/lib/design/theme";
 import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 import { isFriendOpen, setFriendOpen, setFriendsOpen, setPref, usePrefs, type FeedView } from "@/lib/lincin/prefs";
 import { usePostReactions } from "@/lib/lincin/reactions";
@@ -39,15 +39,18 @@ export function useFeed() {
   const t = useT();
   const lang = useLang();
   const desktop = useIsDesktop();
+  const theme = useTheme();
 
   // ---- de weergave en wie er open staat: per gebruiker, ook op de server ----
   const prefs = usePrefs(myUserId);
   /**
-   * Editie bestaat alleen op desktop; daar is hij ook de standaard. Een
-   * telefoon die "editie" erft van desktop toont Per vriend.
+   * Editie bestaat op desktop, en op de telefoon alleen in magazine — daar
+   * ís de feed een omslag (handoff 24 sep). Daar is hij ook de standaard.
+   * Een telefoon in kleur of modern die "editie" erft toont Per vriend.
    */
-  const stored = prefs.feedView ?? (desktop ? "editie" : "friends");
-  const view: FeedView = !desktop && stored === "editie" ? "friends" : stored;
+  const hasEditie = desktop || theme === "magazine";
+  const stored = prefs.feedView ?? (hasEditie ? "editie" : "friends");
+  const view: FeedView = !hasEditie && stored === "editie" ? "friends" : stored;
   const changeView = useCallback((v: FeedView) => setPref(myUserId, "feedView", v), [myUserId]);
 
   /**

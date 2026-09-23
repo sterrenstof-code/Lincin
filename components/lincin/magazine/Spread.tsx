@@ -4,6 +4,7 @@ import { color, RASTER } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 
 import { VerticalLabel } from "../ui";
+import { Black } from "./Omslag";
 
 /**
  * De poster-spread van magazine (WIJZIGINGEN-2.2 §2).
@@ -246,8 +247,8 @@ export function SpreadKicker({ children, ink }: { children: React.ReactNode; ink
 }
 
 /**
- * De paginakop van een magazine-subpagina: het kolofonregeltje, de naam in
- * grote serif, en een cursieve ondertitel.
+ * De paginakop van een magazine-pagina: het kolofonregeltje, de titel in
+ * rood Archivo 900 (de omslag, handoff 24 sep), en een cursieve ondertitel.
  */
 export function MagazineHead({
   kicker,
@@ -273,9 +274,10 @@ export function MagazineHead({
         {kicker}
       </Text>
       {typeof title === "string" ? (
-        <Text style={{ ...serif(), fontSize: 52, lineHeight: 46.8, letterSpacing: -1.56, color: color("ink") }}>
+        // De omslag: de paginatitel in rood Archivo 900 (50, .84, −.055em).
+        <Black size={50} f={0.84} ls={-0.055}>
           {title}
-        </Text>
+        </Black>
       ) : (
         title
       )}

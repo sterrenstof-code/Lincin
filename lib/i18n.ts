@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  omCoverA: "Jouw editie", omCoverB: "van vandaag", omAndFriends: "& vrienden", omNoAlgo: "geen algoritme", omOpenPost: "Open bijdrage", omContents: "Inhoud", omEnd: "— Einde · morgen weer", omRestSeen: "Je bent bij. De rest heb je al gezien.", omPrivateTo: "Privé aan", omComments: "Comments", omFrom: "van", omVol: "Vol.", omFriendsN: "vrienden", omFriend1: "vriend",
   noNotes: "Nog geen meldingen", 
   editProfile: "Profiel bewerken", linkDevice: "Toestel koppelen", logout: "Uitloggen", groupsLabel: "Groepen", peopleYouLet: "mensen die jij toeliet", remembered: "wordt onthouden", rememberNote: "Alles wordt onthouden, ook op je andere toestellen — je thema, je taal, je weergave en welke vrienden je open of dicht had.", foldedDefault: "Vrienden standaard ingeklapt", foldedDefaultSub: "je ziet eerst de titels, klik om te openen", myPosts: "Jouw bijdragen", yourPage: "Jouw pagina", 
   dropHere: "sleep hierheen of klik — tot 6", titleLabel: "Titel", captionLabel: "Onderschrift", whoSees: "Wie ziet het", allLincs: "Al je lincs", howLincSees: "Zo ziet je linc het", share: "Delen", shareWithLincs: "Delen met je lincs", forYourLincs: "voor je lincs · geen algoritme", 
@@ -66,6 +67,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  omCoverA: "Your edition", omCoverB: "of today", omAndFriends: "& friends", omNoAlgo: "no algorithm", omOpenPost: "Open post", omContents: "Contents", omEnd: "— The end · more tomorrow", omRestSeen: "You're up to date. You've seen the rest.", omPrivateTo: "Private to", omComments: "Comments", omFrom: "from", omVol: "Vol.", omFriendsN: "friends", omFriend1: "friend",
   noNotes: "No notifications yet", 
   editProfile: "Edit profile", linkDevice: "Link a device", logout: "Log out", groupsLabel: "Groups", peopleYouLet: "people you let in", remembered: "remembered", rememberNote: "Everything is remembered, on your other devices too — your theme, your language, your view and which friends you had open.", foldedDefault: "Friends folded by default", foldedDefaultSub: "you see the titles first, click to open", myPosts: "Your posts", yourPage: "Your page", 
   dropHere: "drop here or click — up to 6", titleLabel: "Title", captionLabel: "Caption", whoSees: "Who sees it", allLincs: "All your lincs", howLincSees: "How your linc sees it", share: "Share", shareWithLincs: "Share with your lincs", forYourLincs: "for your lincs · no algorithm", 
@@ -115,6 +117,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  omCoverA: "Deine Ausgabe", omCoverB: "von heute", omAndFriends: "& Freunde", omNoAlgo: "kein Algorithmus", omOpenPost: "Beitrag öffnen", omContents: "Inhalt", omEnd: "— Ende · morgen wieder", omRestSeen: "Du bist auf dem Stand. Den Rest hast du gesehen.", omPrivateTo: "Privat an", omComments: "Kommentare", omFrom: "von", omVol: "Vol.", omFriendsN: "Freunde", omFriend1: "Freund",
   noNotes: "Noch keine Meldungen", 
   editProfile: "Profil bearbeiten", linkDevice: "Gerät verbinden", logout: "Abmelden", groupsLabel: "Gruppen", peopleYouLet: "Menschen, die du zugelassen hast", remembered: "wird gespeichert", rememberNote: "Alles wird gespeichert, auch auf deinen anderen Geräten — dein Thema, deine Sprache, deine Ansicht und welche Freunde du offen hattest.", foldedDefault: "Freunde standardmäßig eingeklappt", foldedDefaultSub: "du siehst zuerst die Titel, klicke zum Öffnen", myPosts: "Deine Beiträge", yourPage: "Deine Seite", 
   dropHere: "hierher ziehen oder klicken — bis 6", titleLabel: "Titel", captionLabel: "Unterschrift", whoSees: "Wer sieht es", allLincs: "Alle deine Lincs", howLincSees: "So sieht dein Linc es", share: "Teilen", shareWithLincs: "Mit deinen Lincs teilen", forYourLincs: "für deine Lincs · kein Algorithmus", 

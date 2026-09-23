@@ -94,7 +94,9 @@ export function Black({
 /** LINCIN, rood. */
 export function Wordmark({ size, color: c, style }: { size: number; color?: string; style?: StyleProp<TextStyle> }) {
   return (
-    <Black size={size} color={c} f={0.78} ls={size > 60 ? -0.055 : -0.05} numberOfLines={1} style={style}>
+    // Geen `numberOfLines`: een groot woordmerk mag over de rand lopen (de
+    // cover snijdt het af), zoals in het prototype — geen "LIN…".
+    <Black size={size} color={c} f={0.78} ls={size > 60 ? -0.055 : -0.05} style={[{ flexShrink: 0 }, isWeb ? ({ whiteSpace: "nowrap" } as TextStyle) : null, style]}>
       LINCIN
     </Black>
   );
@@ -430,3 +432,68 @@ export function Rail({
 export const SEAM = OMSLAG.seam;
 /** De rug van een vriend. */
 export const SPINE = OMSLAG.spine;
+
+/**
+ * Verticale tekst met een vaste lengte: "& VRIENDEN" naast het woordmerk
+ * (`down`, van boven naar onder) en de rugtekst van de cover (`up`). Web
+ * gebruikt `writing-mode` zoals het prototype; native draait één regel.
+ */
+export function VText({
+  children,
+  length,
+  thickness,
+  dir = "up",
+  style,
+}: {
+  children: string;
+  length: number;
+  /** De breedte van de strook: de regelhoogte van de tekst. */
+  thickness: number;
+  dir?: "up" | "down";
+  style: StyleProp<TextStyle>;
+}) {
+  if (isWeb) {
+    return (
+      <Text
+        numberOfLines={1}
+        style={[
+          style,
+          { maxHeight: length, overflow: "hidden", writingMode: "vertical-rl", transform: dir === "up" ? [{ rotate: "180deg" }] : undefined } as TextStyle,
+        ]}
+      >
+        {children}
+      </Text>
+    );
+  }
+  return (
+    <View style={{ width: thickness, height: length }}>
+      <View
+        style={{
+          position: "absolute",
+          width: length,
+          height: thickness,
+          left: thickness / 2 - length / 2,
+          top: length / 2 - thickness / 2,
+          transform: [{ rotate: dir === "up" ? "-90deg" : "90deg" }],
+        }}
+      >
+        <Text numberOfLines={1} style={[style, { lineHeight: thickness }]}>
+          {children}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Een verloop over een foto; alleen op web, native legt een vlakke sluier. */
+export function Scrim({ css, style }: { css: string; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View
+      style={[
+        { pointerEvents: "none", position: "absolute" },
+        isWeb ? ({ backgroundImage: css } as ViewStyle) : { backgroundColor: "rgba(16,16,12,.28)" },
+        style,
+      ]}
+    />
+  );
+}

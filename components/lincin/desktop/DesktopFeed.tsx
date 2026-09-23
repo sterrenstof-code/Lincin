@@ -83,7 +83,7 @@ export function DesktopFeed() {
 
 export type Tile = CardPost & { hue: Hue; isNew: boolean };
 
-function useEdition(f: Feed) {
+export function useEdition(f: Feed) {
   const { byTime, groups, seen, isMine } = f;
   return useMemo(() => {
     const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
