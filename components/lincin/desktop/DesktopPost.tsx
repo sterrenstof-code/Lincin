@@ -234,7 +234,7 @@ export function DesktopPost({ id }: { id: string }) {
   );
 
   return (
-    <DesktopShell active="feed" mode="full" tint={fc.fill}>
+    <DesktopShell active="feed" tint={fc.fill} tabTint={fc.fill}>
       <TopBar left={left} right={right} />
 
       {/* Links het beeld met de band eronder, rechts de reacties over de

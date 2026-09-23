@@ -75,14 +75,20 @@ function modernHaze(bloom: string, next: string): object | null {
 export function DesktopShell({
   active,
   tint,
+  tabTint = null,
   hideMark = false,
   children,
 }: {
   active: Tab;
   /** Oud: rail in rust, smal of met gesprekken. De balk kent maar één vorm. */
   mode?: ShellMode;
-  /** De vriendkleur (hex) van wie in beeld is. */
+  /**
+   * De vriendkleur (hex) van wie in beeld is. Kleur legt hem als licht van
+   * boven op het blad (26% op papier, uitdovend); modern als kleurhaze.
+   */
   tint?: string | null;
+  /** Het actieve tabblad in de kleur van de vriend: een open bijdrage. Anders inkt. */
+  tabTint?: string | null;
   /** Magazine: de editie draagt zelf het grote "Lincin"; de balk laat het weg. */
   hideMark?: boolean;
   children: ReactNode;
@@ -91,22 +97,27 @@ export function DesktopShell({
   const scheme = useScheme();
   const round = spec.id === "modern";
   const bloom = tint ?? friendColor("blue", scheme).fill;
-  const bg = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : color("paper");
+  const lit = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : null;
   return (
     <View
       style={[
-        { flex: 1, minHeight: 0, backgroundColor: bg },
+        { flex: 1, minHeight: 0, backgroundColor: color("paper") },
         round ? modernHaze(bloom, friendColor("ochre", scheme).fill) : null,
+        lit
+          ? Platform.OS === "web"
+            ? ({ backgroundImage: `linear-gradient(180deg, ${lit} 0px, ${lit} 120px, ${color("paper")} 900px)` } as object)
+            : { backgroundColor: lit }
+          : null,
         Platform.OS === "web" ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object) : null,
       ]}
     >
       <View style={[{ flex: 1, minHeight: 0, width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }, round ? { padding: SEAM, gap: SEAM } : null]}>
         {spec.id === "magazine" ? (
-          <NavMagazine active={active} tint={tint ?? null} hideMark={hideMark} />
+          <NavMagazine active={active} tint={tabTint} hideMark={hideMark} />
         ) : round ? (
           <NavModern active={active} />
         ) : (
-          <NavKleur active={active} tint={tint ?? null} />
+          <NavKleur active={active} tint={tabTint} />
         )}
         <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
       </View>
