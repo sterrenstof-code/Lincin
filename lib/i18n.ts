@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 export type Lang = "nl" | "en" | "de";
 
 const NL = {
+  invites: "nodigt uit", upcomingN: "komend", newEventPlus: "Nieuw event +", eventsTitle: "Events", 
   firstComment: "Nog niemand zei iets. Jij als eerste?", writeBack: "Schrijf iets terug…", 
   inThisA: "In deze", inThisB: "editie", 
   kickerFriends: "01 · Feed · per vriend · geen algoritme", kickerTime: "01 · Feed · op tijd · nieuwste eerst", restOfEdition: "Rest van de editie", alreadySeen: "al gezien", upToDateDot: "Je bent bij.", allSeenBelow: "Alles hieronder heb je al gezien.", postsFrom: "bijdragen van", newFront: "Nieuw · voorpagina", seenFront: "Voorpagina · gezien", 
@@ -61,6 +62,7 @@ const NL = {
 };
 
 const EN: typeof NL = {
+  invites: "invites you", upcomingN: "upcoming", newEventPlus: "New event +", eventsTitle: "Events", 
   firstComment: "Nobody said anything yet. You first?", writeBack: "Write something back…", 
   inThisA: "In this", inThisB: "edition", 
   kickerFriends: "01 · Feed · by friend · no algorithm", kickerTime: "01 · Feed · by time · newest first", restOfEdition: "Rest of the edition", alreadySeen: "already seen", upToDateDot: "You're up to date.", allSeenBelow: "You've seen everything below.", postsFrom: "posts from", newFront: "New · front page", seenFront: "Front page · seen", 
@@ -105,6 +107,7 @@ const EN: typeof NL = {
 };
 
 const DE: typeof NL = {
+  invites: "lädt ein", upcomingN: "kommend", newEventPlus: "Neues Event +", eventsTitle: "Events", 
   firstComment: "Noch hat niemand etwas gesagt. Du zuerst?", writeBack: "Schreib etwas zurück…", 
   inThisA: "In dieser", inThisB: "Ausgabe", 
   kickerFriends: "01 · Feed · nach Freund · kein Algorithmus", kickerTime: "01 · Feed · nach Zeit · neueste zuerst", restOfEdition: "Rest der Ausgabe", alreadySeen: "schon gesehen", upToDateDot: "Du bist auf dem Stand.", allSeenBelow: "Alles darunter hast du schon gesehen.", postsFrom: "Beiträge von", newFront: "Neu · Titelseite", seenFront: "Titelseite · gesehen", 

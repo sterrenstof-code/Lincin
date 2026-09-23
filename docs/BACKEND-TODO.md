@@ -12,6 +12,14 @@ níets (geen verzonnen tekst). Hieronder wat er was, en wat ermee gebeurde.
 | Editienummer "№ 38" | **Geleverd.** Een teller per gebruiker in `user_prefs.prefs.edition`: de hoeveelste dag dat je Lincin opent. Hij telt verder op een tweede toestel. Bestaande gebruikers beginnen bij № 1. |
 | "Groep · 6 lincs" op de band van een groep | **Niet van toepassing.** De feed bevat geen groepsbijdragen: elke band is één persoon (`groupByFriend` zet `isGroup` altijd op `false`). Groepen bestaan alleen als gesprek. Komen er ooit bijdragen in een groep, dan moet de feed-rij het aantal leden meekrijgen. |
 
+## Events
+
+| Wat het prototype toont | Stand |
+|---|---|
+| "Ik kom" / "Misschien" en wie er komt ("jij, Noor, Sem") | **Geleverd.** Tabel `event_rsvps` (0072): één antwoord per lid per event, leesbaar voor leden en host (`lib/api/event-rsvps.ts`). Wie "ik kom" zei, staat bij het event; zonder antwoorden het aantal leden. |
+| De plek ("◎ Marken") | **Ontbreekt.** Een event heeft geen plek-veld; de app toont de eerste regel van de beschrijving op die plaats. Nodig: `events.place text` en een veld bij Nieuw event. |
+| Wie uitnodigt ("Noor nodigt uit") | **Geleverd** uit bestaande data: de naam van de host via `getProfiles`. |
+
 ## Voorkeuren
 
 `user_prefs` (migratie 0070) bewaart per gebruiker de weergave van de feed,

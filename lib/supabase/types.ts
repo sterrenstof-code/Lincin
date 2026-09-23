@@ -910,6 +910,13 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["bug_confirms"]["Insert"]>;
         Relationships: [];
       };
+      /** 0072 — ik kom / misschien per lid per event. */
+      event_rsvps: {
+        Row: { event_id: string; user_id: string; status: "yes" | "maybe"; updated_at: string };
+        Insert: { event_id: string; user_id: string; status: "yes" | "maybe"; updated_at?: string };
+        Update: Partial<{ status: "yes" | "maybe"; updated_at: string }>;
+        Relationships: [];
+      };
       /** 0070 — voorkeuren per gebruiker, alleen leesbaar voor de eigenaar. */
       user_prefs: {
         Row: { user_id: string; prefs: Record<string, unknown>; updated_at: string };

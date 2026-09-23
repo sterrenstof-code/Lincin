@@ -1,200 +1,321 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
 
+import { listRsvps, setRsvp, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
+import { getProfiles } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { capf, mono, sans, serif } from "@/lib/design/type";
-import { EventSpread, type EventSpreadData } from "@/components/lincin/magazine/Pages";
+import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
-import { hhmm } from "@/lib/lincin/model";
+import { displayName, hhmm } from "@/lib/lincin/model";
+import { useToast } from "@/lib/toast";
 
-import { DesktopShell, DesktopTitle, MonoLink } from "./Shell";
-
-const SEAM = RASTER.seam;
+import { DesktopShell, PageHead } from "./Shell";
 
 /**
- * Events op desktop (Lincin Desktop.dc.html, EVENTS): titel serif 40 met
- * "n gepland" rechts, dan een raster van kaarten (minstens 340 breed, 180
- * hoog) met haarlijnen ertussen. Links een kleurblokje van 10, de dag in
- * serif 52 en de maand; rechts wie · wanneer, de titel in serif 26, plek ·
- * gezelschap, en onderaan de handelingen als mono-links.
+ * Events op desktop (desktop-*-pages.dc.html, EVENTS; handoff 23 sep).
  *
- * Het ontwerp heeft IK KOM / MISSCHIEN; de backend kent geen rsvp, dus
- * staan hier — zoals op de telefoon — OPEN → en, voor de gastheer, DEEL CODE.
+ * Per event de dag groot in de kleur van wie uitnodigt, wie en wanneer, de
+ * titel, de eerste regel van de beschrijving en wie er komt, en rechts
+ * "Ik kom" / "Misschien" (0072, `event_rsvps`).
  *
- * Modern: geen haarlijnen maar losse tegels met een ronding van 18 en een
- * naad van 6, zoals de rail ernaast.
+ *   kleur     rijen over de volle breedte: een datumblok van 180 in de
+ *             kleur, titel in Archivo 900 smal 48, de twee antwoorden als
+ *             vakken onder elkaar.
+ *   magazine  vlakken op het tweede papier met een rug van 5; de dag als
+ *             serif van 120 in de kleur, de titel serif 56, pillen.
+ *   modern    drie tegels per rij: bovenaan het kleurvlak met de dag, dan
+ *             titel, plek en twee pillen.
  *
- * Magazine: de spreads van de telefoon in een rooster — per event een
- * volvlaks kleurvlak van de gastheer met de metarail, de dag groot in
- * serif, de titel en een cursief onderschrift. Onderaan "Plan iets nieuws"
- * als papieren vlak.
+ * Een tik op het event opent het (`/event/[id]`); voorbij events staan
+ * achteraan en gedimd.
  */
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
-const MIN = 340;
+const SEAM = RASTER.seam;
+
+type Row = {
+  e: EventWithMeta;
+  day: string;
+  month: string;
+  when: string;
+  host: string;
+  place: string;
+  whoGo: string;
+  mine: RsvpStatus | null;
+  past: boolean;
+  fill: { fill: string; ink: string };
+};
 
 export function DesktopEvents() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
+  const qc = useQueryClient();
+  const toast = useToast();
   const t = useT();
-  const spec = useThemeSpec();
-  const round = spec.id === "modern";
-  const spread = spec.layout === "spread";
   const lang = useLang();
+  const spec = useThemeSpec();
   const scheme = useScheme();
-  const [gridW, setGridW] = useState(0);
-  // De naad tussen twee kaarten: een haarlijn van 1, of 6 in modern en magazine (met 6 rondom).
-  const seam = round || spread ? SEAM : 1;
-  const inner = round || spread ? gridW - 2 * SEAM : gridW;
-  const cols = Math.max(1, Math.floor((inner + seam) / (MIN + seam)));
-  const cardW = gridW ? (inner - (cols - 1) * seam) / cols : MIN;
+  useHueChoices();
 
   const events = useQuery({ queryKey: ["events", myUserId], queryFn: () => listMyEvents(myUserId), refetchOnWindowFocus: true });
-  const data = events.data ?? [];
+  const data = useMemo(() => events.data ?? [], [events.data]);
+  const ids = useMemo(() => data.map((e) => e.id), [data]);
+  const rsvps = useQuery({ queryKey: ["event-rsvps", ids], queryFn: () => listRsvps(ids), enabled: ids.length > 0 });
+  const peopleIds = useMemo(
+    () => Array.from(new Set([...data.map((e) => e.host_user_id), ...(rsvps.data ?? []).map((r) => r.user_id)])),
+    [data, rsvps.data],
+  );
+  const people = useQuery({ queryKey: ["profiles", peopleIds], queryFn: () => getProfiles(peopleIds), enabled: peopleIds.length > 0, staleTime: 60_000 });
+  const nameOf = useMemo(() => {
+    const m = new Map((people.data ?? []).map((p) => [p.id, displayName(p)]));
+    return (id: string) => (id === myUserId ? t.me.toLowerCase() : m.get(id) ?? "linc");
+  }, [people.data, myUserId, t.me]);
+
   const now = Date.now();
-  const active = data.filter((e) => e.is_active);
-  const upcoming = data.filter((e) => !e.is_active && new Date(e.starts_at).getTime() > now).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const past = data.filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+  const rows: Row[] = useMemo(() => {
+    const byEvent = new Map<string, EventRsvp[]>();
+    for (const r of rsvps.data ?? []) byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), r]);
+    const sorted = [...data].sort((a, b) => {
+      const pa = new Date(a.ends_at).getTime() <= now;
+      const pb = new Date(b.ends_at).getTime() <= now;
+      if (pa !== pb) return pa ? 1 : -1;
+      return pa ? b.starts_at.localeCompare(a.starts_at) : a.starts_at.localeCompare(b.starts_at);
+    });
+    return sorted.map((e) => {
+      const start = new Date(e.starts_at);
+      const end = new Date(e.ends_at);
+      const sameDay = start.toDateString() === end.toDateString();
+      const wd = start.toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "");
+      const list = byEvent.get(e.id) ?? [];
+      const going = list.filter((r) => r.status === "yes").map((r) => nameOf(r.user_id));
+      return {
+        e,
+        day: String(start.getDate()).padStart(2, "0"),
+        month: start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", ""),
+        when: sameDay ? `${wd} ${hhmm(e.starts_at)}` : `${wd} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "")}`,
+        host: e.is_host ? t.me : nameOf(e.host_user_id),
+        place: (e.description ?? "").split("\n")[0].trim(),
+        whoGo: going.length ? going.join(", ") : `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`,
+        mine: list.find((r) => r.user_id === myUserId)?.status ?? null,
+        past: new Date(e.ends_at).getTime() <= now,
+        fill: friendColor(hueFor(e.host_user_id), scheme),
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, rsvps.data, nameOf, lang, scheme, myUserId, t]);
+
+  const answer = async (eventId: string, next: RsvpStatus | null) => {
+    const key = ["event-rsvps", ids];
+    const prev = qc.getQueryData<EventRsvp[]>(key) ?? [];
+    const rest = prev.filter((r) => !(r.event_id === eventId && r.user_id === myUserId));
+    qc.setQueryData<EventRsvp[]>(key, next ? [...rest, { event_id: eventId, user_id: myUserId, status: next }] : rest);
+    try {
+      await setRsvp(eventId, myUserId, next);
+    } catch (err) {
+      qc.setQueryData(key, prev);
+      toast.error(err instanceof Error ? err.message : t.failed);
+    }
+  };
+
+  const upcoming = rows.filter((r) => !r.past);
+  const months = upcoming.length ? `${upcoming[0].month} – ${upcoming[upcoming.length - 1].month}` : "";
+  const th = spec.id;
+  const [gridW, setGridW] = useState(0);
+  const open = (id: string) => router.push(`/event/${id}` as never);
+
+  const list =
+    th === "modern" ? (
+      <View onLayout={(e) => setGridW(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap", gap: SEAM }}>
+        {gridW
+          ? rows.map((r) => (
+              <TileModern key={r.e.id} r={r} width={(gridW - SEAM * 2) / 3} onOpen={() => open(r.e.id)} onAnswer={(s) => answer(r.e.id, s)} />
+            ))
+          : null}
+      </View>
+    ) : th === "magazine" ? (
+      <View style={{ gap: SEAM, padding: SEAM }}>
+        {rows.map((r) => (
+          <RowMagazine key={r.e.id} r={r} onOpen={() => open(r.e.id)} onAnswer={(s) => answer(r.e.id, s)} />
+        ))}
+      </View>
+    ) : (
+      <View>
+        {rows.map((r) => (
+          <RowKleur key={r.e.id} r={r} onOpen={() => open(r.e.id)} onAnswer={(s) => answer(r.e.id, s)} />
+        ))}
+      </View>
+    );
 
   return (
     <DesktopShell active="events">
-      <DesktopTitle
-        right={
-          <>
-            <MonoLink label={`${upcoming.length + active.length} ${t.planned}`} on={false} />
-            <MonoLink label={`${t.planNew} →`} active onPress={() => router.push("/event-create")} />
-          </>
-        }
-      >
-        {t.eventsA} <Text style={capf(true, true)}>{t.eventsB}</Text>
-      </DesktopTitle>
-      <View style={{ flex: 1, minHeight: 0 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          {events.isLoading ? (
-            <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: color("ink", "inkDim"), padding: 24, textTransform: "uppercase", letterSpacing: 1 }]}>{t.loading}</Text>
-          ) : spread ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: seam, padding: SEAM }}>
-              {[...active, ...upcoming, ...past].map((e, i) => (
-                <EventSpread
-                  key={e.id}
-                  e={spreadData(e, !e.is_active && new Date(e.ends_at).getTime() <= now, t, lang, router)}
-                  index={i}
-                  scheme={scheme}
-                  height={220}
-                  style={{ width: cardW, marginHorizontal: 0, marginBottom: 0 }}
-                />
-              ))}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t.planNew}
-                onPress={() => router.push("/event-create")}
-                style={({ pressed }) => ({ width: cardW, minHeight: 220, backgroundColor: color("paper2"), alignItems: "center", justifyContent: "center", padding: 20, opacity: pressed ? 0.7 : 1 })}
-              >
-                <Text style={{ ...serif(true), fontSize: 22, lineHeight: 28, color: color("ink", "inkDim") }}>{t.planNew}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View
-              style={[
-                { flexDirection: "row", flexWrap: "wrap", gap: seam },
-                round ? { padding: SEAM } : { backgroundColor: color("ink", "postRule"), borderBottomWidth: spec.border, borderBottomColor: color("ink") },
-              ]}
-            >
-              {[...active, ...upcoming, ...past].map((e) => (
-                <Card key={e.id} event={e} width={cardW} round={round} past={!e.is_active && new Date(e.ends_at).getTime() <= now} />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={th === "modern" ? { gap: SEAM } : undefined} showsVerticalScrollIndicator={false}>
+        <PageHead
+          num="03"
+          title={t.eventsTitle}
+          sub={`${upcoming.length} ${t.upcomingN}${months ? ` · ${months}` : ""}`}
+          action={{ label: t.newEventPlus, onPress: () => router.push("/event-create") }}
+        />
+        {events.isLoading ? <Text style={[meta(10, color("ink", "inkDim")), { padding: 24 }]}>{t.loading}</Text> : list}
+      </ScrollView>
     </DesktopShell>
   );
 }
 
-/** Magazine: dezelfde gegevens als de spread op de telefoon (`app/(app)/events.tsx`). */
-function spreadData(e: EventWithMeta, past: boolean, t: ReturnType<typeof useT>, lang: Lang, router: ReturnType<typeof useRouter>): EventSpreadData {
-  const start = new Date(e.starts_at);
-  const end = new Date(e.ends_at);
-  const sameDay = start.toDateString() === end.toDateString();
-  const day = start.toLocaleDateString(LOCALE[lang], { weekday: "short" });
-  const who = `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`;
-  return {
-    key: e.id,
-    hostId: e.host_user_id,
-    day: String(start.getDate()).padStart(2, "0"),
-    month: start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", ""),
-    by: e.is_host ? t.me : "linc",
-    when: sameDay ? `${day} ${hhmm(e.starts_at)}` : `${day} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" })}`,
-    title: e.name,
-    sub: `${e.description ? `${e.description.split("\n")[0]} · ` : ""}${who}`,
-    past,
-    actions: [
-      { label: "Open →", onPress: () => router.push(`/event/${e.id}` as never) },
-      ...(e.is_host && !past ? [{ label: "Deel code", onPress: () => router.push(`/event-link/${e.id}` as never) }] : []),
-    ],
-  };
+function meta(size: number, c: string, spacing = size * 0.1): TextStyle {
+  return { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.3), letterSpacing: spacing, textTransform: "uppercase", color: c };
 }
 
-function Card({ event: e, width, round, past }: { event: EventWithMeta; width: number; round: boolean; past: boolean }) {
-  const router = useRouter();
+type RowProps = { r: Row; onOpen: () => void; onAnswer: (s: RsvpStatus | null) => void };
+
+// ---------------------------------------------------------------
+// KLEUR
+// ---------------------------------------------------------------
+
+function RowKleur({ r, onOpen, onAnswer }: RowProps) {
   const t = useT();
-  const lang = useLang();
-  const scheme = useScheme();
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
-  const fc = friendColor(hueFor(e.host_user_id), scheme);
-  const start = new Date(e.starts_at);
-  const end = new Date(e.ends_at);
-  const sameDay = start.toDateString() === end.toDateString();
-  const day = start.toLocaleDateString(LOCALE[lang], { weekday: "short" });
-  const when = sameDay ? `${day} ${hhmm(e.starts_at)}` : `${day} — ${end.toLocaleDateString(LOCALE[lang], { weekday: "short" })}`;
-  const who = `${e.members_count} ${e.members_count === 1 ? "linc" : "lincs"}`;
+  const spec = useThemeSpec();
   const ink = color("ink");
-  const dim = color("ink", "inkDim");
-  const meta = [mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.08, textTransform: "uppercase" as const, color: dim }];
+  const cell = (label: string, s: RsvpStatus, last: boolean) => {
+    const on = r.mine === s;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: on }}
+        onPress={() => onAnswer(on ? null : s)}
+        style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, backgroundColor: on ? ink : "transparent", borderBottomWidth: last ? 0 : spec.border, borderBottomColor: ink }}
+      >
+        <Text style={[head(), { fontSize: 22, lineHeight: 22, color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>{label}</Text>
+        <Text style={[head(), { fontSize: 22, lineHeight: 22, color: color("paper") }]}>{on ? "✓" : ""}</Text>
+      </Pressable>
+    );
+  };
   return (
-    <Pressable
-      accessibilityLabel={e.name}
-      onPress={() => router.push(`/event/${e.id}` as never)}
-      style={{
-        width,
-        minHeight: 180,
-        ...(round ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : { backgroundColor: color("paper") }),
-        flexDirection: "row", gap: 20, paddingVertical: 22, paddingHorizontal: 24, opacity: past ? 0.6 : 1 }}
-    >
-      <View style={{ width: 76, gap: 6 }}>
-        <View style={{ width: 10, height: 10, borderRadius: round ? 5 : 0, backgroundColor: fc.fill }} />
-        <Text style={[capf(false, true), { fontSize: 52, lineHeight: 44, color: ink }]}>{String(start.getDate()).padStart(2, "0")}</Text>
-        <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: dim }]}>
-          {start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", "")}
+    <View style={{ flexDirection: "row", minHeight: 180, borderBottomWidth: spec.border, borderBottomColor: ink, opacity: r.past ? 0.6 : 1 }}>
+      <Pressable accessibilityRole="link" accessibilityLabel={r.e.name} onPress={onOpen} style={{ width: 180, backgroundColor: r.fill.fill, borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 20, paddingHorizontal: 24, justifyContent: "space-between" }}>
+        <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, textTransform: "uppercase", color: r.fill.ink }]}>{r.month}</Text>
+        <Text style={[head(), { fontSize: 104, lineHeight: 84, color: r.fill.ink }]}>{r.day}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={onOpen} style={{ flex: 1, minWidth: 0, paddingVertical: 24, paddingHorizontal: 32, justifyContent: "space-between", gap: 16 }}>
+        <Text style={meta(10, color("ink", "inkDim"))}>
+          {r.host} {t.invites} · {r.when}
         </Text>
+        <Text numberOfLines={2} style={[head(), { fontSize: 48, lineHeight: 43, color: ink }]}>
+          {r.e.name}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 28 }}>
+          {r.place ? <Text style={meta(11, ink, 0.66)}>◎ {r.place}</Text> : null}
+          <Text style={meta(11, color("ink", "inkDim"), 0.66)}>{r.whoGo}</Text>
+        </View>
+      </Pressable>
+      <View style={{ width: 300, borderLeftWidth: spec.border, borderLeftColor: ink, opacity: r.past ? 0.5 : 1 }} pointerEvents={r.past ? "none" : "auto"}>
+        {cell(t.imIn, "yes", false)}
+        {cell(t.maybe, "maybe", true)}
       </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-          <Text numberOfLines={1} style={[...meta, { flexShrink: 1 }]}>
-            {e.is_host ? t.me : "linc"}
-            {e.is_active ? "  ·  nu bezig" : ""}
-            {e.is_host && e.pending_requests_count > 0 ? `  ·  ${e.pending_requests_count} ${t.waitsForYou}` : ""}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// MAGAZINE
+// ---------------------------------------------------------------
+
+function RowMagazine({ r, onOpen, onAnswer }: RowProps) {
+  const t = useT();
+  const ink = color("ink");
+  const pill = (label: string, s: RsvpStatus) => {
+    const on = r.mine === s;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: on }}
+        onPress={() => onAnswer(on ? null : s)}
+        style={{ height: 44, borderRadius: 22, borderWidth: 1, borderColor: s === "yes" || on ? ink : color("ink", "postRule"), backgroundColor: on ? ink : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}
+      >
+        <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, textTransform: "uppercase", color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>{label}</Text>
+        <Text style={{ fontSize: 12, color: color("paper") }}>{on ? "✓" : ""}</Text>
+      </Pressable>
+    );
+  };
+  return (
+    <View style={{ flexDirection: "row", minHeight: 200, backgroundColor: color("paper2"), borderLeftWidth: 5, borderLeftColor: r.fill.fill, opacity: r.past ? 0.6 : 1 }}>
+      <Pressable accessibilityRole="link" accessibilityLabel={r.e.name} onPress={onOpen} style={{ width: 200, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "space-between", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
+        <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 2, textTransform: "uppercase", color: r.fill.fill }]}>{r.month}</Text>
+        <Text style={[serif(), { fontSize: 120, lineHeight: 96, letterSpacing: -4.8, color: r.fill.fill }]}>{r.day}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={onOpen} style={{ flex: 1, minWidth: 0, paddingVertical: 26, paddingHorizontal: 32, justifyContent: "space-between", gap: 14 }}>
+        <Text style={[sans(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          {r.host} {t.invites} · {r.when}
+        </Text>
+        <Text numberOfLines={2} style={[serif(), { fontSize: 56, lineHeight: 53, letterSpacing: -1.1, color: ink }]}>
+          {r.e.name}
+        </Text>
+        <Text numberOfLines={1} style={[serif(true), { fontSize: 20, lineHeight: 25, color: color("inkSoft") }]}>
+          {r.place ? `${r.place} — ` : ""}
+          {r.whoGo}
+        </Text>
+      </Pressable>
+      <View style={{ width: 280, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "flex-end", gap: 10 }} pointerEvents={r.past ? "none" : "auto"}>
+        {pill(t.imIn, "yes")}
+        {pill(t.maybe, "maybe")}
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------
+// MODERN
+// ---------------------------------------------------------------
+
+function TileModern({ r, width, onOpen, onAnswer }: RowProps & { width: number }) {
+  const t = useT();
+  const ink = color("ink");
+  const pill = (label: string, s: RsvpStatus) => {
+    const on = r.mine === s;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: on }}
+        onPress={() => onAnswer(on ? null : s)}
+        style={{ flex: 1, height: 44, borderRadius: 999, borderWidth: 1, borderColor: color("ink", "postRule"), backgroundColor: on ? ink : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
+      >
+        <Text style={[mono(500), { fontSize: 9.5, lineHeight: 12, letterSpacing: 1.14, textTransform: "uppercase", color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>
+          {label}
+          {on ? " ✓" : ""}
+        </Text>
+      </Pressable>
+    );
+  };
+  return (
+    <View style={{ width, borderRadius: RASTER.tileRadius, overflow: "hidden", backgroundColor: color("tile", "tileFill"), opacity: r.past ? 0.6 : 1 }}>
+      <Pressable accessibilityRole="link" accessibilityLabel={r.e.name} onPress={onOpen} style={{ height: 240, backgroundColor: r.fill.fill, padding: 22, justifyContent: "space-between" }}>
+        <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.44, textTransform: "uppercase", color: r.fill.ink }]}>
+          {r.month} · {r.when}
+        </Text>
+        <Text style={[sans(400), { fontSize: 120, lineHeight: 96, letterSpacing: -7.2, color: r.fill.ink }]}>{r.day}</Text>
+      </Pressable>
+      <View style={{ flex: 1, paddingTop: 20, paddingHorizontal: 22, paddingBottom: 22, gap: 10 }}>
+        <Text style={[mono(500), { fontSize: 8.5, lineHeight: 11, letterSpacing: 1.36, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          {r.host} {t.invites}
+        </Text>
+        <Pressable accessibilityRole="link" onPress={onOpen}>
+          <Text numberOfLines={2} style={[sans(400), { fontSize: 30, lineHeight: 32, letterSpacing: -1, color: ink }]}>
+            {r.e.name}
           </Text>
-          <Text style={meta}>{when}</Text>
-        </View>
-        <Text numberOfLines={2} style={[capf(false, true), { fontSize: 26, lineHeight: 27, color: ink }]}>
-          {e.name}
+        </Pressable>
+        <Text numberOfLines={1} style={[sans(400), { fontSize: 15, lineHeight: 20, color: color("ink", "inkDim") }]}>
+          {r.place ? `${r.place} · ` : ""}
+          {r.whoGo}
         </Text>
-        <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 19, color: dim }]}>
-          {e.description ? `${e.description.split("\n")[0]} · ` : ""}
-          {who}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 16, marginTop: "auto", paddingTop: 12, borderTopWidth: 1, borderTopColor: color("ink", "postRule"), borderStyle: round ? "dashed" : "solid" }}>
-          <MonoLink label="Open →" active onPress={() => router.push(`/event/${e.id}` as never)} />
-          {e.is_host && !past ? <MonoLink label="Deel code" on={false} active onPress={() => router.push(`/event-link/${e.id}` as never)} /> : null}
+        <View style={{ marginTop: "auto", paddingTop: 10, flexDirection: "row", gap: SEAM }} pointerEvents={r.past ? "none" : "auto"}>
+          {pill(t.imIn, "yes")}
+          {pill(t.maybe, "maybe")}
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
