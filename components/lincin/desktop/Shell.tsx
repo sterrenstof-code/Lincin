@@ -649,15 +649,17 @@ export function MonoLink({
   onPress?: () => void;
   numberOfLines?: number;
 }) {
+  // Magazine (de omslag): een label in Archivo 700 in plaats van mono.
+  const mag = useThemeSpec().id === "magazine";
   const text = (
     <Text
       numberOfLines={numberOfLines}
       style={[
-        mono(500),
+        mag ? sans(700) : mono(500),
         {
-          fontSize: 10,
-          lineHeight: 13,
-          letterSpacing: 1,
+          fontSize: mag ? 11 : 10,
+          lineHeight: mag ? 14 : 13,
+          letterSpacing: mag ? 1.1 : 1,
           textTransform: "uppercase",
           color: tone ?? (on ? color("ink") : color("ink", "inkDim")),
           textDecorationLine: active ? "underline" : "none",

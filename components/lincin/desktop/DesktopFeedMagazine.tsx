@@ -167,8 +167,12 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
     enabled: h.commentCount > 0,
     staleTime: 60_000,
   });
-  const cm = comments.data ?? [];
+  // Alleen comments met tekst: een gif zonder woorden past niet in de lopende tekst.
+  const cm = (comments.data ?? []).filter((c) => c.body.trim());
   const grouped = f.reactions.grouped(h.id);
+  // Uitvullen zoals het prototype, maar alleen als er genoeg tekst is — een
+  // korte regel wordt anders uit elkaar getrokken.
+  const coverText = `${h.body || h.caption} ${cm[0]?.body ?? ""} ${cm[1]?.body ?? ""}`;
   const spine = `${t.editie} ${line.short} ${line.year}${f.edition ? ` · ${t.omVol} ${f.edition}` : ""} · ${f.byTime.map((p) => `${p.authorName} — ${p.title}`).join(" / ")}`;
   // De covertitel op twee regels, zoals "Het licht / om 22:19".
   const words = h.title.split(" ");
@@ -252,7 +256,7 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
         {/* de lopende tekst, met de eerste comments erin */}
         {roomy && (h.body || h.caption || cm.length) ? (
           <View style={{ pointerEvents: "none", position: "absolute", left: 560, top: top + 240, width: 320 }}>
-            <Text numberOfLines={12} style={[serif(), { fontSize: 21, lineHeight: 27, color: fg, textAlign: "justify" }]}>
+            <Text numberOfLines={12} style={[serif(), { fontSize: 21, lineHeight: 27, color: fg, textAlign: coverText.length > 160 ? "justify" : "left" }]}>
               {h.body || h.caption}
               {cm[0] ? (
                 <>

@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { COMMENT_REACTIONS } from "@/lib/api/comment-reactions";
 import type { GroupedPostReaction } from "@/lib/api/post-reactions";
 import { ON_LIGHT, color, useThemeSpec } from "@/lib/design/theme";
-import { mono } from "@/lib/design/type";
+import { mono, sans } from "@/lib/design/type";
 import { useReactionWho } from "@/lib/lincin/reactors";
 
 import { WhoReacted } from "./WhoReacted";
@@ -36,12 +36,20 @@ export function CommentReactions({
   const isOpen = open ?? ownOpen;
   const setOpen = onOpenChange ?? setOwnOpen;
   const ink = color("ink");
-  // Modern: rond en met een haarlijn, zoals de rest van modern. Kleur en
-  // magazine houden hun inktkaders en de gestippelde "☺ +".
-  const modern = useThemeSpec().id === "modern";
+  // Modern: rond en met een haarlijn, zoals de rest van modern. Kleur houdt
+  // zijn inktkaders en de gestippelde "☺ +". Magazine (de omslag): vierkant,
+  // een lijn van 1, en wat van jou is een inktvlak — zoals de reacties op de
+  // bijdrage zelf.
+  const th = useThemeSpec().id;
+  const modern = th === "modern";
+  const mag = th === "magazine";
   const edge = modern
     ? { borderWidth: 1, borderColor: color("ink", "postRule"), borderRadius: 999 }
-    : { borderWidth: 1.5, borderColor: ink };
+    : mag
+      ? { borderWidth: 1, borderColor: color("ink", "postDim") }
+      : { borderWidth: 1.5, borderColor: ink };
+  const mineBg = mag ? ink : color("acid");
+  const countFont = mag ? sans(600) : mono(600);
   const mine = new Set(reactions.filter((r) => r.mine).map((r) => r.emoji));
   const who = useReactionWho(reactions);
 
@@ -62,11 +70,11 @@ export function CommentReactions({
               alignItems: "center",
               gap: 4,
               ...edge,
-              backgroundColor: r.mine ? color("acid") : "transparent",
+              backgroundColor: r.mine ? mineBg : "transparent",
             }}
           >
             <Text style={{ fontSize: 15, lineHeight: 18 }}>{r.emoji}</Text>
-            <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: r.mine ? ON_LIGHT : ink }}>{r.count}</Text>
+            <Text style={{ ...countFont, fontSize: 12, lineHeight: 15, color: r.mine ? (mag ? color("paper") : ON_LIGHT) : ink }}>{r.count}</Text>
           </Pressable>
         ))}
         <Pressable
@@ -78,14 +86,14 @@ export function CommentReactions({
             height: 34,
             paddingHorizontal: 12,
             ...edge,
-            borderStyle: modern ? "solid" : "dashed",
+            borderStyle: modern || mag ? "solid" : "dashed",
             backgroundColor: isOpen ? ink : "transparent",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           {/* In inkt en zo groot als de andere knoppen: goed te zien. */}
-          <Text style={{ ...mono(600), fontSize: 15, lineHeight: 18, color: isOpen ? color("paper") : ink }}>☺ +</Text>
+          <Text style={{ ...countFont, fontSize: 15, lineHeight: 18, color: isOpen ? color("paper") : ink }}>☺ +</Text>
         </Pressable>
       </View>
       <WhoReacted line={who.line} style={{ marginTop: 4 }} />
@@ -116,7 +124,7 @@ export function CommentReactions({
                 height: 32,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: mine.has(emoji) ? color("acid") : color("paper"),
+                backgroundColor: mine.has(emoji) ? (mag ? color("ink", "postRule") : color("acid")) : color("paper"),
               }}
             >
               <Text style={{ fontSize: 17, lineHeight: 21 }}>{emoji}</Text>

@@ -17,7 +17,7 @@ import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { EmojiSuggestions, useEmojiSuggest } from "@/components/lincin/ComposeBar";
-import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
@@ -32,6 +32,7 @@ import { invalidatePostCaches } from "@/lib/post-cache";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
 
+import { Black, SerifLink, lh } from "../magazine/Omslag";
 import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
 
 /**
@@ -157,7 +158,6 @@ export function DesktopPost({ id }: { id: string }) {
 
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  const rule = color("ink", "postRule");
   const own = !!p && p.user_id === myUserId;
   const authorName = p ? displayName(p.author) : "";
   const photos = card?.media.kind === "foto" ? card.media : null;
@@ -185,12 +185,12 @@ export function DesktopPost({ id }: { id: string }) {
   const modern = th === "modern";
   const mag = th === "magazine";
   const kleur = th === "kleur";
-  const stageH = kleur ? 560 : mag ? 600 : 620;
+  const stageH = kleur ? 560 : 620;
   const meta = `№ ${number ?? "—"} · ${authorName} · ${card.kind} · ${timeLabel(p.created_at, t, lang)}`;
   const privTarget = (): PrivateTarget => ({ friendId: p.user_id, friendName: authorName, quote: card.caption || card.title, postId: p.id, postTitle: card.title });
   const lbl = (size: number, c: string, spacing = size * 0.16): TextStyle =>
     mag
-      ? { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.2, textTransform: "uppercase", color: c }
+      ? { ...sans(700), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.1, textTransform: "uppercase", color: c }
       : { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: spacing, textTransform: "uppercase", color: c };
   const tile = { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), overflow: "hidden" as const };
 
@@ -262,7 +262,7 @@ export function DesktopPost({ id }: { id: string }) {
         // Geen foto: de tekst groot op het vlak, of het medium zelf (poll, muziek, link…).
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 40, paddingLeft: kleur ? 34 + 48 : mag ? 80 : 72, paddingRight: 48 }}>
           {card.media.kind === "tekst" ? (
-            <Text selectable style={[mag ? serif(true) : modern ? sans(400) : serif(), { maxWidth: 820, fontSize: mag ? 48 : 44, lineHeight: mag ? 53 : 49, letterSpacing: modern ? -1.3 : 0, color: stageInk }]}>
+            <Text selectable style={[mag ? serif(true) : modern ? sans(400) : serif(), { maxWidth: mag ? 860 : 820, fontSize: mag ? 56 : 44, lineHeight: mag ? 59 : 49, letterSpacing: modern ? -1.3 : 0, color: stageInk }]}>
               {card.media.text}
             </Text>
           ) : (
@@ -281,13 +281,24 @@ export function DesktopPost({ id }: { id: string }) {
       ) : null}
       {mag ? <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, backgroundColor: fc.fill }} /> : null}
       {mag ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={back.go}
-          style={{ position: "absolute", top: 20, left: 28, height: 36, paddingHorizontal: 16, borderRadius: 18, justifyContent: "center", backgroundColor: "rgba(16,16,12,.55)" }}
-        >
-          <Text style={lbl(10, "#F7F4EE")}>← {back.label}</Text>
-        </Pressable>
+        // De omslag: een inktvlak van 40 met "← Editie", en rechts het rode nummer.
+        <>
+          <Pressable
+            accessibilityRole="button"
+            onPress={back.go}
+            style={{ position: "absolute", top: 20, left: 24, height: 40, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#16160F" }}
+          >
+            <Text style={lbl(11, "#F7F4EE")}>←</Text>
+            <Text style={lbl(11, "#F7F4EE")}>{back.label}</Text>
+          </Pressable>
+          {number ? (
+            <View style={{ pointerEvents: "none", position: "absolute", top: 20, right: 24 }}>
+              <Black size={40} f={0.8} ls={-0.04}>
+                № {number}
+              </Black>
+            </View>
+          ) : null}
+        </>
       ) : null}
       {modern ? (
         <Pressable
@@ -307,7 +318,7 @@ export function DesktopPost({ id }: { id: string }) {
     modern
       ? { height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? ink : color("paper") }
       : mag
-        ? { height: 34, paddingHorizontal: 12, borderRadius: 17, borderWidth: 1, borderColor: on ? ink : color("ink", "postRule"), backgroundColor: on ? ink : "transparent" }
+        ? { height: 36, paddingHorizontal: 12, borderWidth: 1, borderColor: on ? ink : color("ink", "postDim"), backgroundColor: on ? ink : "transparent" }
         : { height: 34, paddingHorizontal: 10, borderWidth: spec.border, borderColor: ink, backgroundColor: on ? ink : "transparent" };
   const reactRow = (
     <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
@@ -320,7 +331,7 @@ export function DesktopPost({ id }: { id: string }) {
           onPress={() => reactions.toggle(id, r.emoji)}
           style={[reactChip(r.mine), { flexDirection: "row", alignItems: "center", gap: 6 }]}
         >
-          <Text style={[kleur ? mono(600) : sans(500), { fontSize: modern ? 13 : 12, lineHeight: 16, color: r.mine ? color("paper") : ink }]}>
+          <Text style={[kleur ? mono(600) : sans(mag ? 600 : 500), { fontSize: modern || mag ? 13 : 12, lineHeight: 16, color: r.mine ? color("paper") : ink }]}>
             {r.emoji} {r.count}
           </Text>
         </Pressable>
@@ -342,11 +353,9 @@ export function DesktopPost({ id }: { id: string }) {
           </Text>
         </Pressable>
       ) : mag ? (
-        <Pressable accessibilityRole="button" onPress={() => setSheet(privTarget())}>
-          <Text style={[serif(), { fontSize: 19, lineHeight: 24, color: ink, textDecorationLine: "underline" }]}>
-            {t.privateMsg} · {authorName}
-          </Text>
-        </Pressable>
+        <SerifLink size={22} italic onPress={() => setSheet(privTarget())}>
+          {t.omPrivateTo} {authorName}
+        </SerifLink>
       ) : (
         <Pressable accessibilityRole="button" onPress={() => setSheet(privTarget())} style={{ height: 44, paddingHorizontal: 20, borderRadius: 999, justifyContent: "center", backgroundColor: ink }}>
           <Text style={lbl(10, color("paper"), 1.2)}>
@@ -367,7 +376,13 @@ export function DesktopPost({ id }: { id: string }) {
         modern ? { ...tile, paddingVertical: 28, paddingHorizontal: 30 } : null,
       ]}
     >
-      {kleur ? null : <Text style={lbl(mag ? 10 : 9, dim)}>{meta}</Text>}
+      {kleur ? null : mag ? (
+        <Text style={lbl(11, ink)}>
+          {authorName} · {card.kind} · {timeLabel(p.created_at, t, lang)}
+        </Text>
+      ) : (
+        <Text style={lbl(9, dim)}>{meta}</Text>
+      )}
       {editing ? (
         <View style={{ maxWidth: 720 }}>
           <EditPost post={p} onDone={() => setEditing(false)} />
@@ -376,11 +391,11 @@ export function DesktopPost({ id }: { id: string }) {
         <>
           <Text
             style={[
-              kleur ? head() : mag ? serif() : sans(400),
+              kleur ? head() : mag ? serif(true) : sans(400),
               kleur
                 ? { fontSize: 64, lineHeight: 56, letterSpacing: -0.64, color: ink }
                 : mag
-                  ? { fontSize: 80, lineHeight: 74, letterSpacing: -2.4, color: ink }
+                  ? { fontSize: 88, lineHeight: lh(88, 0.9), letterSpacing: -1.76, color: ink }
                   : { fontSize: 56, lineHeight: 57, letterSpacing: -2.24, color: ink },
             ]}
           >
@@ -389,15 +404,15 @@ export function DesktopPost({ id }: { id: string }) {
           {card.caption ? (
             <Text
               style={[
-                modern ? sans(400) : serif(mag),
-                { maxWidth: 760, fontSize: modern ? 20 : 24, lineHeight: modern ? 28 : mag ? 32 : 29, color: modern ? dim : ink },
+                modern || mag ? sans(400) : serif(),
+                { maxWidth: 760, fontSize: modern || mag ? 20 : 24, lineHeight: modern ? 28 : 29, color: modern ? dim : ink },
               ]}
             >
               {card.caption}
             </Text>
           ) : null}
           {card.body && card.body !== card.caption ? (
-            <Text selectable style={[sans(), { maxWidth: 640, fontSize: modern ? 20 : 15, lineHeight: modern ? 28 : 23, color: dim }]}>
+            <Text selectable style={[mag ? serif() : sans(), { maxWidth: 640, fontSize: modern ? 20 : mag ? 21 : 15, lineHeight: modern ? 28 : mag ? 29 : 23, color: mag ? color("inkSoft") : dim }]}>
               {card.body}
             </Text>
           ) : null}
@@ -453,11 +468,17 @@ export function DesktopPost({ id }: { id: string }) {
         <View
           style={[
             { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-            mag ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: rule } : { paddingVertical: 22, paddingHorizontal: 24 },
+            mag ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink } : { paddingVertical: 22, paddingHorizontal: 24 },
           ]}
         >
-          <Text style={[mag ? serif() : sans(500), { fontSize: mag ? 32 : 22, lineHeight: mag ? 32 : 26, letterSpacing: mag ? 0 : -0.44, color: ink }]}>{t.comments}</Text>
-          <Text style={lbl(9, dim)}>{count}</Text>
+          {mag ? (
+            <Black size={40} f={0.9} ls={-0.04}>
+              {t.omComments}
+            </Black>
+          ) : (
+            <Text style={[sans(500), { fontSize: 22, lineHeight: 26, letterSpacing: -0.44, color: ink }]}>{t.comments}</Text>
+          )}
+          <Text style={lbl(mag ? 11 : 9, mag ? ink : dim)}>{count}</Text>
         </View>
       )}
       <View style={modern ? { gap: 6, paddingHorizontal: 10 } : null}>
@@ -474,7 +495,7 @@ export function DesktopPost({ id }: { id: string }) {
         ))}
       </View>
       {count === 0 && !comments.isLoading ? (
-        <Text style={[mag || kleur ? serif(true) : sans(400), { padding: modern ? 24 : mag ? 28 : 24, paddingTop: modern ? 0 : 24, fontSize: modern ? 16 : mag ? 20 : 18, lineHeight: 24, color: dim }]}>
+        <Text style={[mag || kleur ? serif(true) : sans(400), { padding: modern ? 24 : mag ? 28 : 24, paddingTop: modern ? 0 : 24, fontSize: modern ? 16 : mag ? 21 : 18, lineHeight: mag ? 27 : 24, color: dim }]}>
           {t.firstComment}
         </Text>
       ) : null}
@@ -484,7 +505,7 @@ export function DesktopPost({ id }: { id: string }) {
           style={[
             { flexDirection: "row", alignItems: "center" },
             kleur ? { height: 48, borderTopWidth: spec.border, borderTopColor: ink } : null,
-            mag ? { gap: 12, paddingTop: 18, paddingHorizontal: 28, paddingBottom: 24, borderTopWidth: 1, borderTopColor: rule } : null,
+            mag ? { gap: 12, paddingTop: 18, paddingHorizontal: 28, paddingBottom: 24, borderTopWidth: OMSLAG.rule, borderTopColor: ink } : null,
             modern ? { margin: 10, height: 56, gap: 8, paddingLeft: 20, paddingRight: 6, borderRadius: 999, backgroundColor: color("paper") } : null,
           ]}
         >
@@ -503,7 +524,7 @@ export function DesktopPost({ id }: { id: string }) {
             placeholderTextColor={dim}
             style={[
               mag ? serif(true) : sans(),
-              { flex: 1, minWidth: 0, alignSelf: "stretch", fontSize: mag ? 19 : 14, color: ink },
+              { flex: 1, minWidth: 0, alignSelf: "stretch", fontSize: mag ? 20 : 14, color: ink },
               kleur ? { paddingHorizontal: 14 } : null,
               mag ? { height: 44, borderBottomWidth: 1, borderBottomColor: ink } : null,
               Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null,
@@ -518,14 +539,15 @@ export function DesktopPost({ id }: { id: string }) {
               width: kleur ? 48 : 44,
               height: kleur ? undefined : 44,
               alignSelf: kleur ? "stretch" : "auto",
-              borderRadius: kleur ? 0 : 22,
-              backgroundColor: ink,
+              borderRadius: kleur || mag ? 0 : 22,
+              // Magazine: de primaire actie is een rood vlak.
+              backgroundColor: mag ? color("red") : ink,
               alignItems: "center",
               justifyContent: "center",
               opacity: sending ? 0.6 : 1,
             }}
           >
-            <Text style={{ fontSize: 17, lineHeight: 20, color: color("paper") }}>↑</Text>
+            <Text style={{ fontSize: mag ? 18 : 17, lineHeight: 20, color: mag ? OMSLAG.onImage : color("paper") }}>↑</Text>
           </Pressable>
         </View>
       </View>
@@ -649,7 +671,7 @@ function Comment({
       </Pressable>
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         {mag || modern ? (
-          <Text numberOfLines={1} onPress={toProfile} style={[mag ? sans(500) : mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: mag ? 1.8 : 1.44, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          <Text numberOfLines={1} onPress={toProfile} style={[mag ? sans(700) : mono(500), { fontSize: mag ? 10 : 9, lineHeight: 13, letterSpacing: mag ? 1 : 1.44, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
             {name} · {when}
           </Text>
         ) : (
@@ -672,7 +694,7 @@ function Comment({
           </Pressable>
         ) : null}
         {c.body ? (
-          <Text style={[mag ? serif() : sans(), { fontSize: mag ? 20 : 15, lineHeight: mag ? 26 : 21, color: color("ink") }]}>{c.body}</Text>
+          <Text style={[mag ? serif() : sans(), { fontSize: mag ? 21 : 15, lineHeight: mag ? 27 : 21, color: color("ink") }]}>{c.body}</Text>
         ) : null}
         <CommentReactions reactions={reactions} onToggle={onToggle} open={open} onOpenChange={onOpenChange} />
       </View>
