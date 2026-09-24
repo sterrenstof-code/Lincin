@@ -524,36 +524,7 @@ export function PageHead({ num, title, sub, action }: { num: string; title: stri
   const spec = useThemeSpec();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  if (spec.id === "magazine") {
-    // De omslag: de titel rood in Archivo 900 van 120, ernaast het nummer en
-    // een cursieve ondertitel; een lijn van 2 eronder.
-    return (
-      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingTop: 40, paddingHorizontal: 40, paddingBottom: 26, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
-        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 24, flexShrink: 1, minWidth: 0 }}>
-          <Black size={120} f={0.78} numberOfLines={1}>
-            {title}
-          </Black>
-          <View style={{ gap: 6, paddingBottom: 4, flexShrink: 1 }}>
-            <OLabel size={12} ls={0.08}>
-              № {num}
-            </OLabel>
-            {sub ? (
-              <Ser size={30} italic f={1} numberOfLines={1}>
-                {sub}
-              </Ser>
-            ) : null}
-          </View>
-        </View>
-        {action ? (
-          <View style={{ paddingBottom: 8 }}>
-            <SerifLink size={21} onPress={action.onPress}>
-              {action.label}
-            </SerifLink>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
+  if (spec.id === "magazine") return <PageHeadMagazine num={num} title={title} sub={sub} action={action} />;
   if (spec.id === "modern") {
     return (
       <View style={[tileStyle(), { paddingTop: 26, paddingHorizontal: 26, paddingBottom: 22, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24 }]}>
@@ -590,6 +561,48 @@ export function PageHead({ num, title, sub, action }: { num: string; title: stri
           </Pressable>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+/**
+ * De paginakop van de omslag: de titel rood in Archivo 900, tot 120 en
+ * kleiner als hij anders niet naast het nummer past ("Nieuwe bijdrage" op
+ * een scherm van 1280); ernaast het nummer en een cursieve ondertitel, een
+ * lijn van 2 eronder.
+ */
+function PageHeadMagazine({ num, title, sub, action }: { num: string; title: string; sub?: string; action?: { label: string; onPress: () => void } }) {
+  const ink = color("ink");
+  const [w, setW] = useState(0);
+  // Archivo 900 is ongeveer .62em per letter; hou 340 over voor nummer en ondertitel.
+  const size = w ? Math.max(56, Math.min(120, Math.floor((w - 340) / (Math.max(1, title.length) * 0.62)))) : 120;
+  return (
+    <View
+      onLayout={(e) => setW(e.nativeEvent.layout.width - 80)}
+      style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingTop: 40, paddingHorizontal: 40, paddingBottom: 26, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 24, flexShrink: 1, minWidth: 0 }}>
+        <Black size={size} f={0.78} nowrap>
+          {title}
+        </Black>
+        <View style={{ gap: 6, paddingBottom: 4, flexShrink: 1 }}>
+          <OLabel size={12} ls={0.08}>
+            № {num}
+          </OLabel>
+          {sub ? (
+            <Ser size={30} italic f={1} numberOfLines={1}>
+              {sub}
+            </Ser>
+          ) : null}
+        </View>
+      </View>
+      {action ? (
+        <View style={{ paddingBottom: 8 }}>
+          <SerifLink size={21} onPress={action.onPress}>
+            {action.label}
+          </SerifLink>
+        </View>
+      ) : null}
     </View>
   );
 }

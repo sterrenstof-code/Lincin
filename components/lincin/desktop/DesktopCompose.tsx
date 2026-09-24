@@ -6,7 +6,7 @@ import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
-import { HUES, RASTER, color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { HUES, OMSLAG, RASTER, color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { safeBack } from "@/lib/nav";
@@ -48,7 +48,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
 
   const label = (s: string) => (
-    <Text style={th === "magazine" ? magLabel(9, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 13, letterSpacing: th === "kleur" ? 1 : 1.44, textTransform: "uppercase", color: dim }]}>{s}</Text>
+    <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 13, letterSpacing: th === "kleur" ? 1 : 1.44, textTransform: "uppercase", color: dim }]}>{s}</Text>
   );
   const panel = (extra?: ViewStyle): ViewStyle =>
     th === "kleur"
@@ -83,7 +83,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
               th === "modern" ? { height: 46, borderRadius: 999, gap: 12 } : { height: th === "kleur" ? 52 : 50, borderTopWidth: 1, borderTopColor: rule },
             ]}
           >
-            <Text style={[th === "magazine" ? sans(500) : mono(500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 12, letterSpacing: th === "magazine" ? 1.44 : 0, color: on ? color("paper") : ink }]}>
+            <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: th === "magazine" ? 1 : 0, color: on ? color("paper") : ink }]}>
               {String(i + 1).padStart(2, "0")}
             </Text>
             <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 20 : th === "magazine" ? 24 : 16, lineHeight: th === "magazine" ? 26 : 20, color: on ? color("paper") : ink }]}>
@@ -206,11 +206,11 @@ export function DesktopCompose({ c }: { c: Compose }) {
         <View
           style={[
             { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: th === "kleur" ? 14 : 18, backgroundColor: ink },
-            th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : { borderRadius: 22 },
+            th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : th === "magazine" ? { borderWidth: 1, borderColor: ink } : { borderRadius: 22 },
           ]}
         >
           <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 17 : th === "magazine" ? 20 : 15, lineHeight: 22, color: color("paper") }]}>{t.allLincs}</Text>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, color: color("paper") }]}>{lincs}</Text>
+          <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: th === "magazine" ? 1 : 0, color: color("paper") }]}>{lincs}</Text>
         </View>
       </View>
       <View style={panel({ flex: 1 })}>
@@ -222,7 +222,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
             </View>
           )}
           <View style={{ paddingVertical: th === "magazine" ? 16 : 12, paddingHorizontal: th === "magazine" ? 18 : 14, gap: 6, borderLeftWidth: th === "modern" ? 0 : th === "magazine" ? 5 : 6, borderLeftColor: c.fc.fill }}>
-            <Text style={th === "magazine" ? magLabel(9, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 9.5 : 8.5, lineHeight: 12, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
+            <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 9.5 : 8.5, lineHeight: 12, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
               {t.me} · {c.kind} · {t.now}
             </Text>
             <Text numberOfLines={2} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 20 : th === "magazine" ? 28 : 17, lineHeight: th === "magazine" ? 29 : 21, color: c.title ? ink : rule }]}>
@@ -241,17 +241,18 @@ export function DesktopCompose({ c }: { c: Compose }) {
           th === "kleur"
             ? { height: 72, backgroundColor: c.published ? c.green : color("acid"), borderTopWidth: spec.border, borderTopColor: ink }
             : th === "magazine"
-              ? { height: 64, backgroundColor: c.published ? c.green : ink }
+              ? // De omslag: de primaire actie is een rood vlak.
+                { height: 64, backgroundColor: c.published ? c.green : color("red") }
               : { height: 64, paddingHorizontal: 22, borderRadius: RASTER.tileRadius, backgroundColor: c.published ? c.green : ink },
         ]}
       >
         <Text
           style={[
-            th === "kleur" ? head() : th === "magazine" ? serif() : mono(500),
+            th === "kleur" ? head() : th === "magazine" ? sans(800) : mono(500),
             th === "kleur"
               ? { fontSize: 26, lineHeight: 26, color: "#141414" }
               : th === "magazine"
-                ? { fontSize: 28, lineHeight: 30, color: color("paper") }
+                ? { fontSize: 18, lineHeight: 22, letterSpacing: 1.08, textTransform: "uppercase", color: OMSLAG.onImage }
                 : { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: color("paper") },
           ]}
         >
@@ -262,15 +263,15 @@ export function DesktopCompose({ c }: { c: Compose }) {
             <Text style={{ fontSize: 16, lineHeight: 19, color: ink }}>↑</Text>
           </View>
         ) : (
-          <Text style={{ fontSize: 22, lineHeight: 26, color: th === "kleur" ? "#141414" : color("paper") }}>→</Text>
+          <Text style={{ fontSize: 22, lineHeight: 26, color: th === "kleur" ? "#141414" : th === "magazine" ? OMSLAG.onImage : color("paper") }}>→</Text>
         )}
       </Pressable>
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 12 }}>
         <Pressable accessibilityRole="button" onPress={() => safeBack(c.router, "/feed")}>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim, textDecorationLine: "underline" }]}>{t.cancel}</Text>
+          <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: dim, textDecorationLine: "underline" }]}>{t.cancel}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" disabled={!c.dirty || c.submitting} onPress={c.keep}>
-          <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: c.dirty ? ink : dim, textDecorationLine: "underline" }]}>{t.draft}</Text>
+          <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: c.dirty ? ink : dim, textDecorationLine: "underline" }]}>{t.draft}</Text>
         </Pressable>
       </View>
     </View>
@@ -290,6 +291,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
   );
 }
 
+/** Het label van de omslag: Archivo 700, kapitaal, .1em. */
 function magLabel(size: number, c: string): TextStyle {
-  return { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.2, textTransform: "uppercase", color: c };
+  return { ...sans(700), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.1, textTransform: "uppercase", color: c };
 }
