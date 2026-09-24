@@ -124,8 +124,8 @@ function ThreadHead({ chatId }: { chatId: string }) {
     return (
       <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 16, paddingTop: 26, paddingHorizontal: 30, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: color("ink", "postRule") }}>
         <View style={{ gap: 8, flexShrink: 1 }}>
-          {sub ? <Text style={[sans(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{sub}</Text> : null}
-          <Text numberOfLines={1} style={[serif(), { fontSize: 52, lineHeight: 50, letterSpacing: -1, color: ink }]}>
+          {sub ? <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{sub}</Text> : null}
+          <Text numberOfLines={1} style={[serif(), { fontSize: 52, lineHeight: 48, letterSpacing: -1.04, color: ink }]}>
             {name}
           </Text>
         </View>

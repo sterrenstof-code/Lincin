@@ -104,7 +104,7 @@ import {
 import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
-import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, space } from "@/lib/design/type";
+import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
@@ -1069,9 +1069,15 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
    * houden de gekaderde vakken naast elkaar.
    */
   const pill = spec.id === "modern";
+  /**
+   * Magazine (de omslag): de vakjes met een haarlijn in plaats van inkt, het
+   * veld alleen een lijn eronder met "Schrijf aan …" in cursief, en
+   * verzenden als rood vlak.
+   */
+  const magBar = spec.id === "magazine";
   const aux = pill
     ? ({ ...AUX_BUTTON, borderRadius: 999 } as const)
-    : ({ ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() } as const);
+    : ({ ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: magBar ? color("ink", "postRule") : line() } as const);
   /** De laatste knop sluit de rij af met een rand — behalve in de pil. */
   const auxEnd = pill ? aux : { ...aux, borderRightWidth: BORDER };
 
@@ -1915,7 +1921,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   // het hele scherm, en dus het luidste. `shell-soft` is
                   // waar §2 een vlak bínnen de balk heen stuurt.
                   className="flex-1 max-h-32 justify-center"
-                  style={pill ? { minHeight: CONTROL_H, paddingHorizontal: space.md } : { minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() }}
+                  style={
+                    pill
+                      ? { minHeight: CONTROL_H, paddingHorizontal: space.md }
+                      : magBar
+                        ? { minHeight: CONTROL_H, marginHorizontal: space.md, borderBottomWidth: 1, borderBottomColor: color("ink") }
+                        : { minHeight: CONTROL_H, paddingHorizontal: space.md, borderWidth: BORDER, borderRightWidth: 0, borderColor: line() }
+                  }
                 >
                   <TextInput
                     ref={inputRef}
@@ -1923,7 +1935,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     onChangeText={onDraftChange}
                     onKeyPress={onComposerKeyPress}
                     onFocus={() => setShowEmojiPicker(false)}
-                    placeholder={sending ? "Bezig met versturen…" : "Bericht…"}
+                    placeholder={sending ? "Bezig met versturen…" : magBar ? `${t2.writeTo} ${title}…` : "Bericht…"}
                     placeholderTextColor={color("ink", "inkDim")}
                     multiline
                     editable={!sending}
@@ -1931,6 +1943,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     // crème, nooit inkt — zie het kader in DESIGN.md §2.
                     className="text-ink text-base"
                     style={{
+                      ...(magBar ? { ...serif(true), fontSize: 20 } : null),
                       minHeight: 24,
                       paddingVertical: 0,
                       lineHeight: 20,
@@ -1981,13 +1994,15 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   className={
                     sending || !draft.trim()
                       ? "bg-paper2"
-                      : "bg-ink"
+                      : magBar
+                        ? "bg-flame"
+                        : "bg-ink"
                   }
-                  style={auxEnd}
+                  style={magBar ? { ...AUX_BUTTON, borderWidth: 0 } : auxEnd}
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? color("ink", "inkDim") : creamOnDark.DEFAULT}
+                    color={sending || !draft.trim() ? color("ink", "inkDim") : magBar ? "#FFFFFF" : creamOnDark.DEFAULT}
                     size={21}
                   />
                 </Pressable>
@@ -2490,6 +2505,9 @@ function MessageBubble({
   const hasText = !!content?.text && content.text.length > 0;
   // Modern kent geen kaders en geen rechte hoeken; zie de bubbelstijl onder.
   const modern = useThemeSpec().layout === "bento";
+  // Magazine (de omslag): een haarlijn van 1 en de tekst in serif.
+  const mag = useThemeSpec().layout === "spread";
+  const emojiOnly = !!content?.text && /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text);
   // In groepsgesprekken: avatar-slot links van inkomende berichten
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
@@ -2650,6 +2668,13 @@ function MessageBubble({
            * die van de ander (prototype). De jouwe is een inktvlak zonder
            * rand; die van de ander een lichte inkttint met een haarlijn.
            */
+          mag
+            ? {
+                borderWidth: 1,
+                borderColor: failed ? color("red") : selected && accent ? accent : color("ink", "postRule"),
+                ...(isMine || failed ? null : { backgroundColor: color("paper2") }),
+              }
+            : null,
           modern
             ? {
                 borderWidth: isMine ? 0 : 1,
@@ -2768,6 +2793,7 @@ function MessageBubble({
                   // loopt die de kolom uit. `anywhere` breekt hem waar nodig.
                   style={[
                     Platform.OS === "web" ? ({ overflowWrap: "anywhere", wordBreak: "break-word" } as object) : null,
+                    mag && !emojiOnly ? { ...serif(), fontSize: 20, lineHeight: 25 } : null,
                     fill ? { color: fill.ink } : null,
                   ]}
                   className={`${
@@ -2786,6 +2812,7 @@ function MessageBubble({
               <Text
                 style={[
                   lincinType.micro,
+                  mag ? { ...sans(700), fontSize: 9, letterSpacing: 0.9 } : null,
                   { textTransform: "none", color: isMine ? creamOnDark.muted : feed.inkDim },
                 ]}
               >

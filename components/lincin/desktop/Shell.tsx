@@ -14,7 +14,7 @@ import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { setFriendOpen, setPref } from "@/lib/lincin/prefs";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
-import { Label as OLabel, RedButton, RedDot, RoundGlyph, Wordmark, useOmslag } from "../magazine/Omslag";
+import { Black, Label as OLabel, RedButton, RedDot, RoundGlyph, Ser, SerifLink, Wordmark, useOmslag } from "../magazine/Omslag";
 import { useSeenPosts } from "@/lib/read-state";
 
 /**
@@ -525,21 +525,31 @@ export function PageHead({ num, title, sub, action }: { num: string; title: stri
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   if (spec.id === "magazine") {
+    // De omslag: de titel rood in Archivo 900 van 120, ernaast het nummer en
+    // een cursieve ondertitel; een lijn van 2 eronder.
     return (
-      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingTop: 40, paddingHorizontal: 32, paddingBottom: 22, borderBottomWidth: 1, borderBottomColor: ink }}>
-        <View style={{ gap: 12, flexShrink: 1 }}>
-          <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 2, textTransform: "uppercase", color: dim }]}>
-            {num}
-            {sub ? ` · ${sub}` : ""}
-          </Text>
-          <Text numberOfLines={1} style={[serif(), { fontSize: 88, lineHeight: 80, letterSpacing: -2.6, color: ink }]}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingTop: 40, paddingHorizontal: 40, paddingBottom: 26, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 24, flexShrink: 1, minWidth: 0 }}>
+          <Black size={120} f={0.78} numberOfLines={1}>
             {title}
-          </Text>
+          </Black>
+          <View style={{ gap: 6, paddingBottom: 4, flexShrink: 1 }}>
+            <OLabel size={12} ls={0.08}>
+              № {num}
+            </OLabel>
+            {sub ? (
+              <Ser size={30} italic f={1} numberOfLines={1}>
+                {sub}
+              </Ser>
+            ) : null}
+          </View>
         </View>
         {action ? (
-          <Pressable accessibilityRole="button" onPress={action.onPress} style={{ paddingBottom: 8 }}>
-            <Text style={[serif(), { fontSize: 21, lineHeight: 26, color: ink, textDecorationLine: "underline" }]}>{action.label}</Text>
-          </Pressable>
+          <View style={{ paddingBottom: 8 }}>
+            <SerifLink size={21} onPress={action.onPress}>
+              {action.label}
+            </SerifLink>
+          </View>
         ) : null}
       </View>
     );

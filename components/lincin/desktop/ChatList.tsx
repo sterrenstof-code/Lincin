@@ -166,7 +166,7 @@ function Row({
             <Text numberOfLines={1} style={[serif(active), { flexShrink: 1, fontSize: 26, lineHeight: 28, color: ink }]}>
               {name}
             </Text>
-            {time ? <Text style={[sans(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.44, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
+            {time ? <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
             <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: color("inkSoft") }]}>
