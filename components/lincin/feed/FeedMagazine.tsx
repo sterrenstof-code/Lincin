@@ -55,8 +55,14 @@ export function FeedMagazine() {
   const children: ReactNode[] = [];
 
   if (feed.isLoading || noFriends) {
+    // Leeg (prototype `magEmpty`): geen kopregel, maar de editie en het
+    // grote woordmerk bovenaan — de omslag zonder foto.
     children.push(
-      <View key="top" style={{ paddingHorizontal: PAD, paddingBottom: 16 }}>
+      <View key="top" style={{ paddingTop: 8, paddingHorizontal: PAD, paddingBottom: 16, gap: 8 }}>
+        <Label size={8.5} weight={500} ls={0.2} color={o.dim}>
+          {t.edition}
+          {f.edition ? ` · № ${f.edition}` : ""}
+        </Label>
         <Wordmark size={108} />
       </View>,
     );
@@ -87,7 +93,7 @@ export function FeedMagazine() {
   return (
     // `tint` kleurt het blad niet (magazine tint niet), maar geeft de
     // rugstrook onderaan de kleur van de vriend op de cover.
-    <LincinScreen tab="feed" header={cover ? "none" : "default"} bleed={cover} tint={cover ? heroFill : null}>
+    <LincinScreen tab="feed" header={cover || noFriends ? "none" : "default"} bleed={cover} tint={cover ? heroFill : null}>
       <ScrollView style={[{ flex: 1 }, cover ? null : vfade()]} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>

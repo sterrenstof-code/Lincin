@@ -19,10 +19,11 @@ import {
 import { LincinScreen, vfade, type Tab } from "@/components/lincin/Chrome";
 import { MonoLink } from "@/components/lincin/desktop/Shell";
 import { VerticalLabel } from "@/components/lincin/ui";
-import { color, friendColor, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue, type LincinTheme } from "@/lib/design/theme";
+import { color, friendColor, OMSLAG, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue, type LincinTheme } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useBackTarget } from "@/lib/nav";
+import { Black } from "./magazine/Omslag";
 
 /**
  * De bouwstenen van een subpagina — groep, nieuw event, QR, wachtwoord,
@@ -65,10 +66,11 @@ function useTh(): LincinTheme {
   return useThemeSpec().id;
 }
 
-/** Mono (kleur, modern) of Archivo op .2em (magazine): het label van het thema. */
+/** Mono (kleur, modern) of Archivo 700 op .1em (magazine, de omslag): het label van het thema. */
 export function labelStyle(th: LincinTheme, size: number, c: string): TextStyle {
+  const m = Math.max(10, size);
   return th === "magazine"
-    ? { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.4), letterSpacing: size * 0.2, textTransform: "uppercase", color: c }
+    ? { ...sans(700), fontSize: m, lineHeight: Math.round(m * 1.35), letterSpacing: m * 0.1, textTransform: "uppercase", color: c }
     : { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.4), letterSpacing: size * 0.12, textTransform: "uppercase", color: c };
 }
 
@@ -215,8 +217,9 @@ export function PageTitle({ title, kicker, sub, right }: { title: string; kicker
 
 /**
  * Magazine: de kop als kleurvlak, zoals een spread op de voorpagina — een
- * verticale rail met de kicker, de titel groot in serif, het onderschrift
- * cursief, alles in de inkt die bij de kleur hoort.
+ * verticale rail met de kicker, de titel groot in Archivo 900 (de omslag),
+ * het onderschrift cursief, alles in de inkt die bij de kleur hoort. Rood
+ * op een vriendkleur haalt het contrast niet; de titel blijft in die inkt.
  */
 function MagazineTitle({ title, kicker, sub, right }: { title: string; kicker?: string; sub?: string; right?: ReactNode }) {
   const fc = usePageColor();
@@ -226,7 +229,9 @@ function MagazineTitle({ title, kicker, sub, right }: { title: string; kicker?: 
         {kicker ? <VerticalLabel text={kicker} width={RASTER.rail} height={190} color={fc.ink} style={{ letterSpacing: 1.9, textTransform: "uppercase" }} /> : null}
       </View>
       <View style={{ flex: 1, minWidth: 0, paddingVertical: 22, paddingRight: 20, paddingLeft: 6, justifyContent: "flex-end", gap: 10 }}>
-        <Text style={{ ...serif(), fontSize: 54, lineHeight: 50, letterSpacing: -1.6, color: fc.ink }}>{title}</Text>
+        <Black size={50} f={0.84} ls={-0.055} color={fc.ink}>
+          {title}
+        </Black>
         {sub ? <Text style={{ ...serif(true), fontSize: 18, lineHeight: 23, color: fc.ink, opacity: 0.86 }}>{sub}</Text> : null}
         {right ? <View style={{ flexDirection: "row", marginTop: 4 }}>{right}</View> : null}
       </View>
@@ -407,7 +412,7 @@ export function Badge({ label, tone = "outline" }: { label: string; tone?: "outl
       style={{
         paddingHorizontal: th === "kleur" ? 5 : 8,
         paddingVertical: 2,
-        borderRadius: th === "kleur" ? 0 : 999,
+        borderRadius: th === "modern" ? 999 : 0,
         borderWidth: tone === "outline" ? (th === "kleur" ? spec.border : 1) : 0,
         borderColor: th === "kleur" ? ink : color("ink", "postRule"),
         backgroundColor: bg,
@@ -424,7 +429,8 @@ export function Badge({ label, tone = "outline" }: { label: string; tone?: "outl
 
 /**
  * De knop. `primary` is de hoofdactie (hoogstens één per scherm): zuurgeel
- * in kleur, inkt in magazine en modern. `danger` is rood op papier.
+ * in kleur, rood in magazine (de omslag), inkt in modern. `danger` is rood
+ * op papier. Alleen modern is rond.
  */
 export function Button({
   label,
@@ -450,10 +456,10 @@ export function Button({
   const spec = useThemeSpec();
   const th = spec.id;
   const ink = color("ink");
-  const round = th !== "kleur";
+  const round = th === "modern";
   const primary = tone === "primary";
-  const bg = primary ? (th === "kleur" ? color("acid") : ink) : "transparent";
-  const fg = primary ? (th === "kleur" ? ON_LIGHT : color("paper")) : tone === "danger" ? color("red") : ink;
+  const bg = primary ? (th === "kleur" ? color("acid") : th === "magazine" ? color("red") : ink) : "transparent";
+  const fg = primary ? (th === "kleur" ? ON_LIGHT : th === "magazine" ? OMSLAG.onImage : color("paper")) : tone === "danger" ? color("red") : ink;
   const border = primary
     ? th === "kleur"
       ? ink
@@ -638,7 +644,7 @@ export function Choice<T extends string>({
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: on ? ink : pressed ? color("ink", "postRule") : "transparent",
-              borderRadius: th === "kleur" ? 0 : 999,
+              borderRadius: th === "modern" ? 999 : 0,
               borderWidth: th === "kleur" ? 0 : 1,
               borderColor: on ? ink : color("ink", "postRule"),
               ...(th === "kleur" && i > 0 ? { borderLeftWidth: spec.border, borderLeftColor: ink } : null),
