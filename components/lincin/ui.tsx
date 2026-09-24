@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import { ON_DARK, ON_LIGHT, color, line, subscribeTheme, themeSpec } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { lincinType, sans } from "@/lib/design/type";
 
 /**
  * De bouwstenen van v2 (README §Shape):
@@ -519,6 +519,36 @@ export function Segment<T extends string>({
               }}
             >
               <Text style={[lincinType.action, { fontSize: 9, lineHeight: 11, letterSpacing: 0.4, color: on ? color("paper") : color("ink") }]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
+  if (themeSpec().id === "magazine") {
+    // De omslag (--seg in het prototype): losse labels in Archivo 700 12px,
+    // 15 uit elkaar, geen kader; de gekozen rood met een streep eronder.
+    return (
+      <View style={[{ flexDirection: "row", alignItems: "center", gap: 15 }, style]}>
+        {options.map((o) => {
+          const on = o.value === value;
+          return (
+            <Pressable
+              key={o.value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              onPress={() => onChange(o.value)}
+              style={{ paddingVertical: 11, marginVertical: -11 }}
+            >
+              <Text
+                style={[
+                  sans(700),
+                  { fontSize: 12, lineHeight: 16, letterSpacing: 0.96, textTransform: "uppercase", color: on ? color("red") : color("ink") },
+                  on ? ({ textDecorationLine: "underline", textDecorationColor: color("red"), textUnderlineOffset: 5 } as TextStyle) : null,
+                ]}
+              >
+                {o.label}
+              </Text>
             </Pressable>
           );
         })}

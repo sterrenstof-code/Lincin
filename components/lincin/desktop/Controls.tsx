@@ -10,8 +10,9 @@ import { useT } from "@/lib/i18n";
  *
  *   kleur     een vak van 52×28 met een inktrand, een vierkante knop van 21
  *             (zuurgeel aan, inkt uit); de keuzerij als vakken naast elkaar.
- *   magazine  een pil van 52×28 op inkt of haarlijn, een ronde knop van 22
- *             op papier; de keuzes als losse omlijnde pillen.
+ *   magazine  de omslag (handoff 24 sep): een vierkant spoor van 52×28 op
+ *             inkt of haarlijn met een ronde knop van 22 op papier; de
+ *             keuzes als losse vierkante vakken met een lijn van 1.
  *   modern    dezelfde pil met een witte knop; de keuzes in een witte pil
  *             met een schuivend inktvlak.
  */
@@ -21,6 +22,7 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
   const t = useT();
   const ink = color("ink");
   const kleur = spec.id === "kleur";
+  const mag = spec.id === "magazine";
   return (
     <Pressable
       accessibilityRole="switch"
@@ -30,7 +32,7 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
       style={{
         width: 52,
         height: 28,
-        borderRadius: kleur ? 0 : 14,
+        borderRadius: kleur || mag ? 0 : 14,
         borderWidth: kleur ? spec.border : 0,
         borderColor: ink,
         backgroundColor: on ? ink : kleur ? "transparent" : color("ink", "postRule"),
@@ -58,7 +60,7 @@ export function Choice<T extends string>({ value, options, onChange }: { value: 
   const text = (on: boolean) =>
     th === "kleur"
       ? [mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase" as const, color: on ? color("paper") : ink }]
-      : [th === "magazine" ? sans(500) : mono(500), { fontSize: 9.5, lineHeight: 12, letterSpacing: th === "magazine" ? 1.5 : 1.14, textTransform: "uppercase" as const, color: on ? color("paper") : ink }];
+      : [th === "magazine" ? sans(700) : mono(500), { fontSize: th === "magazine" ? 10 : 9.5, lineHeight: 12, letterSpacing: th === "magazine" ? 1 : 1.14, textTransform: "uppercase" as const, color: on ? color("paper") : ink }];
   if (th === "kleur") {
     return (
       <View style={{ flexDirection: "row", borderWidth: spec.border, borderColor: ink }}>
@@ -79,7 +81,7 @@ export function Choice<T extends string>({ value, options, onChange }: { value: 
         {options.map((o) => {
           const on = o.value === value;
           return (
-            <Pressable key={o.value} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={{ flex: 1, height: 36, borderRadius: 18, borderWidth: 1, borderColor: ink, alignItems: "center", justifyContent: "center", backgroundColor: on ? ink : "transparent" }}>
+            <Pressable key={o.value} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={{ flex: 1, height: 36, borderWidth: 1, borderColor: ink, alignItems: "center", justifyContent: "center", backgroundColor: on ? ink : "transparent" }}>
               <Text style={text(on)}>{o.label}</Text>
             </Pressable>
           );

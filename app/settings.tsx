@@ -4,12 +4,14 @@ import { Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { SettingsModern, type SettingsGroupData } from "@/components/lincin/modern/SettingsModern";
+import { Label as OLabel } from "@/components/lincin/magazine/Omslag";
+import { MagazineHead } from "@/components/lincin/magazine/Spread";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
 import { BORDER, Body, Box, GUTTER, Mono, Segment, Serif, line } from "@/components/lincin/ui";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { color, setPreference, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
+import { OMSLAG, color, setPreference, themeSpec, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
@@ -188,6 +190,7 @@ function SettingsMobile() {
   if (spec.layout === "bento") {
     return <SettingsModern groups={groups} footer={t.footerNote} t={t} />;
   }
+  const mag = spec.id === "magazine";
 
   return (
     <LincinScreen
@@ -195,9 +198,14 @@ function SettingsMobile() {
       counter={t.settings}
       back="/profile"
       header={
-        <TopRow
-          center={<Serif variant="pageTitleLarge">{t.settings}</Serif>}
-        />
+        mag ? (
+          // De omslag: de paginatitel rood in Archivo 900, zoals Gesprekken en Events.
+          <MagazineHead kicker={`${t.edition} · ${t.settings}`} title={t.settings} sub={t.remembered} />
+        ) : (
+          <TopRow
+            center={<Serif variant="pageTitleLarge">{t.settings}</Serif>}
+          />
+        )
       }
     >
       <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20, gap: 16 }}>
@@ -225,9 +233,9 @@ function SettingsMobile() {
             />
           </Row>
           <Row label={t.lightDark} sub={t.followsDevice} onPress={() => setPreference(THEME_NEXT[theme])}>
-            <Mono variant="meta" style={{ textTransform: "none" }}>
+            <Val>
               {themeLabel} →
-            </Mono>
+            </Val>
           </Row>
           <Row label={t.openDef} sub={t.openDefSub} onPress={toggle("openDefault")}>
             <Toggle on={prefs.openDefault} />
@@ -251,27 +259,27 @@ function SettingsMobile() {
             <Toggle on={prefs.visible} />
           </Row>
           <Row label={t.myLincs} sub={lincsSub} onPress={() => router.push("/friends")} last>
-            <Mono variant="meta" style={{ textTransform: "none" }}>
+            <Val>
               {lincs} →
-            </Mono>
+            </Val>
           </Row>
         </Group>
 
         <Group title="Account">
           <Row label="Profiel bewerken" sub={session?.user.email ?? ""} onPress={() => router.push("/profile-edit")}>
-            <Mono variant="meta" style={{ textTransform: "none" }}>
+            <Val>
               →
-            </Mono>
+            </Val>
           </Row>
           <Row label="Toestel koppelen" sub="Je sleutels naar een tweede toestel" onPress={() => router.push("/device-link")}>
-            <Mono variant="meta" style={{ textTransform: "none" }}>
+            <Val>
               →
-            </Mono>
+            </Val>
           </Row>
           <Row label="Uitloggen" sub="Op dit toestel" onPress={logout} last>
-            <Mono variant="meta" tone="red" style={{ textTransform: "none" }}>
+            <Val red>
               →
-            </Mono>
+            </Val>
           </Row>
         </Group>
 
@@ -284,6 +292,18 @@ function SettingsMobile() {
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  if (themeSpec().id === "magazine") {
+    // De omslag: de kop in Archivo 700 met een lijn van 2 eronder, de rijen
+    // in een kader van een haarlijn.
+    return (
+      <View>
+        <View style={{ paddingBottom: 7, marginBottom: 16, borderBottomWidth: OMSLAG.rule, borderBottomColor: color("ink") }}>
+          <OLabel size={11}>{title}</OLabel>
+        </View>
+        <View style={{ borderWidth: 1, borderColor: color("ink", "postRule"), backgroundColor: color("paper") }}>{children}</View>
+      </View>
+    );
+  }
   return (
     <View>
       <Mono variant="micro" tone="dim" style={{ marginBottom: 6 }}>
@@ -335,8 +355,19 @@ function Row({
   );
 }
 
-/** 44×24, knop van 16: aan is inkt met een papieren knop. */
+/** 44×24, knop van 16: aan is inkt met een papieren knop. Magazine: een ronde knop. */
 function Toggle({ on }: { on: boolean }) {
+  const mag = themeSpec().id === "magazine";
+  if (mag)
+    return (
+      <View
+        accessibilityRole="switch"
+        accessibilityState={{ checked: on }}
+        style={{ width: 44, height: 24, backgroundColor: on ? color("ink") : color("ink", "postRule") }}
+      >
+        <View style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, backgroundColor: color("paper") }} />
+      </View>
+    );
   return (
     <View
       accessibilityRole="switch"
@@ -354,5 +385,20 @@ function Toggle({ on }: { on: boolean }) {
         }}
       />
     </View>
+  );
+}
+
+/** De waarde rechts in een rij: mono, of in magazine Archivo op .16em (`--mf`). */
+function Val({ children, red = false }: { children: React.ReactNode; red?: boolean }) {
+  if (themeSpec().id === "magazine")
+    return (
+      <OLabel size={11} weight={500} ls={0.16} color={red ? color("red") : color("ink")} style={{ textTransform: "none" }}>
+        {children}
+      </OLabel>
+    );
+  return (
+    <Mono variant="meta" tone={red ? "red" : "ink"} style={{ textTransform: "none" }}>
+      {children}
+    </Mono>
   );
 }

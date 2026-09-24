@@ -163,7 +163,7 @@ export function DesktopSettings() {
                       : { paddingTop: 14, paddingHorizontal: 12, paddingBottom: 10, gap: 6 }
                 }
               >
-                <Text style={[th === "magazine" ? sans(500) : mono(500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 12, letterSpacing: th === "magazine" ? 1.8 : 1, color: th === "kleur" ? ink : dim }]}>{g.num}</Text>
+                <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: 1, color: th === "kleur" ? ink : dim }]}>{g.num}</Text>
                 <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(400), { fontSize: th === "kleur" ? 32 : th === "magazine" ? 40 : 32, lineHeight: th === "kleur" ? 29 : th === "magazine" ? 38 : 32, letterSpacing: th === "modern" ? -1.1 : 0, color: ink }]}>{g.title}</Text>
               </View>
               {g.rows.map((r) => {
