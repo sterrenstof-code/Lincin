@@ -62,11 +62,14 @@ export function Black({
   f = 0.78,
   ls = -0.05,
   upper = false,
+  nowrap = false,
   numberOfLines,
   style,
 }: {
   children: ReactNode;
   size: number;
+  /** Nooit afbreken: een datum of nummer mag over zijn kolom lopen, zoals in het prototype. */
+  nowrap?: boolean;
   color?: string;
   /** Regelhoogte als factor van de maat. */
   f?: number;
@@ -83,6 +86,7 @@ export function Black({
         sans(900),
         { fontSize: size, lineHeight: lh(size, f), letterSpacing: size * ls, color: c ?? color("red") },
         upper ? { textTransform: "uppercase" } : null,
+        nowrap && isWeb ? ({ whiteSpace: "nowrap" } as TextStyle) : null,
         style,
       ]}
     >

@@ -14,6 +14,7 @@ import { displayName, hhmm } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
 import { DesktopShell, PageHead } from "./Shell";
+import { Black, Label } from "../magazine/Omslag";
 
 /**
  * Events op desktop (desktop-*-pages.dc.html, EVENTS; handoff 23 sep).
@@ -225,46 +226,40 @@ function RowKleur({ r, onOpen, onAnswer }: RowProps) {
 // MAGAZINE
 // ---------------------------------------------------------------
 
-function RowMagazine({ r, onOpen, onAnswer }: RowProps) {
+function RowMagazine({ r, onOpen }: RowProps) {
   const t = useT();
   const ink = color("ink");
-  const pill = (label: string, s: RsvpStatus) => {
-    const on = r.mine === s;
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: on }}
-        onPress={() => onAnswer(on ? null : s)}
-        style={{ height: 44, borderRadius: 22, borderWidth: 1, borderColor: s === "yes" || on ? ink : color("ink", "postRule"), backgroundColor: on ? ink : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}
-      >
-        <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, textTransform: "uppercase", color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>{label}</Text>
-        <Text style={{ fontSize: 12, color: color("paper") }}>{on ? "✓" : ""}</Text>
-      </Pressable>
-    );
-  };
+  // De omslag (handoff 24 sep): de dag rood in Archivo 900 van 130, de
+  // labels in Archivo 700. Geen "Ik kom / Misschien" in magazine — die
+  // keuze staat niet op de lijst.
   return (
-    <View style={{ flexDirection: "row", minHeight: 200, backgroundColor: color("paper2"), borderLeftWidth: 5, borderLeftColor: r.fill.fill, opacity: r.past ? 0.6 : 1 }}>
-      <Pressable accessibilityRole="link" accessibilityLabel={r.e.name} onPress={onOpen} style={{ width: 200, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "space-between", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
-        <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 2, textTransform: "uppercase", color: r.fill.fill }]}>{r.month}</Text>
-        <Text style={[serif(), { fontSize: 120, lineHeight: 96, letterSpacing: -4.8, color: r.fill.fill }]}>{r.day}</Text>
-      </Pressable>
-      <Pressable accessibilityRole="link" onPress={onOpen} style={{ flex: 1, minWidth: 0, paddingVertical: 26, paddingHorizontal: 32, justifyContent: "space-between", gap: 14 }}>
-        <Text style={[sans(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={r.e.name}
+      onPress={onOpen}
+      style={{ flexDirection: "row", minHeight: 200, backgroundColor: color("paper2"), borderLeftWidth: 5, borderLeftColor: r.fill.fill, opacity: r.past ? 0.6 : 1 }}
+    >
+      <View style={{ width: 200, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "space-between", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
+        <Label size={10} color={r.fill.fill}>
+          {r.month}
+        </Label>
+        <Black size={130} f={0.76} nowrap>
+          {r.day}
+        </Black>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 26, paddingHorizontal: 32, justifyContent: "space-between", gap: 14 }}>
+        <Label size={10} color={color("ink", "inkDim")}>
           {r.host} {t.invites} · {r.when}
-        </Text>
-        <Text numberOfLines={2} style={[serif(), { fontSize: 56, lineHeight: 53, letterSpacing: -1.1, color: ink }]}>
+        </Label>
+        <Text numberOfLines={2} style={[serif(), { fontSize: 56, lineHeight: 53, letterSpacing: -1.12, color: ink }]}>
           {r.e.name}
         </Text>
         <Text numberOfLines={1} style={[serif(true), { fontSize: 20, lineHeight: 25, color: color("inkSoft") }]}>
           {r.place ? `${r.place} — ` : ""}
           {r.whoGo}
         </Text>
-      </Pressable>
-      <View style={{ width: 280, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "flex-end", gap: 10 }} pointerEvents={r.past ? "none" : "auto"}>
-        {pill(t.imIn, "yes")}
-        {pill(t.maybe, "maybe")}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
