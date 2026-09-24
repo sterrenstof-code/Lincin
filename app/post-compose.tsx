@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
@@ -10,6 +10,8 @@ import { BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/co
 import { SafeImage } from "@/components/SafeImage";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { MAX_PHOTOS, POLL_MAX, POLL_MIN } from "@/lib/lincin/compose";
+import { chatTitle, listMyChats } from "@/lib/api/chats";
+import { listMyFriendships } from "@/lib/api/friends";
 import { createPoll } from "@/lib/api/polls";
 import { createFind, listUserPosts, type FindKind } from "@/lib/api/posts";
 import { findUrl, unfurl, type LinkPreview } from "@/lib/api/unfurl";
@@ -85,6 +87,24 @@ export function useCompose() {
   const [error, setError] = useState<string | null>(null);
   const [kept, setKept] = useState(false);
   const fc = friendColor(hue, scheme);
+
+  /**
+   * Wie ziet het (0074): al je lincs, of één groep. Per groep telt hoeveel
+   * van zijn leden je lincs zijn — dat zijn de mensen die hem écht zien; een
+   * groepslid dat geen linc van je is ziet hem niet (RLS op `posts`).
+   * Een poll gaat altijd naar al je lincs.
+   */
+  const [audience, setAudience] = useState<string | null>(null);
+  const chats = useQuery({ queryKey: ["chats", myUserId], queryFn: () => listMyChats(myUserId), staleTime: 60_000 });
+  const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId), staleTime: 60_000 });
+  const audiences = useMemo(() => {
+    const lincs = new Set((friendships.data ?? []).filter((f) => f.status === "accepted").map((f) => f.other.id));
+    const groups = (chats.data ?? [])
+      .filter((c) => c.type === "group")
+      .map((c) => ({ id: c.id as string | null, label: c.name?.trim() || chatTitle(c, myUserId), n: c.members.filter((m) => lincs.has(m.id)).length }));
+    return [{ id: null as string | null, label: t.allLincs, n: lincs.size }, ...groups];
+  }, [chats.data, friendships.data, myUserId, t.allLincs]);
+  const audienceLabel = audiences.find((a) => a.id === audience)?.label ?? t.allLincs;
 
   // Wat er via "delen met…" binnenkomt (share target).
   const shared = useLocalSearchParams<{ title?: string; text?: string; url?: string }>();
@@ -252,6 +272,7 @@ export function useCompose() {
         sourceTitle: title.trim() || null,
         meta: preview ? { ...preview, swatch: hue } as Partial<LinkPreview> : ({ swatch: hue } as Partial<LinkPreview>),
         visibility: "feed",
+        audienceChatId: audience,
       });
       await AsyncStorage.removeItem(draftKey).catch(() => {});
       setPublished(true);
@@ -267,7 +288,7 @@ export function useCompose() {
   const [panelW, setPanelW] = useState(0);
   const green = friendColor("green", scheme).fill;
 
-  return { router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, imageUris, addPhotos, removePhoto, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
+  return { audience: kind === "poll" ? null : audience, setAudience, audiences, audienceLabel, router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, imageUris, addPhotos, removePhoto, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
 }
 
 export type Compose = ReturnType<typeof useCompose>;
@@ -459,6 +480,35 @@ export default function ComposeScreen() {
               })}
             </View>
           </View>
+
+          {/* Wie ziet het (0074): al je lincs of één groep. Alleen als je in een groep zit. */}
+          {c.audiences.length > 1 ? (
+            <View>
+              <Mono variant="micro" tone="dim" style={{ marginBottom: 6 }}>
+                {t.whoSees}
+              </Mono>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {c.audiences.map((a) => {
+                  const on = a.id === c.audience;
+                  const off = kind === "poll" && a.id !== null;
+                  return (
+                    <Pressable
+                      key={a.id ?? "all"}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on, disabled: off }}
+                      disabled={off}
+                      onPress={() => c.setAudience(a.id)}
+                      style={{ height: 32, paddingHorizontal: 10, borderWidth: BORDER, borderColor: line(), backgroundColor: on ? color("ink") : "transparent", justifyContent: "center", opacity: off ? 0.4 : 1 }}
+                    >
+                      <Text style={[lincinType.monoBody, { color: on ? color("paper") : color("ink") }]}>
+                        {a.label} · {a.n}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
 
           {error ? (
             <Mono variant="micro" tone="red" style={{ textTransform: "none" }}>

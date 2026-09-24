@@ -264,6 +264,8 @@ export type Database = {
           tile_span: "1x1" | "2x1" | "1x2" | "2x2";
           /** 0056_quote_swatch — alleen bij kind = swatch. #RRGGBB. */
           swatch_hex: string | null;
+          /** 0074 — voor één groepsgesprek; null = al je lincs. */
+          audience_chat_id: string | null;
         };
         Insert: {
           id?: string;
@@ -283,6 +285,7 @@ export type Database = {
           pinned_at?: string | null;
           tile_span?: "1x1" | "2x1" | "1x2" | "2x2";
           swatch_hex?: string | null;
+          audience_chat_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["posts"]["Insert"]>;
         Relationships: [];

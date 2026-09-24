@@ -1,4 +1,4 @@
-# Wat de backend nog moet leveren (handoff 23 sep)
+# Wat de backend nog moet leveren (handoffs 23 en 24 sep)
 
 Bij het nabouwen van de prototypes in `lincin-handoff/` bleek een deel van
 de voorbeelddata niet in de app te zitten. Waar dat zo is, toont de app
@@ -24,7 +24,7 @@ níets (geen verzonnen tekst). Hieronder wat er was, en wat ermee gebeurde.
 
 | Wat het prototype toont | Stand |
 |---|---|
-| "Wie ziet het": al je lincs **of één groep** ("Kamp '26 · 5") | **Deels.** De app toont "Al je lincs · n", want zo werkt het nu: een bijdrage is voor al je vrienden. Delen met één groep vraagt een kolom op `posts` (bv. `audience_chat_id uuid null`) en een aangepaste RLS-select op `posts` (vriend én, als hij gezet is, lid van die groep). Niet gedaan: een wijziging aan de zichtbaarheid van bijdragen wil ik eerst afstemmen. |
+| "Wie ziet het": al je lincs **of één groep** ("Kamp '26 · 5") | **Geleverd** (0074). `posts.audience_chat_id`: leeg = al je lincs, gezet = alleen je lincs die lid zijn van dat groepsgesprek (een groepslid dat geen linc is ziet hem niet). De leespolicy op `posts` bewaakt het; mee aangepast: de melding bij een nieuwe bijdrage, het album (`post_images`), de activiteitsregels in de feed, en reageren/volgen/duwen mag alleen nog op wat je ziet. Geen foreign key: verdwijnt de groep, dan ziet alleen de maker de bijdrage nog. Een poll gaat altijd naar al je lincs. Bestanden in de bucket `posts` blijven per map leesbaar voor je lincs; hun pad bevat het willekeurige id van de bijdrage en is alleen via die gefilterde rijen te vinden. |
 
 ## Voorkeuren
 

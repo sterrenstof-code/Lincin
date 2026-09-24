@@ -1,11 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { Platform, Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from "react-native";
 
 import type { Compose } from "@/app/post-compose";
 import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { SafeImage } from "@/components/SafeImage";
-import { listMyFriendships } from "@/lib/api/friends";
 import { HUES, OMSLAG, RASTER, color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
@@ -44,8 +42,6 @@ export function DesktopCompose({ c }: { c: Compose }) {
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
-  const friendships = useQuery({ queryKey: ["friendships", c.myUserId], queryFn: () => listMyFriendships(c.myUserId), staleTime: 60_000 });
-  const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
 
   const label = (s: string) => (
     <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 13, letterSpacing: th === "kleur" ? 1 : 1.44, textTransform: "uppercase", color: dim }]}>{s}</Text>
@@ -203,15 +199,29 @@ export function DesktopCompose({ c }: { c: Compose }) {
       </View>
       <View style={panel()}>
         {label(t.whoSees)}
-        <View
-          style={[
-            { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: th === "kleur" ? 14 : 18, backgroundColor: ink },
-            th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : th === "magazine" ? { borderWidth: 1, borderColor: ink } : { borderRadius: 22 },
-          ]}
-        >
-          <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 17 : th === "magazine" ? 20 : 15, lineHeight: 22, color: color("paper") }]}>{t.allLincs}</Text>
-          <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: th === "magazine" ? 1 : 0, color: color("paper") }]}>{lincs}</Text>
-        </View>
+        {/* Al je lincs, of één groep (0074). Een poll gaat altijd naar al je lincs. */}
+        {c.audiences.map((a) => {
+          const on = a.id === c.audience;
+          const off = c.kind === "poll" && a.id !== null;
+          return (
+            <Pressable
+              key={a.id ?? "all"}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on, disabled: off }}
+              disabled={off}
+              onPress={() => c.setAudience(a.id)}
+              style={[
+                { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: th === "kleur" ? 14 : 18, backgroundColor: on ? ink : "transparent", opacity: off ? 0.35 : 1 },
+                th === "modern" ? { borderRadius: 22, borderWidth: on ? 0 : 1, borderColor: rule } : { borderWidth: th === "kleur" ? spec.border : 1, borderColor: ink },
+              ]}
+            >
+              <Text numberOfLines={1} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { flexShrink: 1, fontSize: th === "kleur" ? 17 : th === "magazine" ? 20 : 15, lineHeight: 22, color: on ? color("paper") : ink }]}>
+                {a.label}
+              </Text>
+              <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: th === "magazine" ? 1 : 0, color: on ? color("paper") : ink }]}>{a.n}</Text>
+            </Pressable>
+          );
+        })}
       </View>
       <View style={panel({ flex: 1 })}>
         {label(t.howLincSees)}
@@ -224,6 +234,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
           <View style={{ paddingVertical: th === "magazine" ? 16 : 12, paddingHorizontal: th === "magazine" ? 18 : 14, gap: 6, borderLeftWidth: th === "modern" ? 0 : th === "magazine" ? 5 : 6, borderLeftColor: c.fc.fill }}>
             <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 9.5 : 8.5, lineHeight: 12, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
               {t.me} · {c.kind} · {t.now}
+              {c.audience ? ` · ${c.audienceLabel}` : ""}
             </Text>
             <Text numberOfLines={2} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 20 : th === "magazine" ? 28 : 17, lineHeight: th === "magazine" ? 29 : 21, color: c.title ? ink : rule }]}>
               {c.title || t.titlePh}

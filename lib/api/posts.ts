@@ -61,6 +61,11 @@ export type PostRow = {
   tile_span: TileSpan;
   /** 0056 — alleen bij `kind = "swatch"`. `#RRGGBB`. */
   swatch_hex: string | null;
+  /**
+   * 0074 — voor één groepsgesprek: alleen je lincs die lid zijn zien hem.
+   * null = al je lincs. De RLS op `posts` bewaakt dit; de app toont het.
+   */
+  audience_chat_id: string | null;
 };
 
 /** Waar een vondst terechtkomt. Zie `visibility` hierboven. */
@@ -148,7 +153,7 @@ const POSTS_BUCKET = "posts";
  * de pagina leeg. Precies waar de zin hierboven voor waarschuwde.
  */
 const POST_COLUMNS =
-  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span, swatch_hex";
+  "id, user_id, image_path, caption, link_url, created_at, kind, source_title, source_author, body_text, tags, meta, video_path, visibility, pinned_at, tile_span, swatch_hex, audience_chat_id";
 
 /** Vult ontbrekende velden aan voor rijen van vóór migratie 0042. */
 function normalizeRow(row: any): PostRow {
@@ -165,6 +170,7 @@ function normalizeRow(row: any): PostRow {
     pinned_at: row.pinned_at ?? null,
     tile_span: TILE_SPANS.includes(row.tile_span) ? row.tile_span : "1x1",
     swatch_hex: row.swatch_hex ?? null,
+    audience_chat_id: row.audience_chat_id ?? null,
   };
 }
 
@@ -254,6 +260,8 @@ export async function createFind(args: {
   visibility?: PostVisibility;
   /** Alleen bij `kind = "swatch"`. `#RRGGBB`. */
   swatchHex?: string | null;
+  /** Voor één groepsgesprek (0074); weglaten = al je lincs. Je moet er lid van zijn. */
+  audienceChatId?: string | null;
 }): Promise<PostRow> {
   const caption = args.caption?.trim() || null;
   const linkUrl = args.linkUrl?.trim() || null;
@@ -347,6 +355,7 @@ export async function createFind(args: {
       meta: args.meta ?? {},
       visibility: args.visibility ?? "feed",
       swatch_hex: args.swatchHex ?? null,
+      audience_chat_id: args.audienceChatId ?? null,
     })
     .select(POST_COLUMNS)
     .single();
