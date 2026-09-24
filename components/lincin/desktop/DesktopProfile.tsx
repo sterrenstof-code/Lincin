@@ -10,7 +10,7 @@ import { acceptFriendRequest, deleteFriendship, listMyFriendships, sendFriendReq
 import { listUserPosts } from "@/lib/api/posts";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { bioLine, displayName, fromPost, timeLabel, type CardPost } from "@/lib/lincin/model";
@@ -225,10 +225,11 @@ export function DesktopProfile({ username }: { username: string }) {
                     {sinceIso ? ` · ${t.lincSince.toLowerCase()} ${new Date(sinceIso).getFullYear()}` : ""}
                   </Text>
                 </View>
-                <FitName name={name} max={236} ratio={0.42} lead={0.84} spacing={-0.04} style={[serif(), { marginTop: 8, color: ON_PHOTO }]} />
+                {/* De omslag: de naam rood in Archivo 900, kapitaal, tot 300. */}
+                <FitName name={name.toUpperCase()} max={300} ratio={0.84} lead={0.76} spacing={-0.05} style={[sans(900), { marginTop: 8, color: color("red") }]} />
               </View>
-              <Pressable accessibilityRole="button" onPress={back.go} style={{ position: "absolute", left: 40, bottom: 24, height: 36, paddingHorizontal: 16, borderRadius: 18, justifyContent: "center", backgroundColor: "rgba(16,16,12,.55)" }}>
-                <Text style={magLabel(10, ON_PHOTO, 1.6)}>← {t.back}</Text>
+              <Pressable accessibilityRole="button" onPress={back.go} style={{ position: "absolute", left: 40, bottom: 24, height: 36, paddingHorizontal: 16, justifyContent: "center", backgroundColor: "rgba(16,16,12,.55)" }}>
+                <Text style={magLabel(10, ON_PHOTO)}>← {t.back}</Text>
               </Pressable>
             </View>
             <View style={{ width: 480, gap: SEAM }}>
@@ -248,7 +249,7 @@ export function DesktopProfile({ username }: { username: string }) {
               <View style={{ flexDirection: "row", gap: SEAM }}>
                 {stats.map((s) => (
                   <View key={s.k} style={{ flex: 1, minWidth: 0, backgroundColor: color("paper2"), paddingTop: 18, paddingHorizontal: 18, paddingBottom: 16, gap: 10 }}>
-                    <Text style={magLabel(8.5, color("ink", "inkDim"))}>{s.k}</Text>
+                    <Text style={magLabel(10, color("ink", "inkDim"))}>{s.k}</Text>
                     <Text numberOfLines={1} style={[serif(), { fontSize: 30, lineHeight: 30, color: ink }]}>
                       {s.v}
                     </Text>
@@ -257,11 +258,11 @@ export function DesktopProfile({ username }: { username: string }) {
               </View>
             </View>
           </View>
-          <View style={{ marginHorizontal: SEAM, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: ink }}>
+          <View style={{ marginHorizontal: SEAM, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
             <Text style={[serif(), { fontSize: 30, lineHeight: 32, color: ink }]}>
               {t.allPosts} <Text style={serif(true)}>{t.fromName} {name}</Text>
             </Text>
-            <Text style={magLabel(9, color("ink", "inkDim"))}>{t.newestFirst}</Text>
+            <Text style={magLabel(10, color("ink", "inkDim"))}>{t.newestFirst}</Text>
           </View>
           <View onLayout={(e) => setGridW(e.nativeEvent.layout.width - SEAM * 2)} style={{ flexDirection: "row", flexWrap: "wrap", gap: SEAM, padding: SEAM }}>
             {gridW ? tiles(gridW) : null}
@@ -349,8 +350,9 @@ function meta(size: number, c: string, spacing = size * 0.1): TextStyle {
   return { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.3), letterSpacing: spacing, textTransform: "uppercase", color: c };
 }
 
-function magLabel(size: number, c: string, spacing = size * 0.2): TextStyle {
-  return { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: spacing, textTransform: "uppercase", color: c };
+/** Het label van de omslag: Archivo 700, kapitaal, .1em. */
+function magLabel(size: number, c: string, spacing = size * 0.1): TextStyle {
+  return { ...sans(700), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: spacing, textTransform: "uppercase", color: c };
 }
 
 type TileProps = { c: CardPost; width: number; isNew: boolean; fill: { fill: string; ink: string }; onPress: () => void };
@@ -423,14 +425,14 @@ function TileMagazine({ c, width, tall, isNew, fill, onPress }: TileProps & { ta
           )}
         />
         {isNew ? (
-          <View style={{ position: "absolute", top: 12, left: 12, height: 24, paddingHorizontal: 10, borderRadius: 12, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: color("paper") }}>
+          <View style={{ position: "absolute", top: 12, left: 12, height: 24, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: color("paper") }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color("red") }} />
-            <Text style={magLabel(8.5, color("ink"), 1.5)}>{t.new}</Text>
+            <Text style={magLabel(10, color("ink"))}>{t.new}</Text>
           </View>
         ) : null}
       </View>
       <View style={{ paddingTop: 16, paddingRight: 20, paddingBottom: 20, paddingLeft: 15, borderLeftWidth: 5, borderLeftColor: fill.fill, gap: 8 }}>
-        <Text style={magLabel(9, color("ink", "inkDim"))}>
+        <Text style={magLabel(10, color("ink", "inkDim"))}>
           {c.kind} · {timeLabel(c.createdAt, t, lang)}
         </Text>
         <Text numberOfLines={2} style={[serif(), { fontSize: 28, lineHeight: 29, color: color("ink") }]}>
