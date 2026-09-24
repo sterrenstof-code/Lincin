@@ -10,12 +10,13 @@ import { listNotifications, markAllNotificationsRead, markNotificationRead, type
 import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortAgo, timeLabel, type CardPost } from "@/lib/lincin/model";
 
 import { DesktopShell } from "./Shell";
+import { Black } from "../magazine/Omslag";
 
 /**
  * Jij op desktop (desktop-*-pages.dc.html, JIJ): links jouw band en jouw
@@ -112,7 +113,14 @@ export function DesktopYou() {
           th === "modern" ? { paddingHorizontal: 4, paddingBottom: 8 } : null,
         ]}
       >
-        <Text style={th === "magazine" ? [serif(), { fontSize: 32, lineHeight: 32, color: ink }] : meta(th === "kleur" ? 11 : 9, ink, th === "kleur" ? 600 : 500)}>{t.notifications}</Text>
+        {th === "magazine" ? (
+          // De omslag: "Meldingen" rood in Archivo 900 van 40.
+          <Black size={40} f={0.85}>
+            {t.notifications}
+          </Black>
+        ) : (
+          <Text style={meta(th === "kleur" ? 11 : 9, ink, th === "kleur" ? 600 : 500)}>{t.notifications}</Text>
+        )}
         {unread ? (
           <Pressable accessibilityRole="button" onPress={readAll}>
             <Text style={[th === "magazine" ? magLabel(9, ink) : meta(th === "kleur" ? 10 : 9, dim, 500), { textDecorationLine: "underline" }]}>{th === "magazine" ? t.markAllRead : t.allRead}</Text>
@@ -242,7 +250,10 @@ export function DesktopYou() {
                     <Text style={[magLabel(10, ink), { textDecorationLine: "underline" }]}>{t.settings} →</Text>
                   </Pressable>
                 </View>
-                <Text style={[serif(), { fontSize: 220, lineHeight: 180, letterSpacing: -8.8, color: ink }]}>{t.me}</Text>
+                {/* De omslag: JIJ rood in Archivo 900 van 260. */}
+                <Black size={260} f={0.76} upper nowrap>
+                  {t.me}
+                </Black>
               </View>
               <View style={{ flexDirection: "row", gap: SEAM }}>
                 {stats.map((s) => (
@@ -255,7 +266,7 @@ export function DesktopYou() {
             </View>
             {notesBlock}
           </View>
-          <View style={{ marginHorizontal: SEAM, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: ink }}>
+          <View style={{ marginHorizontal: SEAM, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
             <Text style={[serif(), { fontSize: 30, lineHeight: 32, color: ink }]}>
               {t.myPosts.split(" ")[0]} <Text style={serif(true)}>{t.myPosts.split(" ").slice(1).join(" ")}</Text>
             </Text>
@@ -302,8 +313,9 @@ function meta(size: number, c: string, weight: 500 | 600): TextStyle {
   return { ...mono(weight), fontSize: size, lineHeight: Math.round(size * 1.3), letterSpacing: size * 0.12, textTransform: "uppercase", color: c };
 }
 
+/** Het label van de omslag: Archivo 700, kapitaal, .1em. */
 function magLabel(size: number, c: string): TextStyle {
-  return { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.2, textTransform: "uppercase", color: c };
+  return { ...sans(700), fontSize: Math.max(10, size), lineHeight: Math.round(Math.max(10, size) * 1.35), letterSpacing: Math.max(10, size) * 0.1, textTransform: "uppercase", color: c };
 }
 
 /** Eén van jouw bijdragen: het beeld (of je kleur) en soort · wanneer · reacties, de titel. */
