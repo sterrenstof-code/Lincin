@@ -2,8 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { ModalShell } from "@/components/ModalShell";
-import { feed, FEED_BORDER, feedType, flameDeep, space } from "@/lib/design/type";
+import { ModalShell, useSheetStyle } from "@/components/ModalShell";
+import { space } from "@/lib/design/type";
 
 type ActionSheetAction = {
   label: string;
@@ -65,6 +65,7 @@ export function ActionSheet({
    * een "Annuleer" onder een keuzelijst is ruis.
    */
   const needsCancel = actions.some((a) => a.destructive);
+  const sh = useSheetStyle();
 
   return (
     <ModalShell visible={visible} onClose={onClose} title={title}>
@@ -74,11 +75,11 @@ export function ActionSheet({
             style={{
               paddingHorizontal: space.lg,
               paddingBottom: space.lg,
-              borderBottomWidth: FEED_BORDER,
-              borderBottomColor: feed.ink,
+              ...sh.rowSep,
+              ...(sh.th === "modern" ? { paddingHorizontal: 20 } : null),
             }}
           >
-            <Text style={[feedType.body, { fontSize: 14, color: feed.inkDim }]}>
+            <Text style={{ ...sh.label, fontSize: 14, lineHeight: 20, color: sh.dim }}>
               {subtitle}
             </Text>
           </View>
@@ -96,16 +97,16 @@ export function ActionSheet({
                 Promise.resolve(action.onPress()).catch(() => {});
               }, 60);
             }}
-            style={{
+            style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: space.md,
               paddingHorizontal: space.lg,
-              paddingVertical: space.lg,
-              ...(i === actions.length - 1 && !footer && !needsCancel
-                ? null
-                : { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }),
-            }}
+              paddingVertical: sh.th === "magazine" ? 18 : space.lg,
+              opacity: pressed ? 0.7 : 1,
+              ...sh.row,
+              ...(i === actions.length - 1 && !footer && !needsCancel ? null : sh.rowSep),
+            })}
           >
             {action.icon && (
               <Ionicons
@@ -115,18 +116,11 @@ export function ActionSheet({
                 // onderdeel dat élke destructieve actie in de app tekent —
                 // en een hexwaarde die niet meekantelt met de stand (§7).
                 // `flameDeep` is het rood voor tekst onder ~16px (§2).
-                color={action.destructive ? flameDeep : feed.ink}
+                color={action.destructive ? sh.red : sh.ink}
               />
             )}
             <Text
-              style={[
-                feedType.tile,
-                {
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: action.destructive ? flameDeep : feed.ink,
-                },
-              ]}
+              style={{ ...sh.label, color: action.destructive ? sh.red : sh.ink }}
             >
               {action.label}
             </Text>
@@ -138,31 +132,26 @@ export function ActionSheet({
             accessibilityRole="button"
             accessibilityLabel="Annuleer"
             onPress={onClose}
-            style={{
+            style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: space.md,
               paddingHorizontal: space.lg,
-              paddingVertical: space.lg,
-              ...(footer
-                ? { borderBottomWidth: FEED_BORDER, borderBottomColor: feed.ink }
-                : null),
-            }}
+              paddingVertical: sh.th === "magazine" ? 18 : space.lg,
+              opacity: pressed ? 0.7 : 1,
+              ...sh.row,
+              ...(footer ? sh.rowSep : null),
+            })}
           >
-            <Ionicons name="close" size={20} color={feed.inkDim} />
-            <Text
-              style={[
-                feedType.tile,
-                { fontSize: 15, fontWeight: "700", color: feed.inkDim },
-              ]}
-            >
+            <Ionicons name="close" size={20} color={sh.dim} />
+            <Text style={{ ...sh.label, color: sh.dim }}>
               Annuleer
             </Text>
           </Pressable>
         ) : null}
       </View>
       {footer ? (
-        <View style={{ borderTopWidth: FEED_BORDER, borderTopColor: feed.ink }}>
+        <View style={sh.th === "modern" ? undefined : { borderTopWidth: 1, borderTopColor: sh.th === "magazine" ? sh.dim : sh.ink }}>
           {footer}
         </View>
       ) : null}

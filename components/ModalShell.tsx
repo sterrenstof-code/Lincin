@@ -11,7 +11,59 @@ import {
 } from "react-native";
 
 import { IconButton } from "@/components/IconButton";
-import { CONTROL_H, feed, FEED_BORDER, feedType, space } from "@/lib/design/type";
+import { OMSLAG, RASTER, color, useThemeSpec } from "@/lib/design/theme";
+import { CONTROL_H, mono, sans, serif, space } from "@/lib/design/type";
+
+/**
+ * Hoe een venster eruitziet, per thema (lincin-handoff, de drie bladen):
+ *
+ *   kleur     papier, een inktkader van het thema, kop in mono kapitalen,
+ *             regels tussen inktlijnen, labels in Archivo vet.
+ *   magazine  het tweede papier zonder kader, met een lijn van 2 bovenaan, de kop
+ *             als cursieve serif, haarlijnen tussen de regels, labels in
+ *             serif — zoals de gesprekkenlijst van de omslag.
+ *   modern    een tegel met ronde hoeken zonder lijnen; elke regel een
+ *             eigen afgeronde tegel met een naad ertussen.
+ *
+ * ActionSheet leest dit ook, zodat de regels bij hun venster passen.
+ */
+export function useSheetStyle() {
+  const spec = useThemeSpec();
+  const th = spec.id;
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const rule = th === "magazine" ? color("ink", "postRule") : ink;
+  return {
+    th,
+    ink,
+    dim,
+    red: color("red"),
+    box:
+      th === "modern"
+        ? { backgroundColor: color("tile"), borderRadius: RASTER.tileRadius, overflow: "hidden" as const }
+        : th === "magazine"
+          ? { backgroundColor: color("paper2"), borderTopWidth: OMSLAG.rule, borderTopColor: ink }
+          : { backgroundColor: color("paper"), borderWidth: spec.border, borderColor: ink },
+    headRule: th === "modern" ? null : { borderBottomWidth: th === "magazine" ? 1 : spec.border, borderBottomColor: rule },
+    title:
+      th === "magazine"
+        ? { ...serif(true), fontSize: 28, lineHeight: 32, color: ink }
+        : th === "modern"
+          ? { ...sans(500), fontSize: 20, lineHeight: 24, letterSpacing: -0.4, color: ink }
+          : { ...mono(600), fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: "uppercase" as const, color: dim },
+    rowSep: th === "modern" ? null : { borderBottomWidth: th === "magazine" ? 1 : spec.border, borderBottomColor: rule },
+    row:
+      th === "modern"
+        ? { marginHorizontal: 10, marginBottom: RASTER.seam, borderRadius: 14, backgroundColor: color("tile", "tileFill") }
+        : null,
+    label:
+      th === "magazine"
+        ? { ...serif(), fontSize: 22, lineHeight: 26 }
+        : th === "modern"
+          ? { ...sans(500), fontSize: 16, lineHeight: 20 }
+          : { ...sans(700), fontSize: 15, lineHeight: 19 },
+  };
+}
 
 /**
  * De vorm en de beweging van élk venster in deze app.
@@ -48,6 +100,7 @@ export function ModalShell({
   maxWidth?: number;
 }) {
   const anim = useRef(new Animated.Value(0)).current;
+  const sh = useSheetStyle();
   const { height } = useWindowDimensions();
   /**
    * Of er überhaupt een `Modal` in de boom hangt.
@@ -123,9 +176,7 @@ export function ModalShell({
             maxWidth,
             alignSelf: "center",
             maxHeight: height * 0.8,
-            backgroundColor: feed.lav,
-            borderWidth: FEED_BORDER,
-            borderColor: feed.ink,
+            ...sh.box,
             opacity: anim,
             transform: [
               { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
@@ -142,19 +193,17 @@ export function ModalShell({
                 paddingRight: space.md,
                 // De knop is zelf CONTROL_H hoog; een eigen verticale marge
                 // erbovenop zou de kopbalk hoger maken dan zijn inhoud.
-                minHeight: CONTROL_H,
-                borderBottomWidth: FEED_BORDER,
-                borderBottomColor: feed.ink,
+                minHeight: sh.th === "kleur" ? CONTROL_H : 64,
+                paddingTop: sh.th === "kleur" ? 0 : 6,
+                ...sh.headRule,
+                ...(sh.th === "modern" ? { paddingLeft: 20 } : null),
               }}
             >
               <Text
-                style={[
-                  feedType.kicker,
-                  { color: feed.inkDim, letterSpacing: 0.6, flex: 1 },
-                ]}
+                style={[sh.title, { flex: 1 }]}
                 numberOfLines={1}
               >
-                {title.toUpperCase()}
+                {title}
               </Text>
               {/**
                 * De enige zichtbare manier om dit venster te sluiten.
@@ -175,14 +224,16 @@ export function ModalShell({
                 label="Sluiten"
                 onPress={onClose}
                 size={18}
-                color={feed.ink}
+                color={sh.ink}
                 dense
                 style={{ marginRight: -space.sm }}
               />
             </View>
           ) : null}
 
-          <ScrollView showsVerticalScrollIndicator={false}>{children}</ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={sh.th === "modern" ? { paddingTop: title ? 0 : 10, paddingBottom: 4 } : undefined}>
+            {children}
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
