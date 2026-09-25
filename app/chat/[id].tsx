@@ -105,7 +105,7 @@ import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
   rememberChatPreview,
@@ -294,6 +294,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
   const callSentRef = useRef(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  /** Hoogte van de tekst in de invoer (magazine): groeit mee tot vijf regels. */
+  const [inputH, setInputH] = useState(22);
+  // Op web meldt het veld alleen groei, nooit krimp: leeg (ook na
+  // verzenden) is weer één regel.
+  useEffect(() => {
+    if (!draft) setInputH(22);
+  }, [draft]);
   /**
    * Waar het nieuwe begint, vastgelegd bij het openen.
    *
@@ -1965,6 +1972,106 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               </View>
             )}
 
+            {magBar && !recording ? (
+            /**
+             * De invoer van de omslag (desktop-magazine-pages, GESPREKKEN):
+             * geen vakjes, één lijn onder het veld, en rechts één knop die
+             * wisselt — de microfoon zolang er niets staat, een rood vlak
+             * met ↑ zodra je typt (zoals Telegram). De bijlage links en de
+             * emoji ín het veld zijn iconen zonder kader: ze horen bij de
+             * lijn, niet ernaast.
+             */
+            <ComposerInset style={[{ paddingTop: 14, paddingBottom: 18 }, embedded ? { maxWidth: "100%", paddingHorizontal: 24 } : null]}>
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Bijlage toevoegen"
+                  onPress={() => setAttachMenuOpen(true)}
+                  disabled={sending}
+                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                >
+                  <Ionicons name="add" color={color("ink")} size={26} />
+                </Pressable>
+                <View
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    minHeight: CONTROL_H,
+                    borderBottomWidth: 1,
+                    borderBottomColor: color("ink"),
+                  }}
+                >
+                  <TextInput
+                    ref={inputRef}
+                    value={draft}
+                    onChangeText={onDraftChange}
+                    onKeyPress={onComposerKeyPress}
+                    onFocus={() => setShowEmojiPicker(false)}
+                    onContentSizeChange={(e) => setInputH(e.nativeEvent.contentSize.height)}
+                    placeholder={sending ? "Bezig met versturen…" : `${t2.writeTo} ${title}…`}
+                    placeholderTextColor={color("ink", "inkDim")}
+                    multiline
+                    // Web: één regel om mee te beginnen (anders twee), de
+                    // hoogte groeit daarna via onContentSizeChange.
+                    numberOfLines={Platform.OS === "web" ? 1 : undefined}
+                    editable={!sending}
+                    style={{
+                      ...sans(),
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: 16,
+                      lineHeight: 22,
+                      color: color("ink"),
+                      paddingVertical: 0,
+                      paddingHorizontal: 0,
+                      marginVertical: 11,
+                      height: Math.min(110, Math.max(22, inputH)),
+                      ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none", resize: "none" } as any) : {}),
+                    }}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Emoji"
+                    onPress={() => {
+                      setShowEmojiPicker((v) => !v);
+                      if (!showEmojiPicker) inputRef.current?.blur();
+                      else inputRef.current?.focus();
+                    }}
+                    style={({ pressed }) => [{ width: 36, height: CONTROL_H, alignItems: "center", justifyContent: "center" }, pressed && AUX_PRESSED]}
+                  >
+                    <Ionicons name={showEmojiPicker ? "happy" : "happy-outline"} color={color("ink", "inkDim")} size={21} />
+                  </Pressable>
+                </View>
+                {draft.trim() || sending ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Bericht versturen"
+                    onPress={onSend}
+                    disabled={sending || !draft.trim()}
+                    style={({ pressed }) => [
+                      AUX_BUTTON,
+                      { backgroundColor: sending ? color("paper2") : color("red") },
+                      pressed && AUX_PRESSED,
+                    ]}
+                  >
+                    <Ionicons name="arrow-up" color={sending ? color("ink", "inkDim") : ON_DARK} size={21} />
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Spraakbericht opnemen"
+                    onPress={startRecording}
+                    disabled={sending}
+                    style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                  >
+                    <Ionicons name="mic-outline" color={color("ink")} size={23} />
+                  </Pressable>
+                )}
+              </View>
+            </ComposerInset>
+            ) : (
             <ComposerInset style={{ paddingVertical: space.md }}>
              <View
               style={[
@@ -2134,6 +2241,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               )}
              </View>
             </ComposerInset>
+            )}
           </View>
         </KeyboardAvoidingView>
 

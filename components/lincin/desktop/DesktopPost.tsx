@@ -260,11 +260,27 @@ export function DesktopPost({ id }: { id: string }) {
         </>
       ) : stage.h > 0 ? (
         // Geen foto: de tekst groot op het vlak, of het medium zelf (poll, muziek, link…).
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 40, paddingLeft: kleur ? 34 + 48 : mag ? 80 : 72, paddingRight: 48 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingTop: 96, paddingBottom: 40, paddingLeft: kleur ? 34 + 48 : mag ? 80 : 72, paddingRight: 48 }}>
           {card.media.kind === "tekst" ? (
-            <Text selectable style={[mag ? serif(true) : modern ? sans(400) : serif(), { maxWidth: mag ? 860 : 820, fontSize: mag ? 56 : 44, lineHeight: mag ? 59 : 49, letterSpacing: modern ? -1.3 : 0, color: stageInk }]}>
-              {card.media.text}
-            </Text>
+            (() => {
+              // Groot als citaat zolang het kort is; een lange tekst is om te
+              // lézen, dus kleiner, rechtop en met meer regelafstand. 56 over
+              // tien regels was een affiche, geen brief.
+              const len = card.media.text.length;
+              const size = len <= 90 ? (mag ? 56 : 44) : len <= 260 ? (mag ? 36 : 32) : 22;
+              const long = len > 260;
+              return (
+                <Text
+                  selectable
+                  style={[
+                    mag ? serif(!long) : modern ? sans(400) : serif(),
+                    { maxWidth: long ? 720 : mag ? 860 : 820, fontSize: size, lineHeight: Math.round(size * (long ? 1.45 : 1.08)), letterSpacing: modern && !long ? -1.3 : 0, color: stageInk },
+                  ]}
+                >
+                  {card.media.text}
+                </Text>
+              );
+            })()
           ) : (
             <View style={[{ maxWidth: 720, overflow: "hidden", backgroundColor: color("paper") }, modern ? { borderRadius: 14 } : { borderWidth: spec.border, borderColor: ink }]}>
               <Media media={card.media} height={Math.min(300, stage.h - 80)} hue={hue} postId={p.id} myUserId={myUserId} size="page" />
