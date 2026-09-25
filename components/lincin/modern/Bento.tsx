@@ -67,6 +67,7 @@ export function Tile({
   span = 1,
   pad = RASTER.tilePad,
   onPress,
+  menu,
   accessibilityLabel,
   style,
   children,
@@ -75,6 +76,8 @@ export function Tile({
   /** De binnenpadding. 18 gewoon, 22 voor een titeltegel; 0 om zelf te vullen. */
   pad?: number;
   onPress?: () => void;
+  /** Lang drukken / rechtsklikken (zie ChatReadMenu). */
+  menu?: object;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
@@ -104,6 +107,7 @@ export function Tile({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
+      {...menu}
       style={({ pressed }) => [base, { opacity: pressed ? 0.82 : 1 }, style]}
     >
       {children}

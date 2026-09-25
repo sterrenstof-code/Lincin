@@ -8,6 +8,7 @@ import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
 import { UnreadBanner } from "@/components/lincin/UnreadBanner";
+import { useChatReadMenu } from "@/components/lincin/ChatReadMenu";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -51,6 +52,7 @@ function ChatsMobile() {
   useHueChoices();
   const toast = useToast();
   const previews = useChatPreviews();
+  const readMenu = useChatReadMenu();
 
   const chats = useQuery({
     queryKey: ["chats", myUserId],
@@ -111,6 +113,7 @@ function ChatsMobile() {
         preview,
         unread: c.unread_count ?? 0,
         onPress: () => openThread(c.id),
+        menu: readMenu.rowProps(c.id, name, (c.unread_count ?? 0) > 0),
       };
     }),
     ...withoutChat.map((f) => {
@@ -137,6 +140,7 @@ function ChatsMobile() {
         scheme={scheme}
         t={t}
         state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+        footer={readMenu.sheet}
       />
     );
   }
@@ -150,7 +154,12 @@ function ChatsMobile() {
         scheme={scheme}
         t={t}
         state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
-        footer={<DashedTile label="Nieuwe groep →" onPress={() => router.push("/group-create")} />}
+        footer={
+          <>
+            <DashedTile label="Nieuwe groep →" onPress={() => router.push("/group-create")} />
+            {readMenu.sheet}
+          </>
+        }
       />
     );
   }
@@ -177,6 +186,7 @@ function ChatsMobile() {
         preview={preview}
         unread={c.unread_count ?? 0}
         onPress={() => openThread(c.id)}
+        menu={readMenu.rowProps(c.id, name, (c.unread_count ?? 0) > 0)}
       />
     );
   }
@@ -231,6 +241,7 @@ function ChatsMobile() {
         <DashedCard style={{ margin: 12 }} onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
         <DashedCard style={{ marginHorizontal: 12, marginBottom: 12 }} onPress={() => router.push("/list-compose")}>{`${t.newList} →`}</DashedCard>
       </ScrollView>
+      {readMenu.sheet}
     </LincinScreen>
   );
 }
@@ -245,6 +256,7 @@ function Row({
   preview,
   unread,
   onPress,
+  menu,
 }: {
   initial: string;
   fill: string;
@@ -255,6 +267,7 @@ function Row({
   preview: string;
   unread: number;
   onPress: () => void;
+  menu?: object;
 }) {
   const t = useT();
   return (
@@ -262,6 +275,7 @@ function Row({
       accessibilityRole="button"
       accessibilityLabel={unread ? `${name}, ${unread} ${t.unread}` : name}
       onPress={onPress}
+      {...menu}
       style={({ pressed }) => ({
         height: 72,
         flexDirection: "row",

@@ -615,6 +615,11 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
     return null;
   }, [messages, myUserId, chat, otherMembersLastRead]);
+  /** Tot waar alles van mij gelezen is: ✓✓ op alles tot en met dat bericht. */
+  const readThroughAt = useMemo(
+    () => (readReceiptMessageId ? messages?.find((m) => m.id === readReceiptMessageId)?.created_at ?? null : null),
+    [messages, readReceiptMessageId]
+  );
 
   function onDraftChange(text: string) {
     const converted = replaceEmoticons(text);
@@ -1641,7 +1646,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                       senderName={senderName}
                       pending={isPending && !isFailed}
                       failed={isFailed}
-                      showReadReceipt={item.id === readReceiptMessageId}
+                      read={!!readThroughAt && isMine && item.created_at <= readThroughAt}
                       onRetry={() => retryFailedMessage(item.id)}
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
@@ -2048,7 +2053,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     // crème, nooit inkt — zie het kader in DESIGN.md §2.
                     className="text-ink text-base"
                     style={{
-                      ...(magBar ? { ...serif(true), fontSize: 20 } : null),
+                      ...(magBar ? { ...sans(), fontSize: 16 } : null),
                       minHeight: 24,
                       paddingVertical: 0,
                       lineHeight: 20,
@@ -2553,7 +2558,7 @@ function MessageBubble({
   reactions,
   onLongPress,
   onToggleReaction,
-  showReadReceipt,
+  read,
   onReply,
   onCopy,
   onEdit,
@@ -2582,7 +2587,8 @@ function MessageBubble({
   reactions: GroupedReaction[];
   onLongPress: () => void;
   onToggleReaction: (emoji: string) => void;
-  showReadReceipt?: boolean;
+  /** Gelezen door iedereen: ✓✓ in plaats van ✓ (Telegram). */
+  read?: boolean;
   onReply?: () => void;
   onCopy?: () => void;
   /** Alleen bij een eigen bericht mét tekst; zie de aanroep in renderItem. */
@@ -2616,6 +2622,10 @@ function MessageBubble({
   // In groepsgesprekken: avatar-slot links van inkomende berichten
   // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
   const showAvatarSlot = isGroup && !isMine;
+  // De naam in de bubbel in de kleur van de afzender, zoals Telegram — zo
+  // zie je in een groep wie het zei zonder de naam te lezen.
+  const senderColor = friendColor(hueFor(msg.sender_id), useScheme());
+  const senderHue = senderColor.fill;
 
   // ── Swipe-to-reply (rechts) via RNGH — werkt correct binnen FlatList ────
   const swipeX = useRef(new Animated.Value(0)).current;
@@ -2673,18 +2683,9 @@ function MessageBubble({
         </Animated.View>
       )}
 
-      {/* Avatar + naam — eenmalig boven de eerste bubble van de run */}
-      {showSenderHeader && showAvatarSlot && (
-        <View className="flex-row items-center mb-0.5 ml-1 gap-2">
-          <Avatar name={senderName} avatarUrl={senderAvatarUrl} size="sm" />
-          <Text
-            style={[feedType.label, { fontSize: 12, fontWeight: "700", color: feed.ink }]}
-            numberOfLines={1}
-          >
-            {senderName ?? "Onbekend"}
-          </Text>
-        </View>
-      )}
+      {/* Telegram: de avatar staat links onderaan, naast de láátste
+          bubbel van een reeks; de naam staat ín de eerste (zie hieronder).
+          Zo lees je een reeks als één blok van één persoon. */}
 
       {/**
         * Web krijgt géén GestureDetector.
@@ -2736,6 +2737,34 @@ function MessageBubble({
           transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
         }}
       >
+        {/* Telegram: de avatar links onderaan, naast de láátste bubbel van
+            een reeks; de naam staat ín de eerste. Zo lees je een reeks als
+            één blok van één persoon. */}
+        {showAvatar && showAvatarSlot ? (
+          <View style={{ position: "absolute", left: -40, bottom: 0 }}>
+            {senderAvatarUrl ? (
+              <Avatar name={senderName} avatarUrl={senderAvatarUrl} size="sm" />
+            ) : (
+              // Zonder foto de initiaal in de kleur van de afzender — dezelfde
+              // cirkel als in de gesprekkenlijst (magazine een ring, anders
+              // een vol vlak).
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  ...(mag ? { borderWidth: 1, borderColor: senderColor.fill } : { backgroundColor: senderColor.fill }),
+                }}
+              >
+                <Text style={[mag ? serif() : sans(700), { fontSize: mag ? 19 : 14, lineHeight: mag ? 22 : 17, color: mag ? senderColor.fill : senderColor.ink }]}>
+                  {(senderName ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : null}
         <View style={{ minWidth: 0 }} className={isMine ? "items-end flex-1" : "items-start flex-1"}>
       <Pressable
         onLongPress={onLongPress}
@@ -2823,6 +2852,29 @@ function MessageBubble({
           )
         ) : (
           <>
+            {showSenderHeader && showAvatarSlot && !hasAttachment ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  sans(700),
+                  {
+                    fontSize: 13,
+                    lineHeight: 17,
+                    color: senderHue,
+                    paddingHorizontal: content.reply ? space.lg : 0,
+                    paddingTop: content.reply ? space.md : 0,
+                    marginBottom: content.reply ? 0 : 2,
+                  },
+                ]}
+              >
+                {senderName ?? "Onbekend"}
+              </Text>
+            ) : null}
+            {showSenderHeader && showAvatarSlot && hasAttachment ? (
+              <Text numberOfLines={1} style={[sans(700), { fontSize: 13, lineHeight: 17, color: senderHue, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6 }]}>
+                {senderName ?? "Onbekend"}
+              </Text>
+            ) : null}
             {/*
                 Het aangehaalde bericht — aantikken scrolt naar het origineel.
 
@@ -2888,8 +2940,18 @@ function MessageBubble({
               </Pressable>
             )}
             {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
+            <View
+              style={
+                hasAttachment
+                  ? undefined
+                  : { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "flex-end", columnGap: 10 }
+              }
+            >
             {hasText && (
-              <View className={hasAttachment ? "px-3 py-2" : content?.reply ? "px-4 pt-1" : ""}>
+              <View
+                className={hasAttachment ? "px-3 py-2" : content?.reply ? "px-4 pt-1" : ""}
+                style={hasAttachment ? undefined : { flexShrink: 1, flexGrow: 1, minWidth: 0 }}
+              >
                 <MentionsText
                   text={content.text!}
                   isMine={isMine}
@@ -2898,7 +2960,10 @@ function MessageBubble({
                   // loopt die de kolom uit. `anywhere` breekt hem waar nodig.
                   style={[
                     Platform.OS === "web" ? ({ overflowWrap: "anywhere", wordBreak: "break-word" } as object) : null,
-                    mag && !emojiOnly ? { ...serif(), fontSize: 20, lineHeight: 25 } : null,
+                    // Berichten in een gewone schreefloze letter, ook in
+                    // magazine: een gesprek lees je snel, de serif is voor
+                    // koppen en namen.
+                    mag && !emojiOnly ? { ...sans(), fontSize: 16, lineHeight: 22 } : null,
                     fill ? { color: fill.ink } : null,
                   ]}
                   className={`${
@@ -2911,8 +2976,9 @@ function MessageBubble({
             )}
             <View
               className={`flex-row items-center justify-end ${
-                hasAttachment ? "px-3 pb-2" : content?.reply ? "px-4 mt-0.5 pb-0.5" : "mt-1"
+                hasAttachment ? "px-3 pb-2" : content?.reply ? "px-4 mt-0.5 pb-0.5" : ""
               }`}
+              style={hasAttachment ? undefined : { marginLeft: "auto", paddingBottom: 1 }}
             >
               <Text
                 style={[
@@ -2932,10 +2998,12 @@ function MessageBubble({
                 />
               )}
               {isMine && !pending && !failed && (
+                // ✓ verstuurd, ✓✓ gelezen — zoals Telegram en WhatsApp.
                 <Ionicons
-                  name="checkmark-done"
-                  size={11}
-                  color={isMine ? creamOnDark.muted : feed.inkDim}
+                  name={read ? "checkmark-done" : "checkmark"}
+                  size={read ? 13 : 12}
+                  color={read ? creamOnDark.DEFAULT : creamOnDark.muted}
+                  accessibilityLabel={read ? "Gelezen" : "Verstuurd"}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -2944,6 +3012,7 @@ function MessageBubble({
                   Tik om opnieuw te proberen
                 </Text>
               )}
+            </View>
             </View>
           </>
         )}
@@ -3057,14 +3126,6 @@ function MessageBubble({
         />
       ) : null}
 
-      {isMine && showReadReceipt && (
-        // Een leesbevestiging is metadata, geen redactioneel accent. Rood
-        // trok hier de aandacht naar het minst belangrijke op het scherm.
-        <View className="flex-row items-center self-end pr-1 mt-0.5 gap-0.5">
-          <Ionicons name="checkmark-done" size={12} color={feed.inkDim} />
-          <Text style={[feedType.label, { color: feed.inkDim }]}>Gelezen</Text>
-        </View>
-      )}
     </View>
   );
 }

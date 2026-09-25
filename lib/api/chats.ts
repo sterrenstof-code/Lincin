@@ -67,6 +67,15 @@ export async function markChatRead(chatId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Zet een gesprek weer op ongelezen: het laatste bericht van een ander telt
+ * opnieuw mee (zie migratie 0075).
+ */
+export async function markChatUnread(chatId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_chat_unread", { p_chat_id: chatId });
+  if (error) throw error;
+}
+
 /** List all chats I'm a member of, with their members and unread counts. */
 export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> {
   // RLS filters chats to those I'm a member of.

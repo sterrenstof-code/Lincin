@@ -40,6 +40,8 @@ export type ChatSpreadData = {
   preview: string;
   unread: number;
   onPress: () => void;
+  /** Lang drukken / rechtsklikken: gelezen of ongelezen (ChatReadMenu). */
+  menu?: object;
 };
 
 export function ChatsMagazine({
@@ -77,6 +79,7 @@ export function ChatsMagazine({
               ink={fc.ink}
               rail={c.time}
               onPress={c.onPress}
+              menu={c.menu}
               accessibilityLabel={c.unread > 0 ? `${c.name}, ${c.unread} ${t.unread}` : c.name}
               media={
                 c.unread > 0 ? (

@@ -1006,6 +1006,10 @@ export type Database = {
         Args: { p_chat_id: string };
         Returns: void;
       };
+      mark_chat_unread: {
+        Args: { p_chat_id: string };
+        Returns: void;
+      };
       my_chat_unread_counts: {
         Args: Record<string, never>;
         Returns: Array<{ chat_id: string; unread_count: number }>;

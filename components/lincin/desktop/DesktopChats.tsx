@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { ChatDetail } from "@/app/chat/[id]";
@@ -38,7 +39,17 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
   useHueChoices();
   const spec = useThemeSpec();
   const { myUserId, list, chats } = useSortedChats();
-  const current = pickThread(chatId ?? null, list);
+  /**
+   * Zonder id kiest `/chats` één keer een gesprek (het laatste ongelezen) en
+   * houdt dat vast. Opnieuw kiezen bij elke wijziging in de lijst sprong
+   * naar een gesprek dat je net als ongelezen markeerde — en openen is lezen,
+   * dus het markeren werd meteen weer ongedaan gemaakt.
+   */
+  const [picked, setPicked] = useState<string | null>(null);
+  const current = chatId ?? picked ?? pickThread(null, list);
+  useEffect(() => {
+    if (!chatId && !picked && current) setPicked(current);
+  }, [chatId, picked, current]);
   const chat = list.find((c) => c.id === current) ?? null;
   const tint = chat ? friendColor(chatHue(chat, myUserId), scheme).fill : null;
   const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);

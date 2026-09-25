@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
@@ -12,6 +12,8 @@ import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
+
+import { useChatReadMenu } from "../ChatReadMenu";
 
 import { MonoLink } from "./Shell";
 
@@ -56,6 +58,7 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
   const qc = useQueryClient();
   const toast = useToast();
   const previews = useChatPreviews();
+  const readMenu = useChatReadMenu();
   const { myUserId, chats, list } = useSortedChats();
   const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId), enabled: full });
   const inChats = useMemo(() => new Set(list.filter((c) => c.type === "direct").flatMap((c) => c.members.map((m) => m.id))), [list]);
@@ -97,6 +100,8 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
             unread={n}
             active={full && c.id === activeId}
             onPress={() => onOpen(c.id)}
+            menu={readMenu.rowProps(c.id, chatTitle(c, myUserId), n > 0)}
+            onToggleRead={() => readMenu.toggle(c.id, n === 0)}
           />
         );
       })}
@@ -119,6 +124,7 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
           <MonoLink label={`${t.newList} →`} active onPress={() => router.push("/list-compose")} />
         </View>
       ) : null}
+      {readMenu.sheet}
     </ScrollView>
   );
 }
@@ -132,6 +138,8 @@ function Row({
   unread,
   active,
   onPress,
+  menu,
+  onToggleRead,
 }: {
   fill: { fill: string; ink: string };
   initial: string;
@@ -141,15 +149,47 @@ function Row({
   unread: number;
   active: boolean;
   onPress: () => void;
+  menu?: object;
+  /** Bij hover: gelezen/ongelezen zetten zonder het gesprek te openen. */
+  onToggleRead?: () => void;
 }) {
   const t = useT();
   const spec = useThemeSpec();
+  const [hover, setHoverNow] = useState(false);
+  // Van de rij naar de knop ernaast is even "uit de rij": zonder deze korte
+  // wacht verdween de knop net voor je erop klikte.
+  const hoverOff = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setHover = (on: boolean) => {
+    if (hoverOff.current) clearTimeout(hoverOff.current);
+    if (on) setHoverNow(true);
+    else hoverOff.current = setTimeout(() => setHoverNow(false), 120);
+  };
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const label = unread ? `${name}, ${unread} ${t.unread}` : name;
   const timeFg = unread ? color("red") : dim;
   // Ongelezen moet je zien zonder te zoeken: de laatste regel in inkt en
   // vet, en rechts een rood blok met het aantal — in élk thema hetzelfde.
+  // Telegram: gelezen/ongelezen zonder het gesprek te openen. Op desktop bij
+  // hover, waar de tijd staat; overal ook via lang drukken of rechtsklik.
+  // Naast de rij en niet erin: een knop in een knop is op web geen geldige
+  // HTML, en de klik kwam dan nergens aan.
+  const pad = spec.id === "magazine" ? { top: 20, right: 22 } : { top: 16, right: 16 };
+  const toggleBtn = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={unread ? t.markRead : t.markUnread}
+      onPress={onToggleRead}
+      onHoverIn={() => setHover(true)}
+      onHoverOut={() => setHover(false)}
+      hitSlop={8}
+      style={{ position: "absolute", ...pad, display: hover && onToggleRead ? "flex" : "none" }}
+    >
+      <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: unread ? ink : color("red"), textDecorationLine: "underline" }]}>
+        {unread ? `✓ ${t.markRead}` : `● ${t.markUnread}`}
+      </Text>
+    </Pressable>
+  );
   const previewStyle = unread ? { ...sans(700), color: ink } : null;
   const badge = unread ? (
     <View style={{ flexShrink: 0, minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: spec.id === "kleur" ? 0 : 13, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
@@ -159,11 +199,15 @@ function Row({
 
   if (spec.id === "magazine") {
     return (
+      <View>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         accessibilityLabel={label}
         onPress={onPress}
+        {...menu}
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
         style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 18, paddingRight: 22, paddingLeft: 17, borderLeftWidth: 5, borderLeftColor: fill.fill, backgroundColor: active ? color("paper2") : "transparent" }}
       >
         <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
@@ -174,7 +218,7 @@ function Row({
             <Text numberOfLines={1} style={[serif(active), { flexShrink: 1, fontSize: 26, lineHeight: 28, color: ink }]}>
               {name}
             </Text>
-            {time ? <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
+            {hover && onToggleRead ? null : time ? <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
             <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: color("inkSoft") }, previewStyle]}>
@@ -184,16 +228,22 @@ function Row({
           </View>
         </View>
       </Pressable>
+      {toggleBtn}
+      </View>
     );
   }
 
   if (spec.id === "modern") {
     return (
+      <View>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         accessibilityLabel={label}
         onPress={onPress}
+        {...menu}
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
         style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 18, backgroundColor: active ? color("tile") : color("tile", "pill") }}
       >
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
@@ -209,22 +259,28 @@ function Row({
             <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 18, lineHeight: 20, letterSpacing: -0.36, color: ink }]}>
               {name}
             </Text>
-            {time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
+            {hover && onToggleRead ? null : time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
           </View>
           <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
             {preview}
           </Text>
         </View>
       </Pressable>
+      {toggleBtn}
+      </View>
     );
   }
 
   return (
+    <View>
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
       onPress={onPress}
+      {...menu}
+      onHoverIn={() => setHover(true)}
+      onHoverOut={() => setHover(false)}
       style={{ flexDirection: "row", alignItems: "stretch", minHeight: 84, borderBottomWidth: spec.border, borderBottomColor: ink, backgroundColor: active ? color("paper2") : "transparent" }}
     >
       <View style={{ width: 64, backgroundColor: fill.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "center" }}>
@@ -235,7 +291,7 @@ function Row({
           <Text numberOfLines={1} style={[head(), { flexShrink: 1, fontSize: 20, lineHeight: 20, color: ink }]}>
             {name}
           </Text>
-          {time ? <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: timeFg }]}>{time}</Text> : null}
+          {hover && onToggleRead ? null : time ? <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: timeFg }]}>{time}</Text> : null}
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
@@ -245,5 +301,7 @@ function Row({
         </View>
       </View>
     </Pressable>
+    {toggleBtn}
+    </View>
   );
 }

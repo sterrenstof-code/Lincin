@@ -28,6 +28,8 @@ export type ChatRowData = {
   preview: string;
   unread: number;
   onPress: () => void;
+  /** Lang drukken / rechtsklikken: gelezen of ongelezen (ChatReadMenu). */
+  menu?: object;
 };
 
 export function ChatsModern({
@@ -68,6 +70,7 @@ export function ChatsModern({
               span={2}
               pad={14}
               onPress={r.onPress}
+              menu={r.menu}
               accessibilityLabel={r.unread > 0 ? `${r.name}, ${r.unread} ${t.unread}` : r.name}
               style={{ flexDirection: "row", alignItems: "center", gap: 16, minHeight: 76 }}
             >

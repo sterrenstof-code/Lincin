@@ -72,6 +72,7 @@ export function Spread({
   mediaWidth = 138,
   height: fixedH,
   onPress,
+  menu,
   accessibilityLabel,
   style,
 }: {
@@ -90,6 +91,8 @@ export function Spread({
   /** Een vaste hoogte in plaats van die van de pagina (desktop: een rooster met gelijke rijen). */
   height?: number;
   onPress?: () => void;
+  /** Lang drukken / rechtsklikken (zie ChatReadMenu). */
+  menu?: object;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -140,6 +143,7 @@ export function Spread({
     <Pressable
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
+      {...menu}
       style={({ pressed }) => [base, { opacity: pressed ? 0.82 : 1 }, style]}
     >
       {inner}
