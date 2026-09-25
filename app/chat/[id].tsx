@@ -113,7 +113,6 @@ import {
 } from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
-import { WhoReacted } from "@/components/lincin/WhoReacted";
 import { NL } from "@/lib/locale";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
@@ -3113,18 +3112,13 @@ function MessageBubble({
                   { marginLeft: 4, fontWeight: "700", color: color("ink") },
                 ]}
               >
-                {r.count}
+                {who.chipLabel(r)}
               </Text>
             </Pressable>
           ))}
         </View>
       )}
-      {reactions.length > 0 ? (
-        <WhoReacted
-          line={who.line}
-          style={[{ marginTop: 3, maxWidth: BUBBLE_MAX_W }, isMine ? { alignSelf: "flex-end", paddingRight: 4 } : { alignSelf: "flex-start", marginLeft: showAvatarSlot ? 44 : 0 }]}
-        />
-      ) : null}
+
 
     </View>
   );

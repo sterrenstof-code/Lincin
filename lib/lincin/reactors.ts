@@ -102,6 +102,16 @@ export function useReactionWho(reactions: GroupedPostReaction[]) {
     line: whoLine(reactions, nameOf, t, myUserId),
     /** De namen zonder emoji: voor naast de chips, waar geen ruimte is voor een regel eronder. */
     names: whoNames(reactions, nameOf, t, myUserId),
+    /**
+     * Wie, in de chip zelf in plaats van een telling (Telegram): "Jij",
+     * "Noor, Sem", "Jij +3". Zo staat het er één keer, naast de emoji,
+     * en hoeft er geen regel "👍 Jij" meer onder.
+     */
+    chipLabel: (r: GroupedPostReaction) => {
+      const names = selfFirst(r.userIds, myUserId).map(nameOf);
+      if (names.length <= 2) return names.join(", ");
+      return `${names[0]} +${names.length - 1}`;
+    },
     chip: (r: GroupedPostReaction) => {
       const who = chipWho(r, nameOf, myUserId);
       return {

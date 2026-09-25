@@ -26,7 +26,6 @@ import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
 import { CommentRow } from "@/components/lincin/CommentRow";
-import { WhoReacted } from "@/components/lincin/WhoReacted";
 import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
@@ -337,7 +336,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                       }}
                     >
                       <Text style={{ fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }}>{g.emoji}</Text>
-                      <Text style={[lincinType.monoBody, { fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }]}>{g.count}</Text>
+                      <Text style={[lincinType.monoBody, { fontSize: 13, lineHeight: 16, color: g.mine ? color("paper") : color("ink") }]}>{who.chipLabel(g)}</Text>
                     </Pressable>
                   ))}
                   <View style={{ flex: 1 }} />
@@ -380,7 +379,6 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                   ) : null}
               </View>
 
-              <WhoReacted line={who.line} />
 
               {/* comments */}
               <Mono variant="micro" tone="dim" style={{ marginTop: 6 }}>
