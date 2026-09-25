@@ -51,7 +51,6 @@ export function ChatsMagazine({
   t,
   state,
   footer,
-  banner,
 }: {
   rows: ChatSpreadData[];
   unread: number;
@@ -59,14 +58,11 @@ export function ChatsMagazine({
   t: Dict;
   state?: string | null;
   footer?: React.ReactNode;
-  /** De rode band met het aantal nieuwe berichten, onder de kop. */
-  banner?: React.ReactNode;
 }) {
   return (
     <LincinScreen tab="chats" counter={t.tabChats}>
       <Page>
         <MagazineHead kicker={`${t.edition} · ${t.chats}`} title={t.chats} sub={`${unread} ${t.unread}`} />
-        {banner}
         {state ? <Note>{state}</Note> : null}
         {rows.map((c, i) => {
           const fc = friendColor(c.hue, scheme);

@@ -7,7 +7,6 @@ import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
-import { UnreadBanner } from "@/components/lincin/UnreadBanner";
 import { useChatReadMenu } from "@/components/lincin/ChatReadMenu";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
 import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
@@ -76,10 +75,6 @@ function ChatsMobile() {
   );
   const withoutChat = (friendships.data ?? []).filter((f) => f.status === "accepted" && !inChats.has(f.other.id));
   const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
-  const unreadChats = list.filter((c) => (c.unread_count ?? 0) > 0);
-  const banner = (style?: object | null) => (
-    <UnreadBanner messages={unread} chats={unreadChats.length} onPress={() => unreadChats[0] && openThread(unreadChats[0].id)} style={style} />
-  );
 
   async function openWith(friendId: string) {
     try {
@@ -136,7 +131,6 @@ function ChatsMobile() {
       <ChatsMagazine
         rows={rows}
         unread={unread}
-        banner={banner({ marginHorizontal: 6, marginBottom: 6 })}
         scheme={scheme}
         t={t}
         state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
@@ -150,7 +144,6 @@ function ChatsMobile() {
       <ChatsModern
         rows={rows}
         unread={unread}
-        banner={banner()}
         scheme={scheme}
         t={t}
         state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
@@ -199,7 +192,6 @@ function ChatsMobile() {
           {unread} {t.unread}
         </Mono>
       </View>
-      {banner({ marginTop: 14, marginHorizontal: GUTTER })}
       {/* Eén kader dat tot de onderrand loopt (prototype §04: het scrollvlak
           zelf draagt het kader, zonder onderlijn); de rijen erin. */}
       <ScrollView

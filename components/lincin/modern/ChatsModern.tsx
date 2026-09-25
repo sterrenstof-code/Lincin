@@ -39,7 +39,6 @@ export function ChatsModern({
   t,
   footer,
   state,
-  banner,
 }: {
   rows: ChatRowData[];
   unread: number;
@@ -49,14 +48,11 @@ export function ChatsModern({
   footer?: React.ReactNode;
   /** Laden, mislukt of leeg — één regel in een tegel. */
   state?: string | null;
-  /** De rode band met het aantal nieuwe berichten, onder de titel. */
-  banner?: React.ReactNode;
 }) {
   return (
     <LincinScreen tab="chats" counter={t.tabChats}>
       <Bento>
         <TitleTile title={t.chats} meta={`${unread} ${t.unread}`} />
-        {banner ? <View style={{ width: "100%" }}>{banner}</View> : null}
         {state ? (
           <Tile span={2}>
             <TileMeta>{state}</TileMeta>
