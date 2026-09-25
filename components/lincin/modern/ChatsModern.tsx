@@ -37,6 +37,7 @@ export function ChatsModern({
   t,
   footer,
   state,
+  banner,
 }: {
   rows: ChatRowData[];
   unread: number;
@@ -46,11 +47,14 @@ export function ChatsModern({
   footer?: React.ReactNode;
   /** Laden, mislukt of leeg — één regel in een tegel. */
   state?: string | null;
+  /** De rode band met het aantal nieuwe berichten, onder de titel. */
+  banner?: React.ReactNode;
 }) {
   return (
     <LincinScreen tab="chats" counter={t.tabChats}>
       <Bento>
         <TitleTile title={t.chats} meta={`${unread} ${t.unread}`} />
+        {banner ? <View style={{ width: "100%" }}>{banner}</View> : null}
         {state ? (
           <Tile span={2}>
             <TileMeta>{state}</TileMeta>
@@ -91,7 +95,7 @@ export function ChatsModern({
                 </View>
                 <Text
                   numberOfLines={1}
-                  style={{ ...sans(400), fontSize: 13, lineHeight: 17, color: color("ink", "inkDim") }}
+                  style={{ ...sans(r.unread > 0 ? 600 : 400), fontSize: 13, lineHeight: 17, color: r.unread > 0 ? color("ink") : color("ink", "inkDim") }}
                 >
                   {r.preview}
                 </Text>
@@ -100,16 +104,16 @@ export function ChatsModern({
                 <View
                   style={{
                     flexShrink: 0,
-                    minWidth: 22,
-                    height: 22,
-                    paddingHorizontal: 6,
-                    borderRadius: 11,
+                    minWidth: 26,
+                    height: 26,
+                    paddingHorizontal: 7,
+                    borderRadius: 13,
                     backgroundColor: color("red"),
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ ...mono(500), fontSize: 10, lineHeight: 13, color: ON_DARK }}>{r.unread}</Text>
+                  <Text style={{ ...mono(600), fontSize: 12, lineHeight: 15, color: ON_DARK }}>{r.unread}</Text>
                 </View>
               ) : null}
             </Tile>

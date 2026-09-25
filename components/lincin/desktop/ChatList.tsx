@@ -148,6 +148,14 @@ function Row({
   const dim = color("ink", "inkDim");
   const label = unread ? `${name}, ${unread} ${t.unread}` : name;
   const timeFg = unread ? color("red") : dim;
+  // Ongelezen moet je zien zonder te zoeken: de laatste regel in inkt en
+  // vet, en rechts een rood blok met het aantal — in élk thema hetzelfde.
+  const previewStyle = unread ? { ...sans(700), color: ink } : null;
+  const badge = unread ? (
+    <View style={{ flexShrink: 0, minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: spec.id === "kleur" ? 0 : 13, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+      <Text style={[sans(800), { fontSize: 13, lineHeight: 16, color: ON_DARK }]}>{unread > 99 ? "99+" : unread}</Text>
+    </View>
+  ) : null;
 
   if (spec.id === "magazine") {
     return (
@@ -169,10 +177,10 @@ function Row({
             {time ? <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: timeFg }]}>{time}</Text> : null}
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-            <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: color("inkSoft") }]}>
+            <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: color("inkSoft") }, previewStyle]}>
               {preview}
             </Text>
-            {unread ? <Text style={[serif(), { fontSize: 18, lineHeight: 20, color: color("red") }]}>{unread}</Text> : null}
+            {badge}
           </View>
         </View>
       </Pressable>
@@ -191,8 +199,8 @@ function Row({
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
           <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
           {unread ? (
-            <View style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 999, backgroundColor: ink, alignItems: "center", justifyContent: "center" }}>
-              <Text style={[mono(600), { fontSize: 9, lineHeight: 11, color: color("paper") }]}>{unread}</Text>
+            <View style={{ position: "absolute", top: -4, right: -4, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+              <Text style={[sans(800), { fontSize: 11, lineHeight: 13, color: ON_DARK }]}>{unread > 99 ? "99+" : unread}</Text>
             </View>
           ) : null}
         </View>
@@ -203,7 +211,7 @@ function Row({
             </Text>
             {time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
           </View>
-          <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }]}>
+          <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
             {preview}
           </Text>
         </View>
@@ -230,14 +238,10 @@ function Row({
           {time ? <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: timeFg }]}>{time}</Text> : null}
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }]}>
+          <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
             {preview}
           </Text>
-          {unread ? (
-            <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
-              <Text style={[mono(600), { fontSize: 11, lineHeight: 14, color: ON_DARK }]}>{unread}</Text>
-            </View>
-          ) : null}
+          {badge}
         </View>
       </View>
     </Pressable>

@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
-import { color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
+import { ON_DARK, color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
@@ -49,6 +49,7 @@ export function ChatsMagazine({
   t,
   state,
   footer,
+  banner,
 }: {
   rows: ChatSpreadData[];
   unread: number;
@@ -56,11 +57,14 @@ export function ChatsMagazine({
   t: Dict;
   state?: string | null;
   footer?: React.ReactNode;
+  /** De rode band met het aantal nieuwe berichten, onder de kop. */
+  banner?: React.ReactNode;
 }) {
   return (
     <LincinScreen tab="chats" counter={t.tabChats}>
       <Page>
         <MagazineHead kicker={`${t.edition} · ${t.chats}`} title={t.chats} sub={`${unread} ${t.unread}`} />
+        {banner}
         {state ? <Note>{state}</Note> : null}
         {rows.map((c, i) => {
           const fc = friendColor(c.hue, scheme);
@@ -76,8 +80,10 @@ export function ChatsMagazine({
               accessibilityLabel={c.unread > 0 ? `${c.name}, ${c.unread} ${t.unread}` : c.name}
               media={
                 c.unread > 0 ? (
-                  <View style={{ flex: 1, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ ...serif(), fontSize: 26, lineHeight: 30, color: fc.fill }}>{c.unread}</Text>
+                  // Rood, niet in de kleur van de ander: een cijfer in de
+                  // tint van de band las als versiering en werd gemist.
+                  <View style={{ flex: 1, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ ...serif(), fontSize: 26, lineHeight: 30, color: ON_DARK }}>{c.unread}</Text>
                   </View>
                 ) : undefined
               }

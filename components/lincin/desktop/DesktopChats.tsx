@@ -10,6 +10,8 @@ import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { pickThread } from "@/lib/lincin/desktop";
 
+import { UnreadBanner } from "../UnreadBanner";
+
 import { chatHue, ChatList, useSortedChats } from "./ChatList";
 import { DesktopShell, PageHead } from "./Shell";
 
@@ -40,6 +42,7 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
   const chat = list.find((c) => c.id === current) ?? null;
   const tint = chat ? friendColor(chatHue(chat, myUserId), scheme).fill : null;
   const unread = list.reduce((n, c) => n + (c.unread_count ?? 0), 0);
+  const unreadChats = list.filter((c) => (c.unread_count ?? 0) > 0);
   const th = spec.id;
 
   const open = (id: string) => {
@@ -63,6 +66,12 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
     <DesktopShell active="chats" tint={th === "modern" ? tint : null}>
       <View style={[{ flex: 1, minHeight: 0 }, th === "modern" ? { gap: RASTER.seam } : null]}>
         <PageHead num="02" title={t.chats} sub={`${unread} ${t.unread} · ${list.length} ${t.chats.toLowerCase()}`} />
+        <UnreadBanner
+          messages={unread}
+          chats={unreadChats.length}
+          onPress={() => unreadChats[0] && open(unreadChats[0].id)}
+          style={th === "magazine" ? { marginHorizontal: RASTER.seam, marginTop: RASTER.seam } : th === "kleur" ? { borderBottomWidth: spec.border, borderBottomColor: color("ink") } : null}
+        />
         <View style={[{ flex: 1, minHeight: 0, flexDirection: "row" }, th === "kleur" ? null : { gap: RASTER.seam }, th === "magazine" ? { padding: RASTER.seam } : null]}>
           <View style={[{ width: th === "magazine" ? 440 : 420, minHeight: 0 }, th === "kleur" ? { borderRightWidth: spec.border, borderRightColor: color("ink") } : null]}>
             <ChatList activeId={current} onOpen={open} full />

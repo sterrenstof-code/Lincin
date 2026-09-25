@@ -295,6 +295,27 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   // Zorg dat per sessie maar één call-notificatie verstuurd wordt.
   const callSentRef = useRef(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  /**
+   * Waar het nieuwe begint, vastgelegd bij het openen.
+   *
+   * Het gesprek wordt meteen als gelezen gemarkeerd, dus zonder dit zag je
+   * niet meer welke berichten nieuw wáren. Het aantal komt uit de
+   * chatlijst (die vóór het gelezen-merk geladen wordt); de scheidslijn
+   * staat boven het oudste van die berichten en blijft staan zolang je in
+   * het gesprek bent — wat er daarna binnenkomt lees je live.
+   */
+  const [unreadMark, setUnreadMark] = useState<{ id: string; count: number } | null>(null);
+  const [unreadPillSeen, setUnreadPillSeen] = useState(false);
+  /** Ongelezen in ándere gesprekken — de teller vooraan in de kop, zoals Telegram. */
+  const allChats = useQuery({
+    queryKey: ["chats", myUserId],
+    queryFn: () => listMyChats(myUserId!),
+    enabled: !!myUserId,
+  });
+  const otherUnread = (allChats.data ?? []).reduce(
+    (n, c) => (c.id === id ? n : n + (c.unread_count ?? 0)),
+    0
+  );
 
   const myProfile = useQuery({
     queryKey: ["profile", myUserId],
@@ -371,6 +392,20 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         const c = allChats.find((x) => x.id === id) ?? null;
         setChat(c);
         setMessages(msgs);
+        const unreadCount = c?.unread_count ?? 0;
+        if (unreadCount > 0) {
+          let left = unreadCount;
+          let firstId: string | null = null;
+          for (let i = msgs.length - 1; i >= 0 && left > 0; i--) {
+            if (msgs[i].sender_id !== myUserId) {
+              firstId = msgs[i].id;
+              left--;
+            }
+          }
+          setUnreadMark(firstId ? { id: firstId, count: unreadCount } : null);
+        } else {
+          setUnreadMark(null);
+        }
 
         // Naast elkaar. De reacties en het gelezen-merk weten niets van
         // elkaar, en na elkaar wachten kostte een extra heen-en-weer
@@ -1142,6 +1177,18 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             display: embedded ? "none" : "flex",
           }}
         >
+          {otherUnread > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${otherUnread} ${t2.newMsgs}`}
+              onPress={() => router.push("/chats")}
+              style={{ paddingHorizontal: 10, alignItems: "center", justifyContent: "center", backgroundColor: color("red"), borderRightWidth: BORDER, borderRightColor: line() }}
+            >
+              <Text style={[sans(800), { fontSize: 14, lineHeight: 17, color: creamOnDark.DEFAULT }]}>
+                {otherUnread > 99 ? "99+" : otherUnread}
+              </Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={onPressHeaderTitle}
             hitSlop={4}
@@ -1464,7 +1511,23 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                  * scheiding is een lijn (DESIGN.md §4), en het woord staat
                  * erin zoals een rubriek in zijn band.
                  */
-                const dateSep = showDateSep ? (
+                const unreadSep =
+                  unreadMark?.id === item.id ? (
+                    <View
+                      accessibilityRole="header"
+                      className="flex-row items-center"
+                      style={{ marginVertical: space.lg, gap: space.md }}
+                    >
+                      <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
+                      <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: color("red") }}>
+                        <Text style={[sans(800), { fontSize: 12, lineHeight: 15, letterSpacing: 0.4, color: creamOnDark.DEFAULT }]}>
+                          {unreadMark.count} {(unreadMark.count === 1 ? t2.newMsg : t2.newMsgs).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
+                    </View>
+                  ) : null;
+                const dateSepOnly = showDateSep ? (
                   <View
                     className="flex-row items-center"
                     style={{ marginVertical: space.lg, gap: space.md }}
@@ -1476,6 +1539,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
                   </View>
                 ) : null;
+                const dateSep =
+                  dateSepOnly || unreadSep ? (
+                    <>
+                      {dateSepOnly}
+                      {unreadSep}
+                    </>
+                  ) : null;
 
                 // Systeemmelding — gecentreerde pill.
                 if (item.content?.system) {
@@ -1733,6 +1803,41 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               </View>
             </View>
           )}
+
+          {/* Naar de eerste ongelezen, als die buiten beeld ligt (Telegram). */}
+          {unreadMark && !unreadPillSeen && reversedMessages.findIndex((m) => m.id === unreadMark.id) >= 6 ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const index = reversedMessages.findIndex((m) => m.id === unreadMark.id);
+                if (index >= 0) listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.9 });
+                setUnreadPillSeen(true);
+              }}
+              style={{
+                position: "absolute",
+                top: embedded ? 12 : 68,
+                alignSelf: "center",
+                zIndex: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 14,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: color("red"),
+                shadowColor: "#000",
+                shadowOpacity: 0.25,
+                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 4,
+              }}
+            >
+              <Ionicons name="arrow-up" color={creamOnDark.DEFAULT} size={14} />
+              <Text style={[sans(800), { fontSize: 13, lineHeight: 16, color: creamOnDark.DEFAULT }]}>
+                {unreadMark.count} {unreadMark.count === 1 ? t2.newMsg : t2.newMsgs}
+              </Text>
+            </Pressable>
+          ) : null}
 
           {/* Naar-beneden knop */}
           {showScrollDown && (
