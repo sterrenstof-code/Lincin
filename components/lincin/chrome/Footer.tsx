@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { CountBadge } from "@/components/lincin/CountBadge";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
 
@@ -40,16 +41,16 @@ const TAB_HREF: Record<Tab, string> = {
 /** Hoeveel een modern-scroller onderaan vrijhoudt voor de zwevende pil. */
 export const NAV_CLEARANCE = 104;
 
-type TabDef = { id: Tab; label: string; dot: boolean };
+type TabDef = { id: Tab; label: string; dot: number };
 
 function useTabs(active: Tab): TabDef[] {
   const t = useT();
   const unread = useUnread();
   return [
-    { id: "feed", label: t.tabFeed, dot: false },
-    { id: "chats", label: t.tabChats, dot: unread.chats > 0 && active !== "chats" },
-    { id: "events", label: t.tabEvents, dot: false },
-    { id: "you", label: t.tabYou, dot: false },
+    { id: "feed", label: t.tabFeed, dot: 0 },
+    { id: "chats", label: t.tabChats, dot: active !== "chats" ? unread.chats : 0 },
+    { id: "events", label: t.tabEvents, dot: 0 },
+    { id: "you", label: t.tabYou, dot: 0 },
   ];
 }
 
@@ -150,7 +151,7 @@ function FooterRubrieken({ active, tint, bottomInset }: { active: Tab; tint: str
               <Text style={{ ...mono(500), fontSize: 9, lineHeight: 10, color: fg }}>
                 {String(i + 1).padStart(2, "0")}
               </Text>
-              {tab.dot ? <View style={{ width: 6, height: 6, backgroundColor: color("red") }} /> : null}
+              <CountBadge count={tab.dot} round={false} />
             </View>
             <Text
               numberOfLines={1}
@@ -247,11 +248,7 @@ function FooterRugstrook({ active, tint, bottomInset }: { active: Tab; tint: str
             >
               {tab.label}
             </Text>
-            {tab.dot ? (
-              <View
-                style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: color("red"), marginBottom: 4 }}
-              />
-            ) : null}
+            {tab.dot ? <View style={{ marginBottom: 4 }}><CountBadge count={tab.dot} /></View> : null}
           </Pressable>
         );
       })}
@@ -382,9 +379,7 @@ function FooterPil({ active, bottomInset }: { active: Tab; bottomInset: number }
               >
                 {tab.label}
               </Text>
-              {tab.dot ? (
-                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: color("red") }} />
-              ) : null}
+              <CountBadge count={tab.dot} />
             </Pressable>
           );
         })}

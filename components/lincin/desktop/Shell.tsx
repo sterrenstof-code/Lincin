@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { CountBadge } from "@/components/lincin/CountBadge";
 import { usePathname, useRouter } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, useWindowDimensions, View, type TextStyle } from "react-native";
@@ -14,7 +15,7 @@ import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
 import { setFriendOpen, setPref } from "@/lib/lincin/prefs";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
-import { Black, Label as OLabel, RedButton, RedDot, RoundGlyph, Ser, SerifLink, Wordmark, useOmslag } from "../magazine/Omslag";
+import { Black, Label as OLabel, RedButton, RoundGlyph, Ser, SerifLink, Wordmark, useOmslag } from "../magazine/Omslag";
 import { useSeenPosts } from "@/lib/read-state";
 
 /**
@@ -133,7 +134,7 @@ export function DesktopShell({
 // Wat alle drie de balken lezen
 // ---------------------------------------------------------------
 
-type NavItem = { id: Tab; num: string; label: string; badge: boolean; href: string; on: boolean };
+type NavItem = { id: Tab; num: string; label: string; badge: number; href: string; on: boolean };
 
 function useNav(active: Tab): NavItem[] {
   const t = useT();
@@ -141,10 +142,10 @@ function useNav(active: Tab): NavItem[] {
   const pathname = usePathname();
   const onNotes = pathname.startsWith("/notifications");
   return [
-    { id: "feed", num: "01", label: t.tabFeed, badge: false, href: TAB_HREF.feed, on: !onNotes && active === "feed" },
-    { id: "chats", num: "02", label: t.tabChats, badge: active !== "chats" && unread.chats > 0, href: TAB_HREF.chats, on: active === "chats" },
-    { id: "events", num: "03", label: t.tabEvents, badge: false, href: TAB_HREF.events, on: active === "events" },
-    { id: "you", num: "04", label: t.tabYou, badge: active !== "you" && unread.friendRequests > 0, href: TAB_HREF.you, on: !onNotes && active === "you" },
+    { id: "feed", num: "01", label: t.tabFeed, badge: 0, href: TAB_HREF.feed, on: !onNotes && active === "feed" },
+    { id: "chats", num: "02", label: t.tabChats, badge: active !== "chats" ? unread.chats : 0, href: TAB_HREF.chats, on: active === "chats" },
+    { id: "events", num: "03", label: t.tabEvents, badge: 0, href: TAB_HREF.events, on: active === "events" },
+    { id: "you", num: "04", label: t.tabYou, badge: active !== "you" ? unread.friendRequests : 0, href: TAB_HREF.you, on: !onNotes && active === "you" },
   ];
 }
 
@@ -257,7 +258,7 @@ function NavKleur({ active, tint }: { active: Tab; tint: string | null }) {
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 0.72, color: fg }]}>{n.num}</Text>
-              {n.badge ? <View style={{ width: 6, height: 6, backgroundColor: color("red") }} /> : null}
+              <CountBadge count={n.badge} round={false} />
             </View>
             <Text numberOfLines={1} style={[headKleur(), { fontSize: 15, lineHeight: 15, color: fg }]}>
               {n.label}
@@ -343,7 +344,7 @@ function NavMagazine({ active, extra }: { active: Tab; extra: ReactNode }) {
             <OLabel size={12} ls={0.08} color={n.on ? o.red : o.ink}>
               {n.label}
             </OLabel>
-            {n.badge ? <RedDot size={6} /> : null}
+            <CountBadge count={n.badge} />
           </Pressable>
         ))}
       </View>
@@ -475,7 +476,7 @@ function NavModern({ active }: { active: Tab }) {
               <Text numberOfLines={1} style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: n.on ? color("paper") : ink }]}>
                 {n.label}
               </Text>
-              {n.badge ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: color("red") }} /> : null}
+              <CountBadge count={n.badge} />
             </Pressable>
           ))}
         </View>
