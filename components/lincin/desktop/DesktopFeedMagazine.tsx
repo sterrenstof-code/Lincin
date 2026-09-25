@@ -27,7 +27,7 @@ import { DesktopShell } from "./Shell";
  *               "Jouw editie van vandaag" met de titel in serif cursief,
  *               rechts "Ook nieuw" met NAAM+ titel. Daaronder de nieuwe
  *               bijdragen als gekleurde spreads (om en om gespiegeld) en wat
- *               je al zag als "Inhoud", een index met rode nummers.
+ *               je al zag onder "Inhoud", ook als spreads.
  *   Per vriend  een paginatitel **Per** *vriend*, dan per vriend een blok
  *               met een rug van 5 in zijn kleur, getint als er iets nieuw
  *               is. Twee groepen, Nieuw en Gezien. Standaard ingeklapt: de
@@ -139,7 +139,10 @@ function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
       {seen.length ? (
         <>
           <ChapterHead top={40} fill={o.ink} kicker={`${cap(t.alreadySeen)} · ${seen.length} ${seen.length === 1 ? t.post1 : t.posts}`} name={t.omContents} nameSize={72} />
-          <Index f={f} posts={seen} />
+          {/* Ook wat je al zag als gekleurde spreads, zoals op de telefoon:
+              een index met nummers las als een inhoudstafel, niet als je
+              vrienden. */}
+          <Spreads f={f} posts={seen} />
         </>
       ) : null}
     </View>
