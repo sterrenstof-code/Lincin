@@ -109,9 +109,20 @@ export default function AppLayout() {
   useEffect(() => {
     if (!session || bootstrapping || !hasPassword) return;
     const myId = session.user.id;
-    const channel = subscribeToAllMyMessages(myId, () => {
-      qc.invalidateQueries({ queryKey: ["chats", myId] });
-    });
+    // Na een onderbroken verbinding is wat er intussen binnenkwam nooit
+    // live langsgekomen; de lijst dan opnieuw ophalen.
+    let subscribedOnce = false;
+    const channel = subscribeToAllMyMessages(
+      myId,
+      () => {
+        qc.invalidateQueries({ queryKey: ["chats", myId] });
+      },
+      (status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (subscribedOnce) qc.invalidateQueries({ queryKey: ["chats", myId] });
+        subscribedOnce = true;
+      }
+    );
     return () => {
       supabase.removeChannel(channel);
     };

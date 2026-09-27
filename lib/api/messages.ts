@@ -10,6 +10,7 @@ import { loadIdentity } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
 import { uniqueTopic } from "@/lib/supabase/channel";
+import { timeoutSignal } from "@/lib/supabase/timeout";
 
 export type MessageRow = {
   id: string;
@@ -88,6 +89,9 @@ export type DecryptedMessage = {
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
+const MESSAGE_COLUMNS = "id, chat_id, sender_id, recipient_payloads, created_at, edited_at";
+
+
 /**
  * Decoderen van een plaintext-blob: nieuwe berichten zijn een JSON-object,
  * oude berichten zijn een rauwe string (voor backwards compat).
@@ -119,8 +123,9 @@ export async function fetchMessagesByIds(
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
-    .in("id", ids);
+    .select(MESSAGE_COLUMNS)
+    .in("id", ids)
+    .abortSignal(timeoutSignal());
   if (error) throw error;
   return decryptRows((data ?? []) as MessageRow[], myUserId);
 }
@@ -133,13 +138,40 @@ export async function fetchMessages(
 ): Promise<DecryptedMessage[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
+    .select(MESSAGE_COLUMNS)
     .eq("chat_id", chatId)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .abortSignal(timeoutSignal());
   if (error) throw error;
   const rows = ((data ?? []) as MessageRow[]).reverse();
   return decryptRows(rows, myUserId);
+}
+
+/**
+ * Wat er sinds `after` in een gesprek bijkwam, oudste eerst.
+ *
+ * Voor het bijwerken na een onderbreking. Het live-kanaal geeft alleen door
+ * wat er gebeurt terwijl het verbonden is; wat er binnenkwam terwijl de
+ * telefoon in je zak lag of de tab sliep, komt nooit meer langs. Zonder dit
+ * zag je die berichten pas na het opnieuw openen van het gesprek.
+ */
+export async function fetchMessagesSince(
+  chatId: string,
+  myUserId: string,
+  after: string,
+  limit = 200
+): Promise<DecryptedMessage[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select(MESSAGE_COLUMNS)
+    .eq("chat_id", chatId)
+    .gt("created_at", after)
+    .order("created_at", { ascending: true })
+    .limit(limit)
+    .abortSignal(timeoutSignal());
+  if (error) throw error;
+  return decryptRows((data ?? []) as MessageRow[], myUserId);
 }
 
 /**
@@ -155,15 +187,35 @@ export async function fetchEarlierMessages(
 ): Promise<{ messages: DecryptedMessage[]; hasMore: boolean }> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, chat_id, sender_id, recipient_payloads, created_at, edited_at")
+    .select(MESSAGE_COLUMNS)
     .eq("chat_id", chatId)
     .lt("created_at", before)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .abortSignal(timeoutSignal());
   if (error) throw error;
   const rows = ((data ?? []) as MessageRow[]).reverse();
   const messages = await decryptRows(rows, myUserId);
   return { messages, hasMore: rows.length === limit };
+}
+
+/**
+ * Wat al eens ontsleuteld is, per bericht en versie.
+ *
+ * Ontsleutelen kost per bericht een X25519-stap in pure JS. In de browser
+ * is dat niets, maar op een telefoon (Hermes, zonder JIT) loopt het voor
+ * een pagina van vijftig berichten op tot een seconde waarin de app
+ * bevroren staat — en dat bij élk openen van hetzelfde gesprek, en bij
+ * élke keer dat we bijwerken. De sleutel bevat `edited_at`, zodat een
+ * bewerkt bericht opnieuw ontsleuteld wordt. Alleen geslaagde resultaten:
+ * een bericht dat nog op her-versleuteling wacht moet het later opnieuw
+ * kunnen proberen.
+ */
+const decrypted = new Map<string, DecryptedMessage>();
+const DECRYPTED_MAX = 5_000;
+
+function cacheKey(r: MessageRow, myUserId: string): string {
+  return `${myUserId}:${r.id}:${r.edited_at ?? ""}`;
 }
 
 async function decryptRows(
@@ -179,6 +231,10 @@ async function decryptRows(
     if (!identity) {
       return { id: r.id, chat_id: r.chat_id, sender_id: r.sender_id, content: null, created_at: r.created_at };
     }
+
+    const key = cacheKey(r, myUserId);
+    const hit = decrypted.get(key);
+    if (hit) return hit;
 
     // Account-model: envelop gekeyed op user_id.
     // Backward-compat voor de per-device periode: probeer alle enveloppen
@@ -197,7 +253,7 @@ async function decryptRows(
       if (result) { plaintext = result; break; }
     }
 
-    return {
+    const out: DecryptedMessage = {
       id: r.id,
       chat_id: r.chat_id,
       sender_id: r.sender_id,
@@ -206,7 +262,60 @@ async function decryptRows(
       created_at: r.created_at,
       edited_at: r.edited_at ?? null,
     };
+    if (plaintext) {
+      if (decrypted.size >= DECRYPTED_MAX) decrypted.clear();
+      decrypted.set(key, out);
+    }
+    return out;
   });
+}
+
+/**
+ * Voor wie een bericht in een gesprek versleuteld wordt, even onthouden.
+ *
+ * Elke verzending vroeg eerst de leden op en daarna hun publieke sleutels:
+ * twee keer heen en weer naar de server vóór het bericht zelf vertrok. De
+ * leden van een gesprek veranderen zelden, dus een minuut onthouden scheelt
+ * bij een vlot gesprek bijna alle wachttijd. Een lid dat in die minuut
+ * bijkomt, krijgt zijn envelop via het her-versleutelen (zie rekey.ts);
+ * wie via dit toestel leden toevoegt of verwijdert, wist de cache meteen.
+ */
+type Recipient = { userId: string; publicKey: Uint8Array };
+const RECIPIENTS_TTL_MS = 60_000;
+const recipientsByChat = new Map<string, { at: number; value: Promise<Recipient[]> }>();
+
+async function loadRecipients(chatId: string): Promise<Recipient[]> {
+  const { data: members, error } = await supabase
+    .from("chat_members")
+    .select("user_id")
+    .eq("chat_id", chatId)
+    .abortSignal(timeoutSignal());
+  if (error) throw error;
+  const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id);
+  if (memberIds.length === 0) throw new Error("chat has no members");
+  const memberProfiles = await getProfiles(memberIds);
+  return memberProfiles.map((p) => ({
+    userId: p.id,
+    publicKey: base64ToBytes(p.identity_pubkey),
+  }));
+}
+
+/** De ontvangers van een gesprek; roep hem gerust vooraf aan om op te warmen. */
+export function getChatRecipients(chatId: string): Promise<Recipient[]> {
+  const hit = recipientsByChat.get(chatId);
+  if (hit && Date.now() - hit.at < RECIPIENTS_TTL_MS) return hit.value;
+  const value = loadRecipients(chatId);
+  recipientsByChat.set(chatId, { at: Date.now(), value });
+  // Een mislukte poging niet onthouden.
+  value.catch(() => {
+    if (recipientsByChat.get(chatId)?.value === value) recipientsByChat.delete(chatId);
+  });
+  return value;
+}
+
+/** Na een ledenwijziging: de volgende verzending vraagt de leden opnieuw op. */
+export function forgetChatRecipients(chatId: string): void {
+  recipientsByChat.delete(chatId);
 }
 
 /**
@@ -233,22 +342,11 @@ export async function sendMessage(args: {
     throw new Error("Bericht heeft tekst, bijlage, call, poll of call-plan nodig.");
   }
 
-  const { data: members, error } = await supabase
-    .from("chat_members")
-    .select("user_id")
-    .eq("chat_id", args.chatId);
-  if (error) throw error;
-  const memberIds = (members ?? []).map((m) => m.user_id);
-  if (memberIds.length === 0) throw new Error("chat has no members");
-
   // Account-model: één envelop per user_id, gekeyed op user_id.
   // Elk apparaat van de ontvanger haalt de account-sleutel op bij inloggen
   // en kan daarmee alle berichten ontsleutelen.
-  const memberProfiles = await getProfiles(memberIds);
-  const recipients = memberProfiles.map((p) => ({
-    userId: p.id,
-    publicKey: base64ToBytes(p.identity_pubkey),
-  }));
+  const recipients = await getChatRecipients(args.chatId);
+  const memberIds = recipients.map((r) => r.userId);
 
   const content: MessageContent = {};
   if (args.text) content.text = args.text;
@@ -309,7 +407,9 @@ export async function sendMessage(args: {
  */
 export function subscribeToAllMyMessages(
   myUserId: string,
-  onInsert: (row: MessageRow) => void
+  onInsert: (row: MessageRow) => void,
+  /** Zie `subscribeToChatMessages`: "SUBSCRIBED" na een onderbreking = bijwerken. */
+  onStatus?: (status: string) => void
 ): RealtimeChannel {
   const channel = supabase
     .channel(uniqueTopic(`global-messages:${myUserId}`))
@@ -321,7 +421,7 @@ export function subscribeToAllMyMessages(
         onInsert(row);
       }
     )
-    .subscribe();
+    .subscribe((status) => onStatus?.(status));
   return channel;
 }
 
@@ -337,7 +437,13 @@ export function subscribeToAllMyMessages(
 export function subscribeToChatMessages(
   chatId: string,
   myUserId: string,
-  onMessage: (msg: DecryptedMessage) => void
+  onMessage: (msg: DecryptedMessage) => void,
+  /**
+   * De stand van het kanaal. supabase-js verbindt zelf opnieuw na een
+   * onderbreking en meldt dan opnieuw "SUBSCRIBED" — het teken om op te
+   * halen wat er in de tussentijd gemist is.
+   */
+  onStatus?: (status: string) => void
 ): RealtimeChannel {
   const channel = supabase
     .channel(uniqueTopic(`chat:${chatId}`))
@@ -355,7 +461,7 @@ export function subscribeToChatMessages(
         if (decrypted) onMessage(decrypted);
       }
     )
-    .subscribe();
+    .subscribe((status) => onStatus?.(status));
   return channel;
 }
 
@@ -456,17 +562,7 @@ export async function editMessage(
   newText: string,
   senderId: string
 ): Promise<void> {
-  const { data: members, error } = await supabase
-    .from("chat_members")
-    .select("user_id")
-    .eq("chat_id", chatId);
-  if (error) throw error;
-  const memberIds = (members ?? []).map((m: any) => m.user_id);
-  const memberProfiles = await getProfiles(memberIds);
-  const recipients = memberProfiles.map((p) => ({
-    userId: p.id,
-    publicKey: base64ToBytes(p.identity_pubkey),
-  }));
+  const recipients = await getChatRecipients(chatId);
   const content: MessageContent = { text: newText };
   const payloads = encryptForRecipients(
     new TextEncoder().encode(JSON.stringify(content)),

@@ -23,14 +23,10 @@ import { randomBytes } from "@stablelib/random";
 import { XChaCha20Poly1305 } from "@stablelib/xchacha20poly1305";
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import { initCryptoRandom } from "./random";
-import { loadIdentity, derivePublicFromPrivate } from "./keys";
-import { secureStorage } from "./storage";
+import { loadIdentity, derivePublicFromPrivate, storeIdentity } from "./keys";
 import { supabase } from "../supabase/client";
 
 const NONCE_BYTES = 24;
-/** Sleutelnamen — gelijk aan die in keys.ts */
-const PRIV_KEY = "identity_private_key_v1";
-const PUB_KEY = "identity_public_key_v1";
 
 export type TransferPackage = {
   /** URL voor QR-code én desktop-kopieerknop */
@@ -144,9 +140,9 @@ export async function consumeTransferPackage(
   // Leid publieke sleutel af van de private sleutel
   const publicKeyBytes = derivePublicFromPrivate(privateKeyBytes);
 
-  // Sla op in secure storage (zelfde sleutelnamen als keys.ts)
-  await secureStorage.setItem(PRIV_KEY, bytesToBase64(privateKeyBytes));
-  await secureStorage.setItem(PUB_KEY, bytesToBase64(publicKeyBytes));
+  // Via keys.ts, zodat de sleutels die in het geheugen staan meteen mee
+  // veranderen.
+  await storeIdentity({ secretKey: privateKeyBytes, publicKey: publicKeyBytes });
 
   // Eenmalig gebruik: verwijder de record
   await supabase.from("key_transfers").delete().eq("token", token);

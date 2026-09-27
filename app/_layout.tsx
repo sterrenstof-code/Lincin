@@ -1,11 +1,11 @@
 import "../global.css";
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Fragment, useEffect, type ReactNode } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import "react-native-reanimated";
 
 import { AuthProvider, useAuth } from "@/lib/auth/provider";
@@ -36,6 +36,19 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
+ * uit de achtergrond. React Query weet dat alleen in een browser vanzelf;
+ * zonder deze regel deed `refetchOnWindowFocus` op de chatlijst op native
+ * niets, en bleef een lijst van een uur geleden staan tot je iets aanraakte.
+ */
+if (Platform.OS !== "web") {
+  focusManager.setEventListener((setFocused) => {
+    const sub = AppState.addEventListener("change", (state) => setFocused(state === "active"));
+    return () => sub.remove();
+  });
+}
 
 /** Eén modaal blad: van onder, zonder kop. */
 const MODAL = {

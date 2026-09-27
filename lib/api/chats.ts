@@ -1,8 +1,10 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "../supabase/client";
+import { forgetChatRecipients } from "./messages";
 import type { Profile } from "./profiles";
 import { uniqueTopic } from "@/lib/supabase/channel";
+import { timeoutSignal } from "@/lib/supabase/timeout";
 
 export type ChatRow = {
   id: string;
@@ -84,7 +86,8 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   const { data: chats, error } = await supabase
     .from("chats")
     .select("id, type, name, avatar_url, created_by, created_at, last_message_at")
-    .order("last_message_at", { ascending: false, nullsFirst: false });
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .abortSignal(timeoutSignal());
   if (error) throw error;
   const chatRows = (chats ?? []) as ChatRow[];
   if (chatRows.length === 0) return [];
@@ -94,8 +97,9 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
     supabase
       .from("chat_members")
       .select("chat_id, user_id")
-      .in("chat_id", chatIds),
-    supabase.rpc("my_chat_unread_counts"),
+      .in("chat_id", chatIds)
+      .abortSignal(timeoutSignal()),
+    supabase.rpc("my_chat_unread_counts").abortSignal(timeoutSignal()),
     // Mijn eigen chat_members rijen om hidden_at op te halen. Pre-0023
     // databases kennen de kolom niet — we vangen dat verderop op (filter
     // wordt dan effectief no-op).
@@ -103,7 +107,8 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
       .from("chat_members")
       .select("chat_id, hidden_at")
       .eq("user_id", myUserId)
-      .in("chat_id", chatIds),
+      .in("chat_id", chatIds)
+      .abortSignal(timeoutSignal()),
   ]);
   if (membersResult.error) throw membersResult.error;
   if (unreadResult.error) throw unreadResult.error;
@@ -123,7 +128,8 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, identity_pubkey")
-    .in("id", memberUserIds);
+    .in("id", memberUserIds)
+    .abortSignal(timeoutSignal());
   if (pErr) throw pErr;
   const profileById = new Map(profiles?.map((p) => [p.id, p]) ?? []);
 
@@ -287,6 +293,7 @@ export async function addChatMember(
     p_user_id: userId,
   });
   if (error) throw error;
+  forgetChatRecipients(chatId);
 }
 
 /** Owner removes a member from a group (RLS enforces owner + group-only). */
@@ -300,6 +307,7 @@ export async function removeChatMember(
     .eq("chat_id", chatId)
     .eq("user_id", userId);
   if (error) throw error;
+  forgetChatRecipients(chatId);
 }
 
 /**

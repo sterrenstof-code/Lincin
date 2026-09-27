@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
+  AppState,
   Clipboard,
   FlatList,
   InteractionManager,
@@ -72,6 +73,8 @@ import {
   fetchEarlierMessages,
   fetchMessages,
   fetchMessagesByIds,
+  fetchMessagesSince,
+  getChatRecipients,
   sendMessage,
   subscribeToAllMyMessages,
   subscribeToChatMessages,
@@ -196,6 +199,60 @@ function ComposerInset({
 }
 
 /**
+ * De laatst geziene berichten per gesprek, zolang de app open staat.
+ *
+ * Een gesprek openen begon altijd bij nul: grijze balkjes, wachten op de
+ * server, alles opnieuw ontsleutelen — ook als je er tien seconden eerder
+ * nog in zat. Nu staat wat je al zag er meteen, en wordt het op de
+ * achtergrond bijgewerkt.
+ */
+const threadCache = new Map<string, DecryptedMessage[]>();
+const THREAD_CACHE_KEEP = 200;
+
+function rememberThread(chatId: string, msgs: DecryptedMessage[]) {
+  const real = msgs.filter((m) => !m.id.startsWith("optimistic-"));
+  threadCache.set(chatId, real.slice(-THREAD_CACHE_KEEP));
+}
+
+/**
+ * Een binnenkomend bericht in de draad zetten: niet dubbel, en in de plaats
+ * van de voorlopige versie die ik zelf al had neergezet.
+ */
+function mergeIncoming(
+  prev: DecryptedMessage[] | null,
+  msg: DecryptedMessage
+): DecryptedMessage[] {
+  if (!prev) return [msg];
+  if (prev.some((m) => m.id === msg.id)) return prev;
+  const optimisticIdx = prev.findIndex(
+    (m) =>
+      m.id.startsWith("optimistic-") &&
+      m.sender_id === msg.sender_id &&
+      (m.content?.text ?? null) === (msg.content?.text ?? null)
+  );
+  if (optimisticIdx >= 0) {
+    const next = prev.slice();
+    next[optimisticIdx] = msg;
+    return next;
+  }
+  return [...prev, msg];
+}
+
+/** Eén keer opnieuw proberen, na een korte pauze: een haperend netwerk herstelt vaak vanzelf. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Op desktop (model 3e) is een gesprek Gesprekken op volle breedte, met
  * dit gesprek open (`DesktopChats`); die tekent de draad hieronder
  * `embedded`. Op een telefoon het scherm zelf, onveranderd.
@@ -221,7 +278,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   const myUserId = session?.user.id;
 
   const [chat, setChat] = useState<ChatWithMembers | null>(null);
-  const [messages, setMessages] = useState<DecryptedMessage[] | null>(null);
+  const [messages, setMessages] = useState<DecryptedMessage[] | null>(
+    () => (id ? threadCache.get(id) ?? null : null)
+  );
   /**
    * Waarom het gesprek er niet is, als het er niet is.
    *
@@ -387,17 +446,38 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
      * "mislukt" staat er waarom, met een knop om het opnieuw te proberen,
      * en de balk laat je niet verzenden.
      */
+    // Wat al in het geheugen staat meteen tonen: de kop uit de chatlijst,
+    // de draad uit de vorige keer. Het verse antwoord volgt.
+    const cachedChats = qc.getQueryData<ChatWithMembers[]>(["chats", myUserId]);
+    const cachedChat = cachedChats?.find((x) => x.id === id) ?? null;
+    if (cachedChat) setChat(cachedChat);
+    const hadThread = threadCache.has(id);
+    // De ontvangers alvast ophalen, zodat het eerste bericht meteen weg kan.
+    getChatRecipients(id).catch(() => {});
+
     (async () => {
       setLoadError(null);
       try {
-        const [allChats, msgs] = await Promise.all([
-          listMyChats(myUserId),
-          fetchMessages(id, myUserId),
-        ]);
+        // De berichten wachten niet meer op de chatlijst. Die kostte vier
+        // keer heen en weer naar de server (gesprekken, leden, ongelezen,
+        // profielen) en de draad bleef grijs tot ook die binnen waren.
+        const msgsP = withRetry(() => fetchMessages(id, myUserId));
+        const chatsP = listMyChats(myUserId).catch(() => cachedChats ?? []);
+        const msgs = await msgsP;
         if (cancelled) return;
-        const c = allChats.find((x) => x.id === id) ?? null;
+        // Wat ik zelf net verstuurde en nog onderweg is, blijft staan.
+        setMessages((prev) => [
+          ...msgs,
+          ...(prev ?? []).filter(
+            (m) => m.id.startsWith("optimistic-") && !msgs.some((x) => x.id === m.id)
+          ),
+        ]);
+        setHasMoreMessages(msgs.length === 50);
+
+        const allChats = await chatsP;
+        if (cancelled) return;
+        const c = allChats.find((x) => x.id === id) ?? cachedChat;
         setChat(c);
-        setMessages(msgs);
         const unreadCount = c?.unread_count ?? 0;
         if (unreadCount > 0) {
           let left = unreadCount;
@@ -417,48 +497,99 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         // elkaar, en na elkaar wachten kostte een extra heen-en-weer
         // voordat het gesprek zijn emoji's had.
         const [rxs] = await Promise.all([
-          listReactionsForMessages(msgs.map((m) => m.id)),
+          listReactionsForMessages(msgs.map((m) => m.id)).catch(() => null),
           // Een mislukt gelezen-merk mag het gesprek niet tegenhouden: dan
           // klopt hoogstens de teller in de balk even niet.
           markChatRead(id).catch(() => {}),
         ]);
-        if (!cancelled) setReactions(rxs);
+        if (!cancelled && rxs) setReactions(rxs);
         qc.invalidateQueries({ queryKey: ["chats", myUserId] });
       } catch (e: any) {
         if (cancelled) return;
-        setLoadError(e?.message ?? "Het gesprek kon niet geladen worden.");
+        // Staat de draad van de vorige keer er al, dan liever die laten
+        // staan met een melding dan hem vervangen door een foutscherm.
+        if (hadThread) {
+          toast.error("Het gesprek kon niet bijgewerkt worden.", {
+            action: { label: "Opnieuw", onPress: () => setReloadKey((k) => k + 1) },
+          });
+        } else {
+          setLoadError(e?.message ?? "Het gesprek kon niet geladen worden.");
+        }
       }
     })();
 
-    const channel = subscribeToChatMessages(id, myUserId, (msg) => {
-      setMessages((prev) => {
-        if (!prev) return [msg];
-        // Al aanwezig met dezelfde echte id? Niets doen.
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        // Vervang een matching optimistic-versie van mezelf door de echte rij.
-        const optimisticIdx = prev.findIndex(
-          (m) =>
-            m.id.startsWith("optimistic-") &&
-            m.sender_id === msg.sender_id &&
-            (m.content?.text ?? null) === (msg.content?.text ?? null)
-        );
-        if (optimisticIdx >= 0) {
-          const next = prev.slice();
-          next[optimisticIdx] = msg;
-          return next;
+    /**
+     * Ophalen wat er gemist is.
+     *
+     * Het live-kanaal geeft alleen door wat er gebeurt terwijl het
+     * verbonden is. Een telefoon die in slaap valt, een tab op de
+     * achtergrond, een trein door een tunnel: de verbinding valt weg,
+     * supabase-js legt hem later stilletjes opnieuw, maar wat er in de
+     * tussentijd binnenkwam komt nooit langs. Het gesprek stond dan stil
+     * tot je het opnieuw opende — "de chat laadt niet". Daarom halen we na
+     * elke herverbinding en bij elke terugkeer naar de app op wat er sinds
+     * het laatste bericht bijkwam.
+     */
+    let catchingUp = false;
+    const catchUp = async () => {
+      if (cancelled || catchingUp) return;
+      const current = messagesRef.current;
+      if (!current) return; // het eerste laden loopt nog
+      const last = [...current].reverse().find((m) => !m.id.startsWith("optimistic-"));
+      catchingUp = true;
+      try {
+        const fresh = last
+          ? await fetchMessagesSince(id, myUserId, last.created_at)
+          : await fetchMessages(id, myUserId);
+        if (cancelled || fresh.length === 0) return;
+        setMessages((prev) => fresh.reduce(mergeIncoming, prev));
+        if (fresh.some((m) => m.sender_id !== myUserId)) {
+          markChatRead(id).catch(() => {});
+          qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
         }
-        return [...prev, msg];
-      });
-      // Markeer gelezen + markeer de chats-query als stale.
-      // refetchType:"none" voorkomt een onmiddellijke refetch die het keyboard
-      // wegduwt via een re-render hoger in de boom.
-      (async () => {
-        try {
-          await markChatRead(id);
-        } catch {}
-        qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
-      })();
+      } catch {
+        // Volgende herverbinding of terugkeer probeert het opnieuw.
+      } finally {
+        catchingUp = false;
+      }
+    };
+
+    let subscribedOnce = false;
+    const channel = subscribeToChatMessages(
+      id,
+      myUserId,
+      (msg) => {
+        setMessages((prev) => mergeIncoming(prev, msg));
+        // Markeer gelezen + markeer de chats-query als stale.
+        // refetchType:"none" voorkomt een onmiddellijke refetch die het keyboard
+        // wegduwt via een re-render hoger in de boom.
+        (async () => {
+          try {
+            await markChatRead(id);
+          } catch {}
+          qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
+        })();
+      },
+      (status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (subscribedOnce) void catchUp();
+        subscribedOnce = true;
+      }
+    );
+
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void catchUp();
     });
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void catchUp();
+      }
+    };
+    const onOnline = () => void catchUp();
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("online", onOnline);
+    }
 
     const rChannel = subscribeToReactions(id, async () => {
       // Uit de ref en niet uit `messages`: zie messagesRef hierboven voor
@@ -492,6 +623,11 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
 
     return () => {
       cancelled = true;
+      appStateSub.remove();
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("online", onOnline);
+      }
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
@@ -502,6 +638,10 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     // hoeft niet per se te leven.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, myUserId, reloadKey]);
+
+  useEffect(() => {
+    if (id && messages) rememberThread(id, messages);
+  }, [id, messages]);
 
   // Focus input zodra replyTo gezet wordt.
   // InteractionManager wacht tot alle animaties/transities klaar zijn

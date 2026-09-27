@@ -12,30 +12,47 @@ type IdentityKeyPair = {
   secretKey: Uint8Array;
 };
 
+/**
+ * De sleutels, eenmaal gelezen, in het geheugen.
+ *
+ * `loadIdentity` liep bij élke pagina berichten en élk live binnenkomend
+ * bericht opnieuw naar de opslag: twee keer Keychain op een telefoon, twee
+ * keer een verse IndexedDB-verbinding op web. Dat is traag, en het is
+ * steeds hetzelfde antwoord. Alleen een gevonden paar wordt onthouden —
+ * "geen sleutels" kan een tel later al anders zijn (bootstrap, koppelen).
+ * Wie schrijft, gaat via `storeIdentity` en werkt de cache mee bij.
+ */
+let cached: IdentityKeyPair | null = null;
+
 export async function generateAndStoreIdentity(): Promise<IdentityKeyPair> {
   initCryptoRandom();
   const kp = generateKeyPair();
-  await secureStorage.setItem(IDENTITY_PRIVATE_KEY, bytesToBase64(kp.secretKey));
-  await secureStorage.setItem(IDENTITY_PUBLIC_KEY, bytesToBase64(kp.publicKey));
+  await storeIdentity(kp);
   return kp;
 }
 
 export async function loadIdentity(): Promise<IdentityKeyPair | null> {
-  const priv = await secureStorage.getItem(IDENTITY_PRIVATE_KEY);
-  const pub = await secureStorage.getItem(IDENTITY_PUBLIC_KEY);
+  if (cached) return cached;
+  const [priv, pub] = await Promise.all([
+    secureStorage.getItem(IDENTITY_PRIVATE_KEY),
+    secureStorage.getItem(IDENTITY_PUBLIC_KEY),
+  ]);
   if (!priv || !pub) return null;
-  return {
+  cached = {
     publicKey: base64ToBytes(pub),
     secretKey: base64ToBytes(priv),
   };
+  return cached;
 }
 
 /**
  * Sla een bestaand keypair op in SecureStore (bijv. na herstel van server).
  */
 export async function storeIdentity(kp: IdentityKeyPair): Promise<void> {
+  cached = null;
   await secureStorage.setItem(IDENTITY_PRIVATE_KEY, bytesToBase64(kp.secretKey));
   await secureStorage.setItem(IDENTITY_PUBLIC_KEY, bytesToBase64(kp.publicKey));
+  cached = { publicKey: kp.publicKey, secretKey: kp.secretKey };
 }
 
 export function deriveSharedSecret(
