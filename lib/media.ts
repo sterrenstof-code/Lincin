@@ -105,10 +105,20 @@ export function resizedPublicUrl(
   return `${rendered}?${params(size)}${keep}`;
 }
 
-/** Sleutel voor de schijfcache: los van token en cache-buster. */
+/**
+ * Sleutel voor de schijfcache: los van het token, wél met de versie.
+ *
+ * Het token van een signed URL verandert bij elke aanvraag; houd je het in
+ * de sleutel, dan cachet er niets. Maar de `?t=…` die een upload aan een
+ * groeps- of profielfoto hangt (zelfde pad, nieuwe foto) is juist de
+ * versie. Die viel eerst óók weg, en dan bleef de oude foto uit de cache
+ * staan tot de app van het toestel verdween.
+ */
 export function stableCacheKey(url: string | null | undefined, size?: ImageSize): string | undefined {
   if (!url) return undefined;
-  const base = url.split("?")[0];
+  const [path, query] = url.split("?");
+  const version = query?.match(/(?:^|&)t=([^&]*)/)?.[1];
+  const base = version ? `${path}?t=${version}` : path;
   return size ? `${base}|${sizeKey(size)}` : base;
 }
 
