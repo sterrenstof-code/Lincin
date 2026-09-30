@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
+import { chatAvatarUrl, chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
@@ -15,6 +15,7 @@ import { useToast } from "@/lib/toast";
 
 import { useChatReadMenu } from "../ChatReadMenu";
 
+import { AvatarPhoto } from "../AvatarPhoto";
 import { MonoLink } from "./Shell";
 
 /**
@@ -93,6 +94,7 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
           <Row
             key={c.id}
             initial={chatTitle(c, myUserId).slice(0, 1).toUpperCase()}
+            avatarUrl={chatAvatarUrl(c, myUserId)}
             fill={friendColor(chatHue(c, myUserId), scheme)}
             name={chatTitle(c, myUserId)}
             preview={preview}
@@ -110,6 +112,7 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
           key={f.id}
           fill={friendColor(hueFor(f.other.id), scheme)}
           initial={displayName(f.other).slice(0, 1).toUpperCase()}
+          avatarUrl={f.other.avatar_url}
           name={displayName(f.other)}
           preview="Nog geen berichten"
           time=""
@@ -132,6 +135,7 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
 function Row({
   fill,
   initial,
+  avatarUrl,
   name,
   preview,
   time,
@@ -143,6 +147,8 @@ function Row({
 }: {
   fill: { fill: string; ink: string };
   initial: string;
+  /** Foto van de persoon of groep; zonder foto blijft de initiaal staan. */
+  avatarUrl?: string | null;
   name: string;
   preview: string;
   time: string;
@@ -210,8 +216,9 @@ function Row({
         onHoverOut={() => setHover(false)}
         style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 18, paddingRight: 22, paddingLeft: 17, borderLeftWidth: 5, borderLeftColor: fill.fill, backgroundColor: active ? color("paper2") : "transparent" }}
       >
-        <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: fill.fill, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
           <Text style={[serif(), { fontSize: 22, lineHeight: 26, color: fill.fill }]}>{initial}</Text>
+          <AvatarPhoto url={avatarUrl} size={44} />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -248,6 +255,11 @@ function Row({
       >
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
           <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
+          {/* Eigen ronde uitsnede: het vakje zelf mag niet afsnijden, anders
+              valt het telbolletje dat erover hangt weg. */}
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, overflow: "hidden" }} pointerEvents="none">
+            <AvatarPhoto url={avatarUrl} size={52} />
+          </View>
           {unread ? (
             <View style={{ position: "absolute", top: -4, right: -4, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
               <Text style={[sans(800), { fontSize: 11, lineHeight: 13, color: ON_DARK }]}>{unread > 99 ? "99+" : unread}</Text>
@@ -283,8 +295,9 @@ function Row({
       onHoverOut={() => setHover(false)}
       style={{ flexDirection: "row", alignItems: "stretch", minHeight: 84, borderBottomWidth: spec.border, borderBottomColor: ink, backgroundColor: active ? color("paper2") : "transparent" }}
     >
-      <View style={{ width: 64, backgroundColor: fill.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: 64, backgroundColor: fill.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <Text style={[head(), { fontSize: 28, lineHeight: 30, color: fill.ink }]}>{initial}</Text>
+        <AvatarPhoto url={avatarUrl} size={64} />
       </View>
       <View style={{ flex: 1, minWidth: 0, paddingVertical: 14, paddingHorizontal: 16, justifyContent: "center", gap: 6 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>

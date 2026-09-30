@@ -5,6 +5,7 @@ import { ON_DARK, color, friendColor, type Hue, type Scheme } from "@/lib/design
 import { mono, sans } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
+import { AvatarPhoto } from "../AvatarPhoto";
 import { Bento, Tile, TileMeta, TileTitle, TitleTile } from "./Bento";
 
 /**
@@ -23,6 +24,8 @@ export type ChatRowData = {
   key: string;
   name: string;
   initial: string;
+  /** Foto van de persoon of groep; zonder foto blijft de initiaal staan. */
+  avatarUrl?: string | null;
   hue: Hue;
   time: string;
   preview: string;
@@ -79,9 +82,11 @@ export function ChatsModern({
                   backgroundColor: fc.fill,
                   alignItems: "center",
                   justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
                 <Text style={{ ...sans(500), fontSize: 17, lineHeight: 20, color: fc.ink }}>{r.initial}</Text>
+                <AvatarPhoto url={r.avatarUrl} size={52} />
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
                 <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>

@@ -7,9 +7,10 @@ import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
+import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { useChatReadMenu } from "@/components/lincin/ChatReadMenu";
 import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
-import { chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
+import { chatAvatarUrl, chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
@@ -103,6 +104,7 @@ function ChatsMobile() {
         key: c.id,
         name,
         initial: name.slice(0, 1).toUpperCase(),
+        avatarUrl: chatAvatarUrl(c, myUserId),
         hue: (isGroup ? "green" : hueFor(other?.id)) as Hue,
         time: c.last_message_at ? shortAgo(c.last_message_at, t, lang) : "",
         preview,
@@ -117,6 +119,7 @@ function ChatsMobile() {
         key: f.id,
         name,
         initial: name.slice(0, 1).toUpperCase(),
+        avatarUrl: f.other.avatar_url,
         hue: hueFor(f.other.id),
         time: "",
         preview: "Nog geen berichten",
@@ -171,6 +174,7 @@ function ChatsMobile() {
       <Row
         key={c.id}
         initial={name.slice(0, 1).toUpperCase()}
+        avatarUrl={chatAvatarUrl(c, myUserId)}
         fill={fc.fill}
         ink={fc.ink}
         square={isGroup}
@@ -218,6 +222,7 @@ function ChatsMobile() {
                 <Row
                   key={f.id}
                   initial={name.slice(0, 1).toUpperCase()}
+                  avatarUrl={f.other.avatar_url}
                   fill={fc.fill}
                   ink={fc.ink}
                   name={name}
@@ -240,6 +245,7 @@ function ChatsMobile() {
 
 function Row({
   initial,
+  avatarUrl,
   fill,
   ink,
   square = false,
@@ -251,6 +257,7 @@ function Row({
   menu,
 }: {
   initial: string;
+  avatarUrl?: string | null;
   fill: string;
   ink: string;
   square?: boolean;
@@ -286,11 +293,13 @@ function Row({
           borderRightWidth: BORDER,
           borderRightColor: line(),
           margin: square ? 0 : 0,
+          overflow: "hidden",
         }}
       >
         <Head variant="numeralTiny" color={ink}>
           {initial}
         </Head>
+        <AvatarPhoto url={avatarUrl} size={56} />
       </View>
       <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12, justifyContent: "center", gap: 2 }}>
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
