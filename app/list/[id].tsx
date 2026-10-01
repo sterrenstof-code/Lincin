@@ -12,6 +12,7 @@ import {
   addListItem,
   toggleListItem,
   deleteListItem,
+  deleteSharedList,
   subscribeToListItems,
   type SharedListWithDetails,
   type ListItem,
@@ -128,6 +129,23 @@ export default function ListDetailScreen() {
       toast.error(next ? "Afvinken lukte niet." : "Vinkje weghalen lukte niet.", {
         action: { label: "Opnieuw", onPress: () => void onToggle(item) },
       });
+    }
+  }
+
+  // Een lijst kon je niet weg: hij bleef voor altijd in "Mijn lijsten".
+  async function onDeleteList() {
+    if (!list || !id) return;
+    const ok = await confirm(
+      "Lijst verwijderen?",
+      `"${list.title}" en alle items verdwijnen voor iedereen op deze lijst.`,
+      { affirmativeLabel: "Verwijder", destructive: true }
+    );
+    if (!ok) return;
+    try {
+      await deleteSharedList(id);
+      safeBack(router, "/lists");
+    } catch {
+      toast.error("Lijst niet verwijderd.");
     }
   }
 
@@ -249,6 +267,12 @@ export default function ListDetailScreen() {
               <ItemRow key={item.id} item={item} hue={hue} first={i === 0} onToggle={() => onToggle(item)} onDelete={() => onDelete(item.id)} canDelete={isOwner || item.user_id === myUserId} />
             ))}
           </View>
+        </Section>
+      ) : null}
+
+      {isOwner ? (
+        <Section pad>
+          <Button label="Verwijder lijst" icon="trash-outline" tone="danger" onPress={onDeleteList} />
         </Section>
       ) : null}
     </SubPage>

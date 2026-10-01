@@ -483,6 +483,26 @@ export async function deleteContribution(args: {
   }
 }
 
+/**
+ * Een event weghalen (alleen de host, RLS "host can delete event"). Leden,
+ * bijdragen en verzoeken gaan mee via on delete cascade; de bestanden in
+ * opslag ruimen we vooraf op (best-effort — RLS op de bucket beslist).
+ */
+export async function deleteEvent(eventId: string): Promise<void> {
+  const [{ data: ev }, { data: rows }] = await Promise.all([
+    supabase.from("events").select("cover_image_path").eq("id", eventId).maybeSingle(),
+    supabase.from("event_contributions").select("image_path").eq("event_id", eventId),
+  ]);
+  const paths = [ev?.cover_image_path, ...(rows ?? []).map((r: { image_path: string | null }) => r.image_path)].filter(
+    (x): x is string => !!x
+  );
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) throw error;
+  if (paths.length) {
+    await supabase.storage.from(EVENT_BUCKET).remove(paths).catch(() => {});
+  }
+}
+
 /** List contributions for an event. Reveal is enforced server-side by RLS;
  * `revealed` reflects whether the current viewer may see everyone's content. */
 export async function listEventContributions(

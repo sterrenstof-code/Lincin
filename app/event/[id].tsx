@@ -29,6 +29,7 @@ import {
   contributeToEvent,
   declineEventJoinRequest,
   deleteContribution,
+  deleteEvent,
   eventStatusLabel,
   getEvent,
   listEventContributions,
@@ -214,6 +215,25 @@ export default function EventDetailScreen() {
       await qc.invalidateQueries({ queryKey: ["event", eventId] });
     } catch (e: any) {
       setError(e?.message ?? "Kon bijdrage niet verwijderen.");
+    }
+  }
+
+  // Er was geen weg om een event weg te halen: eenmaal aangemaakt bleef het
+  // voor altijd in Events staan. Alleen de host ziet dit (RLS bewaakt het).
+  async function onDeleteEvent() {
+    setSettingsOpen(false);
+    const ok = await confirm(
+      "Event verwijderen?",
+      "Het event, de gastenlijst en alle bijdragen verdwijnen voor iedereen.",
+      { affirmativeLabel: "Verwijder", destructive: true }
+    );
+    if (!ok) return;
+    try {
+      await deleteEvent(eventId);
+      await qc.invalidateQueries({ queryKey: ["events", myUserId] });
+      safeBack(router, "/events");
+    } catch (e: any) {
+      setError(e?.message ?? "Kon het event niet verwijderen.");
     }
   }
 
@@ -520,6 +540,7 @@ export default function EventDetailScreen() {
         requests={joinRequests.data ?? []}
         onApprove={onApproveRequest}
         onDecline={onDeclineRequest}
+        onDelete={onDeleteEvent}
       />
 
       <EventMenu
@@ -579,6 +600,7 @@ function AccessModal({
   requests,
   onApprove,
   onDecline,
+  onDelete,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -587,6 +609,7 @@ function AccessModal({
   requests: EventJoinRequest[];
   onApprove: (r: EventJoinRequest) => void;
   onDecline: (r: EventJoinRequest) => void;
+  onDelete: () => void;
 }) {
   const spec = useThemeSpec();
   const th = spec.id;
@@ -711,6 +734,10 @@ function AccessModal({
             ) : (
               <Text style={[label(9.5, color("ink", "inkDim")), { padding: 18, paddingVertical: 10 }]}>Geen openstaande verzoeken.</Text>
             )}
+          </View>
+
+          <View style={{ borderTopWidth: B, borderTopColor: rule, padding: 18, alignItems: "flex-start" }}>
+            {btn("Verwijder event", onDelete, false)}
           </View>
         </View>
       </View>

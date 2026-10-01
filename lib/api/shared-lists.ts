@@ -174,3 +174,9 @@ export function subscribeToListItems(listId: string, onChange: () => void): Real
     .on("postgres_changes", { event: "*", schema: "public", table: "list_items", filter: `list_id=eq.${listId}` }, onChange)
     .subscribe();
 }
+
+/** De hele lijst weghalen (alleen de eigenaar; RLS "shared_lists: delete"). */
+export async function deleteSharedList(listId: string): Promise<void> {
+  const { error } = await supabase.from("shared_lists").delete().eq("id", listId);
+  if (error) throw error;
+}
