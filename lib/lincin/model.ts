@@ -1,6 +1,6 @@
 import type { FeedItem, PostWithAuthor } from "@/lib/api/posts";
 import type { PollWithDetails } from "@/lib/api/polls";
-import { hueFor, type Hue } from "@/lib/design/theme";
+import { defaultHueFor, HUES, hueFor, type Hue } from "@/lib/design/theme";
 import { getLang, type Dict, type Lang } from "@/lib/i18n";
 
 /**
@@ -59,7 +59,25 @@ export type CardPost = {
   monthInteractions: number;
   /** Alleen een post heeft emoji-reacties; een poll stemt. */
   reactable: boolean;
+  /**
+   * De kleur die de maker bij "Nieuwe bijdrage" koos. Die kleurt de kaart;
+   * zonder keuze volgt de kaart de kleur van de maker (`hueFor`).
+   */
+  swatch?: Hue;
 };
+
+/**
+ * De gekozen kleur van een bijdrage, als die er is.
+ *
+ * Tot oktober 2026 schreef "Nieuwe bijdrage" altijd een kleur mee, ook als
+ * je niets koos: dan was het de standaardkleur van de maker. Die telt niet
+ * als keuze — anders zou hij de kleur overschrijven die jij die vriend gaf.
+ */
+export function swatchOf(raw: unknown, authorId: string): Hue | undefined {
+  if (typeof raw !== "string" || !HUES.includes(raw as Hue)) return undefined;
+  return raw === defaultHueFor(authorId) ? undefined : (raw as Hue);
+}
+
 
 /** De naam zoals hij op de band staat. */
 /**
@@ -213,6 +231,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     commentCount: p.comment_count ?? 0,
     monthInteractions: p.month_interaction_count ?? 0,
     reactable: true,
+    swatch: swatchOf((p.meta as { swatch?: unknown } | null)?.swatch, p.user_id),
   };
 }
 
@@ -237,6 +256,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     commentCount: 0,
     monthInteractions: 0,
     reactable: false,
+    swatch: swatchOf(p.swatch, p.user_id),
   };
 }
 

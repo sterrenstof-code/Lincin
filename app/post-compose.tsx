@@ -50,7 +50,7 @@ type Kind = "foto" | "krabbel" | "tekst" | "spraak" | "poll" | "link" | "plek" |
 const KINDS: Kind[] = ["foto", "krabbel", "tekst", "spraak", "poll", "link", "plek", "muziek"];
 const SUPPORTED = new Set<Kind>(["foto", "tekst", "link", "muziek", "poll"]);
 
-type Draft = { kind: Kind; title: string; caption: string; body: string; url: string; hue: Hue };
+type Draft = { kind: Kind; title: string; caption: string; body: string; url: string; hue: Hue; huePicked?: boolean };
 
 /**
  * Wat een nieuwe bijdrage is en kan: de velden, het klad, het delen —
@@ -75,7 +75,15 @@ export function useCompose() {
   const [caption, setCaption] = useState("");
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
-  const [hue, setHue] = useState<Hue>(hueFor(myUserId));
+  const [hue, setHueState] = useState<Hue>(hueFor(myUserId));
+  // Alleen een échte keuze kleurt de kaart in de feed; zonder keuze volgt
+  // hij de kleur die elke lezer jou gaf.
+  const [huePicked, setHuePicked] = useState(false);
+  const setHue = (h: Hue) => {
+    setHueState(h);
+    setHuePicked(true);
+  };
+  const swatch = huePicked ? hue : null;
   const [imageUris, setImageUris] = useState<string[]>([]);
   const imageUri = imageUris[0] ?? null;
   const setImageUri = (uri: string | null) => setImageUris(uri ? [uri] : []);
@@ -135,7 +143,10 @@ export function useCompose() {
         if (d.caption) setCaption(d.caption);
         if (d.body) setBody(d.body);
         if (d.url) setUrl(d.url);
-        if (d.hue && HUES.includes(d.hue)) setHue(d.hue);
+        if (d.hue && HUES.includes(d.hue)) {
+          setHueState(d.hue);
+          setHuePicked(!!d.huePicked);
+        }
         setKept(true);
       })
       .catch(() => {});
@@ -209,7 +220,7 @@ export function useCompose() {
   }
 
   async function keep() {
-    const d: Draft = { kind, title, caption, body, url, hue };
+    const d: Draft = { kind, title, caption, body, url, hue, huePicked };
     await AsyncStorage.setItem(draftKey, JSON.stringify(d)).catch(() => {});
     setKept(true);
     safeBack(router, "/feed");
@@ -253,6 +264,7 @@ export function useCompose() {
           question: title.trim(),
           options: filledOptions,
           allowMultiple: pollMulti,
+          swatch,
         });
         await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
         await AsyncStorage.removeItem(draftKey).catch(() => {});
@@ -270,7 +282,7 @@ export function useCompose() {
         bodyText: kind === "tekst" ? body.trim() || null : null,
         linkUrl: kind === "link" || kind === "muziek" ? url.trim() || null : null,
         sourceTitle: title.trim() || null,
-        meta: preview ? { ...preview, swatch: hue } as Partial<LinkPreview> : ({ swatch: hue } as Partial<LinkPreview>),
+        meta: { ...(preview ?? {}), ...(swatch ? { swatch } : null) } as Partial<LinkPreview>,
         visibility: "feed",
         audienceChatId: audience,
       });

@@ -70,7 +70,7 @@ export default function PollScreen() {
   usePageTitle(card?.title ?? null);
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
-  const hue = hueFor(p?.user_id);
+  const hue = card?.swatch ?? hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
 
   const [draft, setDraft] = useState("");

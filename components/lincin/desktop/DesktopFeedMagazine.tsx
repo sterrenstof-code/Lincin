@@ -489,7 +489,7 @@ function Index({ f, posts, hue }: { f: Feed; posts: CardPost[]; hue?: Hue }) {
                   {f.numberOf(p.id)}
                 </Black>
                 <View style={{ width: 150, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: friendColor(hue ?? hueOf.get(p.authorId) ?? "orange", o.scheme).fill }} />
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: friendColor(p.swatch ?? hue ?? hueOf.get(p.authorId) ?? "orange", o.scheme).fill }} />
                   <Label size={12} ls={0.08} color={hot ? o.red : o.ink} style={{ flexShrink: 1 }}>
                     {p.authorName}
                   </Label>
@@ -588,7 +588,7 @@ function FriendChapter({ f, g, isNew, kicker }: { f: Feed; g: FriendGroup; isNew
   const fresh = f.freshIn(g).length;
   const n = g.posts.length;
   const canPrivate = !g.isGroup && !f.isMine(g.authorId);
-  const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: g.hue, isNew: !f.seen.has(p.id) }));
+  const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: p.swatch ?? g.hue, isNew: !f.seen.has(p.id) }));
   return (
     <>
       <ChapterHead
@@ -616,7 +616,7 @@ function ByTime({ f }: { f: Feed }) {
   return (
     <View>
       {f.timeGroups.map((tg, i) => {
-        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: hueOf.get(p.authorId) ?? "orange", isNew: !f.seen.has(p.id) }));
+        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !f.seen.has(p.id) }));
         const n = tiles.filter((p) => p.isNew).length;
         return (
           <View key={tg.key}>

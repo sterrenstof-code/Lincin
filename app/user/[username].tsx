@@ -323,7 +323,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
             key={c.id}
             post={c}
             bleed
-            hue={hue}
+            hue={c.swatch ?? hue}
             myUserId={myUserId}
             reactions={reactions.grouped(c.id)}
             onReact={(emoji) => reactions.toggle(c.id, emoji)}

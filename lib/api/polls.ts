@@ -19,6 +19,8 @@ export type PollRow = {
   created_at: string;
   /** 0060 — meerdere keuzes per linc. `false` zolang de migratie niet draaide. */
   allow_multiple: boolean;
+  /** 0078 — de gekozen kleur; `null` = de kleur van de maker. */
+  swatch?: string | null;
 };
 
 export type PollWithDetails = PollRow & {
@@ -43,12 +45,15 @@ export async function createPoll(args: {
    * is het een feedpoll, voor jou en je lincs.
    */
   chatId?: string | null;
+  /** De kleur uit "Nieuwe bijdrage" (0078). */
+  swatch?: string | null;
 }): Promise<PollRow> {
-  const row: { user_id: string; question: string; ends_at: string | null; chat_id: string | null; allow_multiple?: boolean } = {
+  const row: { user_id: string; question: string; ends_at: string | null; chat_id: string | null; allow_multiple?: boolean; swatch?: string } = {
     user_id: args.userId,
     question: args.question.trim(),
     ends_at: args.endsAt?.toISOString() ?? null,
     chat_id: args.chatId ?? null,
+    ...(args.swatch ? { swatch: args.swatch } : null),
   };
   const insert = (withMultiple: boolean) =>
     supabase
@@ -77,7 +82,7 @@ const POLL_COLUMNS_BASE = "id, user_id, question, ends_at, created_at";
 
 /** Leest `allow_multiple` als de kolom er is (0060), anders `false`. */
 async function selectPoll(pollId: string) {
-  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple`).eq("id", pollId).single();
+  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple, swatch`).eq("id", pollId).single();
   if (!withCol.error) return { data: withCol.data as unknown as PollRow, error: null };
   const base = await supabase.from("polls").select(POLL_COLUMNS_BASE).eq("id", pollId).single();
   return { data: base.data ? ({ ...base.data, allow_multiple: false } as PollRow) : null, error: base.error };

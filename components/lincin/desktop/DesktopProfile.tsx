@@ -134,13 +134,13 @@ export function DesktopProfile({ username }: { username: string }) {
         const k = i % spans.length;
         const unit = (width - SEAM * 11) / 12;
         const w = spans[k] * unit + (spans[k] - 1) * SEAM;
-        return <TileMagazine key={c.id} c={c} width={w} tall={[0, 6, 7].includes(k)} isNew={isNew} fill={fc} onPress={() => openPost(c)} />;
+        return <TileMagazine key={c.id} c={c} width={w} tall={[0, 6, 7].includes(k)} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />;
       }
       const w = th === "modern" ? (width - SEAM * 3) / 4 : width / 4;
       return th === "modern" ? (
-        <TileModern key={c.id} c={c} width={w} isNew={isNew} fill={fc} onPress={() => openPost(c)} />
+        <TileModern key={c.id} c={c} width={w} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />
       ) : (
-        <TileKleur key={c.id} c={c} width={w} isNew={isNew} fill={fc} onPress={() => openPost(c)} />
+        <TileKleur key={c.id} c={c} width={w} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />
       );
     });
 

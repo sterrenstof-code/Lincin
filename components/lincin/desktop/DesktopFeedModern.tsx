@@ -63,7 +63,7 @@ export function DesktopFeedModern({ f, ed }: { f: Feed; ed: EditionData }) {
         blocks.push(
           <Section key={`s-${tg.key}`} width={span(12)} label={tg.label} meta={`${tg.range} · ${tg.posts.length} ${t.posts}`} solid top={i ? 28 : 0} />,
         );
-        tg.posts.forEach((p) => blocks.push(<PostTile key={p.id} f={f} p={p} hue={hueOf.get(p.authorId) ?? "orange"} width={span(3)} />));
+        tg.posts.forEach((p) => blocks.push(<PostTile key={p.id} f={f} p={p} hue={p.swatch ?? hueOf.get(p.authorId) ?? "orange"} width={span(3)} />));
       });
     }
   }
@@ -103,7 +103,7 @@ export function DesktopFeedModern({ f, ed }: { f: Feed; ed: EditionData }) {
 function pushFriend(out: ReactNode[], f: Feed, g: FriendGroup, isNew: boolean, span: (n: number) => number) {
   const open = f.isOpen(g.key);
   out.push(<FriendRow key={`f-${g.key}`} f={f} g={g} isNew={isNew} open={open} width={span(12)} />);
-  if (open) g.posts.forEach((p) => out.push(<PostTile key={p.id} f={f} p={p} hue={g.hue} width={span(g.posts.length === 1 ? 6 : 3)} />));
+  if (open) g.posts.forEach((p) => out.push(<PostTile key={p.id} f={f} p={p} hue={p.swatch ?? g.hue} width={span(g.posts.length === 1 ? 6 : 3)} />));
 }
 
 // ---------------------------------------------------------------

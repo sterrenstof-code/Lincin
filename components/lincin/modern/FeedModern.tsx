@@ -50,7 +50,7 @@ export function FeedModern() {
   const tiles = rest.slice(0, TILE_COUNT);
   const rows = rest.slice(TILE_COUNT);
 
-  const heroHue = hero ? friendColor(hueFor(hero.authorId), scheme) : null;
+  const heroHue = hero ? friendColor(hero.swatch ?? hueFor(hero.authorId), scheme) : null;
   // Het blad haast in de kleur van wie bovenaan staat.
   const tint = heroHue?.fill ?? null;
 
@@ -405,7 +405,7 @@ function PostRow({
   lang: Lang;
   t: Dict;
 }) {
-  const fc = friendColor(hueFor(post.authorId), scheme);
+  const fc = friendColor(post.swatch ?? hueFor(post.authorId), scheme);
   return (
     <Tile
       span={2}

@@ -102,7 +102,8 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   usePageTitle(card?.title ?? null);
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
-  const hue = hueFor(p?.user_id);
+  // De kleur die de maker koos, anders zijn eigen kleur.
+  const hue = card?.swatch ?? hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
   const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
   const grouped = reactions.grouped(id);

@@ -1,15 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { createElement, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { createElement, useEffect, useState } from "react";
 import { Platform, Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { bodyStyle, Button, Field, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import {
   createEvent,
+  getEvent,
+  updateEvent,
   type EventJoinPolicy,
   type EventRevealMode,
 } from "@/lib/api/events";
@@ -45,13 +47,24 @@ function charsLeft(value: string, max: number): string | undefined {
  * Het formulier staat in rubrieken: wat, cover, wanneer, wie, foto's,
  * gasten. De hoofdknop staat onderaan. De kleur van de pagina is die van
  * jou: jij wordt de gastheer, dus het event krijgt straks dezelfde kleur.
+ *
+ * Met `?edit=<id>` is het hetzelfde formulier voor een bestaand event:
+ * vooraf ingevuld, alleen wat, cover en wanneer (toegang staat onder
+ * Instellingen op het event zelf), en "Bewaar" in plaats van "Maak event".
  */
 export default function EventCreateScreen() {
-  usePageTitle("Nieuw event");
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editId = typeof edit === "string" && edit ? edit : null;
+  usePageTitle(editId ? "Event bewerken" : "Nieuw event");
   const router = useRouter();
   const qc = useQueryClient();
   const { session } = useAuth();
   const myUserId = session!.user.id;
+  const existing = useQuery({
+    queryKey: ["event", editId],
+    queryFn: () => getEvent(editId!, myUserId),
+    enabled: !!editId,
+  });
 
   const defaultStart = plusHours(new Date(), 1);
   const defaultEnd = plusHours(new Date(), 5);
@@ -70,6 +83,31 @@ export default function EventCreateScreen() {
   const [maxGuests, setMaxGuests] = useState("100");
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [coverMime, setCoverMime] = useState<string | null>(null);
+  /** Bij bewerken: is de cover vervangen of weggehaald? */
+  const [coverChanged, setCoverChanged] = useState(false);
+
+  // Het bestaande event vult het formulier één keer.
+  const [loaded, setLoaded] = useState(false);
+  const ev = existing.data;
+  useEffect(() => {
+    if (!ev || loaded) return;
+    setName(ev.name);
+    setDescription(ev.description ?? "");
+    setPlace(ev.place ?? "");
+    setStartsAt(toLocalISO(new Date(ev.starts_at)));
+    setEndsAt(toLocalISO(new Date(ev.ends_at)));
+    setCoverUri(ev.cover_url);
+    setLoaded(true);
+  }, [ev, loaded]);
+  const editDirty =
+    !!ev &&
+    loaded &&
+    (name !== ev.name ||
+      description !== (ev.description ?? "") ||
+      place !== (ev.place ?? "") ||
+      startsAt !== toLocalISO(new Date(ev.starts_at)) ||
+      endsAt !== toLocalISO(new Date(ev.ends_at)) ||
+      coverChanged);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -83,8 +121,12 @@ export default function EventCreateScreen() {
    * navigatie tegen die het versturen zelf veroorzaakt.
    */
   useUnsavedGuard(
-    !submitting && (name.trim().length > 0 || description.trim().length > 0),
-    { message: "Dit event is nog niet aangemaakt. Weggaan betekent dat je het kwijt bent." }
+    !submitting && (editId ? editDirty : name.trim().length > 0 || description.trim().length > 0),
+    {
+      message: editId
+        ? "Je wijzigingen zijn nog niet bewaard. Weggaan betekent dat je ze kwijt bent."
+        : "Dit event is nog niet aangemaakt. Weggaan betekent dat je het kwijt bent.",
+    }
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -105,10 +147,11 @@ export default function EventCreateScreen() {
     if (result.canceled || !result.assets[0]) return;
     setCoverUri(result.assets[0].uri);
     setCoverMime(result.assets[0].mimeType ?? "image/jpeg");
+    setCoverChanged(true);
   }
 
   const trimmedName = name.trim();
-  const canSubmit = !submitting && trimmedName.length > 0 && startsAt && endsAt;
+  const canSubmit = !submitting && trimmedName.length > 0 && startsAt && endsAt && (!editId || editDirty);
 
   async function onSubmit() {
     setSubmitting(true);
@@ -122,7 +165,24 @@ export default function EventCreateScreen() {
       if (end <= start) {
         throw new Error("Eindtijd moet na starttijd liggen.");
       }
-      const ev = await createEvent({
+      if (editId) {
+        await updateEvent({
+          eventId: editId,
+          name: trimmedName,
+          description: description || null,
+          place: place || null,
+          startsAt: start,
+          endsAt: end,
+          cover: coverChanged ? (coverUri ? { uri: coverUri, mimeType: coverMime } : null) : undefined,
+        });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["event", editId] }),
+          qc.invalidateQueries({ queryKey: ["events", myUserId] }),
+        ]);
+        router.replace(`/event/${editId}`);
+        return;
+      }
+      const created = await createEvent({
         hostUserId: myUserId,
         name: trimmedName,
         description: description || null,
@@ -137,9 +197,9 @@ export default function EventCreateScreen() {
         coverMimeType: coverMime,
       });
       await qc.invalidateQueries({ queryKey: ["events", myUserId] });
-      router.replace(`/event/${ev.id}`);
+      router.replace(`/event/${created.id}`);
     } catch (e: any) {
-      setError(e?.message ?? "Kon event niet aanmaken.");
+      setError(e?.message ?? (editId ? "Kon het event niet bewaren." : "Kon event niet aanmaken."));
       // Mislukt: pas hier mag de knop weer aan, en de bewaking dus ook.
       setSubmitting(false);
     }
@@ -149,7 +209,16 @@ export default function EventCreateScreen() {
   const hue = hueFor(myUserId);
 
   return (
-    <SubPage title="Nieuw event" kicker="Event" back="/(app)/events" tab="events" hue={hue} keyboard>
+    <SubPage
+      title={editId ? "Event bewerken" : "Nieuw event"}
+      kicker="Event"
+      back={editId ? `/event/${editId}` : "/(app)/events"}
+      tab="events"
+      hue={hue}
+      keyboard
+    >
+      {editId && existing.isLoading ? <Note>Laden…</Note> : null}
+      {editId && (existing.isError || (existing.isFetched && !ev)) ? <Note tone="red">Dit event kon niet geladen worden.</Note> : null}
       <Section label="Wat" pad>
         <Field
           label="Naam"
@@ -195,6 +264,7 @@ export default function EventCreateScreen() {
                 onPress={() => {
                   setCoverUri(null);
                   setCoverMime(null);
+                  setCoverChanged(true);
                 }}
               />
             </View>
@@ -209,6 +279,8 @@ export default function EventCreateScreen() {
         <DateInput label="Einde" value={endsAt} onChange={setEndsAt} />
       </Section>
 
+      {editId ? null : (
+      <>
       {/* Toegang — open of gesloten groep */}
       <Section label="Wie mag meedoen" pad>
         <Text style={bodyStyle(th, 13, color("ink", "inkDim"))}>
@@ -282,12 +354,14 @@ export default function EventCreateScreen() {
           }
         />
       </Section>
+      </>
+      )}
 
       {error ? <Note tone="red">{error}</Note> : null}
 
       <Button
-        label={submitting ? "Bezig…" : "Maak event"}
-        icon="add"
+        label={submitting ? "Bezig…" : editId ? "Bewaar" : "Maak event"}
+        icon={editId ? "checkmark" : "add"}
         tone="primary"
         busy={submitting}
         disabled={!canSubmit}

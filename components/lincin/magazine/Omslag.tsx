@@ -164,12 +164,19 @@ export function Ser({
   underline?: boolean;
   style?: StyleProp<TextStyle>;
 }) {
+  // Met `numberOfLines` knipt het web alles buiten de regelhoogte weg, en
+  // bij een strakke regel (f < 1.25) zijn dat de staarten van g, j en p —
+  // in "0 ongelezen · 6 gesprekken" vielen ze er onderaan af. Wat ruimte
+  // onderin, en evenveel terug eronder, houdt de letters heel zonder de
+  // opmaak te verschuiven.
+  const tail = numberOfLines ? Math.max(0, Math.round(size * (1.25 - f))) : 0;
   return (
     <Text
       numberOfLines={numberOfLines}
       style={[
         serif(italic),
         { fontSize: size, lineHeight: lh(size, f), letterSpacing: size * ls, color: c ?? color("ink") },
+        tail ? { paddingBottom: tail, marginBottom: -tail } : null,
         underline ? ({ textDecorationLine: "underline", textUnderlineOffset: 5 } as TextStyle) : null,
         style,
       ]}

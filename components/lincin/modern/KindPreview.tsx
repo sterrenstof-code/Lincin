@@ -38,7 +38,7 @@ export function KindPreview({
   fill?: boolean;
   variant?: PreviewVariant;
 }) {
-  const fc = friendColor(hueFor(post.authorId), scheme);
+  const fc = friendColor(post.swatch ?? hueFor(post.authorId), scheme);
   const m = post.media;
 
   // Op een kleurvlak: het vlak van de vriend met zijn eigen inkt erop.

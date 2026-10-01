@@ -48,7 +48,7 @@ export function DesktopMagazine() {
   const toc = rest;
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
-  const hueOf = (p: CardPost) => groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
+  const hueOf = (p: CardPost) => p.swatch ?? groups.find((g) => g.key === p.authorId)?.hue ?? hueFor(p.authorId);
   const heroColor = hero ? friendColor(hueOf(hero), scheme) : friendColor("orange", scheme);
   const heroImg = hero && hero.media.kind === "foto" ? hero.media : null;
   const today = new Date();

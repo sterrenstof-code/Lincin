@@ -479,7 +479,7 @@ function Index({ f, posts, withName = true }: { f: Feed; posts: CardPost[]; with
           </Black>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              {withName ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: friendColor(hueOf.get(p.authorId) ?? "orange", o.scheme).fill }} /> : null}
+              {withName ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: friendColor(p.swatch ?? hueOf.get(p.authorId) ?? "orange", o.scheme).fill }} /> : null}
               <Label size={9} ls={0.08} style={{ flexShrink: 1 }}>
                 {withName ? `${p.authorName} · ` : ""}
                 {p.kind} · {timeLabel(p.createdAt, t, lang)}
@@ -540,7 +540,7 @@ function FriendBlock({ f, g, isNew, kicker }: { f: Feed; g: FriendGroup; isNew: 
   const fresh = f.freshIn(g).length;
   const n = g.posts.length;
   const canPrivate = !g.isGroup && !f.isMine(g.authorId);
-  const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: g.hue, isNew: !f.seen.has(p.id) }));
+  const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: p.swatch ?? g.hue, isNew: !f.seen.has(p.id) }));
   return (
     <>
       <BlockHead
@@ -568,7 +568,7 @@ function ByTime({ f }: { f: Feed }) {
   return (
     <View>
       {f.timeGroups.map((tg, i) => {
-        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: hueOf.get(p.authorId) ?? "orange", isNew: !f.seen.has(p.id) }));
+        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !f.seen.has(p.id) }));
         const n = tiles.filter((p) => p.isNew).length;
         return (
           <View key={tg.key}>

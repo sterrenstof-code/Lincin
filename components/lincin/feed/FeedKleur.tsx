@@ -203,7 +203,7 @@ export function FeedKleur() {
               key={p.id}
               post={p}
               number={f.numberOf(p.id)}
-              hue={g.hue}
+              hue={p.swatch ?? g.hue}
               width={rowCardW}
               maxPhotoH={Math.round(rowCardW * ROW_PHOTO_MAX)}
               myUserId={myUserId}
@@ -302,7 +302,7 @@ export function FeedKleur() {
               post={p}
               number={f.numberOf(p.id)}
               bleed
-              hue={groups.find((x) => x.key === p.authorId)?.hue ?? "orange"}
+              hue={p.swatch ?? groups.find((x) => x.key === p.authorId)?.hue ?? "orange"}
               myUserId={myUserId}
               reactions={reactions.grouped(p.id)}
               onReact={(emoji) => reactions.toggle(p.id, emoji)}

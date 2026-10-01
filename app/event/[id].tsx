@@ -452,7 +452,11 @@ export default function EventDetailScreen() {
     { label: copied ? "Gekopieerd" : "Kopieer link", icon: "link-outline", onPress: onCopyInvite },
     { label: "Uitnodigen", icon: "qr-code-outline", onPress: onOpenInvite },
     ...(ev.is_host
-      ? [{ label: pendingCount > 0 ? `Instellingen · ${pendingCount}` : "Instellingen", icon: "options-outline" as const, onPress: () => setSettingsOpen(true) }]
+      ? [
+          // Naam, tijd en cover bijstellen na het aanmaken.
+          { label: "Bewerk", icon: "create-outline" as const, onPress: () => router.push(`/event-create?edit=${eventId}`) },
+          { label: pendingCount > 0 ? `Instellingen · ${pendingCount}` : "Instellingen", icon: "options-outline" as const, onPress: () => setSettingsOpen(true) },
+        ]
       : []),
     {
       label: uploadProgress ? `${uploadProgress.done} van ${uploadProgress.total}` : uploading ? "Bezig…" : "Voeg toe",

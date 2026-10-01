@@ -89,7 +89,7 @@ export function useEdition(f: Feed) {
     const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
     const tiles: Tile[] = byTime
       .filter((c) => !isMine(c.authorId))
-      .map((c) => ({ ...c, hue: hueOf.get(c.authorId) ?? "orange", isNew: !seen.has(c.id) }));
+      .map((c) => ({ ...c, hue: c.swatch ?? hueOf.get(c.authorId) ?? "orange", isNew: !seen.has(c.id) }));
     const unread = tiles.filter((p) => p.isNew);
     const hero = unread.find((p) => p.media.kind === "foto") ?? unread[0] ?? tiles[0] ?? null;
     const alsoNew = unread.filter((p) => p !== hero);
@@ -537,7 +537,7 @@ function Cards({ f, g, heroFirst }: { f: Feed; g: FriendGroup; heroFirst: boolea
       {col
         ? g.posts.map((p, k) => {
             const hero = heroFirst && k === 0;
-            return <Card key={p.id} f={f} p={p} hue={g.hue} width={hero ? col * 2 + gap : col} hero={hero} />;
+            return <Card key={p.id} f={f} p={p} hue={p.swatch ?? g.hue} width={hero ? col * 2 + gap : col} hero={hero} />;
           })
         : null}
       {col && !mine ? (
@@ -743,7 +743,7 @@ function TimeCards({ f, posts, hueOf }: { f: Feed; posts: CardPost[]; hueOf: Map
       onLayout={(e) => setW(e.nativeEvent.layout.width - PAD * 2)}
       style={{ flexDirection: "row", flexWrap: "wrap", gap, paddingTop: 16, paddingHorizontal: PAD, paddingBottom: 10 }}
     >
-      {col ? posts.map((p) => <Card key={p.id} f={f} p={p} hue={hueOf.get(p.authorId) ?? "orange"} width={col} hero={false} />) : null}
+      {col ? posts.map((p) => <Card key={p.id} f={f} p={p} hue={p.swatch ?? hueOf.get(p.authorId) ?? "orange"} width={col} hero={false} />) : null}
     </View>
   );
 }

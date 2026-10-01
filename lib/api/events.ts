@@ -484,6 +484,59 @@ export async function deleteContribution(args: {
 }
 
 /**
+ * Een event aanpassen na het aanmaken (alleen de host, RLS "host can
+ * update event"): naam, beschrijving, plek, tijd en cover.
+ *
+ * `cover`: `undefined` laat hem staan, `null` haalt hem weg, een `uri`
+ * vervangt hem. Het oude bestand ruimen we pas op als de rij al naar het
+ * nieuwe wijst (best-effort), zodat een mislukte upload niets kapotmaakt.
+ */
+export async function updateEvent(args: {
+  eventId: string;
+  name: string;
+  description: string | null;
+  place: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  cover?: { uri: string; mimeType?: string | null } | null;
+}): Promise<void> {
+  const { data: before, error: readErr } = await supabase
+    .from("events")
+    .select("cover_image_path")
+    .eq("id", args.eventId)
+    .single();
+  if (readErr) throw readErr;
+  const oldPath = (before as { cover_image_path: string | null }).cover_image_path;
+
+  let coverPath: string | null | undefined = undefined;
+  if (args.cover === null) coverPath = null;
+  else if (args.cover) {
+    const ext = guessExt(args.cover.mimeType ?? undefined, args.cover.uri);
+    coverPath = `${args.eventId}/cover/${randomId()}.${ext}`;
+    await uploadToEventBucket(coverPath, args.cover.uri, args.cover.mimeType ?? "image/jpeg");
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      name: args.name.trim(),
+      description: args.description?.trim() || null,
+      place: args.place?.trim() || null,
+      starts_at: args.startsAt.toISOString(),
+      ends_at: args.endsAt.toISOString(),
+      ...(coverPath !== undefined ? { cover_image_path: coverPath } : null),
+    })
+    .eq("id", args.eventId);
+  if (error) {
+    if (coverPath) await supabase.storage.from(EVENT_BUCKET).remove([coverPath]).catch(() => {});
+    throw error;
+  }
+  if (coverPath !== undefined && oldPath && oldPath !== coverPath) {
+    await supabase.storage.from(EVENT_BUCKET).remove([oldPath]).catch(() => {});
+  }
+}
+
+/**
  * Een event weghalen (alleen de host, RLS "host can delete event"). Leden,
  * bijdragen en verzoeken gaan mee via on delete cascade; de bestanden in
  * opslag ruimen we vooraf op (best-effort — RLS op de bucket beslist).
