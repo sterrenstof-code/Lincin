@@ -195,10 +195,15 @@ function Poll({
   const fc = friendColor(hue, scheme);
   const poll = media.poll;
   const { mine, counts, total, vote } = usePollVote(poll, myUserId);
-  const rows = Math.max(1, Math.min(poll.options.length, Math.floor((height - 24 - 14) / 44)));
+  // Past niet alles in het vlak, dan klapt "+N" de rest open: anders kon
+  // je op de verborgen keuzes nergens stemmen, ook niet op de pollpagina.
+  const [open, setOpen] = useState(false);
+  const fits = Math.max(1, Math.floor((height - 24 - 14) / 44));
+  const rows = open ? poll.options.length : Math.min(poll.options.length, fits);
+  const hidden = poll.options.length - rows;
 
   return (
-    <View style={{ height, backgroundColor: color("paper2"), padding: 12, justifyContent: "center", gap: 8 }}>
+    <View style={{ ...(open ? { minHeight: height } : { height }), backgroundColor: color("paper2"), padding: 12, justifyContent: "center", gap: 8 }}>
       {poll.options.slice(0, rows).map((o, i) => {
         const pct = total ? Math.round((counts[i] / total) * 100) : 0;
         const on = mine.has(o.id);
@@ -230,10 +235,18 @@ function Poll({
           </Pressable>
         );
       })}
-      <Mono variant="tiny" tone="dim" style={{ textTransform: "none" }}>
-        {total} {t.votes}
-        {poll.options.length > rows ? ` · +${poll.options.length - rows}` : ""}
-      </Mono>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Mono variant="tiny" tone="dim" style={{ textTransform: "none" }}>
+          {total} {t.votes}
+        </Mono>
+        {hidden > 0 ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Nog ${hidden} keuzes`} onPress={() => setOpen(true)} hitSlop={8}>
+            <Mono variant="tiny" style={{ textTransform: "none", textDecorationLine: "underline" }}>
+              +{hidden} meer
+            </Mono>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-native";
 
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { CommentReactions } from "@/components/lincin/CommentReactions";
@@ -10,8 +10,9 @@ import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
 import { PostCard } from "@/components/lincin/PostCard";
 import { GAP, GUTTER, Mono } from "@/components/lincin/ui";
 import { addEntityComment, listEntityComments, subscribeToEntityComments } from "@/lib/api/entity-comments";
-import { getPollWithDetails } from "@/lib/api/polls";
+import { deletePoll, getPollWithDetails } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
+import { confirm } from "@/lib/confirm";
 import { friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import { openProfile } from "@/lib/lincin/desktop";
@@ -19,6 +20,7 @@ import { fromPoll } from "@/lib/lincin/model";
 import { useCommentReactions } from "@/lib/lincin/reactions";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
+import { safeBack } from "@/lib/nav";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
 
@@ -35,6 +37,7 @@ export default function PollScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = String(raw ?? "");
   const qc = useQueryClient();
+  const router = useRouter();
   const t = useT();
   const scheme = useScheme();
   const toast = useToast();
@@ -95,6 +98,24 @@ export default function PollScreen() {
     }
   }
 
+  // Een poll is geen bijdrage en had daarom geen "Verwijder": eenmaal
+  // gedeeld bleef hij voor altijd in de feed staan.
+  async function remove() {
+    if (!p) return;
+    const ok = await confirm("Poll verwijderen?", "Je vrienden zien hem dan niet meer, en de stemmen gaan mee.", {
+      affirmativeLabel: "Verwijder",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deletePoll(p.id);
+      invalidatePostCaches(qc);
+      safeBack(router, "/feed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t.failed);
+    }
+  }
+
   return (
     <LincinScreen
       tab="feed"
@@ -104,9 +125,17 @@ export default function PollScreen() {
       header={
         <TopRow
           right={
-            <Mono variant="micro" tone="dim">
-              poll
-            </Mono>
+            p && p.user_id === myUserId ? (
+              <Pressable accessibilityRole="button" onPress={remove} hitSlop={8}>
+                <Mono variant="micro" style={{ textDecorationLine: "underline" }}>
+                  Verwijder
+                </Mono>
+              </Pressable>
+            ) : (
+              <Mono variant="micro" tone="dim">
+                poll
+              </Mono>
+            )
           }
         />
       }

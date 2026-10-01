@@ -207,6 +207,9 @@ export default function ListDetailScreen() {
               placeholder="Voeg item toe…"
               returnKeyType="done"
               onSubmitEditing={onAddItem}
+              // Een boodschappenlijst typ je achter elkaar: na Enter blijft
+              // het veld open voor het volgende item.
+              blurOnSubmit={false}
             />
           </View>
           <Button

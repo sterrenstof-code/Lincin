@@ -39,7 +39,6 @@ export function DesktopFriends() {
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
-  const nameOf = (p: Profile) => p.display_name ?? p.username;
   const openProfile = (p: Profile) => router.push(`/user/${p.username}` as never);
   const toast = useToast();
   // Hetzelfde gesprek als "Bericht" op iemands profiel: bestaat het al, dan
@@ -167,68 +166,84 @@ export function DesktopFriends() {
       </ScrollView>
     </DesktopShell>
   );
+}
 
-  function GroupTitle({ children }: { children: string }) {
-    return (
-      <Text style={[capf(true, true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>
-        {children}
-      </Text>
-    );
-  }
+/*
+ * De bouwstenen hieronder staan buiten `DesktopFriends`. Binnen de functie
+ * kreeg elk ervan bij elke render een nieuwe identiteit, waardoor React de
+ * hele groep opnieuw opbouwde: het zoekveld verloor na elke letter zijn
+ * focus en van "coys" bleef alleen "c" over.
+ */
+const nameOf = (p: Profile) => p.display_name ?? p.username;
 
-  function Group({ title, children }: { title: string; children: ReactNode }) {
-    return (
-      <View style={{ flexGrow: 1, flexBasis: 280, minWidth: 280 }}>
-        <GroupTitle>{title}</GroupTitle>
-        <View>{children}</View>
+function GroupTitle({ children }: { children: string }) {
+  const spec = useThemeSpec();
+  const ink = color("ink");
+  return (
+    <Text style={[capf(true, true), { fontSize: 20, lineHeight: 22, color: ink, borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8 }]}>
+      {children}
+    </Text>
+  );
+}
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={{ flexGrow: 1, flexBasis: 280, minWidth: 280 }}>
+      <GroupTitle>{title}</GroupTitle>
+      <View>{children}</View>
+    </View>
+  );
+}
+
+function Wide({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={{ marginTop: 26, maxWidth: 900 }}>
+      <GroupTitle>{title}</GroupTitle>
+      <View>{children}</View>
+    </View>
+  );
+}
+
+function Row({ label, sub, children, onPress, last = false }: { label: string; sub: string; children: ReactNode; onPress?: () => void; last?: boolean }) {
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const rule = color("ink", "postRule");
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
+        {sub ? <Text style={[sans(), { fontSize: 12, lineHeight: 16, color: dim }]}>{sub}</Text> : null}
       </View>
-    );
-  }
+      {children}
+    </Pressable>
+  );
+}
 
-  function Wide({ title, children }: { title: string; children: ReactNode }) {
-    return (
-      <View style={{ marginTop: 26, maxWidth: 900 }}>
-        <GroupTitle>{title}</GroupTitle>
-        <View>{children}</View>
-      </View>
-    );
-  }
-
-  function Row({ label, sub, children, onPress, last = false }: { label: string; sub: string; children: ReactNode; onPress?: () => void; last?: boolean }) {
-    return (
+/** Eén persoon: naam en handle openen het profiel, rechts wat je met hem kunt. */
+function Person({ profile: p, onOpen, children, last }: { profile: Profile; onOpen: () => void; children: ReactNode; last: boolean }) {
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const rule = color("ink", "postRule");
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}>
       <Pressable
-        accessibilityRole={onPress ? "button" : undefined}
-        accessibilityLabel={label}
-        onPress={onPress}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 13, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}
+        accessibilityRole="link"
+        accessibilityLabel={`Profiel van ${nameOf(p)}`}
+        onPress={onOpen}
+        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}
       >
+        <Avatar name={nameOf(p)} avatarUrl={p.avatar_url} size="sm" />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{label}</Text>
-          {sub ? <Text style={[sans(), { fontSize: 12, lineHeight: 16, color: dim }]}>{sub}</Text> : null}
+          <Text numberOfLines={1} style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{nameOf(p)}</Text>
+          <Text numberOfLines={1} style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim }]}>@{p.username}</Text>
         </View>
-        {children}
       </Pressable>
-    );
-  }
-
-  /** Eén persoon: naam en handle openen het profiel, rechts wat je met hem kunt. */
-  function Person({ profile: p, onOpen, children, last }: { profile: Profile; onOpen: () => void; children: ReactNode; last: boolean }) {
-    return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, borderBottomWidth: last ? 0 : 1, borderBottomColor: rule }}>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Profiel van ${nameOf(p)}`}
-          onPress={onOpen}
-          style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}
-        >
-          <Avatar name={nameOf(p)} avatarUrl={p.avatar_url} size="sm" />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[sans(), { fontSize: 15, lineHeight: 19, color: ink }]}>{nameOf(p)}</Text>
-            <Text numberOfLines={1} style={[mono(500), { fontSize: 10, lineHeight: 13, color: dim }]}>@{p.username}</Text>
-          </View>
-        </Pressable>
-        <View style={{ flexDirection: "row", gap: 16 }}>{children}</View>
-      </View>
-    );
-  }
+      <View style={{ flexDirection: "row", gap: 16 }}>{children}</View>
+    </View>
+  );
 }

@@ -174,7 +174,8 @@ export function DesktopCompose({ c }: { c: Compose }) {
   );
 
   // ---- rechts: kleur, wie, voorbeeld, delen ----
-  const shareLabel = th === "kleur" ? t.share : t.shareWithLincs;
+  // Gekozen groep: dan deel je niet "met je lincs", en de knop zegt dat ook.
+  const shareLabel = th === "kleur" || c.audience ? t.share : t.shareWithLincs;
   const side = (
     <View style={[{ width: 380 }, th === "kleur" ? { borderLeftWidth: spec.border, borderLeftColor: ink } : { gap: SEAM }]}>
       <View style={panel()}>

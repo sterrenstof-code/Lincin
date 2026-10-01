@@ -221,3 +221,12 @@ export async function votePoll(args: {
       }
     });
 }
+
+/**
+ * Je eigen poll weghalen. Keuzes en stemmen gaan mee (on delete cascade);
+ * RLS ("polls: owner delete") laat alleen de maker dit doen.
+ */
+export async function deletePoll(pollId: string): Promise<void> {
+  const { error } = await supabase.from("polls").delete().eq("id", pollId);
+  if (error) throw error;
+}
