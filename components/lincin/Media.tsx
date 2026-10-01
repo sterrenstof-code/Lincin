@@ -240,7 +240,7 @@ function Poll({
           {total} {t.votes}
         </Mono>
         {hidden > 0 ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Nog ${hidden} keuzes`} onPress={() => setOpen(true)} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Nog ${hidden} ${hidden === 1 ? "keuze" : "keuzes"}`} onPress={() => setOpen(true)} hitSlop={8}>
             <Mono variant="tiny" style={{ textTransform: "none", textDecorationLine: "underline" }}>
               +{hidden} meer
             </Mono>
