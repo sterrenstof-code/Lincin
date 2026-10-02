@@ -59,5 +59,7 @@ Wat je vóór de eerste inzending nog nodig hebt buiten deze repo:
   (iPhone én iPad — de app ondersteunt tablets).
 - Play Console: app-record, `google-service-account.json` naast `eas.json`
   (staat in `.gitignore`), data-safety-formulier.
-- Exportregels: de app doet eigen e2e-versleuteling. Controleer of
-  `ITSAppUsesNonExemptEncryption: false` klopt voor jouw situatie.
+- Exportregels: de app doet eigen e2e-versleuteling, dus
+  `ITSAppUsesNonExemptEncryption` staat op `true`. Vul één keer de
+  encryptieverklaring in App Store Connect in en zet de code die je
+  terugkrijgt als `ITSEncryptionExportComplianceCode` in `app.config.ts`.

@@ -117,6 +117,9 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
             javaScriptEnabled
             domStorageEnabled
             allowsProtectedMedia
+            // iOS: de app heeft camera en microfoon al gekregen; zonder dit
+            // vraagt WKWebView het bij elk gesprek nóg eens per site.
+            mediaCapturePermissionGrantType="grant"
             // Sla de externe Jitsi API-referentie op zodat hangup werkt
             injectedJavaScriptBeforeContentLoaded={`
               window._jitsiApiReady = function(api) { window._jitsiApi = api; };
