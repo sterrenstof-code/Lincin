@@ -87,14 +87,21 @@ export function useEdition(f: Feed) {
   const { byTime, groups, seen, isMine } = f;
   return useMemo(() => {
     const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
-    const tiles: Tile[] = byTime
-      .filter((c) => !isMine(c.authorId))
-      .map((c) => ({ ...c, hue: c.swatch ?? hueOf.get(c.authorId) ?? "orange", isNew: !seen.has(c.id) }));
+    // Je eigen bijdragen staan er ook in, net als in Per vriend en Op tijd:
+    // wie iets plaatst en naar de feed gaat, wil het daar terugzien. Ze
+    // zijn nooit nieuw (zie `seen`), dus ze komen bij de rest, nieuwste
+    // eerst — en de omslag krijgen ze alleen als er niets anders is.
+    const tiles: Tile[] = byTime.map((c) => ({
+      ...c,
+      hue: c.swatch ?? hueOf.get(c.authorId) ?? "orange",
+      isNew: !seen.has(c.id),
+    }));
     const unread = tiles.filter((p) => p.isNew);
-    const hero = unread.find((p) => p.media.kind === "foto") ?? unread[0] ?? tiles[0] ?? null;
+    const hero = unread.find((p) => p.media.kind === "foto") ?? unread[0] ?? tiles.find((p) => !isMine(p.authorId)) ?? tiles[0] ?? null;
     const alsoNew = unread.filter((p) => p !== hero);
     const rest = tiles.filter((p) => !p.isNew && p !== hero);
-    return { hero, alsoNew, rest, friends: new Set(tiles.map((p) => p.authorId)).size, total: tiles.length };
+    const friends = new Set(tiles.filter((p) => !isMine(p.authorId)).map((p) => p.authorId)).size;
+    return { hero, alsoNew, rest, friends, total: tiles.length };
   }, [byTime, groups, seen, isMine]);
 }
 
