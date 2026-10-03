@@ -87,21 +87,28 @@ export function useEdition(f: Feed) {
   const { byTime, groups, seen, isMine } = f;
   return useMemo(() => {
     const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
-    // Je eigen bijdragen staan er ook in, net als in Per vriend en Op tijd:
-    // wie iets plaatst en naar de feed gaat, wil het daar terugzien. Ze
-    // zijn nooit nieuw (zie `seen`), dus ze komen bij de rest, nieuwste
-    // eerst — en de omslag krijgen ze alleen als er niets anders is.
     const tiles: Tile[] = byTime.map((c) => ({
       ...c,
       hue: c.swatch ?? hueOf.get(c.authorId) ?? "orange",
       isNew: !seen.has(c.id),
     }));
-    const unread = tiles.filter((p) => p.isNew);
-    const hero = unread.find((p) => p.media.kind === "foto") ?? unread[0] ?? tiles.find((p) => !isMine(p.authorId)) ?? tiles[0] ?? null;
-    const alsoNew = unread.filter((p) => p !== hero);
-    const rest = tiles.filter((p) => !p.isNew && p !== hero);
+    // De omslag: de bijdrage waar de laatste maand het meest mee gedaan is
+    // (comments, emoji, duwen) — een foto als die er is, want de omslag is
+    // een beeld. Bij gelijkstand de nieuwste (`byTime` is nieuwste eerst).
+    const photos = tiles.filter((p) => p.media.kind === "foto" && !p.media.video);
+    const pool = photos.length ? photos : tiles;
+    const hero = pool.reduce<Tile | null>((best, p) => (!best || p.monthInteractions > best.monthInteractions ? p : best), null);
+    // Wat je zelf het laatste etmaal plaatste staat bovenaan, vóór het
+    // nieuws van je vrienden: wie iets plaatst en naar de feed gaat, wil
+    // het daar meteen zien. Ouder werk van jezelf zakt naar de rest.
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    const mineNow = tiles.filter((p) => isMine(p.authorId) && Date.parse(p.createdAt) >= since && p !== hero);
+    const unread = tiles.filter((p) => p.isNew && p !== hero && !mineNow.includes(p));
+    const alsoNew = [...mineNow, ...unread];
+    const rest = tiles.filter((p) => !p.isNew && p !== hero && !mineNow.includes(p));
     const friends = new Set(tiles.filter((p) => !isMine(p.authorId)).map((p) => p.authorId)).size;
-    return { hero, alsoNew, rest, friends, total: tiles.length };
+    const newCount = tiles.filter((p) => p.isNew).length;
+    return { hero, alsoNew, rest, friends, newCount, total: tiles.length };
   }, [byTime, groups, seen, isMine]);
 }
 
@@ -217,7 +224,7 @@ function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
   const fc = friendColor(h.hue, scheme);
   const bandBg = spec.stripFilled ? fc.fill : color("paper");
   const bandInk = spec.stripFilled ? fc.ink : color("ink");
-  const n = ed.alsoNew.length + (h.isNew ? 1 : 0);
+  const n = ed.newCount;
   return (
     <View>
       <View style={{ flexDirection: "row", borderBottomWidth: spec.border, borderBottomColor: line }}>
