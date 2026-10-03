@@ -68,7 +68,7 @@ export async function createCallPlan(args: {
         userId: uid,
         actorId: args.userId,
         type: "invited_to_call",
-        postId: plan.id,
+        callPlanId: plan.id,
       });
     }
   }
@@ -186,7 +186,7 @@ export async function voteCallPlanSlot(args: {
             userId: plan.user_id,
             actorId: args.userId,
             type: "vote_on_call",
-            postId: slot.call_plan_id,
+            callPlanId: slot.call_plan_id,
           });
         }
       } catch {

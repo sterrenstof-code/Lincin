@@ -31,7 +31,9 @@ export type NotificationRow = {
     | "post_reaction"
     | "thread_reaction"
     // 0049 — je bugmelding is afgehandeld
-    | "bug_resolved";
+    | "bug_resolved"
+    // 0079 — een vriend start een poll in de feed
+    | "friend_poll";
   post_id: string | null;
   comment_id: string | null;
   /** 0048 — de reactie zelf, zodat het fragment in de melding kan staan. */
@@ -41,6 +43,10 @@ export type NotificationRow = {
   detail: string | null;
   /** 0049 — de bugmelding waar dit over gaat. */
   bug_report_id: string | null;
+  /** 0079 — stonden eerder in `post_id`, en daar faalde de foreign key op. */
+  poll_id: string | null;
+  call_plan_id: string | null;
+  list_id: string | null;
   read: boolean;
   created_at: string;
 };
@@ -53,6 +59,12 @@ export type NotificationWithDetails = NotificationRow & {
   post_source_title: string | null;
   comment_body: string | null;
   event_name: string | null;
+  /** De vraag van de poll, als het daarover gaat. */
+  poll_question: string | null;
+  /** De titel van de lijst of de call. */
+  target_title: string | null;
+  /** Waar een call over gaat: het gesprek waarin hij gepland werd. */
+  call_chat_id: string | null;
   /**
    * De miniatuur, al ondertekend.
    *
@@ -77,7 +89,7 @@ export async function listNotifications(
   const { data, error } = await supabase
     .from("notifications")
     .select(
-      "id, user_id, actor_id, type, post_id, comment_id, entity_comment_id, event_id, detail, bug_report_id, read, created_at"
+      "id, user_id, actor_id, type, post_id, comment_id, entity_comment_id, event_id, detail, bug_report_id, poll_id, call_plan_id, list_id, read, created_at"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -155,6 +167,18 @@ export async function listNotifications(
     }
   }
 
+  // Polls, calls en lijsten: de vraag of de titel, voor de zin in de melding.
+  const ids = (k: "poll_id" | "call_plan_id" | "list_id") =>
+    Array.from(new Set(rows.map((r) => r[k]).filter(Boolean))) as string[];
+  const [pollRes, callRes, listRes] = await Promise.all([
+    ids("poll_id").length ? supabase.from("polls").select("id, question").in("id", ids("poll_id")) : null,
+    ids("call_plan_id").length ? supabase.from("call_plans").select("id, title, chat_id").in("id", ids("call_plan_id")) : null,
+    ids("list_id").length ? supabase.from("shared_lists").select("id, title").in("id", ids("list_id")) : null,
+  ]);
+  const pollMap = new Map((pollRes?.data ?? []).map((p) => [p.id, p.question as string]));
+  const callMap = new Map((callRes?.data ?? []).map((c) => [c.id, c as { title: string | null; chat_id: string | null }]));
+  const listMap = new Map((listRes?.data ?? []).map((l) => [l.id, l.title as string]));
+
   // Alle miniaturen in één keer, op de maat waarop ze getekend worden.
   const thumbs = await signedImageUrls(
     "posts",
@@ -177,6 +201,12 @@ export async function listNotifications(
       (r.comment_id ? commentMap[r.comment_id]?.body : null) ??
       null,
     event_name: r.event_id ? (eventMap[r.event_id]?.name ?? null) : null,
+    poll_question: r.poll_id ? (pollMap.get(r.poll_id) ?? null) : null,
+    target_title:
+      (r.list_id ? listMap.get(r.list_id) : null) ??
+      (r.call_plan_id ? callMap.get(r.call_plan_id)?.title : null) ??
+      null,
+    call_chat_id: r.call_plan_id ? (callMap.get(r.call_plan_id)?.chat_id ?? null) : null,
   }));
 }
 
@@ -213,6 +243,9 @@ export async function createNotification(args: {
   postId?: string | null;
   commentId?: string | null;
   eventId?: string | null;
+  pollId?: string | null;
+  callPlanId?: string | null;
+  listId?: string | null;
 }): Promise<void> {
   if (args.userId === args.actorId) return; // nooit aan jezelf
   const { error } = await supabase.from("notifications").insert({
@@ -222,6 +255,9 @@ export async function createNotification(args: {
     post_id: args.postId ?? null,
     comment_id: args.commentId ?? null,
     event_id: args.eventId ?? null,
+    poll_id: args.pollId ?? null,
+    call_plan_id: args.callPlanId ?? null,
+    list_id: args.listId ?? null,
   });
   if (error) console.warn("createNotification error", error.message);
 }

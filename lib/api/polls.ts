@@ -221,7 +221,7 @@ export async function votePoll(args: {
           userId: data.user_id,
           actorId: args.userId,
           type: "vote_on_poll",
-          postId: args.pollId,
+          pollId: args.pollId,
         });
       }
     });

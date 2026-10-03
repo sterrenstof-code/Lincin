@@ -97,6 +97,12 @@ function vapidKeyToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
  * zonder extra configuratie tóch werkt — dat het er eerder alleen de eerste
  * was, is precies waarom web push nooit is aangegaan.
  */
+function sameKey(a: ArrayBuffer | null, b: Uint8Array): boolean {
+  if (!a) return false;
+  const x = new Uint8Array(a);
+  return x.length === b.length && x.every((v, i) => v === b[i]);
+}
+
 function vapidPublicKey(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
   if (fromEnv) return fromEnv;
@@ -136,10 +142,25 @@ async function registerWebPush(userId: string): Promise<string | null> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return null;
 
-    // subscribe() is idempotent: bestaand abonnement → zelfde object terug.
+    /**
+     * Een abonnement van een andere sleutel eerst opzeggen.
+     *
+     * subscribe() is idempotent zolang de sleutel dezelfde is. Is hij dat
+     * niet — het abonnement stamt van vóór de huidige VAPID-sleutel — dan
+     * gooit subscribe() een InvalidStateError, en dat verdween hieronder in
+     * de catch. Het oude abonnement bleef dus staan, en de pushdienst weigert
+     * het (403 bij Google, VapidPkHashMismatch bij Apple): zo kreeg niemand
+     * op een iPhone nog een melding. Opzeggen en opnieuw aanmelden lost het
+     * op zonder dat iemand iets hoeft te doen; de toestemming blijft staan.
+     */
+    const appKey = vapidKeyToUint8Array(vapidKey);
+    const existing = await registration.pushManager.getSubscription();
+    if (existing && !sameKey(existing.options.applicationServerKey, appKey)) {
+      await existing.unsubscribe();
+    }
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: vapidKeyToUint8Array(vapidKey),
+      applicationServerKey: appKey,
     });
 
     const subscriptionJson = JSON.stringify(subscription.toJSON());

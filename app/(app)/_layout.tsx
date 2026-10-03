@@ -188,7 +188,12 @@ export default function AppLayout() {
   // Native: expo-notifications tap listener
   useEffect(() => {
     return addNotificationTapListener((data) => {
-      if (data?.chat_id) {
+      // `path` zet send-push zelf (zie daar); de rest is voor oudere meldingen.
+      if (typeof data?.path === "string" && data.path.startsWith("/")) {
+        import("expo-router").then(({ router }) => {
+          router.push(data.path);
+        });
+      } else if (data?.chat_id) {
         import("expo-router").then(({ router }) => {
           router.push(`/chat/${data.chat_id}`);
         });

@@ -133,8 +133,10 @@ function buildNotificationBody(args: {
   postLabel: string;
   commentBody: string | null;
   eventName: string;
+  pollQuestion?: string | null;
+  listTitle?: string | null;
 }): string {
-  const { type, emoji, postLabel, commentBody, eventName } = args;
+  const { type, emoji, postLabel, commentBody, eventName, pollQuestion, listTitle } = args;
   const said = commentBody ? `: „${trim(commentBody, 70)}”` : "";
 
   switch (type) {
@@ -163,12 +165,14 @@ function buildNotificationBody(args: {
       return "je bugmelding is afgehandeld";
 
     // ---- stemmingen, lijsten, calls ----
+    case "friend_poll":
+      return pollQuestion ? `vraagt: „${trim(pollQuestion, 70)}”` : "startte een poll";
     case "vote_on_poll":
-      return "stemde op je stemming";
+      return pollQuestion ? `stemde op „${trim(pollQuestion, 60)}”` : "stemde op je stemming";
     case "vote_on_call":
       return "koos een tijdslot voor je call";
     case "invited_to_list":
-      return "nodigde je uit voor een lijst";
+      return listTitle ? `nodigde je uit voor „${trim(listTitle, 60)}”` : "nodigde je uit voor een lijst";
     case "invited_to_call":
       return "nodigde je uit voor een videocall";
 
@@ -293,7 +297,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Alle context in één ronde: wie het deed, waarover het gaat.
-      const [actorRes, postRes, commentRes, eventRes] = await Promise.all([
+      const [actorRes, postRes, commentRes, eventRes, pollRes, callRes, listRes] = await Promise.all([
         admin
           .from("profiles")
           .select("display_name, username")
@@ -320,7 +324,36 @@ Deno.serve(async (req: Request) => {
               .eq("id", record.event_id)
               .maybeSingle()
           : Promise.resolve({ data: null }),
+        record.poll_id
+          ? admin.from("polls").select("question").eq("id", record.poll_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        record.call_plan_id
+          ? admin.from("call_plans").select("title, chat_id").eq("id", record.call_plan_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        record.list_id
+          ? admin.from("shared_lists").select("title").eq("id", record.list_id).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
+      const pollQuestion: string | null = (pollRes as any)?.data?.question ?? null;
+      const listTitle: string | null = (listRes as any)?.data?.title ?? null;
+      const callChatId: string | null = (callRes as any)?.data?.chat_id ?? null;
+
+      // Waar een tik naartoe gaat. Eén plek, zodat de service worker en de
+      // native app niet elk hun eigen lijst bijhouden (die kenden alleen
+      // gesprek, bijdrage en event — een poll opende de app op de feed).
+      const path = record.event_id
+        ? `/event/${record.event_id}`
+        : record.post_id
+          ? `/post/${record.post_id}`
+          : record.poll_id
+            ? `/poll/${record.poll_id}`
+            : record.list_id
+              ? `/list/${record.list_id}`
+              : callChatId
+                ? `/chat/${callChatId}`
+                : record.bug_report_id
+                  ? "/bugs"
+                  : "/notifications";
 
       const actorName =
         (actorRes as any)?.data?.display_name ??
@@ -336,6 +369,8 @@ Deno.serve(async (req: Request) => {
         postLabel: describePost(post),
         commentBody,
         eventName,
+        pollQuestion,
+        listTitle,
       });
 
       notifications = devices.map((d: any) => ({
@@ -344,6 +379,7 @@ Deno.serve(async (req: Request) => {
         body,
         data: {
           type,
+          path,
           notification_id: record.id,
           ...(record.post_id ? { post_id: record.post_id } : {}),
           ...(record.event_id ? { event_id: record.event_id } : {}),
@@ -397,9 +433,30 @@ Deno.serve(async (req: Request) => {
           sendWebPush(n.to, n.title, n.body, n.data)
         )
       );
-      results.web = webResults.map((r) =>
-        r.status === "fulfilled" ? "ok" : r.reason?.message ?? "error"
-      );
+      /**
+       * 404 en 410 zeggen: dit abonnement bestaat niet meer (browser
+       * gewist, PWA opnieuw geïnstalleerd, toestemming ingetrokken). Die
+       * rij blijft anders eeuwig staan en faalt bij élke melding opnieuw —
+       * zo stonden er tien dode naast één levende voor dezelfde persoon.
+       * De statuscode staat in het resultaat; "Received unexpected response
+       * code" alleen zei niet wát er misging.
+       */
+      const dead: string[] = [];
+      results.web = webResults.map((r, i) => {
+        if (r.status === "fulfilled") return "ok";
+        const code = r.reason?.statusCode;
+        const body0 = typeof r.reason?.body === "string" ? r.reason.body : "";
+        // Ook een abonnement van een oude VAPID-sleutel is voorgoed dood
+        // (403 bij Google, 400 VapidPkHashMismatch bij Apple). De app meldt
+        // zich bij de volgende keer openen opnieuw aan met de goede sleutel.
+        const wrongKey = code === 403 || body0.includes("VapidPkHashMismatch");
+        if (code === 404 || code === 410 || wrongKey) dead.push(webNotifications[i].to);
+        return code ? `${code} ${body0.slice(0, 120)}`.trim() : r.reason?.message ?? "error";
+      });
+      if (dead.length) {
+        await admin.from("user_devices").delete().in("push_token", dead);
+        results.pruned = dead.length;
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, ...results }), {

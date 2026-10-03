@@ -152,6 +152,10 @@ function NotificationsPhone() {
 export function destinationFor(item: NotificationWithDetails): string | null {
   if (item.event_id) return `/event/${item.event_id}`;
   if (item.post_id) return `/post/${item.post_id}`;
+  if (item.poll_id) return `/poll/${item.poll_id}`;
+  if (item.list_id) return `/list/${item.list_id}`;
+  // Een call heeft geen eigen bladzijde; hij leeft in het gesprek.
+  if (item.call_chat_id) return `/chat/${item.call_chat_id}`;
   return null;
 }
 
@@ -222,9 +226,10 @@ export function describe(item: NotificationWithDetails): { text: string } {
     case "post_reaction": return { text: `reageerde ${item.detail ?? ""} op jouw bijdrage`.replace("  ", " ") };
     case "thread_reaction": return { text: `reageerde ${item.detail ?? ""} op ${subject}`.replace("  ", " ") };
     case "thread_boost": return { text: `duwde ${subject} omhoog` };
-    case "vote_on_poll": return { text: "stemde op jouw poll" };
+    case "friend_poll": return { text: item.poll_question ? `vraagt: «${truncate(item.poll_question, 48)}»` : "startte een poll" };
+    case "vote_on_poll": return { text: item.poll_question ? `stemde op «${truncate(item.poll_question, 40)}»` : "stemde op jouw poll" };
     case "vote_on_call": return { text: "koos een tijdslot voor jouw call" };
-    case "invited_to_list": return { text: "nodigde je uit voor een lijst" };
+    case "invited_to_list": return { text: item.target_title ? `nodigde je uit voor «${truncate(item.target_title, 40)}»` : "nodigde je uit voor een lijst" };
     case "invited_to_call": return { text: "nodigde je uit voor een videocall" };
     case "event_join": return { text: `nam deel aan ${eventName}` };
     case "event_join_request": return { text: `vraagt toegang tot ${eventName}` };

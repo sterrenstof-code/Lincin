@@ -56,7 +56,7 @@ export async function createSharedList(args: {
         userId: uid,
         actorId: args.userId,
         type: "invited_to_list",
-        postId: list.id,
+        listId: list.id,
       });
     }
   }

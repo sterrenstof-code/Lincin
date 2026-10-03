@@ -640,6 +640,10 @@ export type Database = {
           detail: string | null;
           /** 0049 — de bugmelding waar deze melding over gaat. */
           bug_report_id: string | null;
+          /** 0079 — stonden eerder in `post_id`, waar de foreign key ze weigerde. */
+          poll_id: string | null;
+          call_plan_id: string | null;
+          list_id: string | null;
           read: boolean;
           created_at: string;
         };
@@ -654,6 +658,9 @@ export type Database = {
           event_id?: string | null;
           detail?: string | null;
           bug_report_id?: string | null;
+          poll_id?: string | null;
+          call_plan_id?: string | null;
+          list_id?: string | null;
           read?: boolean;
           created_at?: string;
         };

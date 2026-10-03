@@ -35,6 +35,8 @@ self.addEventListener("push", (event) => {
       ? `post-${payload.data.post_id}`
       : payload.data?.event_id
       ? `event-${payload.data.event_id}`
+      : payload.data?.path
+      ? `path-${payload.data.path}`
       : "lincin",
     renotify: true,
     // Trilt kort op Android
@@ -49,7 +51,9 @@ self.addEventListener("notificationclick", (event) => {
 
   const data = event.notification.data ?? {};
   let targetPath = "/";
-  if (data.chat_id) targetPath = `/chat/${data.chat_id}`;
+  // `path` zet send-push zelf; de rest is voor meldingen van vóór dat veld.
+  if (typeof data.path === "string" && data.path.startsWith("/")) targetPath = data.path;
+  else if (data.chat_id) targetPath = `/chat/${data.chat_id}`;
   else if (data.post_id) targetPath = `/post/${data.post_id}`;
   else if (data.event_id) targetPath = `/event/${data.event_id}`;
   else if (data.bug_report_id) targetPath = "/bugs";
