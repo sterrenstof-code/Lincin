@@ -51,7 +51,6 @@ function ChatsMobile() {
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
   const toast = useToast();
-  const previews = useChatPreviews();
   const readMenu = useChatReadMenu();
 
   const chats = useQuery({
@@ -59,6 +58,7 @@ function ChatsMobile() {
     queryFn: () => listMyChats(myUserId),
     refetchOnWindowFocus: true,
   });
+  const previews = useChatPreviews(chats.data, myUserId);
   const friendships = useQuery({
     queryKey: ["friendships", myUserId],
     queryFn: () => listMyFriendships(myUserId),
@@ -317,7 +317,7 @@ function Row({
         </Body>
       </View>
       {unread > 0 ? (
-        <View style={{ alignSelf: "center", marginRight: 12, minWidth: 26, height: 26, paddingHorizontal: 7, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+        <View style={{ alignSelf: "center", marginRight: 12, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
           <Mono variant="action" style={{ color: "#F5F1E8", letterSpacing: 0 }}>
             {unread}
           </Mono>

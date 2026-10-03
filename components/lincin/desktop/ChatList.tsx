@@ -58,9 +58,9 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();
-  const previews = useChatPreviews();
   const readMenu = useChatReadMenu();
   const { myUserId, chats, list } = useSortedChats();
+  const previews = useChatPreviews(chats.data, myUserId);
   const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId), enabled: full });
   const inChats = useMemo(() => new Set(list.filter((c) => c.type === "direct").flatMap((c) => c.members.map((m) => m.id))), [list]);
   const withoutChat = full ? (friendships.data ?? []).filter((f) => f.status === "accepted" && !inChats.has(f.other.id)) : [];
@@ -175,7 +175,7 @@ function Row({
   const label = unread ? `${name}, ${unread} ${t.unread}` : name;
   const timeFg = unread ? color("red") : dim;
   // Ongelezen moet je zien zonder te zoeken: de laatste regel in inkt en
-  // vet, en rechts een rood blok met het aantal — in élk thema hetzelfde.
+  // vet, en rechts een rode bol met het aantal — in élk thema hetzelfde.
   // Telegram: gelezen/ongelezen zonder het gesprek te openen. Op desktop bij
   // hover, waar de tijd staat; overal ook via lang drukken of rechtsklik.
   // Naast de rij en niet erin: een knop in een knop is op web geen geldige
@@ -198,7 +198,7 @@ function Row({
   );
   const previewStyle = unread ? { ...sans(700), color: ink } : null;
   const badge = unread ? (
-    <View style={{ flexShrink: 0, minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: spec.id === "kleur" ? 0 : 13, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
+    <View style={{ flexShrink: 0, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
       <Text style={[sans(800), { fontSize: 13, lineHeight: 16, color: ON_DARK }]}>{unread > 99 ? "99+" : unread}</Text>
     </View>
   ) : null;
@@ -255,16 +255,9 @@ function Row({
       >
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
           <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
-          {/* Eigen ronde uitsnede: het vakje zelf mag niet afsnijden, anders
-              valt het telbolletje dat erover hangt weg. */}
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, overflow: "hidden" }} pointerEvents="none">
             <AvatarPhoto url={avatarUrl} size={52} />
           </View>
-          {unread ? (
-            <View style={{ position: "absolute", top: -4, right: -4, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
-              <Text style={[sans(800), { fontSize: 11, lineHeight: 13, color: ON_DARK }]}>{unread > 99 ? "99+" : unread}</Text>
-            </View>
-          ) : null}
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -273,9 +266,12 @@ function Row({
             </Text>
             {hover && onToggleRead ? null : time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
           </View>
-          <Text numberOfLines={1} style={[sans(), { fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
-            {preview}
-          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
+              {preview}
+            </Text>
+            {badge}
+          </View>
         </View>
       </Pressable>
       {toggleBtn}

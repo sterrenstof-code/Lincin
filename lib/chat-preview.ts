@@ -1,6 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
+import type { ChatWithMembers } from "@/lib/api/chats";
+import { fetchMessages, type DecryptedMessage } from "@/lib/api/messages";
+
 /**
  * De laatste regel van elk gesprek, zodat de chatlijst iets te zeggen heeft.
  *
@@ -104,8 +107,73 @@ export async function rememberChatPreview(chatId: string, preview: ChatPreview) 
   await persist(store);
 }
 
-export function useChatPreviews(): Store {
+/** De regel voor één bericht: de tekst, of een woord voor een bijlage. Null als er niets te tonen valt. */
+export function previewLine(msg: DecryptedMessage): string | null {
+  const text = msg.content?.text?.trim();
+  if (text) return shortenForPreview(text);
+  const attachment = msg.content?.attachment;
+  if (!attachment) return null;
+  return attachment.type === "video" ? "Clip" : attachment.type === "audio" ? "Spraakbericht" : "Foto";
+}
+
+function previewFor(msg: DecryptedMessage, chat: ChatWithMembers, myUserId: string): ChatPreview | null {
+  const line = previewLine(msg);
+  if (!line) return null;
+  const fromMe = msg.sender_id === myUserId;
+  const m = fromMe ? null : chat.members.find((x) => x.id === msg.sender_id);
+  return { text: line, fromMe, sender: m ? m.display_name ?? m.username ?? null : null, at: msg.created_at };
+}
+
+/**
+ * Per gesprek de `last_message_at` waarvoor we al keken. Een laatste
+ * bericht dat niets oplevert (systeemmelding, niet te ontsleutelen) zou
+ * anders bij elke render opnieuw opgehaald worden.
+ */
+const checked = new Map<string, string>();
+
+/**
+ * Bijwerken wat achterloopt.
+ *
+ * Alleen het gesprek zelf schreef de regel weg, dus de lijst toonde wat
+ * je het laatst LAS en niet wat er het laatst GEZEGD werd. Loopt de regel
+ * achter op `last_message_at` (die de server wél kent), dan halen we de
+ * laatste berichten op en ontsleutelen ze hier — op het toestel, net als
+ * het gesprek dat doet. Er gaat niets leesbaars naar de server.
+ */
+async function catchUp(chats: ChatWithMembers[], myUserId: string) {
+  const store = await load();
+  for (const chat of chats) {
+    const lastAt = chat.last_message_at;
+    if (!lastAt || checked.get(chat.id) === lastAt) continue;
+    const have = store[chat.id];
+    if (have && Date.parse(have.at) >= Date.parse(lastAt)) continue;
+    checked.set(chat.id, lastAt);
+    try {
+      const msgs = await fetchMessages(chat.id, myUserId, 5);
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const pv = previewFor(msgs[i], chat, myUserId);
+        if (pv) {
+          await rememberChatPreview(chat.id, pv);
+          break;
+        }
+      }
+    } catch {
+      // Lukt het niet, dan blijft de oude regel staan; volgende keer opnieuw.
+      checked.delete(chat.id);
+    }
+  }
+}
+
+/**
+ * De onthouden regels. Geef de gesprekken mee en de regels die achterlopen
+ * op het laatste bericht worden bijgewerkt.
+ */
+export function useChatPreviews(chats?: ChatWithMembers[], myUserId?: string): Store {
   const [store, setStore] = useState<Store>(cache ?? {});
+
+  useEffect(() => {
+    if (chats?.length && myUserId) void catchUp(chats, myUserId);
+  }, [chats, myUserId]);
 
   useEffect(() => {
     let alive = true;

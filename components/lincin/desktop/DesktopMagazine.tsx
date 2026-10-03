@@ -216,7 +216,7 @@ function ChatsSummary({ onOpen }: { onOpen: (chatId: string) => void }) {
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "anon";
   const chats = useQuery({ queryKey: ["chats", myUserId], queryFn: () => listMyChats(myUserId), enabled: !!session, staleTime: 30_000 });
-  const previews = useChatPreviews();
+  const previews = useChatPreviews(chats.data, myUserId);
   const list = [...(chats.data ?? [])].sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at)).slice(0, 4);
   const unread = (chats.data ?? []).reduce((n, c) => n + (c.unread_count ?? 0), 0);
   const ink = color("ink");

@@ -111,8 +111,8 @@ import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, 
 import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
+  previewLine,
   rememberChatPreview,
-  shortenForPreview,
 } from "@/lib/chat-preview";
 import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
@@ -706,19 +706,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   useEffect(() => {
     if (!id || !messages || messages.length === 0) return;
     const last = messages[messages.length - 1];
-    const text = last.content?.text?.trim();
-    const attachment = last.content?.attachment;
     // Een bericht dat niet ontsleutelde levert geen regel op: dan liever
     // het aantal dan een leeg streepje.
-    const line = text
-      ? shortenForPreview(text)
-      : attachment
-        ? attachment.type === "video"
-          ? "Clip"
-          : attachment.type === "audio"
-            ? "Spraakbericht"
-            : "Foto"
-        : null;
+    const line = previewLine(last);
     if (!line) return;
     const fromMe = last.sender_id === myUserId;
     void rememberChatPreview(id, {
