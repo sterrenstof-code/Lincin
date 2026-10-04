@@ -700,20 +700,19 @@ const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
 };
 
 /**
- * Welke kleur een vriend bezit — in jouw app.
+ * Welke kleur iemand bezit.
  *
- * Heb je zelf een kleur voor iemand gekozen (op zijn profiel), dan wint
- * die in het thema kleur; zie `setHueChoice` hieronder. Magazine kent
- * alleen de kleurbalk en houdt de eigen kleur van iedereen. Anders komt de kleur uit het id zelf,
- * zodat hij op élk toestel en in élke sessie dezelfde is. Groepen zijn
- * altijd groen (README §01).
+ * De kleur die hij zelf koos bij het aanmaken van zijn account (0082, zie
+ * `rememberHues` hieronder). Koos hij er geen, dan komt de kleur uit het id
+ * zelf, zodat hij op élk toestel en in élke sessie dezelfde is. Groepen
+ * zijn altijd groen (README §01).
  *
- * Een scherm dat hiermee tekent roept `useHueFor()` aan, zodat het
- * hertekent zodra je een kleur verandert.
+ * Een scherm dat hiermee tekent roept `useHueChoices()` aan, zodat het
+ * hertekent zodra er een kleur binnenkomt.
  */
 export function hueFor(id: string | null | undefined): Hue {
   if (!id) return "orange";
-  return defaultHueFor(id);
+  return ownHues[id] ?? defaultHueFor(id);
 }
 
 /** De kleur die iemand krijgt als je zelf niets koos. */
@@ -1092,8 +1091,11 @@ export function loadStoredPreference() {
     .catch(() => {});
   AsyncStorage.getItem(HUE_KEY)
     .then((raw) => {
-      // De database kan intussen al geantwoord hebben; die wint.
-      if (raw && !hueChoicesSynced) setHueChoices(parseChoices(raw), false);
+      // Wat intussen al uit een profiel binnenkwam wint van de kopie.
+      const stored = parseChoices(raw);
+      if (Object.keys(stored).length === 0) return;
+      ownHues = { ...stored, ...ownHues };
+      emitHues();
     })
     .catch(() => {});
 }
@@ -1103,12 +1105,19 @@ export function loadStoredPreference() {
 // ===============================================================
 
 /**
- * De kleuren die je zelf aan mensen gaf: id → kleur. Van jou alleen —
- * een ander ziet ze niet. De bron is de tabel `friend_colors`
- * (lib/api/friend-colors.ts); hier staat een kopie, lokaal bewaard, zodat
- * het eerste beeld al klopt.
+ * De eigen kleur van iedereen die je app al zag: id → kleur (0082,
+ * `profiles.hue`, gekozen bij het aanmaken van een account).
+ *
+ * Elk profiel dat geladen wordt geeft zijn kleur hier af
+ * (`rememberHues`, lib/api/profiles.ts en friends.ts). Wie er geen koos,
+ * staat hier niet en krijgt de kleur uit zijn id — dezelfde als altijd. Een
+ * lokale kopie zorgt dat het eerste beeld al klopt.
+ *
+ * Tot okt 2026 hield deze plek de kleuren die je zelf aan anderen gaf
+ * (`friend_colors`, 0062). Dat kon alleen in het thema kleur, en dat is
+ * vervallen; de tabel blijft staan maar wordt niet meer gelezen.
  */
-const HUE_KEY = "lincin-kleuren";
+const HUE_KEY = "lincin-eigen-kleuren";
 
 function parseChoices(raw: string | null): Record<string, Hue> {
   if (!raw) return {};
@@ -1122,9 +1131,7 @@ function parseChoices(raw: string | null): Record<string, Hue> {
   }
 }
 
-let hueChoices: Record<string, Hue> = parseChoices(readLocal(HUE_KEY));
-/** Heeft de database al geantwoord? Dan wint die van de lokale kopie. */
-let hueChoicesSynced = false;
+let ownHues: Record<string, Hue> = parseChoices(readLocal(HUE_KEY));
 const hueListeners = new Set<() => void>();
 
 function emitHues() {
@@ -1138,27 +1145,40 @@ function subscribeHues(fn: () => void) {
   };
 }
 
-const getHueChoices = () => hueChoices;
+const getOwnHues = () => ownHues;
 
-/** Alle keuzes tegelijk — zo komen ze binnen uit de database. */
-export function setHueChoices(next: Record<string, Hue>, fromServer = true) {
-  if (fromServer) hueChoicesSynced = true;
-  hueChoices = next;
+/**
+ * Kleuren uit geladen profielen. Alleen bij een echte verandering wordt er
+ * bewaard en hertekend — dit loopt bij elke profielquery.
+ */
+export function rememberHues(list: ReadonlyArray<{ id: string; hue?: string | null }>) {
+  let next: Record<string, Hue> | null = null;
+  for (const p of list) {
+    const h = p.hue && HUES.includes(p.hue as Hue) ? (p.hue as Hue) : null;
+    if ((ownHues[p.id] ?? null) === h) continue;
+    next ??= { ...ownHues };
+    if (h) next[p.id] = h;
+    else delete next[p.id];
+  }
+  if (!next) return;
+  ownHues = next;
   writeLocal(HUE_KEY, JSON.stringify(next));
   emitHues();
 }
 
-/** Eén keuze; `null` geeft iemand zijn eigen kleur terug. */
-export function setHueChoice(id: string, hue: Hue | null) {
-  const next = { ...hueChoices };
-  if (hue) next[id] = hue;
-  else delete next[id];
-  setHueChoices(next);
+/** Bij afmelden: de kleuren van wie je zag horen bij jouw sessie. */
+export function clearHues() {
+  ownHues = {};
+  writeLocal(HUE_KEY, "{}");
+  emitHues();
 }
 
-/** Jouw keuzes, meebewegend. */
+/**
+ * De eigen kleuren, meebewegend. Een scherm dat met `hueFor` tekent roept
+ * dit aan, zodat het hertekent zodra er een kleur binnenkomt.
+ */
 export function useHueChoices(): Record<string, Hue> {
-  return useSyncExternalStore(subscribeHues, getHueChoices, getHueChoices);
+  return useSyncExternalStore(subscribeHues, getOwnHues, getOwnHues);
 }
 
 // ===============================================================

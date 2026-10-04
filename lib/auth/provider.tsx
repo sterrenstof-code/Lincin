@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from "react";
 
-import { setHueChoices } from "../design/theme";
+import { Platform } from "react-native";
+
+import { clearHues, type Hue } from "../design/theme";
 import { supabase } from "../supabase/client";
 
 type AuthError = { error: Error | null };
@@ -31,8 +33,23 @@ type AuthContextValue = {
    */
   signUp: (
     email: string,
-    password: string
+    password: string,
+    profile?: SignUpProfile
   ) => Promise<AuthError & { needsConfirmation: boolean; alreadyExists: boolean }>;
+  /**
+   * Inloggen via Apple of Google (web). Alleen de aanbieders in
+   * `providers` werken; de knoppen voor de andere blijven verborgen.
+   */
+  signInWithProvider: (provider: OAuthProvider) => Promise<AuthError>;
+  /** Welke aanbieders aan staan (`EXPO_PUBLIC_AUTH_PROVIDERS`). */
+  providers: OAuthProvider[];
+  /**
+   * Binnengekomen via de link uit "Wachtwoord vergeten"? Dan stuurt de app
+   * je eerst naar een nieuw wachtwoord (app/set-password.tsx).
+   */
+  recovering: boolean;
+  /** Het nieuwe wachtwoord staat er; de herstelstand mag weg. */
+  endRecovery: () => void;
   /** Stel of wijzig het wachtwoord van het huidige ingelogde account. */
   setPassword: (password: string) => Promise<AuthError>;
   /**
@@ -47,6 +64,25 @@ type AuthContextValue = {
   resendConfirmation: (email: string) => Promise<AuthError>;
   signOut: () => Promise<void>;
 };
+
+export type OAuthProvider = "apple" | "google";
+
+/** Wat het aanmaken van een account meegeeft aan het profiel (0082). */
+export type SignUpProfile = { displayName: string; hue: Hue };
+
+/**
+ * Apple en Google staan pas aan als ze in Supabase ingesteld zijn — anders
+ * leidt de knop naar een foutpagina. `EXPO_PUBLIC_AUTH_PROVIDERS=apple,google`
+ * zet ze aan. Alleen op web: native heeft er eigen pakketten voor nodig.
+ */
+function enabledProviders(): OAuthProvider[] {
+  if (Platform.OS !== "web") return [];
+  const raw = process.env.EXPO_PUBLIC_AUTH_PROVIDERS ?? "";
+  return raw
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter((p): p is OAuthProvider => p === "apple" || p === "google");
+}
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -72,6 +108,7 @@ function getAuthRedirectUrl(): string | undefined {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -82,8 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
     });
 
     return () => {
@@ -99,6 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       hasPassword,
+      recovering,
+      providers: enabledProviders(),
+      endRecovery() {
+        setRecovering(false);
+      },
       async signInWithEmail(email: string) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -124,12 +167,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { error };
       },
-      async signUp(email: string, password: string) {
+      async signUp(email: string, password: string, profile?: SignUpProfile) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { has_password: true },
+            // Naam en kleur reizen mee in de metadata, zodat ze een
+            // bevestigingsmail overleven; de profieltrigger (0082) neemt
+            // ze over zodra het profiel aangemaakt wordt.
+            data: {
+              has_password: true,
+              ...(profile ? { display_name: profile.displayName.trim(), hue: profile.hue } : null),
+            },
             emailRedirectTo: getAuthRedirectUrl(),
           },
         });
@@ -146,6 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           needsConfirmation: !data.session && !alreadyExists,
           alreadyExists,
         };
+      },
+      async signInWithProvider(provider: OAuthProvider) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo: getAuthRedirectUrl() },
+        });
+        return { error };
       },
       async setPassword(password: string) {
         const { error } = await supabase.auth.updateUser({
@@ -177,10 +233,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         await supabase.auth.signOut();
         // Je kleuren per persoon horen bij jou, niet bij het toestel.
-        setHueChoices({}, false);
+        clearHues();
       },
     }),
-    [session, loading, hasPassword]
+    [session, loading, hasPassword, recovering]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

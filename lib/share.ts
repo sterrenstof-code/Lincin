@@ -72,3 +72,11 @@ function publicBase(): string {
 export function buildAddFriendUrl(username: string): string {
   return `${publicBase()}/user/${encodeURIComponent(username)}`;
 }
+
+/**
+ * De link bij een vriendcode (0082): wie hem opent, wordt meteen je linc
+ * (`app/c/[code].tsx`). Kleine letters, zoals in het prototype.
+ */
+export function buildFriendCodeUrl(code: string): string {
+  return `${publicBase()}/c/${encodeURIComponent(code.toLowerCase())}`;
+}

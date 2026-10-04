@@ -7,8 +7,8 @@ import { feed } from "@/lib/design/type";
 export default function AuthLayout() {
   const { session, loading } = useAuth();
 
-  // Eens er een session is, weg met de auth-routes — laat /index.tsx beslissen
-  // of de user naar /set-password of /(app)/feed moet.
+  // Eens er een sessie is, weg met de auth-routes — /index.tsx beslist
+  // waarheen (een wachtende uitnodiging, of de feed en zijn poorten).
   if (!loading && session) {
     return <Redirect href="/" />;
   }

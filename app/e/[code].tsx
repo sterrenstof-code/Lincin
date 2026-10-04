@@ -82,7 +82,7 @@ export default function JoinEventScreen() {
        * een sessie is.
        */
       rememberPendingInvite(code);
-      router.replace("/(auth)/login");
+      router.replace("/(auth)/welcome");
       return;
     }
     (async () => {

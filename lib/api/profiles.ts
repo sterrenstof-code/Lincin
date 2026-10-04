@@ -1,4 +1,4 @@
-import { isLincinTheme, type LincinTheme } from "../design/theme";
+import { isLincinTheme, rememberHues, type LincinTheme } from "../design/theme";
 import { supabase } from "../supabase/client";
 
 /** Eén regel op je profiel: waar je heen wijst, en hoe je het noemt. */
@@ -27,6 +27,8 @@ export type Profile = {
   hero_url?: string | null;
   /** 0054 — hoogstens tien, in de volgorde waarin ze staan. */
   links?: ProfileLink[] | null;
+  /** 0082 — de eigen kleur; leeg = de kleur uit het id. Lees hem via `hueFor`. */
+  hue?: string | null;
 };
 
 /**
@@ -38,7 +40,13 @@ export type Profile = {
  * niet doet zonder dat iets dat meldt.
  */
 const PROFILE_COLUMNS =
-  "id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio, hero_url, links";
+  "id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio, hero_url, links, hue";
+
+/** Elk geladen profiel geeft zijn eigen kleur af aan `hueFor` (0082). */
+function remembered<T extends { id: string; hue?: string | null }>(list: T[]): T[] {
+  rememberHues(list);
+  return list;
+}
 
 const USERNAME_REGEX = /^[a-z0-9._]+$/;
 
@@ -74,7 +82,7 @@ export async function searchProfilesByUsername(
 
   const { data, error } = await req;
   if (error) throw error;
-  return data ?? [];
+  return remembered(data ?? []);
 }
 
 /** Profielen bij een reeks handles — voor het omzetten van @vermeldingen. */
@@ -86,7 +94,7 @@ export async function getProfilesByUsernames(usernames: string[]): Promise<Profi
     .select(PROFILE_COLUMNS)
     .in("username", unique);
   if (error) return [];
-  return data ?? [];
+  return remembered(data ?? []);
 }
 
 /** De handles die in een tekst genoemd worden, zonder de @. */
@@ -102,7 +110,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? remembered([data])[0] : data;
 }
 
 export async function getProfileByUsername(
@@ -114,7 +122,7 @@ export async function getProfileByUsername(
     .eq("username", username.toLowerCase())
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? remembered([data])[0] : data;
 }
 
 export async function getProfiles(userIds: string[]): Promise<Profile[]> {
@@ -124,7 +132,7 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
     .select(PROFILE_COLUMNS)
     .in("id", userIds);
   if (error) throw error;
-  return data ?? [];
+  return remembered(data ?? []);
 }
 
 /**
@@ -239,7 +247,7 @@ export async function updateMyProfile(
     }
     throw error;
   }
-  return data as Profile;
+  return remembered([data as Profile])[0];
 }
 
 /**

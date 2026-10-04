@@ -91,6 +91,10 @@ export type Database = {
           links: { label: string; url: string }[];
           /** 0058, 0067, 0071, 0081 — magazine | modern; leeg = nooit gekozen (modern). */
           theme: "magazine" | "modern" | null;
+          /** 0082 — de eigen kleur; leeg = de kleur uit het id. */
+          hue: "orange" | "blue" | "ochre" | "green" | "red" | null;
+          /** 0082 — stappen na het aanmaken klaar/overgeslagen; leeg = nog te doen. */
+          onboarded_at: string | null;
         };
         Insert: {
           id: string;
@@ -105,8 +109,17 @@ export type Database = {
           hero_url?: string | null;
           links?: { label: string; url: string }[];
           theme?: "magazine" | "modern" | null;
+          hue?: "orange" | "blue" | "ochre" | "green" | "red" | null;
+          onboarded_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      /** 0082 — één vriendcode per persoon; alleen de eigenaar leest hem. */
+      friend_codes: {
+        Row: { code: string; user_id: string; created_at: string };
+        Insert: { code: string; user_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["friend_codes"]["Insert"]>;
         Relationships: [];
       };
 
@@ -1006,6 +1019,11 @@ export type Database = {
     };
 
     Functions: {
+      /** 0082 — een vriendcode inwisselen; zie lib/api/friend-codes.ts. */
+      redeem_friend_code: {
+        Args: { p_code: string };
+        Returns: unknown;
+      };
       get_or_create_direct_chat: {
         Args: { other_user: string };
         Returns: string;

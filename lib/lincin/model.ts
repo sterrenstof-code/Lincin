@@ -75,7 +75,9 @@ export type CardPost = {
  */
 export function swatchOf(raw: unknown, authorId: string): Hue | undefined {
   if (typeof raw !== "string" || !HUES.includes(raw as Hue)) return undefined;
-  return raw === defaultHueFor(authorId) ? undefined : (raw as Hue);
+  // Gelijk aan de kleur uit het id (wat vroeger automatisch meekwam) of aan
+  // de eigen kleur van de maker (0082): geen keuze, de kaart volgt de maker.
+  return raw === defaultHueFor(authorId) || raw === hueFor(authorId) ? undefined : (raw as Hue);
 }
 
 

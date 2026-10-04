@@ -1,3 +1,4 @@
+import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
 import type { Profile } from "./profiles";
 import { createActivityEvent } from "./activity-events";
@@ -74,11 +75,13 @@ export async function listMyFriendships(
 
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, hue")
     .in("id", otherIds);
   if (pErr) throw pErr;
+  // Je vrienden en hun eigen kleur (0082): zo kleurt de app meteen goed.
+  rememberHues(profiles ?? []);
 
-  const byId = new Map(profiles?.map((p) => [p.id, p]) ?? []);
+  const byId = new Map<string, Profile>(profiles?.map((p) => [p.id, p]) ?? []);
   return rows
     .map((r) => {
       const otherId = r.requester_id === myUserId ? r.addressee_id : r.requester_id;

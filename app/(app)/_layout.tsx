@@ -31,7 +31,7 @@ function ThemedTab({ children }: { children: ReactNode }) {
 const themedTabLayout = ({ children }: { children: ReactNode }) => <ThemedTab>{children}</ThemedTab>;
 
 export default function AppLayout() {
-  const { session, loading, hasPassword } = useAuth();
+  const { session, loading, recovering } = useAuth();
   const [bootstrapping, setBootstrapping] = useState(true);
   const qc = useQueryClient();
 
@@ -53,6 +53,24 @@ export default function AppLayout() {
     setBootstrapping(false);
   }
 
+  // Heeft dit account de stappen na het aanmaken al gehad? (0082) Bestaande
+  // accounts tellen als klaar; alleen een nieuw account ziet ze.
+  const onboarded = useQuery({
+    queryKey: ["onboarded", session?.user.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("onboarded_at")
+        .eq("id", session!.user.id)
+        .maybeSingle();
+      // Bij twijfel niet blokkeren: de app is belangrijker dan de stappen.
+      if (error || !data) return true;
+      return data.onboarded_at !== null;
+    },
+    enabled: !!session && !bootstrapping,
+    staleTime: Infinity,
+  });
+
   // Totaal aantal ongelezen berichten over alle chats — toont op de
   // Chats-tab als badge zodat je ziet wanneer iemand jou geschreven heeft.
   // Friend-requests krijgen géén tab-badge (te ruis), enkel de incoming-
@@ -66,7 +84,7 @@ export default function AppLayout() {
   const chats = useQuery({
     queryKey: ["chats", session?.user.id ?? "anon"],
     queryFn: () => listMyChats(session!.user.id),
-    enabled: !!session && !bootstrapping && hasPassword,
+    enabled: !!session && !bootstrapping,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -78,7 +96,7 @@ export default function AppLayout() {
   const unreadNotifications = useQuery({
     queryKey: ["notifications-unread", session?.user.id ?? "anon"],
     queryFn: () => countUnreadNotifications(session!.user.id),
-    enabled: !!session && !bootstrapping && hasPassword,
+    enabled: !!session && !bootstrapping,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -93,7 +111,7 @@ export default function AppLayout() {
   const friendships = useQuery({
     queryKey: ["friendships", session?.user.id ?? "anon"],
     queryFn: () => listMyFriendships(session!.user.id),
-    enabled: !!session && !bootstrapping && hasPassword,
+    enabled: !!session && !bootstrapping,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -107,7 +125,7 @@ export default function AppLayout() {
   // de chats-screen, én eventuele "laatst bericht" previews direct
   // updaten. Telegram-snel — geen 30s poll-wait meer.
   useEffect(() => {
-    if (!session || bootstrapping || !hasPassword) return;
+    if (!session || bootstrapping) return;
     const myId = session.user.id;
     // Na een onderbroken verbinding is wat er intussen binnenkwam nooit
     // live langsgekomen; de lijst dan opnieuw ophalen.
@@ -126,11 +144,11 @@ export default function AppLayout() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, bootstrapping, hasPassword, qc]);
+  }, [session, bootstrapping, qc]);
 
   // Realtime: nieuwe notificaties invalideren de badge teller direct
   useEffect(() => {
-    if (!session || bootstrapping || !hasPassword) return;
+    if (!session || bootstrapping) return;
     const myId = session.user.id;
     const channel = subscribeToNotifications(myId, () => {
       qc.invalidateQueries({ queryKey: ["notifications-unread", myId] });
@@ -138,7 +156,7 @@ export default function AppLayout() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, bootstrapping, hasPassword, qc]);
+  }, [session, bootstrapping, qc]);
 
   // Web: zet ongelezen-aantal in de browser tab-titel zodat je het ziet
   // wanneer Lincin in een andere tab open staat. Poor-man's web push.
@@ -172,18 +190,18 @@ export default function AppLayout() {
   }, [totalAttention]);
 
   useEffect(() => {
-    if (!session || bootstrapping || !hasPassword) return;
+    if (!session || bootstrapping) return;
     registerPushToken(session.user.id).catch(() => {});
-  }, [session, bootstrapping, hasPassword]);
+  }, [session, bootstrapping]);
 
   // Activiteitsindicator: update last_seen_at bij opstarten + elke 2 min
   useEffect(() => {
-    if (!session || bootstrapping || !hasPassword) return;
+    if (!session || bootstrapping) return;
     const myId = session.user.id;
     touchLastSeen(myId).catch(() => {});
     const interval = setInterval(() => touchLastSeen(myId).catch(() => {}), 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [session, bootstrapping, hasPassword]);
+  }, [session, bootstrapping]);
 
   // Native: expo-notifications tap listener
   useEffect(() => {
@@ -226,10 +244,15 @@ export default function AppLayout() {
   }, []);
 
   if (loading) return null;
-  if (!session) return <Redirect href="/(auth)/login" />;
-  if (!hasPassword) return <Redirect href="/set-password" />;
+  if (!session) return <Redirect href="/(auth)/welcome" />;
+  // Binnen via "Wachtwoord vergeten": eerst een nieuw wachtwoord. Een
+  // wachtwoord is verder niet verplicht — magic link, Apple en Google zijn
+  // volwaardige manieren om in te loggen (handoff okt 2026).
+  if (recovering) return <Redirect href="/set-password" />;
+  // Nieuw account: eerst de stappen na het aanmaken (foto, uitnodigen).
+  if (onboarded.data === false) return <Redirect href="/onboarding" />;
 
-  if (bootstrapping) {
+  if (bootstrapping || onboarded.isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-desk">
         <ActivityIndicator color={desk.ink} />

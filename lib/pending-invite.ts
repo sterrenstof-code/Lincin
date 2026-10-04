@@ -83,3 +83,23 @@ export function takePendingInvite(): string | null {
   }
   return code;
 }
+
+/**
+ * Een vriendcode (0082) gaat dezelfde weg: `/c/{code}` zonder sessie →
+ * welkom → aanmelden → hier weer opgepakt door `app/index.tsx`. Hij krijgt
+ * een voorvoegsel, zodat hij niet als eventcode gelezen wordt.
+ */
+const FRIEND_PREFIX = "friend:";
+
+export function rememberPendingFriendCode(code: string): void {
+  rememberPendingInvite(FRIEND_PREFIX + code.trim());
+}
+
+/** Wat er nog wacht: een event (`/e/`) of een vriendcode (`/c/`). */
+export function takePendingAction(): { kind: "event" | "friend"; code: string } | null {
+  const raw = takePendingInvite();
+  if (!raw) return null;
+  return raw.startsWith(FRIEND_PREFIX)
+    ? { kind: "friend", code: raw.slice(FRIEND_PREFIX.length) }
+    : { kind: "event", code: raw };
+}
