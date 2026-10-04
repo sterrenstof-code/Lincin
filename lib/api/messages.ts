@@ -346,7 +346,6 @@ export async function sendMessage(args: {
   // Elk apparaat van de ontvanger haalt de account-sleutel op bij inloggen
   // en kan daarmee alle berichten ontsleutelen.
   const recipients = await getChatRecipients(args.chatId);
-  const memberIds = recipients.map((r) => r.userId);
 
   const content: MessageContent = {};
   if (args.text) content.text = args.text;
@@ -374,23 +373,12 @@ export async function sendMessage(args: {
     .single();
   if (insertErr) throw insertErr;
 
-  // Push notificatie: fire-and-forget — nooit blokkeren op bezorging.
-  // De Edge Function zoekt zelf de push tokens op via `user_devices` en
-  // stuurt de notificatie naar alle ontvangers (iedereen behalve de verzender).
-  const recipientIds = memberIds.filter((id) => id !== args.senderId);
-  if (recipientIds.length > 0) {
-    const textPreview = args.text ? args.text.slice(0, 120) : null;
-    supabase.functions
-      .invoke("send-push", {
-        body: {
-          chat_id: args.chatId,
-          sender_id: args.senderId,
-          recipient_ids: recipientIds,
-          body: textPreview,
-        },
-      })
-      .catch(() => {}); // stil falen — push is best-effort
-  }
+  // Push komt van de database-webhook op `messages` (send-push, tak
+  // "messages"), niet van hier. Hier stond een tweede aanroep die de
+  // ontsleutelde tekst naar de server stuurde — terwijl de functie zonder
+  // `table` niets doet ("unsupported table"). Geen push gemist, wel een
+  // lek gedicht: de tekst van een bericht verlaat het toestel alleen
+  // versleuteld.
 
   return { id: inserted!.id as string, created_at: inserted!.created_at as string };
 }
