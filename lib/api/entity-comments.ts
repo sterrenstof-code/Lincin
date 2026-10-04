@@ -53,6 +53,8 @@ export type EntityComment = {
   user_id: string;
   body: string;
   created_at: string;
+  /** Wanneer de schrijver de tekst aanpaste; leeg = nooit (0080). */
+  edited_at: string | null;
   author: Profile | null;
   /** Pad van een gif of meme bij deze reactie. */
   image_path: string | null;
@@ -66,7 +68,7 @@ export async function listEntityComments(
 ): Promise<EntityComment[]> {
   const { data, error } = await supabase
     .from("entity_comments")
-    .select("id, entity_type, entity_id, user_id, body, created_at, image_path")
+    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
     .order("created_at", { ascending: true });
@@ -130,7 +132,7 @@ export async function addEntityComment(args: {
       body: args.body.trim(),
       image_path: imagePath,
     })
-    .select("id, entity_type, entity_id, user_id, body, created_at, image_path")
+    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path")
     .single();
   if (error) {
     if (imagePath) {
@@ -188,6 +190,16 @@ export async function addEntityComment(args: {
   } as EntityComment;
 }
 
+/**
+ * Pas de tekst van je eigen comment aan. Alleen `body` mag veranderen —
+ * de database laat niets anders toe en zet zelf `edited_at` (0080).
+ * Leeg mag alleen als er een beeld bij staat (`entity_comments_has_content`).
+ */
+export async function updateEntityComment(id: string, body: string): Promise<void> {
+  const { error } = await supabase.from("entity_comments").update({ body: body.trim() }).eq("id", id);
+  if (error) throw error;
+}
+
 export function subscribeToEntityComments(
   entityType: EntityType,
   entityId: string,
@@ -198,13 +210,15 @@ export function subscribeToEntityComments(
     .on(
       "postgres_changes",
       {
-        event: "INSERT",
+        // Ook aangepaste en gewiste comments: wie meeleest ziet de nieuwe tekst.
+        event: "*",
         schema: "public",
         table: "entity_comments",
         filter: `entity_id=eq.${entityId}`,
       },
       async (payload) => {
-        const row = payload.new as any;
+        const row = (payload.new ?? payload.old) as any;
+        if (!row?.user_id) return;
         const profiles = await getProfiles([row.user_id]);
         onNew({ ...row, author: profiles[0] ?? null });
       }

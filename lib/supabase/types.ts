@@ -860,6 +860,7 @@ export type Database = {
           user_id: string;
           body: string;
           created_at: string;
+          edited_at: string | null;
           /** 0046_comment_media — gif of meme bij een reactie. */
           image_path: string | null;
         };
@@ -870,6 +871,7 @@ export type Database = {
           user_id: string;
           body: string;
           created_at?: string;
+          edited_at?: string | null;
           image_path?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["entity_comments"]["Insert"]>;

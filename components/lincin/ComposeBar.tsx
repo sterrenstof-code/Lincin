@@ -7,6 +7,7 @@ import { lincinType } from "@/lib/design/type";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useT } from "@/lib/i18n";
 
+import { MentionSuggestions, useMentionSuggest } from "./MentionSuggest";
 import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
 
 /**
@@ -44,6 +45,20 @@ export function useEmojiSuggest(value: string, onChange: (v: string) => void) {
     apply(list[0].emoji);
   };
   return { list, apply, onChangeText, onKeyPress };
+}
+
+/**
+ * Emoji én @-namen in één: de lijst die er staat, en één Tab die de
+ * voorgekozen suggestie neemt — eerst een naam, anders een emoji.
+ */
+export function useComposeSuggest(value: string, onChange: (v: string) => void) {
+  const emoji = useEmojiSuggest(value, onChange);
+  const mention = useMentionSuggest(value, onChange);
+  const onKeyPress = (e: { nativeEvent: { key: string }; preventDefault?: () => void }) => {
+    if (mention.onKeyPress(e)) return;
+    emoji.onKeyPress(e);
+  };
+  return { ...emoji, onKeyPress, mention };
 }
 
 export function EmojiSuggestions({
@@ -114,7 +129,7 @@ export function ComposeBar({
   above?: ReactNode;
 }) {
   const spec = useThemeSpec();
-  const emoji = useEmojiSuggest(value, onChange);
+  const emoji = useComposeSuggest(value, onChange);
   if (spec.id === "modern") {
     return (
       <ModernBar
@@ -134,6 +149,7 @@ export function ComposeBar({
     <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
       {above}
       <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={false} />
+      <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round={false} />
       <View style={{ flexDirection: "row", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
         <SquareBtn
           glyph="☺"
@@ -199,7 +215,7 @@ function ModernBar({
   onToggleBox: () => void;
   sending: boolean;
   above?: ReactNode;
-  emoji: ReturnType<typeof useEmojiSuggest>;
+  emoji: ReturnType<typeof useComposeSuggest>;
 }) {
   const ink = color("ink");
   const round = (fill: boolean) => ({
@@ -214,10 +230,11 @@ function ModernBar({
     <View style={{ paddingTop: 8, paddingBottom: 12 }}>
       {above}
       <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round />
+      <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round />
       <View
         // De pil zelf houdt de zijmarge; de suggesties erboven schuiven van
         // rand tot rand.
-        style={{ marginHorizontal: GUTTER, marginTop: emoji.list.length ? 8 : 0 }}
+        style={{ marginHorizontal: GUTTER, marginTop: emoji.list.length || emoji.mention.list.length ? 8 : 0 }}
       >
       <View
         style={{

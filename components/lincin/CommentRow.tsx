@@ -1,7 +1,9 @@
 import { Platform, Pressable, View } from "react-native";
 
+import { CommentText } from "@/components/lincin/CommentEdit";
 import { openCommentImage } from "@/components/lincin/Lightbox";
-import { BORDER, Body, Initial, Mono, line } from "@/components/lincin/ui";
+import { BORDER, Initial, Mono, line } from "@/components/lincin/ui";
+import { lincinType } from "@/lib/design/type";
 import { SafeImage } from "@/components/SafeImage";
 import type { EntityComment } from "@/lib/api/entity-comments";
 import { color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
@@ -66,11 +68,7 @@ export function CommentRow({
             </View>
           </Pressable>
         ) : null}
-        {c.body ? (
-          <Body small style={{ fontSize: 14, lineHeight: 19 }}>
-            {c.body}
-          </Body>
-        ) : null}
+        <CommentText comment={c} own={own} textStyle={[lincinType.body, { fontSize: 14, lineHeight: 19, color: color("ink") }]} />
         {reactions}
       </View>
     </View>

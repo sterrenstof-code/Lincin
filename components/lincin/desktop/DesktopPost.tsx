@@ -16,7 +16,9 @@ import { addEntityComment, listEntityComments, subscribeToEntityComments, type E
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { EmojiSuggestions, useEmojiSuggest } from "@/components/lincin/ComposeBar";
+import { EmojiSuggestions, useComposeSuggest } from "@/components/lincin/ComposeBar";
+import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
+import { CommentText } from "@/components/lincin/CommentEdit";
 import { ON_DARK, OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { head, mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
@@ -104,7 +106,7 @@ export function DesktopPost({ id }: { id: string }) {
   const commentReactions = useCommentReactions(commentIds, myUserId);
 
   const [draft, setDraft] = useState("");
-  const emoji = useEmojiSuggest(draft, setDraft);
+  const emoji = useComposeSuggest(draft, setDraft);
   const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
   const [pickOpen, setPickOpen] = useState<string | null>(null);
@@ -518,6 +520,7 @@ export function DesktopPost({ id }: { id: string }) {
       ) : null}
       <View style={{ marginTop: "auto" }}>
         <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={!kleur} pad={20} />
+        <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round={!kleur} pad={20} />
         <View
           style={[
             { flexDirection: "row", alignItems: "center" },
@@ -710,9 +713,7 @@ function Comment({
             <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
           </Pressable>
         ) : null}
-        {c.body ? (
-          <Text style={[mag ? serif() : sans(), { fontSize: mag ? 21 : 15, lineHeight: mag ? 27 : 21, color: color("ink") }]}>{c.body}</Text>
-        ) : null}
+        <CommentText comment={c} own={own} textStyle={[mag ? serif() : sans(), { fontSize: mag ? 21 : 15, lineHeight: mag ? 27 : 21, color: color("ink") }]} />
         <CommentReactions reactions={reactions} onToggle={onToggle} open={open} onOpenChange={onOpenChange} />
       </View>
     </View>
