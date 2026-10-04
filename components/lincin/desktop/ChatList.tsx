@@ -8,7 +8,7 @@ import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
@@ -21,10 +21,6 @@ import { MonoLink } from "./Shell";
 /**
  * De gesprekken als lijst (desktop-*-pages.dc.html, GESPREKKEN).
  *
- *   kleur     rijen van 84 met inktlijnen, links een blok van 64 in de kleur
- *             van de ander met de initiaal; naam in Archivo 900 smal, tijd
- *             in mono (rood als er iets ongelezen is), een rood blokje met
- *             het aantal. De open rij op het tweede vlak.
  *   magazine  een rug van 5 in de kleur van de ander, een omlijnde
  *             initiaal, de naam in serif 26 (cursief als hij open is), het
  *             aantal ongelezen als rode serif.
@@ -76,11 +72,10 @@ export function ChatList({ activeId, onOpen, full = false }: { activeId: string 
   }
 
   const dim = color("ink", "inkDim");
-  const spec = useThemeSpec();
   return (
     <ScrollView
       style={{ flex: 1, minHeight: 0 }}
-      contentContainerStyle={spec.id === "kleur" ? undefined : { gap: 6 }}
+      contentContainerStyle={{ gap: 6 }}
       showsVerticalScrollIndicator={false}
     >
       {chats.isLoading ? (
@@ -240,45 +235,6 @@ function Row({
     );
   }
 
-  if (spec.id === "modern") {
-    return (
-      <View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: active }}
-        accessibilityLabel={label}
-        onPress={onPress}
-        {...menu}
-        onHoverIn={() => setHover(true)}
-        onHoverOut={() => setHover(false)}
-        style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 18, backgroundColor: active ? color("tile") : color("tile", "pill") }}
-      >
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
-          <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
-          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, overflow: "hidden" }} pointerEvents="none">
-            <AvatarPhoto url={avatarUrl} size={52} />
-          </View>
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-            <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 18, lineHeight: 20, letterSpacing: -0.36, color: ink }]}>
-              {name}
-            </Text>
-            {hover && onToggleRead ? null : time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
-          </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>
-              {preview}
-            </Text>
-            {badge}
-          </View>
-        </View>
-      </Pressable>
-      {toggleBtn}
-      </View>
-    );
-  }
-
   return (
     <View>
     <Pressable
@@ -289,18 +245,20 @@ function Row({
       {...menu}
       onHoverIn={() => setHover(true)}
       onHoverOut={() => setHover(false)}
-      style={{ flexDirection: "row", alignItems: "stretch", minHeight: 84, borderBottomWidth: spec.border, borderBottomColor: ink, backgroundColor: active ? color("paper2") : "transparent" }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 18, backgroundColor: active ? color("tile") : color("tile", "pill") }}
     >
-      <View style={{ width: 64, backgroundColor: fill.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        <Text style={[head(), { fontSize: 28, lineHeight: 30, color: fill.ink }]}>{initial}</Text>
-        <AvatarPhoto url={avatarUrl} size={64} />
+      <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fill.fill, alignItems: "center", justifyContent: "center" }}>
+        <Text style={[sans(700), { fontSize: 16, lineHeight: 19, color: fill.ink }]}>{initial}</Text>
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, overflow: "hidden" }} pointerEvents="none">
+          <AvatarPhoto url={avatarUrl} size={52} />
+        </View>
       </View>
-      <View style={{ flex: 1, minWidth: 0, paddingVertical: 14, paddingHorizontal: 16, justifyContent: "center", gap: 6 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <Text numberOfLines={1} style={[head(), { flexShrink: 1, fontSize: 20, lineHeight: 20, color: ink }]}>
+          <Text numberOfLines={1} style={[sans(500), { flexShrink: 1, fontSize: 18, lineHeight: 20, letterSpacing: -0.36, color: ink }]}>
             {name}
           </Text>
-          {hover && onToggleRead ? null : time ? <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: timeFg }]}>{time}</Text> : null}
+          {hover && onToggleRead ? null : time ? <Text style={[mono(500), { fontSize: 9, lineHeight: 12, letterSpacing: 1.26, color: timeFg }]}>{time}</Text> : null}
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <Text numberOfLines={1} style={[sans(), { flex: 1, fontSize: 14, lineHeight: 18, color: dim }, previewStyle]}>

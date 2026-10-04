@@ -179,8 +179,8 @@ export default function ProfileEditScreen() {
   const ready = !loading && !loadError;
   const dim = color("ink", "inkDim");
 
-  // De profielfoto naast de kop, zoals de groepsfoto op Groep info: vierkant
-  // kader in kleur, los in magazine en modern. Tik om te wijzigen.
+  // De profielfoto naast de kop, zoals de groepsfoto op Groep info: los,
+  // met een rond cameraknopje. Tik om te wijzigen.
   const photo = ready ? (
     <Pressable
       accessibilityRole="button"
@@ -196,7 +196,7 @@ export default function ProfileEditScreen() {
           bottom: -2,
           width: 28,
           height: 28,
-          borderRadius: th === "kleur" ? 0 : 14,
+          borderRadius: 14,
           backgroundColor: color("ink"),
           alignItems: "center",
           justifyContent: "center",
@@ -416,8 +416,8 @@ export default function ProfileEditScreen() {
 
 /**
  * De gebruikersnaam: een veld met een vaste "@" ervoor. Dezelfde vorm als
- * `Field` uit de kit — kader van 1.5 (kleur), een lijn eronder
- * (magazine), een afgerond vlak (modern) — maar met het apenstaartje ín
+ * `Field` uit de kit — een lijn eronder (magazine), een afgerond vlak
+ * (modern) — maar met het apenstaartje ín
  * het vak, zodat je ziet dat het een handle is.
  */
 function HandleField({
@@ -425,7 +425,6 @@ function HandleField({
   error,
   ...input
 }: TextInputProps & { th: LincinTheme; error?: string | null }) {
-  const spec = useThemeSpec();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const letter = th === "magazine" ? { ...serif(), fontSize: 20 } : { ...sans(400), fontSize: 15 };
@@ -439,9 +438,9 @@ function HandleField({
           alignItems: "center",
           paddingHorizontal: th === "magazine" ? 0 : 14,
           borderRadius: th === "modern" ? 14 : 0,
-          borderWidth: th === "kleur" ? spec.border : th === "magazine" ? 0 : 1,
-          borderBottomWidth: th === "kleur" ? spec.border : 1,
-          borderColor: error ? color("red") : th === "kleur" ? ink : color("ink", "postRule"),
+          borderWidth: th === "magazine" ? 0 : 1,
+          borderBottomWidth: 1,
+          borderColor: error ? color("red") : color("ink", "postRule"),
           backgroundColor: th === "magazine" ? "transparent" : color("paper"),
         }}
       >

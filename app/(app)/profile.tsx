@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, View } from "react-native";
+import { View } from "react-native";
 
-import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
+import { useUnread } from "@/components/lincin/Chrome";
 import { YouModern } from "@/components/lincin/modern/YouModern";
 import { YouMagazine } from "@/components/lincin/magazine/Pages";
-import { BORDER, Box, GUTTER, Head, Initial, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
+import { Initial, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { listMyFriendships } from "@/lib/api/friends";
 import { listUserPosts, type PostWithAuthor } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, fromPost } from "@/lib/lincin/model";
 import { DesktopYou } from "@/components/lincin/desktop/DesktopYou";
@@ -55,8 +54,6 @@ function YouMobile() {
   const name = displayName(p ?? { username: session!.user.email ?? "" });
   const [first, ...rest] = name.split(" ");
   const last = rest.join(" ");
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
   const fc = friendColor(hueFor(myUserId), scheme);
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
   const pendingIn = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId).length;
@@ -102,142 +99,35 @@ function YouMobile() {
     );
   }
 
-  if (spec.layout === "bento") {
-    return (
-      <YouModern
-        first={first}
-        last={last}
-        t={t}
-        avatar={
-          p?.avatar_url ? (
-            <View style={{ width: 64, height: 64, borderRadius: 32, overflow: "hidden" }}>
-              <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-            </View>
-          ) : (
-            <Initial letter={name.slice(0, 1).toUpperCase()} size={64} bg={fc.fill} fg={fc.ink} fontSize={26} round />
-          )
-        }
-        stats={[
-          { n: String(posts.data?.length ?? 0), label: t.posts },
-          { n: String(lincs), label: "lincs" },
-          { n: yy, label: `${t.sinceMar} ${mon}` },
-        ]}
-        latest={latest}
-        links={links}
-      />
-    );
-  }
-
   return (
-    <LincinScreen tab="you" counter={t.tabYou}>
-      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 20 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-          {/* Je naam opent je profiel, zoals je vrienden het zien; de avatar bewerkt. */}
-          <Pressable
-            accessibilityRole="link"
-            disabled={!p?.username}
-            onPress={() => p?.username && router.push(`/user/${p.username}` as never)}
-            style={{ flex: 1, minWidth: 0 }}
-          >
-            <Serif variant="ownName" numberOfLines={1}>
-              {first}
-            </Serif>
-            {last ? (
-              <Serif variant="ownNameItalic" tone="dim" numberOfLines={1}>
-                {last}
-              </Serif>
-            ) : null}
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Profiel bewerken" onPress={() => router.push("/profile-edit")}>
-            {p?.avatar_url ? (
-              <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: BORDER, borderColor: line() }}>
-                <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-              </View>
-            ) : (
-              <Initial letter={name.slice(0, 1).toUpperCase()} size={72} bg={fc.fill} fg={fc.ink} fontSize={34} />
-            )}
-          </Pressable>
-        </View>
-
-        <Box style={{ flexDirection: "row", marginTop: 16 }}>
-          <Stat n={String(posts.data?.length ?? 0)} label={t.posts} />
-          <Stat n={String(lincs)} label="lincs" />
-          <Stat n={yy} label={`${t.sinceMar} ${mon}`} last />
-        </Box>
-
-        <Mono variant="micro" tone="dim" style={{ marginTop: 18, marginBottom: 8 }}>
-          {t.yourLatest}
-        </Mono>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -GUTTER }}
-          contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 10 }}
-        >
-          {(posts.data ?? []).slice(0, 8).map((post) => (
-            <Mini key={post.id} post={post} fill={fc.fill} ink={fc.ink} onPress={() => openPost(post.id)} />
-          ))}
-          {posts.data && posts.data.length === 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/post-compose")}
-              style={{ width: 150, height: 190, borderWidth: BORDER, borderStyle: "dashed", borderColor: line(), alignItems: "center", justifyContent: "center", padding: 12 }}
-            >
-              <Serif variant="aside" tone="dim" style={{ textAlign: "center" }}>
-                {t.emptyCompose}
-              </Serif>
-            </Pressable>
-          ) : null}
-        </ScrollView>
-
-        <Box style={{ marginTop: 18 }}>
-          <Row label={t.settings} right="→" onPress={() => router.push("/settings" as never)} />
-          <Row
-            label={t.notifications}
-            right={unread.notifications > 0 ? `${unread.notifications} ${t.new} →` : "→"}
-            red={unread.notifications > 0}
-            onPress={() => router.push("/notifications")}
-          />
-          <Row
-            label={t.lincsInvites}
-            right={pendingIn > 0 ? `${pendingIn} ${t.waitsForYou} →` : `${lincs} →`}
-            red={pendingIn > 0}
-            onPress={() => router.push("/friends")}
-          />
-          <Row label={t.myQr} right="→" onPress={() => router.push("/qr-code")} last />
-        </Box>
-      </ScrollView>
-    </LincinScreen>
-  );
-}
-
-function Stat({ n, label, last = false }: { n: string; label: string; last?: boolean }) {
-  return (
-    <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: last ? 0 : BORDER, borderRightColor: line() }}>
-      <Head variant="numeralSmall">{n}</Head>
-      <Mono variant="micro" tone="dim">
-        {label}
-      </Mono>
-    </View>
-  );
-}
-
-function Mini({ post, fill, ink, onPress }: { post: PostWithAuthor; fill: string; ink: string; onPress: () => void }) {
-  const card = fromPost(post);
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={card.title} onPress={onPress} style={{ width: 150, height: 190, borderWidth: BORDER, borderColor: line(), flexDirection: "row" }}>
-      <View style={{ width: 44, backgroundColor: fill, borderRightWidth: BORDER, borderRightColor: line(), overflow: "hidden" }}>
-        <VerticalLabel text={card.title} width={44} height={187} color={ink} style={{ fontFamily: lincinType.numeralTiny.fontFamily, fontSize: 20, lineHeight: 14, textTransform: "uppercase" }} />
-      </View>
-      <MiniBody post={post} fill={fill} ink={ink} />
-    </Pressable>
+    <YouModern
+      first={first}
+      last={last}
+      t={t}
+      avatar={
+        p?.avatar_url ? (
+          <View style={{ width: 64, height: 64, borderRadius: 32, overflow: "hidden" }}>
+            <SafeImage uri={p.avatar_url} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          </View>
+        ) : (
+          <Initial letter={name.slice(0, 1).toUpperCase()} size={64} bg={fc.fill} fg={fc.ink} fontSize={26} round />
+        )
+      }
+      stats={[
+        { n: String(posts.data?.length ?? 0), label: t.posts },
+        { n: String(lincs), label: "lincs" },
+        { n: yy, label: `${t.sinceMar} ${mon}` },
+      ]}
+      latest={latest}
+      links={links}
+    />
   );
 }
 
 /**
  * De inhoud van zo'n minikaartje, zonder kader en zonder kleurrug: de foto,
  * of de tekst, of de plaat. Modern zet hem in een tegel van 128 × 160 met
- * een ronding van 14; kleur zet hem naast de rug van 44 (zie `Mini`).
+ * een ronding van 14; magazine tekent hem in `YouMagazine`.
  */
 function MiniBody({ post, fill, ink }: { post: PostWithAuthor; fill: string; ink: string }) {
   const card = fromPost(post);
@@ -269,30 +159,5 @@ function MiniBody({ post, fill, ink }: { post: PostWithAuthor; fill: string; ink
           </View>
         )}
       </View>
-  );
-}
-
-function Row({ label, right, red = false, onPress, last = false }: { label: string; right: string; red?: boolean; onPress: () => void; last?: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 14,
-        paddingHorizontal: 12,
-        borderBottomWidth: last ? 0 : BORDER,
-        borderBottomColor: line(),
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <Serif variant="row">{label}</Serif>
-      <Mono variant="meta" tone={red ? "red" : "ink"} style={{ textTransform: "none" }}>
-        {right}
-      </Mono>
-    </Pressable>
   );
 }

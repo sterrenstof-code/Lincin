@@ -270,8 +270,8 @@ export default function CallPlanComposeScreen() {
 }
 
 /**
- * Een keuze in een rij: een tijdslot, een uur. Gekozen in inkt. Een kader
- * zonder ronding in kleur, een pil in magazine en modern.
+ * Een keuze in een rij: een tijdslot, een uur. Gekozen in inkt. Een pil in
+ * magazine en modern.
  */
 function Chip({
   selected,
@@ -284,8 +284,7 @@ function Chip({
   trailing?: ReactNode;
   children: ReactNode;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const ink = color("ink");
   return (
     <Pressable
@@ -298,9 +297,9 @@ function Chip({
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        borderRadius: th === "kleur" ? 0 : 999,
-        borderWidth: th === "kleur" ? spec.border : 1,
-        borderColor: selected ? ink : th === "kleur" ? ink : color("ink", "postRule"),
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: selected ? ink : color("ink", "postRule"),
         backgroundColor: selected ? ink : pressed ? color("ink", "postRule") : "transparent",
       })}
     >
@@ -314,8 +313,7 @@ function Chip({
 
 /** Een dag om te kiezen: gekozen in de kleur van de pagina. */
 function DayTile({ date, hue, selected, onPress }: { date: Date; hue: Hue; selected: boolean; onPress: () => void }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const fc = friendColor(hue, useScheme());
   const fg = selected ? fc.ink : color("ink");
   const dim = selected ? fc.ink : color("ink", "inkDim");
@@ -332,8 +330,8 @@ function DayTile({ date, hue, selected, onPress }: { date: Date; hue: Hue; selec
         alignItems: "center",
         gap: 2,
         borderRadius: th === "modern" ? 14 : 0,
-        borderWidth: th === "kleur" ? spec.border : selected ? 0 : 1,
-        borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+        borderWidth: selected ? 0 : 1,
+        borderColor: color("ink", "postRule"),
         backgroundColor: selected ? fc.fill : "transparent",
         opacity: pressed ? 0.7 : 1,
       })}
@@ -372,10 +370,10 @@ function PersonChip({ friend, selected, onPress }: { friend: FriendshipWithProfi
             right: 4,
             width: 18,
             height: 18,
-            borderRadius: th === "kleur" ? 0 : 9,
+            borderRadius: 9,
             backgroundColor: fc.fill,
             borderWidth: 1.5,
-            borderColor: th === "kleur" ? color("ink") : color("paper"),
+            borderColor: color("paper"),
             alignItems: "center",
             justifyContent: "center",
           }}

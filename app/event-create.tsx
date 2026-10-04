@@ -16,7 +16,7 @@ import {
   type EventRevealMode,
 } from "@/lib/api/events";
 import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
-import { head, sans, serif } from "@/lib/design/type";
+import { sans, serif } from "@/lib/design/type";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { usePageTitle } from "@/lib/page-title";
 
@@ -287,10 +287,9 @@ export default function EventCreateScreen() {
           De link en QR blijven in beide gevallen deelbaar. Het verschil is
           wat er gebeurt wanneer iemand erop tikt.
         </Text>
-        <View style={{ gap: th === "kleur" ? 0 : 6 }}>
+        <View style={{ gap: 6 }}>
           <ChoiceOption
             hue={hue}
-            first
             active={joinPolicy === "closed"}
             onPress={() => setJoinPolicy("closed")}
             title="Gesloten groep"
@@ -311,10 +310,9 @@ export default function EventCreateScreen() {
         <Text style={bodyStyle(th, 13, color("ink", "inkDim"))}>
           Wanneer mogen gasten elkaars bijdragen zien?
         </Text>
-        <View style={{ gap: th === "kleur" ? 0 : 6 }}>
+        <View style={{ gap: 6 }}>
           <ChoiceOption
             hue={hue}
-            first
             active={reveal === "during"}
             onPress={() => setReveal("during")}
             title="Tijdens het event"
@@ -373,12 +371,10 @@ export default function EventCreateScreen() {
 
 /**
  * Het vak waar je een cover kiest. Magazine zet het in de kleur van de
- * pagina, als een spread zonder beeld; kleur en modern houden het bij een
- * kader.
+ * pagina, als een spread zonder beeld; modern houdt het bij een kader.
  */
 function CoverPicker({ hue, onPress }: { hue: Hue; onPress: () => void }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const fg = th === "magazine" ? fc.ink : color("ink", "inkDim");
@@ -395,9 +391,7 @@ function CoverPicker({ hue, onPress }: { hue: Hue; onPress: () => void }) {
         opacity: pressed ? 0.8 : 1,
         ...(th === "magazine"
           ? { backgroundColor: fc.fill }
-          : th === "kleur"
-            ? { borderWidth: spec.border, borderColor: color("ink"), borderStyle: "dashed" }
-            : { borderRadius: 14, borderWidth: 1, borderColor: color("ink", "postRule"), borderStyle: "dashed", backgroundColor: color("paper") }),
+          : { borderRadius: 14, borderWidth: 1, borderColor: color("ink", "postRule"), borderStyle: "dashed", backgroundColor: color("paper") }),
       })}
     >
       <Ionicons name="image-outline" color={fg} size={26} />
@@ -409,15 +403,15 @@ function CoverPicker({ hue, onPress }: { hue: Hue; onPress: () => void }) {
 }
 
 /** Het vak rond een invoerveld, zoals `Field` het tekent. */
-function fieldBox(th: ReturnType<typeof useThemeSpec>["id"], border: number): ViewStyle {
+function fieldBox(th: ReturnType<typeof useThemeSpec>["id"]): ViewStyle {
   return {
     minHeight: 48,
     justifyContent: "center",
     paddingHorizontal: th === "magazine" ? 0 : 14,
     borderRadius: th === "modern" ? 14 : 0,
-    borderWidth: th === "kleur" ? border : th === "magazine" ? 0 : 1,
-    borderBottomWidth: th === "magazine" ? 1 : th === "kleur" ? border : 1,
-    borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+    borderWidth: th === "magazine" ? 0 : 1,
+    borderBottomWidth: 1,
+    borderColor: color("ink", "postRule"),
     backgroundColor: th === "magazine" ? "transparent" : color("paper"),
   };
 }
@@ -432,8 +426,7 @@ function DateInput({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   if (Platform.OS === "web") {
     // Render een HTML5 datetime-local input via createElement zodat we niet
     // tegen react-native-web's TextInput sanitizers oplopen. Het vak eromheen
@@ -443,7 +436,7 @@ function DateInput({
     return (
       <View style={{ gap: 6 }}>
         <Text style={labelStyle(th, 9, color("ink", "inkDim"))}>{label}</Text>
-        <View style={fieldBox(th, spec.border)}>
+        <View style={fieldBox(th)}>
           {createElement("input", {
             type: "datetime-local",
             value,
@@ -483,25 +476,22 @@ function DateInput({
  *
  * `Choice` uit de kit is een segmentrij met alleen een label; hier moet
  * de uitleg erbij, dus staan de opties onder elkaar. De gekozen optie is
- * inkt in kleur en modern, en in magazine de kleur van de pagina.
+ * inkt in modern, en in magazine de kleur van de pagina.
  */
 function ChoiceOption({
   hue,
   active,
-  first = false,
   onPress,
   title,
   subtitle,
 }: {
   hue: Hue;
   active: boolean;
-  first?: boolean;
   onPress: () => void;
   title: string;
   subtitle: string;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const ink = color("ink");
@@ -509,13 +499,11 @@ function ChoiceOption({
   const fg = active ? (th === "magazine" ? fc.ink : color("paper")) : ink;
   const dim = active ? fg : color("ink", "inkDim");
   const frame: ViewStyle =
-    th === "kleur"
-      ? { borderWidth: spec.border, borderColor: ink, marginTop: first ? 0 : -spec.border }
-      : th === "magazine"
-        ? active
-          ? {}
-          : { borderTopWidth: 1, borderBottomWidth: 1, borderColor: color("ink", "postRule") }
-        : { borderRadius: 14, borderWidth: 1, borderColor: active ? ink : color("ink", "postRule") };
+    th === "magazine"
+      ? active
+        ? {}
+        : { borderTopWidth: 1, borderBottomWidth: 1, borderColor: color("ink", "postRule") }
+      : { borderRadius: 14, borderWidth: 1, borderColor: active ? ink : color("ink", "postRule") };
   return (
     <Pressable
       accessibilityRole="radio"
@@ -542,9 +530,7 @@ function ChoiceOption({
           style={[
             th === "magazine"
               ? { ...serif(), fontSize: 20, lineHeight: 24 }
-              : th === "modern"
-                ? { ...sans(400), fontSize: 15.5, lineHeight: 20, letterSpacing: -0.3 }
-                : { ...head(), fontSize: 18, lineHeight: 19 },
+              : { ...sans(400), fontSize: 15.5, lineHeight: 20, letterSpacing: -0.3 },
             { color: fg },
           ]}
         >

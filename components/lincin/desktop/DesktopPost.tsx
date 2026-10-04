@@ -20,7 +20,7 @@ import { EmojiSuggestions, useComposeSuggest, useMultilineInput } from "@/compon
 import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
 import { CommentText } from "@/components/lincin/CommentEdit";
 import { ON_DARK, OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
@@ -40,12 +40,9 @@ import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
 /**
  * Een bijdrage op desktop (desktop-*-home.dc.html, BIJDRAGE; handoff 23 sep).
  *
- * Een pagina die scrolt: links het beeld (560 kleur, 600 magazine, 620
- * modern) met daaronder titel, bijschrift, tekst en de reacties; rechts een
+ * Een pagina die scrolt: links het beeld (620) met daaronder titel, bijschrift, tekst en de reacties; rechts een
  * kolom van 440 met de comments en een invoer onderaan.
  *
- *   kleur     een balk van 56 met "← Feed", de regel over de bijdrage en ×;
- *             de kleurrug van 34 met soort en tijd; Bericht als inktvlak.
  *   magazine  "← Feed" als pil op het beeld, de rug van 5, een serif-titel
  *             van 80; de comments op het tweede vlak, de invoer een lijn.
  *   modern    een ronde terugknop op het beeld; alles tegels, de comments
@@ -107,8 +104,8 @@ export function DesktopPost({ id }: { id: string }) {
 
   const [draft, setDraft] = useState("");
   const emoji = useComposeSuggest(draft, setDraft);
-  // Kleur 48, magazine en modern 44: de hoogte van één regel invoer.
-  const inputMinH = spec.id === "kleur" ? 48 : 44;
+  // Magazine en modern 44: de hoogte van één regel invoer.
+  const inputMinH = 44;
   const field = useMultilineInput({ value: draft, onSend: () => void send(), suggest: emoji, minH: inputMinH });
   const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
@@ -195,8 +192,7 @@ export function DesktopPost({ id }: { id: string }) {
   const th = spec.id;
   const modern = th === "modern";
   const mag = th === "magazine";
-  const kleur = th === "kleur";
-  const stageH = kleur ? 560 : 620;
+  const stageH = 620;
   const meta = `№ ${number ?? "—"} · ${authorName} · ${card.kind} · ${timeLabel(p.created_at, t, lang)}`;
   const privTarget = (): PrivateTarget => ({ friendId: p.user_id, friendName: authorName, quote: card.caption || card.title, postId: p.id, postTitle: card.title });
   const lbl = (size: number, c: string, spacing = size * 0.16): TextStyle =>
@@ -210,7 +206,7 @@ export function DesktopPost({ id }: { id: string }) {
       accessibilityRole="button"
       accessibilityLabel={d < 0 ? "Vorige foto" : "Volgende foto"}
       onPress={() => setSlide((i) => (i + d + n) % n)}
-      style={{ width: 44, height: 44, borderRadius: kleur ? 0 : 22, borderWidth: kleur ? 1.5 : 0, borderColor: "rgba(242,239,232,.7)", backgroundColor: "rgba(10,10,9,.45)", alignItems: "center", justifyContent: "center" }}
+      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(10,10,9,.45)", alignItems: "center", justifyContent: "center" }}
     >
       <Text style={{ fontSize: 18, lineHeight: 22, color: ON_IMAGE }}>{glyph}</Text>
     </Pressable>
@@ -228,14 +224,13 @@ export function DesktopPost({ id }: { id: string }) {
   ) : null;
 
   // ---- het beeld ----
-  const stageBg = photos ? color("paper2") : kleur ? color("paper2") : fc.fill;
-  const stageInk = photos || kleur ? ink : fc.ink;
+  const stageBg = photos ? color("paper2") : fc.fill;
+  const stageInk = photos ? ink : fc.ink;
   const stageView = (
     <View
       style={[
         { height: stageH, overflow: "hidden", backgroundColor: stageBg },
         modern ? { borderRadius: RASTER.tileRadius } : null,
-        kleur ? { borderBottomWidth: spec.border, borderBottomColor: ink } : null,
         Platform.OS === "web" ? ({ animationKeyframes: RISE, animationDuration: "300ms", animationTimingFunction: "cubic-bezier(.2,.7,.2,1)" } as object) : null,
       ]}
       ref={stageRef}
@@ -261,7 +256,7 @@ export function DesktopPost({ id }: { id: string }) {
           </View>
           {multi ? (
             <>
-              <View style={{ pointerEvents: "box-none", position: "absolute", left: kleur ? 52 : 18, right: 18, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ pointerEvents: "box-none", position: "absolute", left: 18, right: 18, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 {arrow("‹", -1)}
                 {arrow("›", 1)}
               </View>
@@ -271,7 +266,7 @@ export function DesktopPost({ id }: { id: string }) {
         </>
       ) : stage.h > 0 ? (
         // Geen foto: de tekst groot op het vlak, of het medium zelf (poll, muziek, link…).
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingTop: 96, paddingBottom: 40, paddingLeft: kleur ? 34 + 48 : mag ? 80 : 72, paddingRight: 48 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingTop: 96, paddingBottom: 40, paddingLeft: mag ? 80 : 72, paddingRight: 48 }}>
           {card.media.kind === "tekst" ? (
             (() => {
               // Groot als citaat zolang het kort is; een lange tekst is om te
@@ -300,12 +295,7 @@ export function DesktopPost({ id }: { id: string }) {
         </ScrollView>
       ) : null}
 
-      {/* kleur: de kleurrug van 34 met soort en tijd; magazine: de rug van 5 */}
-      {kleur ? (
-        <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 34, backgroundColor: fc.fill, borderRightWidth: spec.border, borderRightColor: ink, alignItems: "center", justifyContent: "flex-end", paddingBottom: 14 }}>
-          <Vertical text={`${card.kind} · ${timeLabel(p.created_at, t, lang)}`} color={fc.ink} length={stageH - 40} />
-        </View>
-      ) : null}
+      {/* magazine: de rug van 5 */}
       {mag ? <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, backgroundColor: fc.fill }} /> : null}
       {mag ? (
         // De omslag: een inktvlak van 40 met "← Editie", en rechts het rode nummer.
@@ -344,9 +334,7 @@ export function DesktopPost({ id }: { id: string }) {
   const reactChip = (on: boolean): ViewStyle =>
     modern
       ? { height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? ink : color("paper") }
-      : mag
-        ? { height: 36, paddingHorizontal: 12, borderWidth: 1, borderColor: on ? ink : color("ink", "postDim"), backgroundColor: on ? ink : "transparent" }
-        : { height: 34, paddingHorizontal: 10, borderWidth: spec.border, borderColor: ink, backgroundColor: on ? ink : "transparent" };
+      : { height: 36, paddingHorizontal: 12, borderWidth: 1, borderColor: on ? ink : color("ink", "postDim"), backgroundColor: on ? ink : "transparent" };
   const reactRow = (
     <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
       {grouped.map((r) => (
@@ -358,7 +346,7 @@ export function DesktopPost({ id }: { id: string }) {
           onPress={() => reactions.toggle(id, r.emoji)}
           style={[reactChip(r.mine), { flexDirection: "row", alignItems: "center", gap: 6 }]}
         >
-          <Text style={[kleur ? mono(600) : sans(mag ? 600 : 500), { fontSize: modern || mag ? 13 : 12, lineHeight: 16, color: r.mine ? color("paper") : ink }]}>
+          <Text style={[sans(mag ? 600 : 500), { fontSize: 13, lineHeight: 16, color: r.mine ? color("paper") : ink }]}>
             {r.emoji} {r.count}
           </Text>
         </Pressable>
@@ -368,18 +356,12 @@ export function DesktopPost({ id }: { id: string }) {
         accessibilityLabel="Reageer"
         accessibilityState={{ expanded: boxOpen }}
         onPress={() => setBoxOpen((v) => !v)}
-        style={[reactChip(boxOpen), { justifyContent: "center" }, kleur ? { borderStyle: "dashed" } : null]}
+        style={[reactChip(boxOpen), { justifyContent: "center" }]}
       >
         <Text style={[mono(600), { fontSize: 15, lineHeight: 18, color: boxOpen ? color("paper") : ink }]}>☺ +</Text>
       </Pressable>
       <View style={{ flex: 1 }} />
-      {own ? null : kleur ? (
-        <Pressable accessibilityRole="button" onPress={() => setSheet(privTarget())} style={{ height: 40, paddingHorizontal: 16, justifyContent: "center", backgroundColor: ink }}>
-          <Text style={lbl(11, color("paper"), 0.88)}>
-            {t.privateMsg} · {authorName}
-          </Text>
-        </Pressable>
-      ) : mag ? (
+      {own ? null : mag ? (
         <SerifLink size={22} italic onPress={() => setSheet(privTarget())}>
           {t.omPrivateTo} {authorName}
         </SerifLink>
@@ -397,13 +379,12 @@ export function DesktopPost({ id }: { id: string }) {
   const textBlock = (
     <View
       style={[
-        { gap: kleur ? 14 : mag ? 16 : 14 },
-        kleur ? { paddingTop: 28, paddingRight: 32, paddingBottom: 32, paddingLeft: 66 } : null,
+        { gap: mag ? 16 : 14 },
         mag ? { paddingTop: 30, paddingRight: 32, paddingBottom: 34, paddingLeft: 27, borderLeftWidth: 5, borderLeftColor: fc.fill } : null,
         modern ? { ...tile, paddingVertical: 28, paddingHorizontal: 30 } : null,
       ]}
     >
-      {kleur ? null : mag ? (
+      {mag ? (
         <Text style={lbl(11, ink)}>
           {authorName} · {card.kind} · {timeLabel(p.created_at, t, lang)}
         </Text>
@@ -418,12 +399,8 @@ export function DesktopPost({ id }: { id: string }) {
         <>
           <Text
             style={[
-              kleur ? head() : mag ? serif(true) : sans(400),
-              kleur
-                ? { fontSize: 64, lineHeight: 56, letterSpacing: -0.64, color: ink }
-                : mag
-                  ? { fontSize: 88, lineHeight: lh(88, 0.9), letterSpacing: -1.76, color: ink }
-                  : { fontSize: 56, lineHeight: 57, letterSpacing: -2.24, color: ink },
+              mag ? serif(true) : sans(400),
+              mag ? { fontSize: 88, lineHeight: lh(88, 0.9), letterSpacing: -1.76, color: ink } : { fontSize: 56, lineHeight: 57, letterSpacing: -2.24, color: ink },
             ]}
           >
             {card.title}
@@ -431,8 +408,8 @@ export function DesktopPost({ id }: { id: string }) {
           {card.caption ? (
             <Text
               style={[
-                modern || mag ? sans(400) : serif(),
-                { maxWidth: 760, fontSize: modern || mag ? 20 : 24, lineHeight: modern ? 28 : 29, color: modern ? dim : ink },
+                sans(400),
+                { maxWidth: 760, fontSize: 20, lineHeight: modern ? 28 : 29, color: modern ? dim : ink },
               ]}
             >
               {card.caption}
@@ -448,7 +425,7 @@ export function DesktopPost({ id }: { id: string }) {
       {reactRow}
       <WhoReacted line={who.line} />
       {boxOpen ? (
-        <View style={{ flexDirection: "row", gap: 4, padding: 4, alignSelf: "flex-start", ...(kleur ? { borderWidth: 1.5, borderColor: ink } : { borderRadius: 999, backgroundColor: color("ink", "postRule") }) }}>
+        <View style={{ flexDirection: "row", gap: 4, padding: 4, alignSelf: "flex-start", borderRadius: 999, backgroundColor: color("ink", "postRule") }}>
           {POST_EMOJI.map((e) => {
             const on = grouped.some((g) => g.emoji === e && g.mine);
             return (
@@ -458,7 +435,7 @@ export function DesktopPost({ id }: { id: string }) {
                 accessibilityLabel={e}
                 accessibilityState={{ selected: on }}
                 onPress={() => reactions.toggle(id, e)}
-                style={{ width: 34, height: 34, borderRadius: kleur ? 0 : 17, alignItems: "center", justifyContent: "center", backgroundColor: on ? (kleur ? color("acid") : ink) : kleur ? color("paper") : "transparent" }}
+                style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: on ? ink : "transparent" }}
               >
                 <Text style={{ fontSize: 18, lineHeight: 22 }}>{e}</Text>
               </Pressable>
@@ -479,35 +456,26 @@ export function DesktopPost({ id }: { id: string }) {
   const commentsColumn = (
     <View
       style={[
-        { width: COMMENTS_W, minHeight: kleur ? 780 : 900 },
-        kleur ? { borderLeftWidth: 0 } : null,
+        { width: COMMENTS_W, minHeight: 900 },
         mag ? { backgroundColor: color("paper2") } : null,
         modern ? tile : null,
       ]}
     >
-      {kleur ? (
-        <View style={{ paddingTop: 20, paddingHorizontal: 24, paddingBottom: 14, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-          <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, textTransform: "uppercase", color: ink }]}>
-            {t.comments} · {count}
-          </Text>
-        </View>
-      ) : (
-        <View
-          style={[
-            { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-            mag ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink } : { paddingVertical: 22, paddingHorizontal: 24 },
-          ]}
-        >
-          {mag ? (
-            <Black size={40} f={0.9} ls={-0.04}>
-              {t.omComments}
-            </Black>
-          ) : (
-            <Text style={[sans(500), { fontSize: 22, lineHeight: 26, letterSpacing: -0.44, color: ink }]}>{t.comments}</Text>
-          )}
-          <Text style={lbl(mag ? 11 : 9, mag ? ink : dim)}>{count}</Text>
-        </View>
-      )}
+      <View
+        style={[
+          { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+          mag ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink } : { paddingVertical: 22, paddingHorizontal: 24 },
+        ]}
+      >
+        {mag ? (
+          <Black size={40} f={0.9} ls={-0.04}>
+            {t.omComments}
+          </Black>
+        ) : (
+          <Text style={[sans(500), { fontSize: 22, lineHeight: 26, letterSpacing: -0.44, color: ink }]}>{t.comments}</Text>
+        )}
+        <Text style={lbl(mag ? 11 : 9, mag ? ink : dim)}>{count}</Text>
+      </View>
       <View style={modern ? { gap: 6, paddingHorizontal: 10 } : null}>
         {(comments.data ?? []).map((c) => (
           <Comment
@@ -522,26 +490,20 @@ export function DesktopPost({ id }: { id: string }) {
         ))}
       </View>
       {count === 0 && !comments.isLoading ? (
-        <Text style={[mag || kleur ? serif(true) : sans(400), { padding: modern ? 24 : mag ? 28 : 24, paddingTop: modern ? 0 : 24, fontSize: modern ? 16 : mag ? 21 : 18, lineHeight: mag ? 27 : 24, color: dim }]}>
+        <Text style={[mag ? serif(true) : sans(400), { padding: mag ? 28 : 24, paddingTop: modern ? 0 : 24, fontSize: modern ? 16 : 21, lineHeight: mag ? 27 : 24, color: dim }]}>
           {t.firstComment}
         </Text>
       ) : null}
       <View style={{ marginTop: "auto" }}>
-        <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={!kleur} pad={20} />
-        <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round={!kleur} pad={20} />
+        <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round pad={20} />
+        <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round pad={20} />
         <View
           style={[
             { flexDirection: "row", alignItems: "center" },
-            kleur ? { minHeight: 48, alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink } : null,
             mag ? { gap: 12, paddingTop: 18, paddingHorizontal: 28, paddingBottom: 24, borderTopWidth: OMSLAG.rule, borderTopColor: ink } : null,
             modern ? { margin: 10, minHeight: 56, paddingVertical: 6, alignItems: "flex-end", gap: 8, paddingLeft: 20, paddingRight: 6, borderRadius: field.height > inputMinH ? 28 : 999, backgroundColor: color("paper") } : null,
           ]}
         >
-          {kleur ? (
-            <View style={{ width: 48, alignSelf: "stretch", alignItems: "center", justifyContent: "center", borderRightWidth: spec.border, borderRightColor: ink }}>
-              <Text style={{ fontSize: 18, lineHeight: 22, color: ink }}>☺</Text>
-            </View>
-          ) : null}
           <TextInput
             value={draft}
             onChangeText={emoji.onChangeText}
@@ -549,7 +511,7 @@ export function DesktopPost({ id }: { id: string }) {
             multiline
             onContentSizeChange={field.onContentSizeChange}
             scrollEnabled={field.scrollEnabled}
-            placeholder={mag || modern ? t.writeBack : t.writeComment}
+            placeholder={t.writeBack}
             placeholderTextColor={dim}
             style={[
               mag ? serif(true) : sans(),
@@ -564,7 +526,6 @@ export function DesktopPost({ id }: { id: string }) {
                 textAlignVertical: "top",
                 color: ink,
               },
-              kleur ? { paddingHorizontal: 14 } : null,
               mag ? { borderBottomWidth: 1, borderBottomColor: ink } : null,
               Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null,
             ]}
@@ -575,10 +536,10 @@ export function DesktopPost({ id }: { id: string }) {
             onPress={send}
             disabled={sending || !draft.trim()}
             style={{
-              width: kleur ? 48 : 44,
-              height: kleur ? undefined : 44,
-              alignSelf: kleur ? "stretch" : "auto",
-              borderRadius: kleur || mag ? 0 : 22,
+              width: 44,
+              height: 44,
+              alignSelf: "auto",
+              borderRadius: mag ? 0 : 22,
               // Magazine: de primaire actie is een rood vlak.
               backgroundColor: mag ? color("red") : ink,
               alignItems: "center",
@@ -595,26 +556,10 @@ export function DesktopPost({ id }: { id: string }) {
 
   return (
     <DesktopShell active="feed" tint={fc.fill} tabTint={fc.fill}>
-      {kleur ? (
-        // Kleur: een balk van 56 met "← Per vriend", de regel over de bijdrage en ×.
-        <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 20, paddingHorizontal: 32, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-          <Pressable accessibilityRole="button" onPress={back.go} style={{ height: 34, paddingHorizontal: 12, justifyContent: "center", borderWidth: spec.border, borderColor: ink }}>
-            <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase", color: ink }]}>← {back.label}</Text>
-          </Pressable>
-          <Text numberOfLines={1} style={[lbl(10, dim, 1), { flexShrink: 1 }]}>
-            {t.post} {meta}
-          </Text>
-          <View style={{ flex: 1 }} />
-          {ownActions}
-          <Pressable accessibilityRole="button" accessibilityLabel={t.cancel} onPress={close} style={{ width: 34, height: 34, borderWidth: spec.border, borderColor: ink, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 16, lineHeight: 19, color: ink }}>×</Text>
-          </Pressable>
-        </View>
-      ) : null}
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {!kleur && own ? <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, paddingVertical: 10 }}>{ownActions}</View> : null}
+        {own ? <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, paddingVertical: 10 }}>{ownActions}</View> : null}
         <View style={[{ flexDirection: "row", alignItems: "stretch" }, mag ? { gap: 6, padding: 6 } : null, modern ? { gap: 6 } : null]}>
-          <View style={[{ flex: 1, minWidth: 0 }, kleur ? { borderRightWidth: spec.border, borderRightColor: ink } : { gap: 6 }]}>
+          <View style={[{ flex: 1, minWidth: 0 }, { gap: 6 }]}>
             {stageView}
             {textBlock}
           </View>
@@ -623,25 +568,6 @@ export function DesktopPost({ id }: { id: string }) {
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </DesktopShell>
-  );
-}
-
-/** Een regel die van onder naar boven leest, in de kleurrug. */
-function Vertical({ text, color: c, length }: { text: string; color: string; length: number }) {
-  const style: TextStyle = { ...mono(600), fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: c };
-  if (Platform.OS === "web") {
-    return (
-      <Text numberOfLines={1} style={[style, { maxHeight: length, writingMode: "vertical-rl", transform: [{ rotate: "180deg" }] } as TextStyle]}>
-        {text}
-      </Text>
-    );
-  }
-  return (
-    <View style={{ width: 14, height: length, alignItems: "center", justifyContent: "flex-end" }}>
-      <Text numberOfLines={1} style={[style, { width: length, transform: [{ rotate: "-90deg" }] }]}>
-        {text}
-      </Text>
-    </View>
   );
 }
 
@@ -677,15 +603,15 @@ function Comment({
   const mag = th === "magazine";
   // Een naam opent een profiel — ook "Jij" het jouwe.
   const toProfile = c.author?.username ? () => router.push(`/user/${c.author!.username}` as never) : undefined;
-  const size = modern ? 40 : mag ? 32 : 30;
+  const size = modern ? 40 : 32;
   const when = timeLabel(c.created_at, t, lang);
   return (
     <View
       style={[
-        { flexDirection: "row", gap: modern ? 12 : mag ? 14 : 12 },
+        { flexDirection: "row", gap: modern ? 12 : 14 },
         modern
           ? { padding: 14, borderRadius: 14, backgroundColor: color("paper") }
-          : { paddingVertical: mag ? 18 : 16, paddingHorizontal: mag ? 28 : 24, borderBottomWidth: 1, borderBottomColor: color("ink", "postRule") },
+          : { paddingVertical: 18, paddingHorizontal: 28, borderBottomWidth: 1, borderBottomColor: color("ink", "postRule") },
       ]}
     >
       <Pressable
@@ -704,20 +630,14 @@ function Comment({
           justifyContent: "center",
         }}
       >
-        <Text style={[mag ? serif() : sans(700), { fontSize: mag ? 17 : modern ? 14 : 12, lineHeight: mag ? 20 : 16, color: mag ? fc.fill : fc.ink }]}>
+        <Text style={[mag ? serif() : sans(700), { fontSize: mag ? 17 : 14, lineHeight: mag ? 20 : 16, color: mag ? fc.fill : fc.ink }]}>
           {name.slice(0, 1).toUpperCase()}
         </Text>
       </Pressable>
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        {mag || modern ? (
-          <Text numberOfLines={1} onPress={toProfile} style={[mag ? sans(700) : mono(500), { fontSize: mag ? 10 : 9, lineHeight: 13, letterSpacing: mag ? 1 : 1.44, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
-            {name} · {when}
-          </Text>
-        ) : (
-          <Text numberOfLines={1} onPress={toProfile} style={[mono(600), { fontSize: 12, lineHeight: 15, color: color("ink") }]}>
-            {name} <Text style={[mono(500), { color: color("ink", "inkDim") }]}>· {when}</Text>
-          </Text>
-        )}
+        <Text numberOfLines={1} onPress={toProfile} style={[mag ? sans(700) : mono(500), { fontSize: mag ? 10 : 9, lineHeight: 13, letterSpacing: mag ? 1 : 1.44, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+          {name} · {when}
+        </Text>
         {c.image_url ? (
           <Pressable
             accessibilityRole="imagebutton"
@@ -725,7 +645,7 @@ function Comment({
             onPress={() => openCommentImage(c, name)}
             style={[
               { width: 160, height: 110, marginTop: 4, backgroundColor: color("paper2"), overflow: "hidden" },
-              th === "kleur" ? { borderWidth: 1.5, borderColor: color("ink") } : { borderRadius: 12 },
+              { borderRadius: 12 },
               Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null,
             ]}
           >

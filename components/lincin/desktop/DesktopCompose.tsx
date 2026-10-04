@@ -5,7 +5,7 @@ import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { SafeImage } from "@/components/SafeImage";
 import { HUES, OMSLAG, RASTER, color, friendColor, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { safeBack } from "@/lib/nav";
 
@@ -18,8 +18,6 @@ import { DesktopShell, PageHead } from "./Shell";
  * met titel en onderschrift, rechts (380) jouw kleur, wie het ziet, hoe je
  * linc het ziet, en Delen. Elke theme tekent dezelfde kolommen:
  *
- *   kleur     inktkaders, soorten als rijen van 52 in Archivo 900 smal,
- *             kleuren als vierkanten, Delen als zuurgeel vlak.
  *   magazine  vlakken op het tweede papier, serif, ronde kleuren, Delen als
  *             inktbalk in serif.
  *   modern    tegels, soorten als pillen, Delen als inkttegel met ↑.
@@ -44,26 +42,23 @@ export function DesktopCompose({ c }: { c: Compose }) {
   const rule = color("ink", "postRule");
 
   const label = (s: string) => (
-    <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 10 : 9, lineHeight: 13, letterSpacing: th === "kleur" ? 1 : 1.44, textTransform: "uppercase", color: dim }]}>{s}</Text>
+    <Text style={th === "magazine" ? magLabel(10, dim) : [mono(500), { fontSize: 9, lineHeight: 13, letterSpacing: 1.44, textTransform: "uppercase", color: dim }]}>{s}</Text>
   );
   const panel = (extra?: ViewStyle): ViewStyle =>
-    th === "kleur"
-      ? { paddingVertical: 20, paddingHorizontal: 24, borderBottomWidth: spec.border, borderBottomColor: ink, gap: 12, ...extra }
-      : th === "magazine"
-        ? { paddingVertical: 22, paddingHorizontal: 24, backgroundColor: color("paper2"), gap: 12, ...extra }
-        : { padding: 20, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), gap: 12, ...extra };
+    th === "magazine"
+      ? { paddingVertical: 22, paddingHorizontal: 24, backgroundColor: color("paper2"), gap: 12, ...extra }
+      : { padding: 20, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), gap: 12, ...extra };
 
   // ---- links: de soort ----
   const kinds = (
     <View
       style={[
         { width: 240 },
-        th === "kleur" ? { borderRightWidth: spec.border, borderRightColor: ink } : null,
         th === "magazine" ? { paddingVertical: 10 } : null,
         th === "modern" ? { padding: 14, gap: 6, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : null,
       ]}
     >
-      <View style={{ paddingTop: th === "kleur" ? 18 : 8, paddingHorizontal: th === "modern" ? 8 : 20, paddingBottom: 12 }}>{label(t.kind)}</View>
+      <View style={{ paddingTop: 8, paddingHorizontal: th === "modern" ? 8 : 20, paddingBottom: 12 }}>{label(t.kind)}</View>
       {KINDS.map((k, i) => {
         const on = k === c.kind;
         const ok = SUPPORTED.has(k);
@@ -76,13 +71,13 @@ export function DesktopCompose({ c }: { c: Compose }) {
             onPress={() => c.setKind(k)}
             style={[
               { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: th === "modern" ? 16 : 20, backgroundColor: on ? ink : "transparent", opacity: ok ? 1 : 0.35 },
-              th === "modern" ? { height: 46, borderRadius: 999, gap: 12 } : { height: th === "kleur" ? 52 : 50, borderTopWidth: 1, borderTopColor: rule },
+              th === "modern" ? { height: 46, borderRadius: 999, gap: 12 } : { height: 50, borderTopWidth: 1, borderTopColor: rule },
             ]}
           >
             <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: th === "magazine" ? 1 : 0, color: on ? color("paper") : ink }]}>
               {String(i + 1).padStart(2, "0")}
             </Text>
-            <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 20 : th === "magazine" ? 24 : 16, lineHeight: th === "magazine" ? 26 : 20, color: on ? color("paper") : ink }]}>
+            <Text style={[th === "magazine" ? serif() : sans(500), { fontSize: th === "magazine" ? 24 : 16, lineHeight: th === "magazine" ? 26 : 20, color: on ? color("paper") : ink }]}>
               {k}
             </Text>
           </Pressable>
@@ -93,33 +88,27 @@ export function DesktopCompose({ c }: { c: Compose }) {
 
   // ---- midden: het beeld, titel en onderschrift ----
   const titleStyle: TextStyle =
-    th === "kleur"
-      ? { ...head(), fontSize: 48, lineHeight: 46 }
-      : th === "magazine"
-        ? { ...serif(), fontSize: 56, lineHeight: 56 }
-        : { ...sans(400), fontSize: 48, lineHeight: 50, letterSpacing: -1.9 };
+    th === "magazine" ? { ...serif(), fontSize: 56, lineHeight: 56 } : { ...sans(400), fontSize: 48, lineHeight: 50, letterSpacing: -1.9 };
   const captionStyle: TextStyle =
     th === "modern" ? { ...sans(400), fontSize: 20, lineHeight: 26 } : { ...serif(th === "magazine"), fontSize: 24, lineHeight: 30 };
   const stage = (
     <View
       style={[
         { flex: 1, minWidth: 0, gap: th === "magazine" ? 24 : 22 },
-        th === "kleur" ? { paddingVertical: 28, paddingHorizontal: 32 } : null,
         th === "magazine" ? { paddingVertical: 26, paddingHorizontal: 32, backgroundColor: color("paper2") } : null,
         th === "modern" ? { padding: 14, gap: 18, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : null,
       ]}
     >
       {c.kind === "poll" ? (
-        <View style={[{ minHeight: STAGE_H, padding: 4 }, th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : { borderRadius: th === "modern" ? 14 : 0, backgroundColor: color("paper") }]}>
+        <View style={[{ minHeight: STAGE_H, padding: 4 }, { borderRadius: th === "modern" ? 14 : 0, backgroundColor: color("paper") }]}>
           <PollEditor c={c} />
         </View>
       ) : (
         <View
           style={[
             { height: STAGE_H, overflow: "hidden" },
-            th === "kleur" ? { borderWidth: spec.border, borderStyle: "dashed", borderColor: ink } : null,
             th === "modern" ? { borderRadius: 14 } : null,
-            th !== "kleur" ? { backgroundColor: color("paper") } : null,
+            { backgroundColor: color("paper") },
           ]}
         >
           <PhotoSlots
@@ -139,7 +128,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
         </View>
       )}
       <View style={th === "modern" ? { paddingHorizontal: 12, gap: 18 } : { gap: th === "magazine" ? 24 : 22 }}>
-        <View style={{ gap: 6, paddingBottom: th === "modern" ? 0 : 12, borderBottomWidth: th === "modern" ? 0 : th === "kleur" ? spec.border : 1, borderBottomColor: ink }}>
+        <View style={{ gap: 6, paddingBottom: th === "modern" ? 0 : 12, borderBottomWidth: th === "modern" ? 0 : 1, borderBottomColor: ink }}>
           {label(t.titleLabel)}
           <TextInput value={c.title} onChangeText={c.setTitle} placeholder={t.titlePh} placeholderTextColor={rule} style={[titleStyle, { color: ink }, webField]} />
         </View>
@@ -175,16 +164,16 @@ export function DesktopCompose({ c }: { c: Compose }) {
 
   // ---- rechts: kleur, wie, voorbeeld, delen ----
   // Gekozen groep: dan deel je niet "met je lincs", en de knop zegt dat ook.
-  const shareLabel = th === "kleur" || c.audience ? t.share : t.shareWithLincs;
+  const shareLabel = c.audience ? t.share : t.shareWithLincs;
   const side = (
-    <View style={[{ width: 380 }, th === "kleur" ? { borderLeftWidth: spec.border, borderLeftColor: ink } : { gap: SEAM }]}>
+    <View style={{ width: 380, gap: SEAM }}>
       <View style={panel()}>
         {label(t.yourColor)}
-        <View style={{ flexDirection: "row", gap: th === "kleur" ? 8 : 10, flexWrap: "wrap" }}>
+        <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
           {HUES.map((h) => {
             const f = friendColor(h, scheme);
             const on = h === c.hue;
-            const size = th === "kleur" ? 48 : 44;
+            const size = 44;
             return (
               <Pressable
                 key={h}
@@ -192,7 +181,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={h}
                 onPress={() => c.setHue(h)}
-                style={{ width: size, height: size, borderRadius: th === "kleur" ? 0 : size / 2, backgroundColor: f.fill, borderWidth: on ? 3 : th === "kleur" ? spec.border : 0, borderColor: ink }}
+                style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: f.fill, borderWidth: on ? 3 : 0, borderColor: ink }}
               />
             );
           })}
@@ -212,11 +201,11 @@ export function DesktopCompose({ c }: { c: Compose }) {
               disabled={off}
               onPress={() => c.setAudience(a.id)}
               style={[
-                { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: th === "kleur" ? 14 : 18, backgroundColor: on ? ink : "transparent", opacity: off ? 0.35 : 1 },
-                th === "modern" ? { borderRadius: 22, borderWidth: on ? 0 : 1, borderColor: rule } : { borderWidth: th === "kleur" ? spec.border : 1, borderColor: ink },
+                { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, backgroundColor: on ? ink : "transparent", opacity: off ? 0.35 : 1 },
+                th === "modern" ? { borderRadius: 22, borderWidth: on ? 0 : 1, borderColor: rule } : { borderWidth: 1, borderColor: ink },
               ]}
             >
-              <Text numberOfLines={1} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { flexShrink: 1, fontSize: th === "kleur" ? 17 : th === "magazine" ? 20 : 15, lineHeight: 22, color: on ? color("paper") : ink }]}>
+              <Text numberOfLines={1} style={[th === "magazine" ? serif() : sans(500), { flexShrink: 1, fontSize: th === "magazine" ? 20 : 15, lineHeight: 22, color: on ? color("paper") : ink }]}>
                 {a.label}
               </Text>
               <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: th === "magazine" ? 1 : 0, color: on ? color("paper") : ink }]}>{a.n}</Text>
@@ -226,18 +215,18 @@ export function DesktopCompose({ c }: { c: Compose }) {
       </View>
       <View style={panel({ flex: 1 })}>
         {label(t.howLincSees)}
-        <View style={[{ overflow: "hidden", backgroundColor: color("paper") }, th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : null, th === "modern" ? { borderRadius: 14 } : null]}>
+        <View style={[{ overflow: "hidden", backgroundColor: color("paper") }, th === "modern" ? { borderRadius: 14 } : null]}>
           {th === "magazine" ? null : (
-            <View style={{ height: th === "kleur" ? 120 : 110, backgroundColor: c.slotImage || c.imageUris[0] ? color("paper2") : th === "modern" ? c.fc.fill : color("paper2"), borderBottomWidth: th === "kleur" ? spec.border : 0, borderBottomColor: ink }}>
+            <View style={{ height: 110, backgroundColor: c.slotImage || c.imageUris[0] ? color("paper2") : c.fc.fill }}>
               {c.imageUris[0] || c.slotImage ? <SafeImage uri={(c.imageUris[0] ?? c.slotImage)!} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
             </View>
           )}
-          <View style={{ paddingVertical: th === "magazine" ? 16 : 12, paddingHorizontal: th === "magazine" ? 18 : 14, gap: 6, borderLeftWidth: th === "modern" ? 0 : th === "magazine" ? 5 : 6, borderLeftColor: c.fc.fill }}>
-            <Text style={th === "magazine" ? magLabel(10, dim) : [mono(th === "kleur" ? 600 : 500), { fontSize: th === "kleur" ? 9.5 : 8.5, lineHeight: 12, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
+          <View style={{ paddingVertical: th === "magazine" ? 16 : 12, paddingHorizontal: th === "magazine" ? 18 : 14, gap: 6, borderLeftWidth: th === "modern" ? 0 : 5, borderLeftColor: c.fc.fill }}>
+            <Text style={th === "magazine" ? magLabel(10, dim) : [mono(500), { fontSize: 8.5, lineHeight: 12, letterSpacing: 1, textTransform: "uppercase", color: dim }]}>
               {t.me} · {c.kind} · {t.now}
               {c.audience ? ` · ${c.audienceLabel}` : ""}
             </Text>
-            <Text numberOfLines={2} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 20 : th === "magazine" ? 28 : 17, lineHeight: th === "magazine" ? 29 : 21, color: c.title ? ink : rule }]}>
+            <Text numberOfLines={2} style={[th === "magazine" ? serif() : sans(500), { fontSize: th === "magazine" ? 28 : 17, lineHeight: th === "magazine" ? 29 : 21, color: c.title ? ink : rule }]}>
               {c.title || t.titlePh}
             </Text>
           </View>
@@ -250,22 +239,18 @@ export function DesktopCompose({ c }: { c: Compose }) {
         disabled={!c.canSubmit}
         style={[
           { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, opacity: c.canSubmit || c.published ? 1 : 0.5 },
-          th === "kleur"
-            ? { height: 72, backgroundColor: c.published ? c.green : color("acid"), borderTopWidth: spec.border, borderTopColor: ink }
-            : th === "magazine"
-              ? // De omslag: de primaire actie is een rood vlak.
-                { height: 64, backgroundColor: c.published ? c.green : color("red") }
-              : { height: 64, paddingHorizontal: 22, borderRadius: RASTER.tileRadius, backgroundColor: c.published ? c.green : ink },
+          th === "magazine"
+            ? // De omslag: de primaire actie is een rood vlak.
+              { height: 64, backgroundColor: c.published ? c.green : color("red") }
+            : { height: 64, paddingHorizontal: 22, borderRadius: RASTER.tileRadius, backgroundColor: c.published ? c.green : ink },
         ]}
       >
         <Text
           style={[
-            th === "kleur" ? head() : th === "magazine" ? sans(800) : mono(500),
-            th === "kleur"
-              ? { fontSize: 26, lineHeight: 26, color: "#141414" }
-              : th === "magazine"
-                ? { fontSize: 18, lineHeight: 22, letterSpacing: 1.08, textTransform: "uppercase", color: OMSLAG.onImage }
-                : { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: color("paper") },
+            th === "magazine" ? sans(800) : mono(500),
+            th === "magazine"
+              ? { fontSize: 18, lineHeight: 22, letterSpacing: 1.08, textTransform: "uppercase", color: OMSLAG.onImage }
+              : { fontSize: 10, lineHeight: 13, letterSpacing: 1.4, textTransform: "uppercase", color: color("paper") },
           ]}
         >
           {c.published ? t.published : shareLabel}
@@ -275,7 +260,7 @@ export function DesktopCompose({ c }: { c: Compose }) {
             <Text style={{ fontSize: 16, lineHeight: 19, color: ink }}>↑</Text>
           </View>
         ) : (
-          <Text style={{ fontSize: 22, lineHeight: 26, color: th === "kleur" ? "#141414" : th === "magazine" ? OMSLAG.onImage : color("paper") }}>→</Text>
+          <Text style={{ fontSize: 22, lineHeight: 26, color: OMSLAG.onImage }}>→</Text>
         )}
       </Pressable>
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 12 }}>

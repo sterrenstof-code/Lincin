@@ -6,7 +6,10 @@ import { Box, Btn, DashedCard, GUTTER, Head, Mono, Serif } from "@/components/li
 import { ON_LIGHT, color, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 
-/** De lege staat (HANDOFF §11): nog niemand hier. */
+/**
+ * De lege staat (HANDOFF §11): nog niemand hier. Modern krijgt een
+ * acid vlak met twee knoppen, magazine een blok tussen haarlijnen.
+ */
 export function EmptyFeed() {
   const t = useT();
   const router = useRouter();

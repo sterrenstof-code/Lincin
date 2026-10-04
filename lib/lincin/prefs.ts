@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 /**
  * De voorkeuren van één gebruiker (HANDOFF 23 sep §Vaste gedragsregels).
  *
- *   tint         het blad kleurt mee met de vriend in beeld
+ *   tint         (vervallen met kleur — blijft bewaard, doet niets meer)
  *   pushNew      een melding bij nieuwe bijdragen
  *   quiet        stil tussen 23:00 en 08:00
  *   visible      lincs zien mijn bijdragen

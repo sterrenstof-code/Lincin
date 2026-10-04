@@ -8,7 +8,7 @@ import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { getProfiles } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, hhmm } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
@@ -23,9 +23,6 @@ import { Black, Label } from "../magazine/Omslag";
  * titel, de eerste regel van de beschrijving en wie er komt, en rechts
  * "Ik kom" / "Misschien" (0072, `event_rsvps`).
  *
- *   kleur     rijen over de volle breedte: een datumblok van 180 in de
- *             kleur, titel in Archivo 900 smal 48, de twee antwoorden als
- *             vakken onder elkaar.
  *   magazine  vlakken op het tweede papier met een rug van 5; de dag als
  *             serif van 120 in de kleur, de titel serif 56, pillen.
  *   modern    drie tegels per rij: bovenaan het kleurvlak met de dag, dan
@@ -139,16 +136,10 @@ export function DesktopEvents() {
             ))
           : null}
       </View>
-    ) : th === "magazine" ? (
+    ) : (
       <View style={{ gap: SEAM, padding: SEAM }}>
         {rows.map((r) => (
           <RowMagazine key={r.e.id} r={r} onOpen={() => open(r.e.id)} onAnswer={(s) => answer(r.e.id, s)} />
-        ))}
-      </View>
-    ) : (
-      <View>
-        {rows.map((r) => (
-          <RowKleur key={r.e.id} r={r} onOpen={() => open(r.e.id)} onAnswer={(s) => answer(r.e.id, s)} />
         ))}
       </View>
     );
@@ -173,54 +164,6 @@ function meta(size: number, c: string, spacing = size * 0.1): TextStyle {
 }
 
 type RowProps = { r: Row; onOpen: () => void; onAnswer: (s: RsvpStatus | null) => void };
-
-// ---------------------------------------------------------------
-// KLEUR
-// ---------------------------------------------------------------
-
-function RowKleur({ r, onOpen, onAnswer }: RowProps) {
-  const t = useT();
-  const spec = useThemeSpec();
-  const ink = color("ink");
-  const cell = (label: string, s: RsvpStatus, last: boolean) => {
-    const on = r.mine === s;
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: on }}
-        onPress={() => onAnswer(on ? null : s)}
-        style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, backgroundColor: on ? ink : "transparent", borderBottomWidth: last ? 0 : spec.border, borderBottomColor: ink }}
-      >
-        <Text style={[head(), { fontSize: 22, lineHeight: 22, color: on ? color("paper") : s === "maybe" ? color("ink", "inkDim") : ink }]}>{label}</Text>
-        <Text style={[head(), { fontSize: 22, lineHeight: 22, color: color("paper") }]}>{on ? "✓" : ""}</Text>
-      </Pressable>
-    );
-  };
-  return (
-    <View style={{ flexDirection: "row", minHeight: 180, borderBottomWidth: spec.border, borderBottomColor: ink, opacity: r.past ? 0.6 : 1 }}>
-      <Pressable accessibilityRole="link" accessibilityLabel={r.e.name} onPress={onOpen} style={{ width: 180, backgroundColor: r.fill.fill, borderRightWidth: spec.border, borderRightColor: ink, paddingVertical: 20, paddingHorizontal: 24, justifyContent: "space-between" }}>
-        <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, textTransform: "uppercase", color: r.fill.ink }]}>{r.month}</Text>
-        <Text style={[head(), { fontSize: 104, lineHeight: 84, color: r.fill.ink }]}>{r.day}</Text>
-      </Pressable>
-      <Pressable accessibilityRole="link" onPress={onOpen} style={{ flex: 1, minWidth: 0, paddingVertical: 24, paddingHorizontal: 32, justifyContent: "space-between", gap: 16 }}>
-        <Text style={meta(10, color("ink", "inkDim"))}>
-          {r.host} {t.invites} · {r.when}
-        </Text>
-        <Text numberOfLines={2} style={[head(), { fontSize: 48, lineHeight: 43, color: ink }]}>
-          {r.e.name}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 28 }}>
-          {r.place ? <Text style={meta(11, ink, 0.66)}>◎ {r.place}</Text> : null}
-          <Text style={meta(11, color("ink", "inkDim"), 0.66)}>{r.whoGo}</Text>
-        </View>
-      </Pressable>
-      <View style={{ width: 300, borderLeftWidth: spec.border, borderLeftColor: ink, opacity: r.past ? 0.5 : 1 }} pointerEvents={r.past ? "none" : "auto"}>
-        {cell(t.imIn, "yes", false)}
-        {cell(t.maybe, "maybe", true)}
-      </View>
-    </View>
-  );
-}
 
 // ---------------------------------------------------------------
 // MAGAZINE

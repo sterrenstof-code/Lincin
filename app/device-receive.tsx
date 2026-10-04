@@ -109,7 +109,6 @@ function DeviceReceiveScreenBody() {
   }
 
   const th = useThemeSpec().id;
-  const round = th !== "kleur";
   const { height: winH } = useWindowDimensions();
 
   // ── Laadspinner tijdens verwerking ──────────────────────────────────────────
@@ -202,14 +201,14 @@ function DeviceReceiveScreenBody() {
   return (
     <SubPage title={null} kicker="Nieuw toestel" back="/(app)/profile" tab="you" scroll={false}>
       {/* Een korte kop in plaats van de grote: de camera krijgt de ruimte. */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: th === "kleur" ? 0 : 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12 }}>
         <Text style={[titleStyle(th, 26), { flex: 1 }]} numberOfLines={1}>
           Scan QR-code
         </Text>
         <Button label="Link invoeren" small icon="link-outline" onPress={() => setShowManual(true)} />
       </View>
 
-      {/* Camera, in de vorm van het thema: kader in kleur, ronding in modern.
+      {/* Camera, in de vorm van het thema: recht in magazine, ronding in modern.
           Een vaste hoogte uit het venster: zonder scroll rekt het blad van
           `SubPage` zijn inhoud niet op, dus `flex: 1` zou hier inklappen. */}
       <View
@@ -218,8 +217,6 @@ function DeviceReceiveScreenBody() {
           overflow: "hidden",
           backgroundColor: ON_LIGHT,
           borderRadius: th === "modern" ? RASTER.tileRadius : 0,
-          borderWidth: th === "kleur" ? 1.5 : 0,
-          borderColor: color("ink"),
         }}
       >
         <CameraView
@@ -246,9 +243,9 @@ function DeviceReceiveScreenBody() {
             style={{
               width: 240,
               height: 240,
-              borderWidth: th === "kleur" ? 3 : 2,
+              borderWidth: 2,
               borderColor: ON_DARK,
-              borderRadius: round ? 16 : 0,
+              borderRadius: 16,
             }}
           />
           <Text style={[labelStyle(th, 10, ON_DARK), { marginTop: 16 }]}>Richt je camera op de QR-code</Text>
@@ -257,7 +254,7 @@ function DeviceReceiveScreenBody() {
 
       {/* Foutmelding onderaan */}
       {error ? (
-        <Panel style={{ borderLeftWidth: th === "kleur" ? undefined : 5, borderLeftColor: color("red"), ...(th === "kleur" ? { borderColor: color("red") } : null) }}>
+        <Panel style={{ borderLeftWidth: 5, borderLeftColor: color("red") }}>
           <View accessibilityRole="alert" style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12 }}>
             <Ionicons name="warning-outline" color={color("red")} size={16} />
             <Text style={[bodyStyle(th, 13), { flex: 1 }]}>{error}</Text>

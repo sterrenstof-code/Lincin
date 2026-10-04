@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Platform, Pressable, Text, TextInput, View, type StyleProp, type TextStyle } from "react-native";
 
 import { updateEntityComment, type EntityComment } from "@/lib/api/entity-comments";
-import { color, useThemeSpec } from "@/lib/design/theme";
+import { color } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { useToast } from "@/lib/toast";
@@ -36,7 +36,6 @@ export function CommentText({
   const t = useT();
   const qc = useQueryClient();
   const toast = useToast();
-  const round = useThemeSpec().id !== "kleur";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(c.body);
   const [saving, setSaving] = useState(false);
@@ -114,8 +113,8 @@ export function CommentText({
           ]}
         />
         <View style={{ marginHorizontal: -20 }}>
-          <EmojiSuggestions list={suggest.list} onPick={suggest.apply} round={round} pad={20} />
-          <MentionSuggestions list={suggest.mention.list} onPick={suggest.mention.apply} round={round} pad={20} />
+          <EmojiSuggestions list={suggest.list} onPick={suggest.apply} round pad={20} />
+          <MentionSuggestions list={suggest.mention.list} onPick={suggest.mention.apply} round pad={20} />
         </View>
         <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
           <Pressable accessibilityRole="button" onPress={save} disabled={!canSave} hitSlop={6} style={{ opacity: canSave ? 1 : 0.4 }}>

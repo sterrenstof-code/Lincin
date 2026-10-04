@@ -27,7 +27,7 @@ import { usePageTitle } from "@/lib/page-title";
  * volgende foto (Once-stijl rapid contribute).
  *
  * Geen SubPage: het beeld is de pagina. Alleen de knoppen erop volgen het
- * thema — vierkant in kleur, rond in magazine en modern — en alles op het
+ * thema — rond in magazine en modern — en alles op het
  * beeld staat in ON_DARK op een donkere waas, in elke stand.
  */
 export default function EventCameraScreen() {
@@ -125,9 +125,9 @@ export default function EventCameraScreen() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: th === "kleur" ? 0 : 28,
-                borderWidth: th === "kleur" ? 1.5 : 1,
-                borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+                borderRadius: 28,
+                borderWidth: 1,
+                borderColor: color("ink", "postRule"),
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -231,7 +231,7 @@ export default function EventCameraScreen() {
             style={{
               width: 80,
               height: 80,
-              borderRadius: round(th, 40),
+              borderRadius: 40,
               backgroundColor: ON_DARK,
               alignItems: "center",
               justifyContent: "center",
@@ -241,7 +241,7 @@ export default function EventCameraScreen() {
               shadowOffset: { width: 0, height: 4 },
             }}
           >
-            <View style={{ width: 64, height: 64, borderRadius: round(th, 32), backgroundColor: ON_DARK, borderWidth: 2, borderColor: ON_LIGHT }} />
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: ON_DARK, borderWidth: 2, borderColor: ON_LIGHT }} />
           </Pressable>
           <Text style={[labelStyle(th, 9.5, ON_DARK), ON_IMAGE_SHADOW, { marginTop: 12 }]}>Tik om een foto te maken</Text>
         </View>
@@ -250,7 +250,7 @@ export default function EventCameraScreen() {
       {/* Toast */}
       {toast && (
         <View style={{ pointerEvents: "none", position: "absolute", top: 80, left: 0, right: 0, alignItems: "center" }}>
-          <View style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: round(th, 999), overflow: "hidden" }}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, overflow: "hidden" }}>
             <Scrim strength={0.8} />
             <Text style={labelStyle(th, 10, ON_DARK)}>{toast}</Text>
           </View>
@@ -301,8 +301,8 @@ export default function EventCameraScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   overflow: "hidden",
-                  borderRadius: round(th, 27),
-                  borderWidth: th === "kleur" ? 1.5 : 1,
+                  borderRadius: 27,
+                  borderWidth: 1,
                   borderColor: ON_DARK,
                   opacity: pressed ? 0.8 : 1,
                 })}
@@ -322,11 +322,9 @@ export default function EventCameraScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  borderRadius: round(th, 27),
-                  // De hoofdactie: zuurgeel in kleur, licht op het beeld elders.
-                  backgroundColor: th === "kleur" ? color("acid") : ON_DARK,
-                  borderWidth: th === "kleur" ? 1.5 : 0,
-                  borderColor: ON_LIGHT,
+                  borderRadius: 27,
+                  // De hoofdactie: licht op het beeld.
+                  backgroundColor: ON_DARK,
                   opacity: sending ? 0.7 : pressed ? 0.85 : 1,
                 })}
               >
@@ -349,11 +347,6 @@ export default function EventCameraScreen() {
       {error && !preview && <ErrorStrip th={th} text={error} passThrough />}
     </View>
   );
-}
-
-/** Rond in magazine en modern, vierkant in kleur. */
-function round(th: LincinTheme, r: number): number {
-  return th === "kleur" ? 0 : r;
 }
 
 /** Tekst direct op het camerabeeld: een zachte schaduw houdt hem leesbaar. */
@@ -398,7 +391,6 @@ function OverlayBtn({
   disabled?: boolean;
   iconSize?: number;
 }) {
-  const th = useThemeSpec().id;
   return (
     <Pressable
       accessibilityRole="button"
@@ -408,12 +400,10 @@ function OverlayBtn({
       style={({ pressed }) => ({
         width: 44,
         height: 44,
-        borderRadius: round(th, 22),
+        borderRadius: 22,
         overflow: "hidden",
         alignItems: "center",
         justifyContent: "center",
-        borderWidth: th === "kleur" ? 1.5 : 0,
-        borderColor: ON_DARK,
         opacity: pressed ? 0.75 : 1,
       })}
     >

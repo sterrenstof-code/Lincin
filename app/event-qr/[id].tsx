@@ -20,8 +20,7 @@ const QR_SIZE = 260;
  * (components/lincin/SubPage).
  *
  * De kop is het event zelf, in de kleur van de gastheer. Daaronder de
- * code: in magazine op een volvlaks kleurvlak, in kleur in een inktkader,
- * in modern op een tegel. De code zelf is altijd donker op licht
+ * code: in magazine op een volvlaks kleurvlak, in modern op een tegel. De code zelf is altijd donker op licht
  * (ON_LIGHT op ON_DARK), ook in de donkere stand: een camera leest een
  * omgekeerde code slecht.
  */
@@ -130,8 +129,6 @@ export default function EventQrScreen() {
         padding: 16,
         backgroundColor: ON_DARK,
         borderRadius: th === "modern" ? 14 : 0,
-        borderWidth: th === "kleur" ? 1.5 : 0,
-        borderColor: color("ink"),
       }}
     >
       <QRCode

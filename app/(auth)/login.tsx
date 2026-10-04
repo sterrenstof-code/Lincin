@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { bodyStyle, Button, Field, labelStyle, Note, PageTitle, Panel, Section, titleStyle } from "@/components/lincin/SubPage";
+import { bodyStyle, Button, Field, labelStyle, Note, PageTitle, Panel, Section } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import {
   color,
@@ -263,7 +263,6 @@ const GATE_HUE: Hue = "orange";
 function Gate({ children }: { children: ReactNode }) {
   const th = useThemeSpec().id;
   const insets = useSafeAreaInsets();
-  const pad = th === "kleur" ? 18 : RASTER.seam;
   return (
     <View style={{ flex: 1, backgroundColor: color("paper") }}>
       {th === "modern" ? <Haze hue={GATE_HUE} /> : null}
@@ -273,7 +272,7 @@ function Gate({ children }: { children: ReactNode }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ width: "100%", maxWidth: 520, alignSelf: "center", padding: pad, gap: th === "kleur" ? 16 : RASTER.seam }}>
+          <View style={{ width: "100%", maxWidth: 520, alignSelf: "center", padding: RASTER.seam, gap: RASTER.seam }}>
             {children}
           </View>
         </ScrollView>
@@ -312,7 +311,6 @@ function Haze({ hue }: { hue: Hue }) {
  * Een melding ín het formulier: "Dat klopt niet", "Check je inbox". Een
  * titel, een zin, en eventueel knoppen eronder.
  *
- *   kleur     een kader van 1.5 inkt
  *   magazine  een kleurvlak met de titel in serif, de tekst eronder op
  *             het tweede papier — kleur, zoals op de voorpagina
  *   modern    een tegel met een kleurstip voor de titel
@@ -338,10 +336,10 @@ function Callout({ hue, title, text, children }: { hue: Hue; title: string; text
     );
   }
   return (
-    <Panel style={{ padding: th === "modern" ? RASTER.tilePad : 14, gap: 10, backgroundColor: color("paper") }}>
+    <Panel style={{ padding: RASTER.tilePad, gap: 10, backgroundColor: color("paper") }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {th === "modern" ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: fc.fill }} /> : null}
-        <Text style={th === "modern" ? { ...sans(500), fontSize: 16, lineHeight: 20, color: color("ink") } : titleStyle(th, 20)}>{title}</Text>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: fc.fill }} />
+        <Text style={{ ...sans(500), fontSize: 16, lineHeight: 20, color: color("ink") }}>{title}</Text>
       </View>
       {body}
     </Panel>
@@ -372,7 +370,6 @@ function PasswordField({
   editable: boolean;
   onSubmitEditing: () => void;
 }) {
-  const spec = useThemeSpec();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const letter = th === "magazine" ? { ...serif(), fontSize: 20 } : { ...sans(400), fontSize: 15 };
@@ -386,9 +383,9 @@ function PasswordField({
           alignItems: "center",
           paddingLeft: th === "magazine" ? 0 : 14,
           borderRadius: th === "modern" ? 14 : 0,
-          borderWidth: th === "kleur" ? spec.border : th === "magazine" ? 0 : 1,
-          borderBottomWidth: th === "kleur" ? spec.border : 1,
-          borderColor: th === "kleur" ? ink : color("ink", "postRule"),
+          borderWidth: th === "magazine" ? 0 : 1,
+          borderBottomWidth: 1,
+          borderColor: color("ink", "postRule"),
           backgroundColor: th === "magazine" ? "transparent" : color("paper"),
         }}
       >

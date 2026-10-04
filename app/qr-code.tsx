@@ -18,7 +18,6 @@ import { usePageTitle } from "@/lib/page-title";
  * Jouw linc: je QR-code en je eigen link, in de vorm van het thema
  * (components/lincin/SubPage).
  *
- *   kleur     de code in een kader van inkt, je naam in kapitaal eronder
  *   magazine  een kleurvlak in jouw kleur als poster: de rail met je
  *             handle, je naam groot in serif, de code erin
  *   modern    een tegel met de code op een afgerond wit vlak
@@ -91,7 +90,7 @@ function QRCodeScreenBody() {
   // de stille zone en (magazine) de rail.
   const qrSize = Math.max(170, Math.min(QR_MAX, columnWidth(width) - 2 * QUIET - (th === "magazine" ? 90 : 84)));
   const code = (
-    <QrPlate size={qrSize} radius={th === "modern" ? 14 : 0} border={th === "kleur"}>
+    <QrPlate size={qrSize} radius={th === "modern" ? 14 : 0}>
       {addUrl ? (
         <QRCode
           value={addUrl}
@@ -126,7 +125,7 @@ function QRCodeScreenBody() {
           {code}
         </Poster>
       ) : (
-        <Panel style={{ padding: th === "modern" ? RASTER.tilePadLarge : 18, alignItems: "center", gap: 14 }}>
+        <Panel style={{ padding: RASTER.tilePadLarge, alignItems: "center", gap: 14 }}>
           {code}
           <View style={{ alignItems: "center", gap: 6 }}>
             <Text style={[titleStyle(th, 30), { textAlign: "center" }]}>{heroName || "…"}</Text>
@@ -135,7 +134,7 @@ function QRCodeScreenBody() {
         </Panel>
       )}
 
-      <View style={{ flexDirection: "row", gap: th === "kleur" ? 8 : RASTER.seam }}>
+      <View style={{ flexDirection: "row", gap: RASTER.seam }}>
         <Button label="Deel link" tone="primary" icon="share-outline" grow onPress={onShare} />
         <Button label="Kopieer link" icon="link-outline" grow onPress={onCopyUrl} />
       </View>
@@ -152,20 +151,17 @@ function QRCodeScreenBody() {
 }
 
 /**
- * Het lichte vlak onder de code: altijd licht, met een stille zone. Kleur
- * geeft het een kader van inkt, modern een ronding.
+ * Het lichte vlak onder de code: altijd licht, met een stille zone. Modern
+ * geeft het een ronding.
  */
-function QrPlate({ size, radius, border, children }: { size: number; radius: number; border: boolean; children: ReactNode }) {
-  const spec = useThemeSpec();
+function QrPlate({ size, radius, children }: { size: number; radius: number; children: ReactNode }) {
   return (
     <View
       style={{
-        width: size + 2 * QUIET + (border ? 2 * spec.border : 0),
+        width: size + 2 * QUIET,
         padding: QUIET,
         backgroundColor: ON_DARK,
         borderRadius: radius,
-        borderWidth: border ? spec.border : 0,
-        borderColor: color("ink"),
         alignItems: "center",
         justifyContent: "center",
       }}

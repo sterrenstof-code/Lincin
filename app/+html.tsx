@@ -50,14 +50,14 @@ export default function Root({ children }: PropsWithChildren) {
     p = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   var t = localStorage.getItem('lincin-thema');
-  if (t !== 'kleur' && t !== 'magazine' && t !== 'modern') t = 'modern';
+  // Kleur is vervallen (0081): een oud bewaard 'kleur' telt als geen keuze.
+  if (t !== 'magazine' && t !== 'modern') t = 'modern';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
   r.dataset.lincinTheme = t;
   var m = document.querySelector('meta[name="theme-color"]');
   var paper = {
-    kleur:    { light: '#F6F3ED', dark: '#1A1917' },
     magazine: { light: '#F7F4EE', dark: '#14120E' },
     modern:   { light: '#F4F1EB', dark: '#0C0C0D' }
   };
@@ -310,7 +310,7 @@ html, body {
             --------------------------------------------------------------- */}
         <style dangerouslySetInnerHTML={{ __html: propVarCss() }} />
 
-        {/* De drie thema's (2.2): kleur, magazine en modern, elk in een
+        {/* De twee thema's (magazine en modern, sinds 0081), elk in een
             lichte en een donkere stand, gekoppeld aan `data-lincin-theme`
             en `.dark` op <html>. Uit dezelfde bron als native
             (lib/design/theme.ts), zodat de twee niet uit elkaar kunnen

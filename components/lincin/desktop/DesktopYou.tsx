@@ -11,7 +11,7 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortAgo, timeLabel, type CardPost } from "@/lib/lincin/model";
 
@@ -23,9 +23,6 @@ import { Black } from "../magazine/Omslag";
  * bijdragen, rechts de meldingen. Instellingen hebben een eigen pagina
  * (`/settings` → DesktopSettings); de ◉ in de balk komt hier uit.
  *
- *   kleur     een band in jouw kleur met avatar van 96, "Jij" in 56 en
- *             Instellingen →; bijdragen in drie kolommen; meldingen als
- *             rijen met een gekleurd blok.
  *   magazine  "Jij" in serif 220 op het tweede papier met je rug, drie
  *             feiten, meldingen met een kleurstreep; bijdragen in een raster
  *             dat van maat wisselt.
@@ -101,7 +98,6 @@ export function DesktopYou() {
   const notesBlock = (
     <View
       style={[
-        th === "kleur" ? { width: 460 } : null,
         th === "magazine" ? { width: 480, backgroundColor: color("paper2"), paddingTop: 22, paddingHorizontal: 28, paddingBottom: 20, gap: 12 } : null,
         th === "modern" ? { width: 460, padding: 18, gap: 6, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : null,
       ]}
@@ -109,7 +105,6 @@ export function DesktopYou() {
       <View
         style={[
           { flexDirection: "row", alignItems: th === "magazine" ? "baseline" : "center", justifyContent: "space-between" },
-          th === "kleur" ? { height: 52, paddingHorizontal: 24, borderBottomWidth: spec.border, borderBottomColor: ink } : null,
           th === "modern" ? { paddingHorizontal: 4, paddingBottom: 8 } : null,
         ]}
       >
@@ -119,16 +114,16 @@ export function DesktopYou() {
             {t.notifications}
           </Black>
         ) : (
-          <Text style={meta(th === "kleur" ? 11 : 9, ink, th === "kleur" ? 600 : 500)}>{t.notifications}</Text>
+          <Text style={meta(9, ink, 500)}>{t.notifications}</Text>
         )}
         {unread ? (
           <Pressable accessibilityRole="button" onPress={readAll}>
-            <Text style={[th === "magazine" ? magLabel(9, ink) : meta(th === "kleur" ? 10 : 9, dim, 500), { textDecorationLine: "underline" }]}>{th === "magazine" ? t.markAllRead : t.allRead}</Text>
+            <Text style={[th === "magazine" ? magLabel(9, ink) : meta(9, dim, 500), { textDecorationLine: "underline" }]}>{th === "magazine" ? t.markAllRead : t.allRead}</Text>
           </Pressable>
         ) : null}
       </View>
       {noteRows.length === 0 ? (
-        <Text style={[sans(), { padding: th === "kleur" ? 24 : 4, fontSize: 15, lineHeight: 20, color: dim }]}>{notes.isLoading ? t.loading : t.noNotes}</Text>
+        <Text style={[sans(), { padding: 4, fontSize: 15, lineHeight: 20, color: dim }]}>{notes.isLoading ? t.loading : t.noNotes}</Text>
       ) : (
         noteRows.map((r) =>
           th === "magazine" ? (
@@ -150,24 +145,22 @@ export function DesktopYou() {
               onPress={() => openNote(r.n)}
               style={[
                 { flexDirection: "row", alignItems: "center", gap: 14 },
-                th === "kleur"
-                  ? { paddingVertical: 16, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: rule, backgroundColor: r.n.read ? "transparent" : color("ink", "pillSoft") }
-                  : { padding: 12, borderRadius: 14, backgroundColor: r.n.read ? "transparent" : color("paper") },
+                { padding: 12, borderRadius: 14, backgroundColor: r.n.read ? "transparent" : color("paper") },
               ]}
             >
               <View
                 style={[
-                  { width: th === "kleur" ? 40 : 44, height: th === "kleur" ? 40 : 44, backgroundColor: r.fc.fill, alignItems: "center", justifyContent: "center" },
-                  th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : { borderRadius: 22 },
+                  { width: 44, height: 44, backgroundColor: r.fc.fill, alignItems: "center", justifyContent: "center" },
+                  { borderRadius: 22 },
                 ]}
               >
-                <Text style={[th === "kleur" ? head() : sans(700), { fontSize: th === "kleur" ? 20 : 14, lineHeight: th === "kleur" ? 20 : 17, color: r.fc.ink }]}>{r.initial}</Text>
+                <Text style={[sans(700), { fontSize: 14, lineHeight: 17, color: r.fc.ink }]}>{r.initial}</Text>
               </View>
               <Text style={[sans(), { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, color: ink }]}>
-                {r.by ? <Text style={th === "kleur" ? [head(), { fontSize: 15 }] : sans(700)}>{r.by} </Text> : null}
+                {r.by ? <Text style={sans(700)}>{r.by} </Text> : null}
                 {r.text}
               </Text>
-              <Text style={meta(th === "kleur" ? 10 : 8.5, r.n.read ? dim : color("red"), th === "kleur" ? 600 : 500)}>{r.when}</Text>
+              <Text style={meta(8.5, r.n.read ? dim : color("red"), 500)}>{r.when}</Text>
             </Pressable>
           ),
         )
@@ -177,7 +170,7 @@ export function DesktopYou() {
 
   // ---- jouw bijdragen ----
   const cols = 3;
-  const tileW = (w: number) => (th === "kleur" ? w / cols : (w - SEAM * (cols - 1)) / cols);
+  const tileW = (w: number) => (w - SEAM * (cols - 1)) / cols;
   const postTiles = (w: number) =>
     cards.map((c, i) => {
       if (th === "magazine") {
@@ -187,54 +180,18 @@ export function DesktopYou() {
         const width = spans[k] * unit + (spans[k] - 1) * SEAM;
         return <MyTile key={c.id} c={c} width={width} height={k === 0 ? 380 : 260} fill={mine} onPress={() => openPost(c)} />;
       }
-      return <MyTile key={c.id} c={c} width={tileW(w)} height={th === "kleur" ? 200 : 220} fill={mine} onPress={() => openPost(c)} />;
+      return <MyTile key={c.id} c={c} width={tileW(w)} height={220} fill={mine} onPress={() => openPost(c)} />;
     });
 
   const avatar = (size: number) => (
-    <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: th === "kleur" ? color("paper") : mine.fill }, th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : null]}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: mine.fill }}>
       {profile.data?.avatar_url ? (
         <SafeImage uri={profile.data.avatar_url} style={{ width: size, height: size }} contentFit="cover" />
       ) : (
-        <Text style={[th === "kleur" ? head() : sans(700), { fontSize: size / 2, lineHeight: size / 2 + 4, color: th === "kleur" ? ink : mine.ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
+        <Text style={[sans(700), { fontSize: size / 2, lineHeight: size / 2 + 4, color: mine.ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
       )}
     </View>
   );
-
-  // ---------------- KLEUR ----------------
-  if (th === "kleur") {
-    return (
-      <DesktopShell active="you">
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", minHeight: 732 }}>
-            <View style={{ flex: 1, minWidth: 0, borderRightWidth: spec.border, borderRightColor: ink }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 24, paddingVertical: 28, paddingHorizontal: 32, backgroundColor: mine.fill, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-                <Pressable accessibilityRole="link" onPress={() => router.push((profile.data?.username ? `/user/${profile.data.username}` : "/profile-edit") as never)}>
-                  {avatar(96)}
-                </Pressable>
-                <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-                  <Text style={[head(), { fontSize: 56, lineHeight: 48, color: mine.ink }]}>{t.me}</Text>
-                  <Text style={meta(10, mine.ink, 600)}>{statLine}</Text>
-                </View>
-                <Pressable accessibilityRole="link" onPress={toSettings} style={{ height: 40, paddingHorizontal: 16, justifyContent: "center", backgroundColor: color("paper"), borderWidth: spec.border, borderColor: ink }}>
-                  <Text style={meta(11, ink, 600)}>{t.settings} →</Text>
-                </Pressable>
-              </View>
-              <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 32, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-                <Text style={meta(11, ink, 600)}>{t.myPosts}</Text>
-                <Pressable accessibilityRole="button" onPress={() => router.push("/post-compose")}>
-                  <Text style={[meta(10, ink, 500), { textDecorationLine: "underline" }]}>{t.newPost} +</Text>
-                </Pressable>
-              </View>
-              <View onLayout={(e) => setGridW(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {gridW ? postTiles(gridW) : null}
-              </View>
-            </View>
-            {notesBlock}
-          </View>
-        </ScrollView>
-      </DesktopShell>
-    );
-  }
 
   // ---------------- MAGAZINE ----------------
   if (th === "magazine") {
@@ -335,12 +292,11 @@ function MyTile({ c, width, height, fill, onPress }: { c: CardPost; width: numbe
       onPress={onPress}
       style={[
         { width, overflow: "hidden" },
-        th === "kleur" ? { borderRightWidth: spec.border, borderBottomWidth: spec.border, borderColor: ink } : null,
         th === "magazine" ? { backgroundColor: color("paper2") } : null,
         th === "modern" ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") } : null,
       ]}
     >
-      <View style={[{ height, overflow: "hidden", backgroundColor: uri ? color("paper2") : fill.fill }, th === "kleur" ? { borderBottomWidth: spec.border, borderBottomColor: ink } : null]}>
+      <View style={[{ height, overflow: "hidden", backgroundColor: uri ? color("paper2") : fill.fill }]}>
         {uri ? (
           <SafeImage uri={uri} cacheKey={m.kind === "foto" ? m.cacheKey : undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
         ) : m.kind === "tekst" ? (
@@ -349,11 +305,11 @@ function MyTile({ c, width, height, fill, onPress }: { c: CardPost; width: numbe
           </Text>
         ) : null}
       </View>
-      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, gap: 8, borderLeftWidth: th === "modern" ? 0 : th === "magazine" ? 5 : 6, borderLeftColor: fill.fill }}>
-        <Text numberOfLines={1} style={th === "magazine" ? magLabel(9, color("ink", "inkDim")) : meta(th === "kleur" ? 9.5 : 8.5, color("ink", "inkDim"), th === "kleur" ? 600 : 500)}>
+      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, gap: 8, borderLeftWidth: th === "modern" ? 0 : 5, borderLeftColor: fill.fill }}>
+        <Text numberOfLines={1} style={th === "magazine" ? magLabel(9, color("ink", "inkDim")) : meta(8.5, color("ink", "inkDim"), 500)}>
           {line}
         </Text>
-        <Text numberOfLines={2} style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(500), { fontSize: th === "kleur" ? 22 : th === "magazine" ? 28 : 17, lineHeight: th === "kleur" ? 21 : th === "magazine" ? 29 : 21, color: ink }]}>
+        <Text numberOfLines={2} style={[th === "magazine" ? serif() : sans(500), { fontSize: th === "magazine" ? 28 : 17, lineHeight: th === "magazine" ? 29 : 21, color: ink }]}>
           {c.title}
         </Text>
       </View>

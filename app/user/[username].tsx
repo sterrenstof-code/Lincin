@@ -6,7 +6,6 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
-import { HuePicker } from "@/components/lincin/HuePicker";
 import { Box, Btn, GAP, GUTTER, Head, Initial, Mono, Serif } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat } from "@/lib/api/chats";
@@ -109,7 +108,6 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const reactions = usePostReactions(postIds, myUserId);
 
   const p = profile.data;
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
   useHueChoices();
   const hue = hueFor(p?.id);
   const fc = friendColor(hue, scheme);
@@ -228,7 +226,6 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
               </Pressable>
             ))}
           </View>
-          {p && relation.kind !== "self" ? <HuePicker personId={p.id} ink={color("ink")} /> : null}
         </View>
       </View>
       <View style={{ height: 1, backgroundColor: color("ink") }} />
@@ -297,11 +294,6 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
               </Serif>
             ) : null}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>{buttons}</View>
-            {p && relation.kind !== "self" ? (
-              <View style={{ marginTop: 4 }}>
-                <HuePicker personId={p.id} ink={fc.ink} />
-              </View>
-            ) : null}
           </Box>
         )}
 

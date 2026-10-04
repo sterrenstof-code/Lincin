@@ -280,14 +280,13 @@ export default function ListDetailScreen() {
 }
 
 /**
- * De voortgangsbalk in de kleur van de lijst: een kader van 1.5 (kleur),
- * een platte strook (magazine), een pil (modern).
+ * De voortgangsbalk in de kleur van de lijst: een platte strook
+ * (magazine), een pil (modern).
  */
 function Progress({ pct, hue }: { pct: number; hue: Hue }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const fill = friendColor(hue, useScheme()).fill;
-  const h = th === "kleur" ? 14 : th === "magazine" ? RASTER.seam * 2 : 8;
+  const h = th === "magazine" ? RASTER.seam * 2 : 8;
   return (
     <View
       accessibilityRole="progressbar"
@@ -296,9 +295,7 @@ function Progress({ pct, hue }: { pct: number; hue: Hue }) {
         height: h,
         overflow: "hidden",
         borderRadius: th === "modern" ? h / 2 : 0,
-        borderWidth: th === "kleur" ? spec.border : 0,
-        borderColor: color("ink"),
-        backgroundColor: th === "kleur" ? color("paper") : color("ink", "postRule"),
+        backgroundColor: color("ink", "postRule"),
       }}
     >
       <View style={{ height: "100%", width: `${pct}%`, backgroundColor: fill }} />
@@ -321,19 +318,16 @@ function ItemRow({
   onDelete: () => void;
   canDelete: boolean;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const fc = friendColor(hue, useScheme());
   const dim = color("ink", "inkDim");
   const box = 24;
   // Dezelfde scheidingslijn als `ListRow`.
   const rule: ViewStyle = first
     ? {}
-    : th === "kleur"
-      ? { borderTopWidth: spec.border, borderTopColor: color("ink") }
-      : th === "magazine"
-        ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
-        : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
+    : th === "magazine"
+      ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
+      : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
   return (
     <View
       style={{
@@ -358,9 +352,9 @@ function ItemRow({
         style={{
           width: box,
           height: box,
-          borderRadius: th === "kleur" ? 0 : box / 2,
-          borderWidth: th === "kleur" ? spec.border : item.checked ? 0 : 1.5,
-          borderColor: th === "kleur" ? color("ink") : dim,
+          borderRadius: box / 2,
+          borderWidth: item.checked ? 0 : 1.5,
+          borderColor: dim,
           backgroundColor: item.checked ? fc.fill : "transparent",
           alignItems: "center",
           justifyContent: "center",

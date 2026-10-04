@@ -119,9 +119,8 @@ export function mono(weight: 400 | 500 | 600 = 500): TextStyle {
 }
 
 /**
- * De kop. Drie letters, één per thema (`--tf/--tw/--tt` in het prototype):
+ * De kop. Eén letter per thema (`--tf/--tw/--tt` in het prototype):
  *
- *   kleur     Archivo 900, 75% breed, altijd kapitaal.
  *   magazine  Instrument Serif regular, geen kapitaal.
  *   modern    gewone Archivo op 500, geen kapitaal — de spatiëring komt
  *             er per maat bij (−.02em/−.03em), zie `lincinType`.
@@ -136,14 +135,9 @@ export function head(): TextStyle {
       ? { fontFamily: FONT.serif, fontWeight: "400", fontStyle: "normal", textTransform: "none" }
       : { fontFamily: FONT.serif, textTransform: "none" };
   }
-  if (heads === "archivo") {
-    return isWeb
-      ? { fontFamily: FONT.sansMedium, fontWeight: "500", textTransform: "none" }
-      : { fontFamily: FONT.sansMedium, textTransform: "none" };
-  }
   return isWeb
-    ? { fontFamily: FONT.head, fontWeight: "900", textTransform: "uppercase" }
-    : { fontFamily: FONT.head, textTransform: "uppercase" };
+    ? { fontFamily: FONT.sansMedium, fontWeight: "500", textTransform: "none" }
+    : { fontFamily: FONT.sansMedium, textTransform: "none" };
 }
 
 /**
@@ -164,11 +158,8 @@ export function numeral(): TextStyle {
 function buildLincinType() {
   const heads = themeSpec().heads;
   const serif_ = heads === "serif";
-  /**
-   * Serifkoppen spatiëren niet; Archivo 900 op −.01em, en de gewone
-   * Archivo van modern strakker: −.02em (2.2 §1).
-   */
-  const ls = (px: number) => (serif_ ? 0 : heads === "archivo" ? -px / 50 : -px / 100);
+  /** Serifkoppen spatiëren niet; de gewone Archivo van modern op −.02em (2.2 §1). */
+  const ls = (px: number) => (serif_ ? 0 : -px / 50);
   const cardTitle = themeSpec().cardTitle;
   return {
   // ---- mono: meta, labels, knoppen ----
@@ -216,7 +207,7 @@ function buildLincinType() {
   ownName: { ...capf(false, true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
   ownNameItalic: { ...capf(true, true), fontSize: 34, lineHeight: 33, letterSpacing: -0.34 } as TextStyle,
 
-  // ---- Archivo 900 smal: de koppen ----
+  // ---- de koppen (letter per thema, zie `head()`) ----
   /** Kaarttitel 22px, max 3 regels = 66px. */
   cardTitle: { ...head(), fontSize: cardTitle, lineHeight: cardTitle, letterSpacing: ls(cardTitle) } as TextStyle,
   /** Naam in de band. */
@@ -883,36 +874,34 @@ if (Platform.OS !== "web") {
 }
 
 // ===============================================================
-// DE KOPSCHAAL — één schaal, drie invullingen (2.2 §3)
+// DE KOPSCHAAL — één schaal, twee invullingen (2.2 §3)
 // ===============================================================
 
 /**
  * De tien trappen uit de prototypes (`--h11` … `--h52`).
  *
- * De naam is de maat in kleur; magazine zet er een grotere serif neer
- * (serifletters lezen kleiner bij dezelfde punt, vandaar ±20 %) en modern
- * een gewone Archivo op 500. De twee kleinste trappen blijven in élk thema
- * Archivo: dat zijn etiketten, geen koppen.
+ * De naam is de basismaat uit het prototype; magazine zet er een grotere
+ * serif neer (serifletters lezen kleiner bij dezelfde punt, vandaar ±20 %)
+ * en modern een gewone Archivo op 500. De twee kleinste trappen blijven in
+ * élk thema Archivo: dat zijn etiketten, geen koppen.
  *
- *   trap   kleur              magazine                modern
- *   h11    900 11 Archivo     500 11 Archivo          600 11 Archivo
- *   h12    900 12 Archivo     500 12 Archivo          600 12 Archivo
- *   h15    900 15 Archivo     400 19 Instrument       500 16 Archivo
- *   h18    900 18 Archivo     400 23 Instrument       500 19 Archivo
- *   h19    900 19 Archivo     400 24 Instrument       500 20 Archivo
- *   h26    900 26 Archivo     400 30 Instrument       500 24 Archivo
- *   h30    900 30 Archivo     400 34 Instrument       500 30 Archivo
- *   h34    900 34 Archivo     400 40 Instrument       500 34 Archivo
- *   h44    900 44 Archivo     400 50 Instrument       500 42 Archivo
- *   h52    900 52 Archivo     400 58 Instrument       500 50 Archivo
+ *   trap   magazine                modern
+ *   h11    500 11 Archivo          600 11 Archivo
+ *   h12    500 12 Archivo          600 12 Archivo
+ *   h15    400 19 Instrument       500 16 Archivo
+ *   h18    400 23 Instrument       500 19 Archivo
+ *   h19    400 24 Instrument       500 20 Archivo
+ *   h26    400 30 Instrument       500 24 Archivo
+ *   h30    400 34 Instrument       500 30 Archivo
+ *   h34    400 40 Instrument       500 34 Archivo
+ *   h44    400 50 Instrument       500 42 Archivo
+ *   h52    400 58 Instrument       500 50 Archivo
  *
- * `hstr` (75 % breed in kleur), `htt` (kapitaal in kleur) en de letter
- * zelf komen uit `head()`; deze functie legt er de maat overheen.
+ * De letter zelf komt uit `head()`; deze functie legt er de maat overheen.
  */
 export type HeadStep = 11 | 12 | 15 | 18 | 19 | 26 | 30 | 34 | 44 | 52;
 
 const HEAD_SIZE: Record<LincinTheme, Record<HeadStep, number>> = {
-  kleur:    { 11: 11, 12: 12, 15: 15, 18: 18, 19: 19, 26: 26, 30: 30, 34: 34, 44: 44, 52: 52 },
   magazine: { 11: 11, 12: 12, 15: 19, 18: 23, 19: 24, 26: 30, 30: 34, 34: 40, 44: 50, 52: 58 },
   modern:   { 11: 11, 12: 12, 15: 16, 18: 19, 19: 20, 26: 24, 30: 30, 34: 34, 44: 42, 52: 50 },
 };
@@ -921,8 +910,8 @@ const HEAD_SIZE: Record<LincinTheme, Record<HeadStep, number>> = {
  * Eén trap van de kopschaal, in het thema dat nu geldt.
  *
  * `lineHeight` volgt de letter: een serifkop op .96 van zijn maat (de
- * regels mogen daar dicht op elkaar), Archivo 900 op 1, en de gewone
- * Archivo van modern op 1.15 omdat die in gemengde kast loopt.
+ * regels mogen daar dicht op elkaar), en de gewone Archivo van modern op
+ * 1.15 omdat die in gemengde kast loopt.
  */
 export function headStep(step: HeadStep): TextStyle {
   const spec = themeSpec();
@@ -931,15 +920,14 @@ export function headStep(step: HeadStep): TextStyle {
   const base: TextStyle =
     step <= 12
       ? isWeb
-        ? { fontFamily: FONT.head, fontWeight: spec.heads === "archivo900" ? "900" : spec.heads === "archivo" ? "600" : "500" }
+        ? { fontFamily: FONT.head, fontWeight: spec.heads === "archivo" ? "600" : "500" }
         : { fontFamily: FONT.head }
       : head();
-  const lh =
-    spec.heads === "serif" ? size * 0.96 : spec.heads === "archivo" ? size * 1.15 : size;
+  const lh = spec.heads === "serif" ? size * 0.96 : size * 1.15;
   return {
     ...base,
     fontSize: size,
     lineHeight: Math.round(lh),
-    letterSpacing: spec.heads === "serif" ? 0 : spec.heads === "archivo" ? -size * 0.02 : -size * 0.01,
+    letterSpacing: spec.heads === "serif" ? 0 : -size * 0.02,
   };
 }

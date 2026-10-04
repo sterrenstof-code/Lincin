@@ -8,8 +8,6 @@ import { useT } from "@/lib/i18n";
  * De schakelaar en de keuzerij van Instellingen (desktop-*-pages.dc.html,
  * `tg()` en `seg()`), thema-onafhankelijk: alleen vorm en tokens wisselen.
  *
- *   kleur     een vak van 52×28 met een inktrand, een vierkante knop van 21
- *             (zuurgeel aan, inkt uit); de keuzerij als vakken naast elkaar.
  *   magazine  de omslag (handoff 24 sep): een vierkant spoor van 52×28 op
  *             inkt of haarlijn met een ronde knop van 22 op papier; de
  *             keuzes als losse vierkante vakken met een lijn van 1.
@@ -21,7 +19,6 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
   const spec = useThemeSpec();
   const t = useT();
   const ink = color("ink");
-  const kleur = spec.id === "kleur";
   const mag = spec.id === "magazine";
   return (
     <Pressable
@@ -32,21 +29,19 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
       style={{
         width: 52,
         height: 28,
-        borderRadius: kleur || mag ? 0 : 14,
-        borderWidth: kleur ? spec.border : 0,
-        borderColor: ink,
-        backgroundColor: on ? ink : kleur ? "transparent" : color("ink", "postRule"),
+        borderRadius: mag ? 0 : 14,
+        backgroundColor: on ? ink : color("ink", "postRule"),
       }}
     >
       <View
         style={{
           position: "absolute",
-          top: kleur ? 2 : 3,
-          left: kleur ? (on ? 25 : 2) : on ? 26 : 3,
-          width: kleur ? 21 : 22,
-          height: kleur ? 21 : 22,
-          borderRadius: kleur ? 0 : 11,
-          backgroundColor: kleur ? (on ? color("acid") : ink) : spec.id === "modern" ? color("tile") : color("paper"),
+          top: 3,
+          left: on ? 26 : 3,
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          backgroundColor: spec.id === "modern" ? color("tile") : color("paper"),
         }}
       />
     </Pressable>
@@ -57,24 +52,7 @@ export function Choice<T extends string>({ value, options, onChange }: { value: 
   const spec = useThemeSpec();
   const ink = color("ink");
   const th = spec.id;
-  const text = (on: boolean) =>
-    th === "kleur"
-      ? [mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase" as const, color: on ? color("paper") : ink }]
-      : [th === "magazine" ? sans(700) : mono(500), { fontSize: th === "magazine" ? 10 : 9.5, lineHeight: 12, letterSpacing: th === "magazine" ? 1 : 1.14, textTransform: "uppercase" as const, color: on ? color("paper") : ink }];
-  if (th === "kleur") {
-    return (
-      <View style={{ flexDirection: "row", borderWidth: spec.border, borderColor: ink }}>
-        {options.map((o, i) => {
-          const on = o.value === value;
-          return (
-            <Pressable key={o.value} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={{ flex: 1, height: 36, alignItems: "center", justifyContent: "center", borderLeftWidth: i ? spec.border : 0, borderLeftColor: ink, backgroundColor: on ? ink : "transparent" }}>
-              <Text style={text(on)}>{o.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    );
-  }
+  const text = (on: boolean) => [th === "magazine" ? sans(700) : mono(500), { fontSize: th === "magazine" ? 10 : 9.5, lineHeight: 12, letterSpacing: th === "magazine" ? 1 : 1.14, textTransform: "uppercase" as const, color: on ? color("paper") : ink }];
   if (th === "magazine") {
     return (
       <View style={{ flexDirection: "row", gap: 6 }}>

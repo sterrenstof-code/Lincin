@@ -4,19 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
 
 import { color, inkOn, useScheme, useThemeSpec, RASTER } from "@/lib/design/theme";
-import { FONT, lincinType, mono, serif } from "@/lib/design/type";
+import { mono, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { useUnread, type Tab } from "@/lib/lincin/unread";
 import { scrollActiveToTop } from "@/lib/scroll-top";
 
-import { BORDER, GUTTER, line } from "../ui";
 
 /**
- * De navigatie. Drie thema's, drie vormen — en in alle drie dezelfde vier
+ * De navigatie. Twee thema's, twee vormen — en in beide dezelfde vier
  * rubrieken: 01 Feed · 02 Gesprekken · 03 Events · 04 Jij.
  *
- *   KLEUR      "Rubrieken" (2.1): één kader, vier genummerde cellen van
- *              56 px met haarlijnen ertussen.
  *   MAGAZINE   "Rugstrook", model 1d (2.2 §3): vier losse tegels met een
  *              naad van 6 px, het woord onderaan uitgelijnd.
  *   MODERN     een zwevende pil met een schuiver die naar het actieve vak
@@ -79,95 +76,7 @@ export function FooterTabs({
 }) {
   const spec = useThemeSpec();
   if (spec.nav === "rugstrook") return <FooterRugstrook active={active} tint={tint} bottomInset={bottomInset} />;
-  if (spec.nav === "pil") return <FooterPil active={active} bottomInset={bottomInset} />;
-  return <FooterRubrieken active={active} tint={tint} bottomInset={bottomInset} />;
-}
-
-/**
- * KLEUR — "Rubrieken" (HANDOFF 2.1 §Footer tabs).
- *
- * Eén kader, vier gelijke kolommen van 56px met haarlijnen ertussen. Elke
- * cel links uitgelijnd, twee regels: het nummer (mono 500 9px; na `02` een
- * rood blokje van 6px als er iets ongelezen is) boven de naam (Archivo 900
- * op 75% breed, en op 62% voor een naam langer dan acht tekens, zodat
- * "Gesprekken" nooit afbreekt).
- *
- * Het actieve vak is gevuld met de vriendkleur van het moment (de vriend
- * in beeld, de gesprekspartner, de maker) en de inkt die daarop hoort;
- * zonder vriend in beeld met inkt en papier erop.
- */
-function FooterRubrieken({ active, tint, bottomInset }: { active: Tab; tint: string | null; bottomInset: number }) {
-  const t = useT();
-  const unread = useUnread();
-  const scheme = useScheme();
-  const tabs = useTabs(active);
-  const go = useGo();
-  const onBg = tint ?? color("ink");
-  const onFg = tint ? inkOn(tint, scheme) : color("paper");
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        marginTop: 10,
-        marginHorizontal: GUTTER,
-        marginBottom: bottomInset,
-        borderWidth: BORDER,
-        borderColor: line(),
-        overflow: "hidden",
-        backgroundColor: color("paper"),
-        zIndex: 12,
-      }}
-    >
-      {tabs.map((tab, i) => {
-        const on = tab.id === active;
-        const fg = on ? onFg : color("ink", "inkDim");
-        const narrow = tab.label.length > 8;
-        return (
-          <Pressable
-            key={tab.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={a11y(tab, unread.chats, t.unread)}
-            onPress={() => go(tab, on)}
-            style={[
-              {
-                flex: 1,
-                minWidth: 0,
-                height: 56,
-                paddingHorizontal: 10,
-                justifyContent: "center",
-                gap: 3,
-                overflow: "hidden",
-                backgroundColor: on ? onBg : "transparent",
-                borderLeftWidth: i ? 1 : 0,
-                borderLeftColor: color("ink", "postRule"),
-              },
-              Platform.OS === "web"
-                ? ({ transitionProperty: "background-color, color", transitionDuration: "300ms" } as object)
-                : null,
-            ]}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <Text style={{ ...mono(500), fontSize: 9, lineHeight: 10, color: fg }}>
-                {String(i + 1).padStart(2, "0")}
-              </Text>
-              <CountBadge count={tab.dot} round={false} />
-            </View>
-            <Text
-              numberOfLines={1}
-              style={[
-                lincinType.cardTitle,
-                { fontSize: 13, lineHeight: 14, letterSpacing: -0.26, color: fg },
-                narrow ? { fontFamily: FONT.headX } : null,
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+  return <FooterPil active={active} bottomInset={bottomInset} />;
 }
 
 /**

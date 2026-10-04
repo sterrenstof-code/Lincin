@@ -19,8 +19,8 @@ import {
 import { LincinScreen, vfade, type Tab } from "@/components/lincin/Chrome";
 import { MonoLink } from "@/components/lincin/desktop/Shell";
 import { VerticalLabel } from "@/components/lincin/ui";
-import { color, friendColor, OMSLAG, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue, type LincinTheme } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { color, friendColor, OMSLAG, RASTER, useScheme, useThemeSpec, type Hue, type LincinTheme } from "@/lib/design/theme";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useBackTarget } from "@/lib/nav";
 import { Black } from "./magazine/Omslag";
@@ -34,8 +34,6 @@ import { Black } from "./magazine/Omslag";
  * letters. Je stapte uit een Lincin-scherm in een ander ontwerp. Deze
  * onderdelen tekenen hetzelfde in élk thema, alleen vorm en letter wisselen:
  *
- *   kleur     papier, kaders van 1.5 inkt, geen ronding; koppen in Archivo
- *             900 smal kapitaal, labels in Plex Mono; de hoofdknop zuurgeel.
  *   magazine  zoals de voorpagina op de telefoon: de kop als volvlaks
  *             kleurvlak met een rail, de rubrieken op het tweede papier met
  *             een rug van 5 in dezelfde kleur, naad 6; koppen in Instrument
@@ -55,7 +53,7 @@ import { Black } from "./magazine/Omslag";
 
 const SEAM = RASTER.seam;
 
-/** De kleur van de pagina: de kop en de ruggen van de rubrieken (magazine), het blad (kleur, modern). */
+/** De kleur van de pagina: de kop en de ruggen van de rubrieken (magazine), het blad (modern). */
 const HueCtx = createContext<Hue>("orange");
 function usePageColor() {
   const scheme = useScheme();
@@ -66,7 +64,7 @@ function useTh(): LincinTheme {
   return useThemeSpec().id;
 }
 
-/** Mono (kleur, modern) of Archivo 700 op .1em (magazine, de omslag): het label van het thema. */
+/** Mono (modern) of Archivo 700 op .1em (magazine, de omslag): het label van het thema. */
 export function labelStyle(th: LincinTheme, size: number, c: string): TextStyle {
   const m = Math.max(10, size);
   return th === "magazine"
@@ -84,8 +82,7 @@ export function bodyStyle(th: LincinTheme, size = 14, c = color("ink")): TextSty
 /** De kop van het thema op een maat. */
 export function titleStyle(th: LincinTheme, size: number, c = color("ink")): TextStyle {
   if (th === "magazine") return { ...serif(), fontSize: size * 1.15, lineHeight: size * 1.1, letterSpacing: -size * 0.02, color: c };
-  if (th === "modern") return { ...sans(400), fontSize: size, lineHeight: size * 1.08, letterSpacing: -size * 0.035, color: c };
-  return { ...head(), fontSize: size, lineHeight: size * 0.92, color: c };
+  return { ...sans(400), fontSize: size, lineHeight: size * 1.08, letterSpacing: -size * 0.035, color: c };
 }
 
 // ---------------------------------------------------------------
@@ -122,17 +119,16 @@ export function SubPage({
   scroll?: boolean;
   /**
    * De kleur van de pagina: van de groep of de persoon (`hueFor(id)`), of
-   * een vaste per soort scherm. Magazine zet de kop erin, kleur en modern
-   * tinten het blad.
+   * een vaste per soort scherm. Magazine zet de kop erin, modern
+   * tint het blad.
    */
   hue?: Hue;
   children: ReactNode;
 }) {
-  const th = useTh();
   const desktop = useIsDesktop();
   const router = useRouter();
   const backTarget = useBackTarget(router, back);
-  const pad = th === "kleur" ? 18 : SEAM;
+  const pad = SEAM;
   const scheme = useScheme();
   const tint = friendColor(hue, scheme).fill;
 
@@ -142,7 +138,7 @@ export function SubPage({
     ) : null;
 
   const content = (
-    <View style={{ padding: pad, paddingTop: th === "kleur" ? 8 : SEAM, gap: th === "kleur" ? 16 : SEAM }}>
+    <View style={{ padding: pad, paddingTop: SEAM, gap: SEAM }}>
       {headBlock}
       {children}
     </View>
@@ -193,12 +189,11 @@ export function SubPage({
 /** Kicker, titel, één zin — en rechts eventueel een knop. */
 export function PageTitle({ title, kicker, sub, right }: { title: string; kicker?: string; sub?: string; right?: ReactNode }) {
   const th = useTh();
-  const spec = useThemeSpec();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
   const inner = (
     <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
-      <View style={{ flex: 1, minWidth: 0, gap: th === "kleur" ? 8 : 10 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 10 }}>
         {kicker ? <Text style={labelStyle(th, th === "magazine" ? 9 : 10, dim)}>{kicker}</Text> : null}
         <Text style={titleStyle(th, 40, ink)}>{title}</Text>
         {sub ? (
@@ -208,9 +203,6 @@ export function PageTitle({ title, kicker, sub, right }: { title: string; kicker
       {right}
     </View>
   );
-  if (th === "kleur") {
-    return <View style={{ paddingTop: 6, paddingBottom: 14, borderBottomWidth: spec.border, borderBottomColor: ink }}>{inner}</View>;
-  }
   if (th === "magazine") return <MagazineTitle title={title} kicker={kicker} sub={sub} right={right} />;
   return <Panel style={{ padding: RASTER.tilePadLarge, paddingTop: 26 }}>{inner}</Panel>;
 }
@@ -243,21 +235,19 @@ function MagazineTitle({ title, kicker, sub, right }: { title: string; kicker?: 
 // Vlakken
 // ---------------------------------------------------------------
 
-/** Het vlak van een blok: kader (kleur), tweede papier (magazine) of tegel (modern). */
+/** Het vlak van een blok: tweede papier (magazine) of tegel (modern). */
 export function Panel({ children, style }: { children?: ReactNode; style?: StyleProp<ViewStyle> }) {
   const spec = useThemeSpec();
   const th = spec.id;
   const base: ViewStyle =
-    th === "kleur"
-      ? { borderWidth: spec.border, borderColor: color("ink"), backgroundColor: color("paper") }
-      : th === "magazine"
-        ? { backgroundColor: color("paper2") }
-        : {
-            borderRadius: RASTER.tileRadius,
-            overflow: "hidden",
-            backgroundColor: color("tile", "tileFill"),
-            ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object) : null),
-          };
+    th === "magazine"
+      ? { backgroundColor: color("paper2") }
+      : {
+          borderRadius: RASTER.tileRadius,
+          overflow: "hidden",
+          backgroundColor: color("tile", "tileFill"),
+          ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object) : null),
+        };
   return <View style={[base, style]}>{children}</View>;
 }
 
@@ -285,8 +275,8 @@ export function Section({
   const spine = usePageColor().fill;
   const head =
     label || action ? (
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36, paddingHorizontal: th === "kleur" ? 0 : 12, paddingTop: th === "kleur" ? 0 : 6 }}>
-        {label ? <Text style={labelStyle(th, th === "magazine" ? 9 : 10, th === "kleur" ? ink : dim)}>{label}</Text> : <View />}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36, paddingHorizontal: 12, paddingTop: 6 }}>
+        {label ? <Text style={labelStyle(th, th === "magazine" ? 9 : 10, dim)}>{label}</Text> : <View />}
         {action ? (
           <Pressable accessibilityRole="button" accessibilityLabel={action.label} onPress={action.onPress} hitSlop={8} style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 }}>
             {action.icon ? <Ionicons name={action.icon} size={14} color={ink} /> : null}
@@ -296,14 +286,6 @@ export function Section({
       </View>
     ) : null;
   const inner = pad ? <View style={{ padding: th === "modern" ? RASTER.tilePad : 16, gap: 12 }}>{children}</View> : children;
-  if (th === "kleur") {
-    return (
-      <View style={[{ gap: 8 }, style]}>
-        {head}
-        <Panel>{inner}</Panel>
-      </View>
-    );
-  }
   // Magazine en modern: het label staat ín het vlak, bovenaan. Magazine
   // geeft het vlak een rug in de kleur van de pagina.
   return (
@@ -348,11 +330,9 @@ export function ListRow({
   const dim = color("ink", "inkDim");
   const rule: ViewStyle = first
     ? {}
-    : th === "kleur"
-      ? { borderTopWidth: spec.border, borderTopColor: color("ink") }
-      : th === "magazine"
-        ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
-        : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
+    : th === "magazine"
+      ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
+      : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
   const inner = (
     <>
       {left}
@@ -363,9 +343,7 @@ export function ListRow({
             style={[
               th === "magazine"
                 ? { ...serif(), fontSize: 21, lineHeight: 25 }
-                : th === "modern"
-                  ? { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3 }
-                  : { ...head(), fontSize: 19, lineHeight: 20 },
+                : { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3 },
               { color: c, flexShrink: 1 },
             ]}
           >
@@ -400,21 +378,21 @@ export function ListRow({
   );
 }
 
-/** Een klein etiket: kader in kleur, pil in magazine en modern. */
+/** Een klein etiket: pil in magazine en modern. */
 export function Badge({ label, tone = "outline" }: { label: string; tone?: "outline" | "ink" | "accent" }) {
   const spec = useThemeSpec();
   const th = spec.id;
   const ink = color("ink");
   const bg = tone === "ink" ? ink : tone === "accent" ? color("acid") : "transparent";
-  const fg = tone === "ink" ? color("paper") : tone === "accent" ? (th === "kleur" ? ON_LIGHT : color("paper")) : ink;
+  const fg = tone === "ink" ? color("paper") : tone === "accent" ? color("paper") : ink;
   return (
     <View
       style={{
-        paddingHorizontal: th === "kleur" ? 5 : 8,
+        paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: th === "modern" ? 999 : 0,
-        borderWidth: tone === "outline" ? (th === "kleur" ? spec.border : 1) : 0,
-        borderColor: th === "kleur" ? ink : color("ink", "postRule"),
+        borderWidth: tone === "outline" ? 1 : 0,
+        borderColor: color("ink", "postRule"),
         backgroundColor: bg,
       }}
     >
@@ -428,8 +406,8 @@ export function Badge({ label, tone = "outline" }: { label: string; tone?: "outl
 // ---------------------------------------------------------------
 
 /**
- * De knop. `primary` is de hoofdactie (hoogstens één per scherm): zuurgeel
- * in kleur, rood in magazine (de omslag), inkt in modern. `danger` is rood
+ * De knop. `primary` is de hoofdactie (hoogstens één per scherm): rood in
+ * magazine (de omslag), inkt in modern. `danger` is rood
  * op papier. Alleen modern is rond.
  */
 export function Button({
@@ -458,21 +436,9 @@ export function Button({
   const ink = color("ink");
   const round = th === "modern";
   const primary = tone === "primary";
-  const bg = primary ? (th === "kleur" ? color("acid") : th === "magazine" ? color("red") : ink) : "transparent";
-  const fg = primary ? (th === "kleur" ? ON_LIGHT : th === "magazine" ? OMSLAG.onImage : color("paper")) : tone === "danger" ? color("red") : ink;
-  const border = primary
-    ? th === "kleur"
-      ? ink
-      : "transparent"
-    : tone === "quiet"
-      ? "transparent"
-      : tone === "danger"
-        ? th === "kleur"
-          ? color("red")
-          : color("ink", "postRule")
-        : th === "kleur"
-          ? ink
-          : color("ink", "postRule");
+  const bg = primary ? (th === "magazine" ? color("red") : ink) : "transparent";
+  const fg = primary ? (th === "magazine" ? OMSLAG.onImage : color("paper")) : tone === "danger" ? color("red") : ink;
+  const border = primary || tone === "quiet" ? "transparent" : color("ink", "postRule");
   return (
     <Pressable
       accessibilityRole="button"
@@ -485,7 +451,7 @@ export function Button({
           height: small ? 36 : 48,
           paddingHorizontal: small ? 14 : 20,
           borderRadius: round ? 999 : 0,
-          borderWidth: th === "kleur" ? spec.border : 1,
+          borderWidth: 1,
           borderColor: border,
           backgroundColor: bg,
           flexDirection: "row",
@@ -499,14 +465,14 @@ export function Button({
       ]}
     >
       {busy ? <ActivityIndicator size="small" color={fg} /> : icon ? <Ionicons name={icon} size={small ? 14 : 16} color={fg} /> : null}
-      <Text numberOfLines={1} style={[labelStyle(th, small ? 9.5 : 10.5, fg), th === "kleur" ? { fontFamily: mono(600).fontFamily } : null]}>
+      <Text numberOfLines={1} style={labelStyle(th, small ? 9.5 : 10.5, fg)}>
         {label}
       </Text>
     </Pressable>
   );
 }
 
-/** Een rond (magazine, modern) of vierkant (kleur) knopje met één icoon. */
+/** Een rond knopje (magazine, modern) met één icoon. */
 export function IconBtn({
   icon,
   label,
@@ -520,8 +486,6 @@ export function IconBtn({
   tone?: "default" | "danger" | "ink";
   size?: number;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
   const c = tone === "danger" ? color("red") : tone === "ink" ? color("paper") : color("ink");
   return (
     <Pressable
@@ -532,9 +496,9 @@ export function IconBtn({
       style={({ pressed }) => ({
         width: size,
         height: size,
-        borderRadius: th === "kleur" ? 0 : size / 2,
-        borderWidth: tone === "ink" ? 0 : th === "kleur" ? spec.border : 1,
-        borderColor: tone === "danger" && th === "kleur" ? color("red") : th === "kleur" ? color("ink") : color("ink", "postRule"),
+        borderRadius: size / 2,
+        borderWidth: tone === "ink" ? 0 : 1,
+        borderColor: color("ink", "postRule"),
         backgroundColor: tone === "ink" ? color("ink") : "transparent",
         alignItems: "center",
         justifyContent: "center",
@@ -572,10 +536,10 @@ export const Field = forwardRef<TextInput, TextInputProps & { label?: string; hi
             paddingHorizontal: 14,
             paddingVertical: input.multiline ? 12 : 0,
             borderRadius: th === "modern" ? 14 : 0,
-            borderWidth: th === "kleur" ? spec.border : th === "magazine" ? 0 : 1,
-            borderBottomWidth: th === "magazine" ? 1 : th === "kleur" ? spec.border : 1,
-            borderColor: error ? color("red") : th === "kleur" ? ink : color("ink", "postRule"),
-            backgroundColor: th === "kleur" ? color("paper") : th === "magazine" ? "transparent" : color("paper"),
+            borderWidth: th === "magazine" ? 0 : 1,
+            borderBottomWidth: 1,
+            borderColor: error ? color("red") : color("ink", "postRule"),
+            backgroundColor: th === "magazine" ? "transparent" : color("paper"),
             color: ink,
             textAlignVertical: input.multiline ? "top" : "center",
             ...(th === "magazine" ? { ...serif(), fontSize: 20, paddingHorizontal: 0 } : { ...sans(400), fontSize: 15 }),
@@ -597,7 +561,7 @@ export function Note({ children, tone = "dim", center = false }: { children: Rea
     <Text
       style={[
         th === "magazine" ? { ...serif(true), fontSize: 15, lineHeight: 21 } : { ...sans(400), fontSize: 12.5, lineHeight: 18 },
-        { color: c, textAlign: center ? "center" : "left", paddingHorizontal: th === "kleur" ? 0 : 12 },
+        { color: c, textAlign: center ? "center" : "left", paddingHorizontal: 12 },
       ]}
     >
       {children}
@@ -606,8 +570,7 @@ export function Note({ children, tone = "dim", center = false }: { children: Rea
 }
 
 /**
- * Een keuzerij van twee tot vier opties: vakken naast elkaar (kleur),
- * losse pillen (magazine, modern).
+ * Een keuzerij van twee tot vier opties: losse pillen (magazine, modern).
  */
 export function Choice<T extends string>({
   value,
@@ -625,11 +588,10 @@ export function Choice<T extends string>({
     <View
       style={{
         flexDirection: "row",
-        gap: th === "kleur" ? 0 : SEAM,
-        ...(th === "kleur" ? { borderWidth: spec.border, borderColor: ink } : null),
+        gap: SEAM,
       }}
     >
-      {options.map((o, i) => {
+      {options.map((o) => {
         const on = o.value === value;
         return (
           <Pressable
@@ -645,9 +607,8 @@ export function Choice<T extends string>({
               justifyContent: "center",
               backgroundColor: on ? ink : pressed ? color("ink", "postRule") : "transparent",
               borderRadius: th === "modern" ? 999 : 0,
-              borderWidth: th === "kleur" ? 0 : 1,
+              borderWidth: 1,
               borderColor: on ? ink : color("ink", "postRule"),
-              ...(th === "kleur" && i > 0 ? { borderLeftWidth: spec.border, borderLeftColor: ink } : null),
             })}
           >
             <Text numberOfLines={1} style={labelStyle(th, 9.5, on ? color("paper") : ink)}>

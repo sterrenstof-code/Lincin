@@ -10,7 +10,7 @@ import { listMySharedLists } from "@/lib/api/shared-lists";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { RASTER, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 
@@ -82,7 +82,6 @@ export function DesktopSettings() {
               value={lincin.theme}
               onChange={(v: LincinTheme) => lincin.choose(v)}
               options={[
-                { value: "kleur", label: t.themeKleur },
                 { value: "magazine", label: t.themeMagazine },
                 { value: "modern", label: t.themeModern },
               ]}
@@ -96,7 +95,6 @@ export function DesktopSettings() {
           node: <Choice value={lang} onChange={(v: Lang) => setLang(v)} options={(["nl", "en", "de"] as Lang[]).map((l) => ({ value: l, label: l.toUpperCase() }))} />,
         },
         { kind: "value", label: t.lightDark, sub: t.followsDevice, value: standLabel, onPress: () => setPreference(STAND_NEXT[pref]) },
-        { kind: "toggle", label: t.tint, sub: t.tintSub, on: prefs.tint, flip: toggle("tint") },
       ],
     },
     {
@@ -124,21 +122,19 @@ export function DesktopSettings() {
   const dim = color("ink", "inkDim");
   const rule = color("ink", "postRule");
   const colStyle: ViewStyle =
-    th === "kleur"
-      ? { flex: 1, minWidth: 0, minHeight: 640, borderRightWidth: spec.border, borderRightColor: ink }
-      : th === "magazine"
-        ? { flex: 1, minWidth: 0, minHeight: 600, backgroundColor: color("paper2") }
-        : { flex: 1, minWidth: 0, minHeight: 560, padding: 10, gap: 6, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") };
+    th === "magazine"
+      ? { flex: 1, minWidth: 0, minHeight: 600, backgroundColor: color("paper2") }
+      : { flex: 1, minWidth: 0, minHeight: 560, padding: 10, gap: 6, borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill") };
   const rowStyle: ViewStyle =
     th === "modern"
       ? { padding: 16, gap: 12, borderRadius: 14, backgroundColor: color("paper") }
-      : { paddingVertical: 18, paddingHorizontal: th === "magazine" ? 28 : 24, gap: 12, borderBottomWidth: 1, borderBottomColor: rule };
+      : { paddingVertical: 18, paddingHorizontal: 28, gap: 12, borderBottomWidth: 1, borderBottomColor: rule };
   const labelStyle: TextStyle =
-    th === "kleur" ? { ...head(), fontSize: 18, lineHeight: 18 } : th === "magazine" ? { ...serif(), fontSize: 22, lineHeight: 23 } : { ...sans(500), fontSize: 16, lineHeight: 19, letterSpacing: -0.16 };
+    th === "magazine" ? { ...serif(), fontSize: 22, lineHeight: 23 } : { ...sans(500), fontSize: 16, lineHeight: 19, letterSpacing: -0.16 };
   const valueStyle: TextStyle =
     th === "magazine"
       ? { ...serif(true), fontSize: 19, lineHeight: 23, color: ink }
-      : { ...mono(th === "kleur" ? 600 : 500), fontSize: th === "kleur" ? 11 : 9.5, lineHeight: 14, letterSpacing: 1, textTransform: "uppercase", color: ink };
+      : { ...mono(500), fontSize: 9.5, lineHeight: 14, letterSpacing: 1, textTransform: "uppercase", color: ink };
 
   const account = [
     { label: t.editProfile, onPress: () => router.push("/profile-edit") },
@@ -151,20 +147,18 @@ export function DesktopSettings() {
     <DesktopShell active="you">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={th === "modern" ? { gap: SEAM } : undefined} showsVerticalScrollIndicator={false}>
         <PageHead num="04" title={t.settings} sub={t.remembered} />
-        <View style={[{ flexDirection: "row" }, th === "kleur" ? null : { gap: SEAM }, th === "magazine" ? { padding: SEAM } : null]}>
+        <View style={[{ flexDirection: "row" }, { gap: SEAM }, th === "magazine" ? { padding: SEAM } : null]}>
           {columns.map((g) => (
             <View key={g.num} style={colStyle}>
               <View
                 style={
-                  th === "kleur"
-                    ? { paddingTop: 22, paddingHorizontal: 24, paddingBottom: 16, gap: 6, borderBottomWidth: spec.border, borderBottomColor: ink }
-                    : th === "magazine"
-                      ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, gap: 8, borderBottomWidth: 1, borderBottomColor: rule }
-                      : { paddingTop: 14, paddingHorizontal: 12, paddingBottom: 10, gap: 6 }
+                  th === "magazine"
+                    ? { paddingTop: 26, paddingHorizontal: 28, paddingBottom: 18, gap: 8, borderBottomWidth: 1, borderBottomColor: rule }
+                    : { paddingTop: 14, paddingHorizontal: 12, paddingBottom: 10, gap: 6 }
                 }
               >
-                <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: 1, color: th === "kleur" ? ink : dim }]}>{g.num}</Text>
-                <Text style={[th === "kleur" ? head() : th === "magazine" ? serif() : sans(400), { fontSize: th === "kleur" ? 32 : th === "magazine" ? 40 : 32, lineHeight: th === "kleur" ? 29 : th === "magazine" ? 38 : 32, letterSpacing: th === "modern" ? -1.1 : 0, color: ink }]}>{g.title}</Text>
+                <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: 1, color: dim }]}>{g.num}</Text>
+                <Text style={[th === "magazine" ? serif() : sans(400), { fontSize: th === "magazine" ? 40 : 32, lineHeight: th === "magazine" ? 38 : 32, letterSpacing: th === "modern" ? -1.1 : 0, color: ink }]}>{g.title}</Text>
               </View>
               {g.rows.map((r) => {
                 const text = (
@@ -206,7 +200,6 @@ export function DesktopSettings() {
         <View
           style={[
             { flexDirection: "row", flexWrap: "wrap", gap: 24, paddingVertical: 18, paddingHorizontal: 32 },
-            th === "kleur" ? { borderTopWidth: spec.border, borderTopColor: ink, borderBottomWidth: 1, borderBottomColor: rule } : null,
             th === "modern" ? { borderRadius: RASTER.tileRadius, backgroundColor: color("tile", "tileFill"), paddingHorizontal: 24 } : null,
           ]}
         >
@@ -223,7 +216,7 @@ export function DesktopSettings() {
             style={
               th === "magazine"
                 ? [serif(true), { fontSize: 19, lineHeight: 24, color: dim }]
-                : [mono(500), { fontSize: th === "kleur" ? 10 : 9.5, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: th === "modern" ? color("paper") : dim }]
+                : [mono(500), { fontSize: 9.5, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: th === "modern" ? color("paper") : dim }]
             }
           >
             {t.rememberNote}

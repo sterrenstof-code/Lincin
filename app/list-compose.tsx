@@ -140,8 +140,7 @@ export default function ListComposeScreen() {
 
 /** Een icoon om te kiezen: gekozen staat het in de kleur van de pagina. */
 function EmojiTile({ emoji, selected, onPress }: { emoji: string; selected: boolean; onPress: () => void }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const fc = friendColor(PAGE_HUE, useScheme());
   return (
     <Pressable
@@ -155,9 +154,9 @@ function EmojiTile({ emoji, selected, onPress }: { emoji: string; selected: bool
         height: 44,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: th === "modern" ? 12 : th === "magazine" ? 22 : 0,
-        borderWidth: th === "kleur" ? spec.border : selected ? 0 : 1,
-        borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+        borderRadius: th === "modern" ? 12 : 22,
+        borderWidth: selected ? 0 : 1,
+        borderColor: color("ink", "postRule"),
         backgroundColor: selected ? fc.fill : "transparent",
         opacity: pressed ? 0.7 : 1,
       })}
@@ -194,10 +193,10 @@ function PersonChip({ friend, selected, onPress }: { friend: FriendshipWithProfi
             right: 4,
             width: 18,
             height: 18,
-            borderRadius: th === "kleur" ? 0 : 9,
+            borderRadius: 9,
             backgroundColor: fc.fill,
             borderWidth: 1.5,
-            borderColor: th === "kleur" ? color("ink") : color("paper"),
+            borderColor: color("paper"),
             alignItems: "center",
             justifyContent: "center",
           }}

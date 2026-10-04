@@ -16,9 +16,8 @@ import { usePageTitle } from "@/lib/page-title";
  * of de deep-link variant lincin://user/{username}.
  *
  * De vraag om cameratoegang staat op een subpagina van het thema; de
- * camera zelf vult het scherm, met de knoppen en het kader in de vorm van
- * het thema (vierkant in kleur, rond in magazine en modern) en in de
- * vaste kleuren voor op beeld (ON_DARK op een donkere sluier).
+ * camera zelf vult het scherm, met ronde knoppen en een rond kader (in
+ * magazine en modern gelijk) en in de vaste kleuren voor op beeld (ON_DARK op een donkere sluier).
  */
 export default function QRScanScreen() {
   usePageTitle("Scan een linc");
@@ -72,7 +71,6 @@ export default function QRScanScreen() {
   }
 
   // ── Camera actief ────────────────────────────────────────────────────────
-  const round = th !== "kleur";
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: ON_LIGHT }} edges={["top", "left", "right"]}>
       <CameraView
@@ -88,8 +86,8 @@ export default function QRScanScreen() {
           style={{
             width: 240,
             height: 240,
-            borderRadius: round ? 20 : 0,
-            borderWidth: th === "kleur" ? 3 : 2,
+            borderRadius: 20,
+            borderWidth: 2,
             borderColor: ON_DARK,
           }}
         />
@@ -102,7 +100,7 @@ export default function QRScanScreen() {
           accessibilityRole="button"
           accessibilityLabel="Scanner sluiten"
           onPress={() => safeBack(router, "/(app)/friends")}
-          style={({ pressed }) => ({ width: 44, height: 44, borderRadius: round ? 22 : 0, overflow: "hidden", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+          style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
         >
           <Veil />
           <Ionicons name="close" color={ON_DARK} size={22} />
@@ -112,11 +110,11 @@ export default function QRScanScreen() {
       {/* Label onderaan */}
       <View style={{ position: "absolute", bottom: 48, left: 0, right: 0, alignItems: "center", paddingHorizontal: 24 }}>
         {scanError ? (
-          <Chip round={round} fill={color("red")}>
+          <Chip fill={color("red")}>
             <Text style={labelStyle(th, 10, ON_DARK)}>{scanError}</Text>
           </Chip>
         ) : (
-          <Chip round={round}>
+          <Chip>
             <Text style={labelStyle(th, 10, ON_DARK)}>Richt op de QR-code van een vriend</Text>
           </Chip>
         )}
@@ -131,9 +129,9 @@ function Veil() {
 }
 
 /** Een label op het camerabeeld: op de sluier, of op een eigen vlak (de fout). */
-function Chip({ round, fill, children }: { round: boolean; fill?: string; children: ReactNode }) {
+function Chip({ fill, children }: { fill?: string; children: ReactNode }) {
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: round ? 999 : 0, overflow: "hidden", backgroundColor: fill }}>
+    <View style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, overflow: "hidden", backgroundColor: fill }}>
       {fill ? null : <Veil />}
       {children}
     </View>

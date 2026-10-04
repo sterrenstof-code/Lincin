@@ -155,7 +155,7 @@ export default function GroupInfoScreen() {
   const memberList = members.data ?? [];
   const name = chat.data?.name?.trim() || "Groep";
 
-  // De groepsfoto: vierkant in kleur en magazine, afgerond in modern. De
+  // De groepsfoto: vierkant in magazine, afgerond in modern. De
   // eigenaar tikt erop om hem te wijzigen.
   const photo = (
     <Pressable
@@ -171,8 +171,6 @@ export default function GroupInfoScreen() {
         backgroundColor: color("ink", "postRule"),
         alignItems: "center",
         justifyContent: "center",
-        borderWidth: th === "kleur" ? 1.5 : 0,
-        borderColor: color("ink"),
       }}
     >
       {groupAvatarUrl ? (
@@ -181,7 +179,7 @@ export default function GroupInfoScreen() {
         <Ionicons name="people" color={color("ink")} size={30} />
       )}
       {isOwner ? (
-        <View style={{ position: "absolute", right: 0, bottom: 0, width: 28, height: 28, borderRadius: th === "kleur" ? 0 : 14, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}>
+        <View style={{ position: "absolute", right: 0, bottom: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center" }}>
           {avatarUploading ? <ActivityIndicator size="small" color={color("paper")} /> : <Ionicons name="camera" color={color("paper")} size={13} />}
         </View>
       ) : null}

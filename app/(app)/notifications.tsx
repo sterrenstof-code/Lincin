@@ -1,20 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { NotificationsModern } from "@/components/lincin/modern/NotificationsModern";
 import { NotificationsMagazine } from "@/components/lincin/magazine/Pages";
-import { BORDER, Box, Btn, DashedCard, GUTTER, Mono, Serif, line } from "@/components/lincin/ui";
 import {
   listNotifications,
-  markAllNotificationsRead,
   markNotificationRead,
   type NotificationWithDetails,
 } from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { shortAgo } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
@@ -44,8 +39,6 @@ function NotificationsPhone() {
   const lang = useLang();
   const scheme = useScheme();
   const spec = useThemeSpec();
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
 
   const notes = useQuery({
     queryKey: ["notifications", myUserId],
@@ -69,11 +62,6 @@ function NotificationsPhone() {
     }
     const to = destinationFor(item);
     if (to) router.push(to as never);
-  }
-
-  async function readAll() {
-    await markAllNotificationsRead(myUserId).catch(() => {});
-    bump();
   }
 
   const noteRows = data.map((n, i) => ({
@@ -100,52 +88,16 @@ function NotificationsPhone() {
     );
   }
 
-  if (spec.layout === "bento") {
-    return (
-      <NotificationsModern
-        rows={noteRows}
-        unread={unread}
-        scheme={scheme}
-        t={t}
-        state={notes.isLoading ? t.loading : notes.isError ? t.failed : null}
-        emptyLabel="Nog geen meldingen"
-        onEmptyPress={() => router.push("/profile")}
-      />
-    );
-  }
-
   return (
-    <LincinScreen
-      tab="you"
-      counter={t.notifications}
-      back="/profile"
-      header={
-        <TopRow
-          center={<Serif variant="pageTitleLarge">{t.notifications}</Serif>}
-          right={unread > 0 ? <Btn label="Alles gelezen" height={30} onPress={readAll} /> : null}
-        />
-      }
-    >
-      <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20 }}>
-        {notes.isLoading ? (
-          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
-            {t.loading}
-          </Mono>
-        ) : notes.isError ? (
-          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
-            {t.failed}
-          </Mono>
-        ) : data.length === 0 ? (
-          <DashedCard>Nog geen meldingen</DashedCard>
-        ) : (
-          <Box style={{ borderBottomWidth: 0 }}>
-            {data.map((n) => (
-              <Row key={n.id} item={n} onPress={() => open(n)} />
-            ))}
-          </Box>
-        )}
-      </ScrollView>
-    </LincinScreen>
+    <NotificationsModern
+      rows={noteRows}
+      unread={unread}
+      scheme={scheme}
+      t={t}
+      state={notes.isLoading ? t.loading : notes.isError ? t.failed : null}
+      emptyLabel="Nog geen meldingen"
+      onEmptyPress={() => router.push("/profile")}
+    />
   );
 }
 
@@ -157,49 +109,6 @@ export function destinationFor(item: NotificationWithDetails): string | null {
   // Een call heeft geen eigen bladzijde; hij leeft in het gesprek.
   if (item.call_chat_id) return `/chat/${item.call_chat_id}`;
   return null;
-}
-
-function Row({ item, onPress }: { item: NotificationWithDetails; onPress: () => void }) {
-  const t = useT();
-  const lang = useLang();
-  const scheme = useScheme();
-  // De ongelezen-tint volgt het blad, niet de stand: magazine is altijd
-  // licht, ook als de stand donker is.
-  const darkPaper = useThemeSpec().dark;
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
-  const fc = friendColor(hueFor(item.actor_id), scheme);
-  const name = item.actor?.display_name ?? item.actor?.username ?? "Iemand";
-  const { text } = describe(item);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${name} ${text}`}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        gap: 12,
-        padding: 12,
-        borderBottomWidth: BORDER,
-        borderBottomColor: line(),
-        backgroundColor: item.read ? "transparent" : darkPaper ? "rgba(237,232,221,.07)" : "rgba(20,20,20,.05)",
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <View style={{ width: 10, backgroundColor: fc.fill, borderWidth: BORDER, borderColor: line() }} />
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <Text style={[lincinType.bodySmall, { fontSize: 14, lineHeight: 19, color: color("ink") }]}>
-          <Text style={{ fontFamily: lincinType.button.fontFamily, fontWeight: lincinType.button.fontWeight }}>
-            {item.type === "bug_resolved" ? "" : name}
-          </Text>
-          {item.type === "bug_resolved" ? text : ` ${text}`}
-        </Text>
-        <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
-          {shortAgo(item.created_at, t, lang)}
-        </Mono>
-      </View>
-    </Pressable>
-  );
 }
 
 function truncate(text: string, max: number): string {

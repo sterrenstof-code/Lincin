@@ -1262,8 +1262,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   // kaders ontstaan.
   /**
    * Modern kent geen vakjes: de invoer is één pil op papier, de knoppen
-   * erin rond (desktop-modern-pages, "Schrijf aan …"). Kleur en magazine
-   * houden de gekaderde vakken naast elkaar.
+   * erin rond (desktop-modern-pages, "Schrijf aan …"). Magazine houdt de
+   * gekaderde vakken naast elkaar.
    */
   const pill = spec.id === "modern";
   /**
@@ -1489,7 +1489,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         {/* De strook "VERMELD": de bijdragen waar dit gesprek over ging.
             In modern volgt hij het rastermodel (2.2 §5): geen kader, het
             label horizontaal in mono, en kaartjes van 130 × 60 met een
-            ronding van 14 en geen kleurrug. In kleur en magazine blijft hij
+            ronding van 14 en geen kleurrug. In magazine blijft hij
             zoals hij was — een kader met een gedraaid label en kaartjes van
             96 × 56. */}
         {mentioned.length > 0 && !embedded && (
@@ -1831,16 +1831,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     <MessageBubble
                       msg={item}
                       accent={partner.fill}
-                      // Desktop (desktop-*-pages): in kleur de bubbel van een ander in zijn
-                      // eigen kleur, in modern een wit tegelvlak. Op de telefoon het blad.
+                      // Desktop (desktop-*-pages): in modern de bubbel van een ander als
+                      // wit tegelvlak. Op de telefoon (en in magazine) het blad.
                       fill={
                         !embedded || isMine
                           ? undefined
-                          : spec.id === "kleur"
-                            ? friendColor(hueFor(item.sender_id), schemeNow)
-                            : spec.id === "modern"
-                              ? { fill: color("tile"), ink: color("ink") }
-                              : undefined
+                          : spec.id === "modern"
+                            ? { fill: color("tile"), ink: color("ink") }
+                            : undefined
                       }
                       isMine={isMine}
                       isGroup={!!isGroup}
@@ -2878,7 +2876,7 @@ function MessageBubble({
   msg: DecryptedMessage;
   /** De kleur van de ander: de rand van een aangetikte bubbel, de kantlijn van een vermelding. */
   accent?: string;
-  /** Het vlak van de bubbel en de inkt erop (desktop kleur); anders het blad. */
+  /** Het vlak van de bubbel en de inkt erop (desktop modern); anders het blad. */
   fill?: { fill: string; ink: string };
   isMine: boolean;
   isGroup?: boolean;
@@ -3095,8 +3093,9 @@ function MessageBubble({
         style={[
           {
             opacity: pending ? 0.65 : 1,
-            // Kleur en magazine: anderhalve pixel inkt om elke bubbel
-            // (prototype THREAD: `border: 1.5px solid` naast `--bw`).
+            // De basis: anderhalve pixel inkt om elke bubbel (prototype
+            // THREAD: `border: 1.5px solid` naast `--bw`); magazine en
+            // modern zetten er hieronder hun eigen rand overheen.
             borderWidth: 1.5,
             borderColor: failed ? color("red") : selected && accent ? accent : color("ink"),
           },

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
 import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
-import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { usePageTitle } from "@/lib/page-title";
@@ -160,17 +160,14 @@ export default function PollComposeScreen() {
 
 /** Het nummer van een optie, als vlakje in de kleur van de pagina. */
 function OptionNumber({ n, hue }: { n: number; hue: Hue }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const fc = friendColor(hue, useScheme());
   return (
     <View
       style={{
         width: 30,
         height: 30,
-        borderRadius: th === "kleur" ? 0 : 15,
-        borderWidth: th === "kleur" ? spec.border : 0,
-        borderColor: color("ink"),
+        borderRadius: 15,
         backgroundColor: fc.fill,
         alignItems: "center",
         justifyContent: "center",

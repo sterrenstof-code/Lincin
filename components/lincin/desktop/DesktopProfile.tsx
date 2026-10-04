@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
 
-import { HuePicker } from "@/components/lincin/HuePicker";
 import { SafeImage } from "@/components/SafeImage";
 import { getOrCreateDirectChat, listMyChats } from "@/lib/api/chats";
 import { acceptFriendRequest, deleteFriendship, listMyFriendships, sendFriendRequest } from "@/lib/api/friends";
@@ -11,7 +10,7 @@ import { listUserPosts } from "@/lib/api/posts";
 import { getProfileByUsername } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
 import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { bioLine, displayName, fromPost, timeLabel, type CardPost } from "@/lib/lincin/model";
 import { useBackTarget } from "@/lib/nav";
@@ -24,9 +23,6 @@ import { DesktopShell } from "./Shell";
 /**
  * Het profiel van een vriend op desktop (desktop-*-pages.dc.html, VRIEND).
  *
- *   kleur     een band in zijn kleur: ← Terug, de naam in Archivo 900 smal
- *             168, de bio; rechts drie feiten en "Bericht aan …". Daaronder
- *             "Alle bijdragen" in vier kolommen met inktlijnen.
  *   magazine  een omslag van 600 (zijn plaat of nieuwste foto) met de naam
  *             in serif 236, rechts "Over …" en drie feiten; daaronder een
  *             raster van twaalf kolommen dat van maat wisselt.
@@ -136,12 +132,8 @@ export function DesktopProfile({ username }: { username: string }) {
         const w = spans[k] * unit + (spans[k] - 1) * SEAM;
         return <TileMagazine key={c.id} c={c} width={w} tall={[0, 6, 7].includes(k)} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />;
       }
-      const w = th === "modern" ? (width - SEAM * 3) / 4 : width / 4;
-      return th === "modern" ? (
-        <TileModern key={c.id} c={c} width={w} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />
-      ) : (
-        <TileKleur key={c.id} c={c} width={w} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />
-      );
+      const w = (width - SEAM * 3) / 4;
+      return <TileModern key={c.id} c={c} width={w} isNew={isNew} fill={c.swatch ? friendColor(c.swatch, scheme) : fc} onPress={() => openPost(c)} />;
     });
 
   if (!p) {
@@ -153,51 +145,6 @@ export function DesktopProfile({ username }: { username: string }) {
   }
 
   const ink = color("ink");
-  const huePicker = relation && relation.kind !== "self" ? <HuePicker personId={p.id} ink={th === "kleur" ? fc.ink : ink} /> : null;
-
-  // ---------------- KLEUR ----------------
-  if (th === "kleur") {
-    return (
-      <DesktopShell active="feed">
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", backgroundColor: fc.fill, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-            <View style={{ flex: 1, minWidth: 0, paddingTop: 28, paddingHorizontal: 32, paddingBottom: 30, gap: 18 }}>
-              <Pressable accessibilityRole="button" onPress={back.go} style={{ alignSelf: "flex-start", height: 34, paddingHorizontal: 12, justifyContent: "center", borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper") }}>
-                <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase", color: ink }]}>← {t.back}</Text>
-              </Pressable>
-              <FitName name={name} max={168} ratio={0.62} lead={0.81} style={[head(), { color: fc.ink }]} />
-              {bio ? <Text style={[serif(), { maxWidth: 640, fontSize: 26, lineHeight: 31, color: fc.ink }]}>{bio}</Text> : null}
-              {huePicker}
-            </View>
-            <View style={{ width: 360, borderLeftWidth: spec.border, borderLeftColor: ink }}>
-              {stats.map((s) => (
-                <View key={s.k} style={{ flex: 1, minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-                  <Text style={[mono(600), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: fc.ink }]}>{s.k}</Text>
-                  <Text numberOfLines={1} style={[head(), { flexShrink: 1, marginLeft: 12, fontSize: 32, lineHeight: 32, color: fc.ink }]}>
-                    {s.v}
-                  </Text>
-                </View>
-              ))}
-              {actions.map((a) => (
-                <Pressable key={a.label} accessibilityRole="button" disabled={busy} onPress={a.onPress} style={{ height: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, backgroundColor: ink, opacity: busy ? 0.6 : 1 }}>
-                  <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, textTransform: "uppercase", color: color("paper") }]}>{a.label}</Text>
-                  <Text style={{ color: color("paper") }}>→</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-          <View style={{ height: 52, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 32, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-            <View style={{ width: 8, height: 8, backgroundColor: color("red") }} />
-            <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, textTransform: "uppercase", color: ink }]}>{t.allPosts}</Text>
-            <Text style={meta(11, color("ink", "inkDim"))}>{t.newestFirst}</Text>
-          </View>
-          <View onLayout={(e) => setGridW(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap" }}>
-            {gridW ? tiles(gridW) : null}
-          </View>
-        </ScrollView>
-      </DesktopShell>
-    );
-  }
 
   // ---------------- MAGAZINE ----------------
   if (th === "magazine") {
@@ -238,7 +185,6 @@ export function DesktopProfile({ username }: { username: string }) {
                   {t.aboutTitle} {name}
                 </Text>
                 {bio ? <Text style={[serif(true), { fontSize: 30, lineHeight: 36, color: ink }]}>{bio}</Text> : null}
-                {huePicker}
                 <View style={{ flex: 1 }} />
                 {actions.map((a) => (
                   <Pressable key={a.label} accessibilityRole="button" disabled={busy} onPress={a.onPress}>
@@ -294,7 +240,6 @@ export function DesktopProfile({ username }: { username: string }) {
               </View>
             </View>
             {bio ? <Text style={[sans(400), { maxWidth: 620, fontSize: 20, lineHeight: 28, color: color("ink", "inkDim") }]}>{bio}</Text> : null}
-            {huePicker}
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: SEAM }}>
             {stats.map((s) => (
@@ -329,7 +274,7 @@ export function DesktopProfile({ username }: { username: string }) {
 const ON_PHOTO = "#F7F4EE";
 
 /**
- * De naam zo groot als het ontwerp hem wil (168, 236, 120), maar nooit
+ * De naam zo groot als het ontwerp hem wil (300, 120), maar nooit
  * breder dan zijn kolom: een lange gebruikersnaam wordt kleiner in plaats
  * van af te breken. `ratio` is de gemiddelde breedte van een letter in die
  * letter, als deel van de korps.
@@ -369,42 +314,6 @@ function Area({ c, height, fill, text }: { c: CardPost; height: number; fill: { 
         text(m.kind === "tekst" ? m.text : c.caption || c.title)
       )}
     </View>
-  );
-}
-
-function TileKleur({ c, width, isNew, fill, onPress }: TileProps) {
-  const t = useT();
-  const lang = useLang();
-  const spec = useThemeSpec();
-  const ink = color("ink");
-  return (
-    <Pressable accessibilityRole="link" accessibilityLabel={c.title} onPress={onPress} style={{ width, borderRightWidth: spec.border, borderBottomWidth: spec.border, borderColor: ink }}>
-      <View style={{ borderBottomWidth: spec.border, borderBottomColor: ink }}>
-        <Area
-          c={c}
-          height={220}
-          fill={fill}
-          text={(s) => (
-            <Text numberOfLines={6} style={[serif(), { paddingTop: 48, paddingHorizontal: 18, fontSize: 22, lineHeight: 26, color: fill.ink }]}>
-              {s}
-            </Text>
-          )}
-        />
-        {isNew ? (
-          <View style={{ position: "absolute", top: 10, left: 10, height: 22, paddingHorizontal: 8, justifyContent: "center", backgroundColor: color("acid"), borderWidth: spec.border, borderColor: ink }}>
-            <Text style={[mono(600), { fontSize: 9.5, lineHeight: 12, letterSpacing: 0.76, textTransform: "uppercase", color: "#141414" }]}>{t.new}</Text>
-          </View>
-        ) : null}
-      </View>
-      <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18, gap: 8, borderLeftWidth: 6, borderLeftColor: fill.fill }}>
-        <Text style={[mono(600), { fontSize: 9.5, lineHeight: 12, letterSpacing: 0.76, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
-          {c.kind} · {timeLabel(c.createdAt, t, lang)}
-        </Text>
-        <Text numberOfLines={2} style={[head(), { fontSize: 22, lineHeight: 21, color: ink }]}>
-          {c.title}
-        </Text>
-      </View>
-    </Pressable>
   );
 }
 

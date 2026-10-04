@@ -12,13 +12,11 @@ import {
 
 import { IconButton } from "@/components/IconButton";
 import { OMSLAG, RASTER, color, useThemeSpec } from "@/lib/design/theme";
-import { CONTROL_H, mono, sans, serif, space } from "@/lib/design/type";
+import { sans, serif, space } from "@/lib/design/type";
 
 /**
- * Hoe een venster eruitziet, per thema (lincin-handoff, de drie bladen):
+ * Hoe een venster eruitziet, per thema (lincin-handoff, de bladen):
  *
- *   kleur     papier, een inktkader van het thema, kop in mono kapitalen,
- *             regels tussen inktlijnen, labels in Archivo vet.
  *   magazine  het tweede papier zonder kader, met een lijn van 2 bovenaan, de kop
  *             als cursieve serif, haarlijnen tussen de regels, labels in
  *             serif — zoals de gesprekkenlijst van de omslag.
@@ -28,11 +26,10 @@ import { CONTROL_H, mono, sans, serif, space } from "@/lib/design/type";
  * ActionSheet leest dit ook, zodat de regels bij hun venster passen.
  */
 export function useSheetStyle() {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  const rule = th === "magazine" ? color("ink", "postRule") : ink;
+  const rule = color("ink", "postRule");
   return {
     th,
     ink,
@@ -41,17 +38,13 @@ export function useSheetStyle() {
     box:
       th === "modern"
         ? { backgroundColor: color("tile"), borderRadius: RASTER.tileRadius, overflow: "hidden" as const }
-        : th === "magazine"
-          ? { backgroundColor: color("paper2"), borderTopWidth: OMSLAG.rule, borderTopColor: ink }
-          : { backgroundColor: color("paper"), borderWidth: spec.border, borderColor: ink },
-    headRule: th === "modern" ? null : { borderBottomWidth: th === "magazine" ? 1 : spec.border, borderBottomColor: rule },
+        : { backgroundColor: color("paper2"), borderTopWidth: OMSLAG.rule, borderTopColor: ink },
+    headRule: th === "modern" ? null : { borderBottomWidth: 1, borderBottomColor: rule },
     title:
       th === "magazine"
         ? { ...serif(true), fontSize: 28, lineHeight: 32, color: ink }
-        : th === "modern"
-          ? { ...sans(500), fontSize: 20, lineHeight: 24, letterSpacing: -0.4, color: ink }
-          : { ...mono(600), fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: "uppercase" as const, color: dim },
-    rowSep: th === "modern" ? null : { borderBottomWidth: th === "magazine" ? 1 : spec.border, borderBottomColor: rule },
+        : { ...sans(500), fontSize: 20, lineHeight: 24, letterSpacing: -0.4, color: ink },
+    rowSep: th === "modern" ? null : { borderBottomWidth: 1, borderBottomColor: rule },
     row:
       th === "modern"
         ? { marginHorizontal: 10, marginBottom: RASTER.seam, borderRadius: 14, backgroundColor: color("tile", "tileFill") }
@@ -59,9 +52,7 @@ export function useSheetStyle() {
     label:
       th === "magazine"
         ? { ...serif(), fontSize: 22, lineHeight: 26 }
-        : th === "modern"
-          ? { ...sans(500), fontSize: 16, lineHeight: 20 }
-          : { ...sans(700), fontSize: 15, lineHeight: 19 },
+        : { ...sans(500), fontSize: 16, lineHeight: 20 },
   };
 }
 
@@ -191,10 +182,8 @@ export function ModalShell({
                 alignItems: "center",
                 paddingLeft: space.lg,
                 paddingRight: space.md,
-                // De knop is zelf CONTROL_H hoog; een eigen verticale marge
-                // erbovenop zou de kopbalk hoger maken dan zijn inhoud.
-                minHeight: sh.th === "kleur" ? CONTROL_H : 64,
-                paddingTop: sh.th === "kleur" ? 0 : 6,
+                minHeight: 64,
+                paddingTop: 6,
                 ...sh.headRule,
                 ...(sh.th === "modern" ? { paddingLeft: 20 } : null),
               }}

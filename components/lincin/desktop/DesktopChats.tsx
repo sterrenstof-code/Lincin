@@ -7,7 +7,7 @@ import { ChatDetail } from "@/app/chat/[id]";
 import { chatTitle, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { RASTER, color, friendColor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { pickThread } from "@/lib/lincin/desktop";
 
@@ -74,8 +74,8 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
     <DesktopShell active="chats" tint={th === "modern" ? tint : null}>
       <View style={[{ flex: 1, minHeight: 0 }, th === "modern" ? { gap: RASTER.seam } : null]}>
         <PageHead num="02" title={t.chats} sub={`${unread} ${t.unread} · ${list.length} ${t.chats.toLowerCase()}`} />
-        <View style={[{ flex: 1, minHeight: 0, flexDirection: "row" }, th === "kleur" ? null : { gap: RASTER.seam }, th === "magazine" ? { padding: RASTER.seam } : null]}>
-          <View style={[{ width: th === "magazine" ? 440 : 420, minHeight: 0 }, th === "kleur" ? { borderRightWidth: spec.border, borderRightColor: color("ink") } : null]}>
+        <View style={[{ flex: 1, minHeight: 0, flexDirection: "row" }, { gap: RASTER.seam }, th === "magazine" ? { padding: RASTER.seam } : null]}>
+          <View style={[{ width: th === "magazine" ? 440 : 420, minHeight: 0 }]}>
             <ChatList activeId={current} onOpen={open} full />
           </View>
           <View
@@ -148,40 +148,20 @@ function ThreadHead({ chatId }: { chatId: string }) {
       </View>
     );
   }
-  if (spec.id === "modern") {
-    return (
-      <View style={{ borderRadius: RASTER.tileRadius, paddingVertical: 14, paddingRight: 14, paddingLeft: 16, flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: pageTint(fc.fill, scheme, { light: 0.22, dark: 0.2 }) }}>
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}>
-          <Text style={[sans(700), { fontSize: 17, lineHeight: 20, color: fc.ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-          <Text numberOfLines={1} style={[sans(500), { fontSize: 26, lineHeight: 28, letterSpacing: -0.8, color: ink }]}>
-            {name}
-          </Text>
-          {sub ? <Text style={[mono(500), { fontSize: 8.5, lineHeight: 11, letterSpacing: 1.36, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{sub}</Text> : null}
-        </View>
-        {goProfile ? (
-          <Pressable accessibilityRole="link" onPress={goProfile} style={{ height: 44, paddingHorizontal: 18, borderRadius: 999, justifyContent: "center", backgroundColor: "rgba(255,255,255,.8)" }}>
-            <Text style={[mono(500), { fontSize: 9.5, lineHeight: 12, letterSpacing: 1.14, textTransform: "uppercase", color: "#17170F" }]}>{profLabel}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    );
-  }
   return (
-    <View style={{ height: 84, flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 24, backgroundColor: fc.fill, borderBottomWidth: spec.border, borderBottomColor: ink }}>
-      <View style={{ width: 48, height: 48, borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center" }}>
-        <Text style={[head(), { fontSize: 24, lineHeight: 26, color: ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
+    <View style={{ borderRadius: RASTER.tileRadius, paddingVertical: 14, paddingRight: 14, paddingLeft: 16, flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: pageTint(fc.fill, scheme, { light: 0.22, dark: 0.2 }) }}>
+      <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}>
+        <Text style={[sans(700), { fontSize: 17, lineHeight: 20, color: fc.ink }]}>{name.slice(0, 1).toUpperCase()}</Text>
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-        <Text numberOfLines={1} style={[head(), { fontSize: 30, lineHeight: 28, color: fc.ink }]}>
+        <Text numberOfLines={1} style={[sans(500), { fontSize: 26, lineHeight: 28, letterSpacing: -0.8, color: ink }]}>
           {name}
         </Text>
-        {sub ? <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: fc.ink }]}>{sub}</Text> : null}
+        {sub ? <Text style={[mono(500), { fontSize: 8.5, lineHeight: 11, letterSpacing: 1.36, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{sub}</Text> : null}
       </View>
       {goProfile ? (
-        <Pressable accessibilityRole="link" onPress={goProfile} style={{ height: 40, paddingHorizontal: 16, justifyContent: "center", backgroundColor: color("paper"), borderWidth: spec.border, borderColor: ink }}>
-          <Text style={[mono(600), { fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: ink }]}>{profLabel}</Text>
+        <Pressable accessibilityRole="link" onPress={goProfile} style={{ height: 44, paddingHorizontal: 18, borderRadius: 999, justifyContent: "center", backgroundColor: "rgba(255,255,255,.8)" }}>
+          <Text style={[mono(500), { fontSize: 9.5, lineHeight: 12, letterSpacing: 1.14, textTransform: "uppercase", color: "#17170F" }]}>{profLabel}</Text>
         </Pressable>
       ) : null}
     </View>

@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { color, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
@@ -10,7 +10,6 @@ import { useT } from "@/lib/i18n";
  * horen, en las als nog iets om te lezen. Een teken zegt hetzelfde zonder
  * aandacht te vragen.
  *
- *   kleur     een vierkant kader van 1.5 met het vinkje erin
  *   magazine  een haarlijncirkel
  *   modern    een zacht rondje van het papier
  *
@@ -29,14 +28,12 @@ export function UpToDateMark({ size = 56 }: { size?: number }) {
       style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 20 }}
     >
       <Svg width={size} height={size} viewBox="0 0 56 56">
-        {th === "kleur" ? (
-          <Rect x={1.5} y={1.5} width={53} height={53} fill="none" stroke={ink} strokeWidth={1.5} />
-        ) : th === "magazine" ? (
+        {th === "magazine" ? (
           <Circle cx={28} cy={28} r={27} fill="none" stroke={ink} strokeWidth={1} />
         ) : (
           <Circle cx={28} cy={28} r={28} fill={color("paper")} />
         )}
-        <Path d={check} fill="none" stroke={ink} strokeWidth={th === "kleur" ? 2.5 : 1.75} strokeLinecap={th === "kleur" ? "square" : "round"} strokeLinejoin={th === "kleur" ? "miter" : "round"} />
+        <Path d={check} fill="none" stroke={ink} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );

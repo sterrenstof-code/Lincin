@@ -1,19 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, ScrollView, View } from "react-native";
 
-import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
-import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { useChatReadMenu } from "@/components/lincin/ChatReadMenu";
-import { Body, BORDER, DashedCard, GUTTER, Head, Mono, Serif, line } from "@/components/lincin/ui";
-import { chatAvatarUrl, chatTitle, getOrCreateDirectChat, listMyChats, otherMember, type ChatWithMembers } from "@/lib/api/chats";
+import { chatAvatarUrl, chatTitle, getOrCreateDirectChat, listMyChats, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
@@ -48,8 +44,6 @@ function ChatsMobile() {
   const lang = useLang();
   const scheme = useScheme();
   const spec = useThemeSpec();
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
   const toast = useToast();
   const readMenu = useChatReadMenu();
 
@@ -88,8 +82,8 @@ function ChatsMobile() {
   }
 
   /**
-   * De rijen als gegevens, los van hun vorm. Kleur tekent ze als lijst in
-   * één kader; modern als tegels in een bento-rooster (2.2 §1). Dezelfde
+   * De rijen als gegevens, los van hun vorm. Magazine tekent ze als
+   * spread; modern als tegels in een bento-rooster (2.2 §1). Dezelfde
    * gesprekken, dezelfde volgorde, dezelfde handelingen.
    */
   const rows: ChatRowData[] = [
@@ -142,187 +136,19 @@ function ChatsMobile() {
     );
   }
 
-  if (spec.layout === "bento") {
-    return (
-      <ChatsModern
-        rows={rows}
-        unread={unread}
-        scheme={scheme}
-        t={t}
-        state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
-        footer={
-          <>
-            <DashedTile label="Nieuwe groep →" onPress={() => router.push("/group-create")} />
-            {readMenu.sheet}
-          </>
-        }
-      />
-    );
-  }
-
-  function rowFor(c: ChatWithMembers) {
-    const isGroup = c.type === "group";
-    const other = isGroup ? null : otherMember(c, myUserId);
-    const hue: Hue = isGroup ? "green" : hueFor(other?.id);
-    const fc = friendColor(hue, scheme);
-    const name = chatTitle(c, myUserId);
-    const pv = previews[c.id];
-    let preview = "Nog geen berichten";
-    if (pv) preview = pv.fromMe ? `${t.me}: ${pv.text}` : isGroup && pv.sender ? `${pv.sender}: ${pv.text}` : pv.text;
-    const time = c.last_message_at ? shortAgo(c.last_message_at, t, lang) : "";
-    return (
-      <Row
-        key={c.id}
-        initial={name.slice(0, 1).toUpperCase()}
-        avatarUrl={chatAvatarUrl(c, myUserId)}
-        fill={fc.fill}
-        ink={fc.ink}
-        square={isGroup}
-        name={name}
-        time={time}
-        preview={preview}
-        unread={c.unread_count ?? 0}
-        onPress={() => openThread(c.id)}
-        menu={readMenu.rowProps(c.id, name, (c.unread_count ?? 0) > 0)}
-      />
-    );
-  }
-
   return (
-    <LincinScreen tab="chats" counter={t.tabChats}>
-      <View style={{ paddingTop: 8, paddingHorizontal: GUTTER, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-        <Serif variant="pageTitle">{t.chats}</Serif>
-        <Mono variant="micro" tone="dim" style={{ textTransform: "none" }}>
-          {unread} {t.unread}
-        </Mono>
-      </View>
-      {/* Eén kader dat tot de onderrand loopt (prototype §04: het scrollvlak
-          zelf draagt het kader, zonder onderlijn); de rijen erin. */}
-      <ScrollView
-        style={[{ flex: 1, marginTop: 14, marginHorizontal: GUTTER, borderWidth: BORDER, borderBottomWidth: 0, borderColor: line(), backgroundColor: color("paper") }, vfade()]}
-        showsVerticalScrollIndicator={false}
-      >
-        {chats.isLoading ? (
-          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
-            {t.loading}
-          </Mono>
-        ) : chats.isError ? (
-          <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 30 }}>
-            {t.failed}
-          </Mono>
-        ) : list.length + withoutChat.length === 0 ? (
-          <DashedCard style={{ margin: 12 }} onPress={() => router.push("/friends")}>{t.noFriendsYet} →</DashedCard>
-        ) : (
-          <>
-            {list.map(rowFor)}
-            {withoutChat.map((f) => {
-              const fc = friendColor(hueFor(f.other.id), scheme);
-              const name = displayName(f.other);
-              return (
-                <Row
-                  key={f.id}
-                  initial={name.slice(0, 1).toUpperCase()}
-                  avatarUrl={f.other.avatar_url}
-                  fill={fc.fill}
-                  ink={fc.ink}
-                  name={name}
-                  time=""
-                  preview="Nog geen berichten"
-                  unread={0}
-                  onPress={() => openWith(f.other.id)}
-                />
-              );
-            })}
-          </>
-        )}
-        <DashedCard style={{ margin: 12 }} onPress={() => router.push("/group-create")}>Nieuwe groep →</DashedCard>
-        <DashedCard style={{ marginHorizontal: 12, marginBottom: 12 }} onPress={() => router.push("/list-compose")}>{`${t.newList} →`}</DashedCard>
-      </ScrollView>
-      {readMenu.sheet}
-    </LincinScreen>
-  );
-}
-
-function Row({
-  initial,
-  avatarUrl,
-  fill,
-  ink,
-  square = false,
-  name,
-  time,
-  preview,
-  unread,
-  onPress,
-  menu,
-}: {
-  initial: string;
-  avatarUrl?: string | null;
-  fill: string;
-  ink: string;
-  square?: boolean;
-  name: string;
-  time: string;
-  preview: string;
-  unread: number;
-  onPress: () => void;
-  menu?: object;
-}) {
-  const t = useT();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={unread ? `${name}, ${unread} ${t.unread}` : name}
-      onPress={onPress}
-      {...menu}
-      style={({ pressed }) => ({
-        height: 72,
-        flexDirection: "row",
-        alignItems: "stretch",
-        borderBottomWidth: BORDER,
-        borderBottomColor: line(),
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <View
-        style={{
-          width: 56,
-          backgroundColor: fill,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRightWidth: BORDER,
-          borderRightColor: line(),
-          margin: square ? 0 : 0,
-          overflow: "hidden",
-        }}
-      >
-        <Head variant="numeralTiny" color={ink}>
-          {initial}
-        </Head>
-        <AvatarPhoto url={avatarUrl} size={56} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12, justifyContent: "center", gap: 2 }}>
-        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-          <Serif variant="name" numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
-            {name}
-          </Serif>
-          {time ? (
-            <Mono variant="micro" tone={unread ? "red" : "dim"} style={{ textTransform: "none" }}>
-              {time}
-            </Mono>
-          ) : null}
-        </View>
-        <Body small tone={unread ? undefined : "dim"} numberOfLines={1} style={{ lineHeight: 17, fontWeight: unread ? "700" : undefined }}>
-          {preview}
-        </Body>
-      </View>
-      {unread > 0 ? (
-        <View style={{ alignSelf: "center", marginRight: 12, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 999, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
-          <Mono variant="action" style={{ color: "#F5F1E8", letterSpacing: 0 }}>
-            {unread}
-          </Mono>
-        </View>
-      ) : null}
-    </Pressable>
+    <ChatsModern
+      rows={rows}
+      unread={unread}
+      scheme={scheme}
+      t={t}
+      state={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+      footer={
+        <>
+          <DashedTile label="Nieuwe groep →" onPress={() => router.push("/group-create")} />
+          {readMenu.sheet}
+        </>
+      }
+    />
   );
 }

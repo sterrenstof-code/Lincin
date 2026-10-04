@@ -3,23 +3,19 @@ import { Pressable, Text, View, type TextStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { color, useThemeSpec } from "@/lib/design/theme";
-import { lincinType, mono, sans, serif } from "@/lib/design/type";
-import { useT } from "@/lib/i18n";
+import { mono, sans, serif } from "@/lib/design/type";
 import { safeBack } from "@/lib/nav";
 import { useUnread } from "@/lib/lincin/unread";
 
-import { GUTTER, SquareBtn } from "../ui";
 import { Wordmark } from "../magazine/Omslag";
 
 /**
  * De kopregel (WIJZIGINGEN-2.2 §5).
  *
- * Drie thema's, drie koppen — maar met dezelfde drie plaatsen: links de
+ * Twee thema's, twee koppen — maar met dezelfde drie plaatsen: links de
  * terugknop, in het midden waar je bent, rechts meldingen en een nieuwe
  * bijdrage.
  *
- *   KLEUR     "Lincin" links, rechts de teller, ◉ en +. Vierkanten van
- *             32 px, want kleur kent geen ronding.
  *   MAGAZINE  kolofonregel "Lincin · teller" in gespatieerde Archivo,
  *             rechts ✳ en + als omlijnde cirkels van 30 px.
  *   MODERN    de teller in mono links, rechts twee ronde knoppen van
@@ -29,9 +25,8 @@ import { Wordmark } from "../magazine/Omslag";
  * DE TERUGKNOP staat sinds 2.2 hier, in de kopregel, en niet meer als
  * losse "← Terug"-regel in de pagina zelf. Hij verschijnt op elk
  * subscherm: bijdrage, profiel, gesprek, instellingen, meldingen, nieuwe
- * bijdrage. De vorm volgt het thema — in kleur een vierkant, in magazine
- * en modern een cirkel — want 2.2 §5 vraagt "dezelfde vorm als de ronde
- * knoppen rechts", en die zijn in kleur vierkant.
+ * bijdrage. Hij is een cirkel, want 2.2 §5 vraagt "dezelfde vorm als de
+ * ronde knoppen rechts".
  *
  * Elk raakvlak is minstens 44 px: waar de zichtbare vorm kleiner is, ligt
  * het raakvlak op een omhulsel met compenserende negatieve marge.
@@ -74,10 +69,9 @@ export function PlusIcon({ tone, size = 16 }: { tone: string; size?: number }) {
 export function BackButton({ to }: { to: string }) {
   const router = useRouter();
   const spec = useThemeSpec();
-  // Prototype: kleur 32 px met `border-radius: var(--r)` (dus vierkant),
-  // magazine 34 px rond, modern 44 px rond.
-  const size = spec.id === "modern" ? 44 : spec.id === "magazine" ? 34 : 32;
-  const radius = spec.id === "kleur" ? spec.radius : size / 2;
+  // Prototype: magazine 34 px rond, modern 44 px rond.
+  const size = spec.id === "modern" ? 44 : 34;
+  const radius = size / 2;
   // Het raakvlak op 44: de padding vult aan wat de vorm mist, de negatieve
   // marge haalt die ruimte weer uit de opmaak.
   const pad = Math.max(0, Math.ceil((44 - size) / 2));
@@ -242,68 +236,7 @@ export function CircleGlyphBtn({
 export function Header({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
   const spec = useThemeSpec();
   if (spec.id === "magazine") return <HeaderMagazine counter={counter} back={back} actions={actions} />;
-  if (spec.id === "modern") return <HeaderModern counter={counter} back={back} actions={actions} />;
-  return <HeaderKleur counter={counter} back={back} actions={actions} />;
-}
-
-/** "Lincin" · teller · ◉ · + */
-function HeaderKleur({ counter, back, actions = true }: { counter?: string; back?: string | null; actions?: boolean }) {
-  const router = useRouter();
-  const t = useT();
-  const pathname = usePathname();
-  const unread = useUnread();
-  const onNotes = pathname.startsWith("/notifications");
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingTop: 6,
-        paddingHorizontal: GUTTER,
-        gap: 12,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
-        {back ? <BackButton to={back} /> : null}
-        {/* Op een subpagina zegt de kop "Terug" naast de pijl, niet "Lincin"
-            (mobile-app.dc.html, `kleurNoBack`): de weg terug staat er één keer. */}
-        {back ? (
-          <Pressable accessibilityRole="button" onPress={() => safeBack(router, back)} hitSlop={8}>
-            <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>{t.back}</Text>
-          </Pressable>
-        ) : (
-          <Pressable accessibilityRole="link" onPress={() => router.push("/feed")} hitSlop={8}>
-            <Text style={[lincinType.meta, mono(600), { color: color("ink") }]}>Lincin</Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
-        {counter ? (
-          <Text style={[lincinType.meta, { color: color("ink", "inkDim"), marginRight: 4 }]}>{counter}</Text>
-        ) : null}
-        {actions ? (
-          <>
-            <SquareBtn
-              glyph="◉"
-              fontSize={14}
-              fill={onNotes}
-              badge={unread.notifications > 0}
-              onPress={() => router.push("/notifications")}
-              accessibilityLabel={unread.notifications > 0 ? `Meldingen, ${unread.notifications} nieuw` : "Meldingen"}
-            />
-            <SquareBtn
-              glyph="+"
-              fontSize={18}
-              fill
-              onPress={() => router.push("/post-compose")}
-              accessibilityLabel="Nieuwe bijdrage"
-            />
-          </>
-        ) : null}
-      </View>
-    </View>
-  );
+  return <HeaderModern counter={counter} back={back} actions={actions} />;
 }
 
 /** De kolofonregel: LINCIN (rood) · teller links, ✳ en + rechts. */
@@ -381,8 +314,8 @@ function HeaderModern({ counter, back, actions = true }: { counter?: string; bac
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: 12,
-        // De ronde knoppen van 44 stonden tegen de bovenrand geplakt; de
-        // andere twee thema's hebben hier wel lucht.
+        // De ronde knoppen van 44 stonden tegen de bovenrand geplakt;
+        // magazine heeft hier wel lucht.
         paddingTop: 10,
         paddingBottom: 8,
         gap: 10,

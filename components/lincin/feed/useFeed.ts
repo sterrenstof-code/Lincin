@@ -25,8 +25,8 @@ import { markSeen, useSeenPosts } from "@/lib/read-state";
  *   - de weergave (per vriend | op tijd), per gebruiker onthouden
  *   - de handelingen: openen, naar een profiel, een bericht
  *
- * De twee lay-outs — `FeedKleur` en `FeedMagazine` — tekenen
- * hier elk hun eigen blad omheen.
+ * De lay-outs — `FeedMagazine` en `FeedModern`, en hun desktopvormen —
+ * tekenen hier elk hun eigen blad omheen.
  */
 
 export type { FeedView } from "@/lib/lincin/prefs";

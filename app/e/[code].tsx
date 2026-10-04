@@ -145,8 +145,6 @@ export default function JoinEventScreen() {
 /**
  * Het blok met de uitkomst.
  *
- *   kleur     een kader van inkt; het icoon op een vlak in de kleur,
- *             de kop in Archivo smal kapitaal, de knop zuurgeel.
  *   magazine  een volvlaks kleurvlak als een spread: rail met de kicker,
  *             de kop in serif, de uitleg cursief; de knop eronder.
  *   modern    een tegel, het icoon in een rondje in de kleur, pillen.
@@ -188,15 +186,13 @@ function InviteCard({
   }
 
   return (
-    <Panel style={{ padding: th === "modern" ? RASTER.tilePadLarge : 24, gap: 14 }}>
+    <Panel style={{ padding: RASTER.tilePadLarge, gap: 14 }}>
       <View
         style={{
           width: 56,
           height: 56,
-          borderRadius: th === "kleur" ? 0 : 28,
+          borderRadius: 28,
           backgroundColor: fc.fill,
-          borderWidth: th === "kleur" ? 1.5 : 0,
-          borderColor: color("ink"),
           alignItems: "center",
           justifyContent: "center",
         }}

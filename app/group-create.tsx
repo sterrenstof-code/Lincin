@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { createGroupChat } from "@/lib/api/chats";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
 import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, sans, serif } from "@/lib/design/type";
+import { sans, serif } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
@@ -18,9 +18,9 @@ import { usePageTitle } from "@/lib/page-title";
  * een broer van Groep info (app/group/[id].tsx).
  *
  * Bovenaan de naam, daaronder je vrienden als rijen. Wie je aanvinkt
- * krijgt zijn eigen kleur: een gevulde schijf (kleur: een vierkant) in
- * zijn vriendkleur, en in magazine kleurt de hele rij mee. Onderaan
- * Aanmaken. Groepen zijn groen (README §01).
+ * krijgt zijn eigen kleur: een gevulde schijf in zijn vriendkleur, en in
+ * magazine kleurt de hele rij mee. Onderaan Aanmaken. Groepen zijn
+ * groen (README §01).
  */
 
 export default function GroupCreateScreen() {
@@ -147,8 +147,7 @@ function PickRow({
   checked: boolean;
   onPress: () => void;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const scheme = useScheme();
   const fc = friendColor(hueFor(friend.other.id), scheme);
   const name = friend.other.display_name ?? friend.other.username;
@@ -157,11 +156,9 @@ function PickRow({
   const dim = band ? fc.ink : color("ink", "inkDim");
   const rule: ViewStyle = first
     ? {}
-    : th === "kleur"
-      ? { borderTopWidth: spec.border, borderTopColor: color("ink") }
-      : th === "magazine"
-        ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
-        : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
+    : th === "magazine"
+      ? { borderTopWidth: 1, borderTopColor: color("ink", "postRule") }
+      : { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color("ink", "dash") };
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -187,9 +184,7 @@ function PickRow({
           style={[
             th === "magazine"
               ? { ...serif(), fontSize: 21, lineHeight: 25 }
-              : th === "modern"
-                ? { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3 }
-                : { ...head(), fontSize: 19, lineHeight: 20 },
+              : { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3 },
             { color: ink },
           ]}
         >
@@ -205,13 +200,11 @@ function PickRow({
 }
 
 /**
- * Het vinkje: leeg een ring (kleur: een kader), gekozen gevuld in de
+ * Het vinkje: leeg een ring, gekozen gevuld in de
  * kleur van de vriend. Op een gekleurde rij (magazine) keert hij om:
  * de inkt van de kleur als vlak, het vinkje in de kleur zelf.
  */
 function CheckDisc({ checked, fill, ink, onBand }: { checked: boolean; fill: string; ink: string; onBand: boolean }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
   const size = 26;
   const bg = !checked ? "transparent" : onBand ? ink : fill;
   const fg = onBand ? fill : ink;
@@ -220,9 +213,9 @@ function CheckDisc({ checked, fill, ink, onBand }: { checked: boolean; fill: str
       style={{
         width: size,
         height: size,
-        borderRadius: th === "kleur" ? 0 : size / 2,
-        borderWidth: th === "kleur" ? spec.border : checked ? 0 : 1.5,
-        borderColor: th === "kleur" ? color("ink") : color("ink", "postRule"),
+        borderRadius: size / 2,
+        borderWidth: checked ? 0 : 1.5,
+        borderColor: color("ink", "postRule"),
         backgroundColor: bg,
         alignItems: "center",
         justifyContent: "center",

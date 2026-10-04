@@ -163,7 +163,6 @@ const GATE_HUE: Hue = "orange";
 function Gate({ children }: { children: ReactNode }) {
   const th = useThemeSpec().id;
   const insets = useSafeAreaInsets();
-  const pad = th === "kleur" ? 18 : RASTER.seam;
   return (
     <View style={{ flex: 1, backgroundColor: color("paper") }}>
       {th === "modern" ? <Haze hue={GATE_HUE} /> : null}
@@ -173,7 +172,7 @@ function Gate({ children }: { children: ReactNode }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ width: "100%", maxWidth: 520, alignSelf: "center", padding: pad, gap: th === "kleur" ? 16 : RASTER.seam }}>
+          <View style={{ width: "100%", maxWidth: 520, alignSelf: "center", padding: RASTER.seam, gap: RASTER.seam }}>
             {children}
           </View>
         </ScrollView>

@@ -6,8 +6,8 @@ import { Modal, Platform, Pressable, ScrollView, Text, View, type StyleProp, typ
 
 import { Avatar } from "@/components/Avatar";
 import type { ContributionWithAuthor } from "@/lib/api/events";
-import { color, friendColor, ON_DARK, ON_LIGHT, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { color, friendColor, ON_DARK, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 
 import { Spread } from "./magazine/Spread";
@@ -19,10 +19,6 @@ import { Spread } from "./magazine/Spread";
  * eventrij op Events (`DesktopEvents`, `EventsModern`, `EventsMagazine`)
  * en schaalt die op tot een hele pagina:
  *
- *   kleur     inktkaders van 1.5, geen ronding. Links het datumblok in de
- *             kleur van wie uitnodigt, de titel in Archivo 900 smal, mono
- *             labels. De acties als vakken in één band; de hoofdactie
- *             zuurgeel.
  *   magazine  de kop als volvlaks kleurvlak van wie uitnodigt, zoals de
  *             spreads op de voorpagina; daaronder vlakken op het tweede
  *             papier met een naad van 6. De dag en de titel in serif, labels in Archivo 9–10 op .2em. Pillen;
@@ -72,7 +68,7 @@ function useTh() {
   return useThemeSpec().id;
 }
 
-/** Mono, kapitaal, gespatieerd: de labels van kleur en modern. */
+/** Mono, kapitaal, gespatieerd: de labels van modern. */
 function meta(size: number, c: string, spacing = size * 0.1): TextStyle {
   return { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: spacing, textTransform: "uppercase", color: c };
 }
@@ -87,14 +83,12 @@ function kicker(size: number, c: string): TextStyle {
 // ---------------------------------------------------------------
 
 export function EventSheet({ wide, children }: { wide: boolean; children: ReactNode }) {
-  const th = useTh();
-  const kleur = th === "kleur";
   return (
     <View
       style={{
-        padding: kleur ? (wide ? 32 : 18) : SEAM,
-        paddingTop: kleur ? (wide ? 28 : 14) : SEAM,
-        gap: kleur ? (wide ? 20 : 12) : SEAM,
+        padding: SEAM,
+        paddingTop: SEAM,
+        gap: SEAM,
         width: "100%",
         maxWidth: wide ? 1250 : undefined,
         alignSelf: "center",
@@ -105,21 +99,19 @@ export function EventSheet({ wide, children }: { wide: boolean; children: ReactN
   );
 }
 
-/** Het vlak van een blok: kader (kleur), tweede papier (magazine) of tegel (modern). */
+/** Het vlak van een blok: tweede papier (magazine) of tegel (modern). */
 function Panel({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const spec = useThemeSpec();
   const th = spec.id;
   const base: ViewStyle =
-    th === "kleur"
-      ? { borderWidth: spec.border, borderColor: color("ink"), backgroundColor: color("paper") }
-      : th === "magazine"
-        ? { backgroundColor: color("paper2") }
-        : {
-            borderRadius: RASTER.tileRadius,
-            overflow: "hidden",
-            backgroundColor: color("tile", "tileFill"),
-            ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object) : null),
-          };
+    th === "magazine"
+      ? { backgroundColor: color("paper2") }
+      : {
+          borderRadius: RASTER.tileRadius,
+          overflow: "hidden",
+          backgroundColor: color("tile", "tileFill"),
+          ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" } as object) : null),
+        };
   return <View style={[base, style]}>{children}</View>;
 }
 
@@ -143,8 +135,7 @@ export function EventHero({
 }) {
   const th = useTh();
   if (th === "magazine") return <HeroMagazine f={f} wide={wide} cover={cover} faces={faces} onGuests={onGuests} />;
-  if (th === "modern") return <HeroModern f={f} wide={wide} cover={cover} faces={faces} onGuests={onGuests} />;
-  return <HeroKleur f={f} wide={wide} cover={cover} faces={faces} onGuests={onGuests} />;
+  return <HeroModern f={f} wide={wide} cover={cover} faces={faces} onGuests={onGuests} />;
 }
 
 type HeroProps = { f: EventFacts; wide: boolean; cover: ReactNode | null; faces: Face[]; onGuests: () => void };
@@ -175,112 +166,6 @@ function guestsLabel(f: EventFacts) {
 }
 function contribLabel(f: EventFacts) {
   return `${f.contributions} ${f.contributions === 1 ? "bijdrage" : "bijdragen"}`;
-}
-
-// ---- KLEUR ----------------------------------------------------
-
-function HeroKleur({ f, wide, cover, faces, onGuests }: HeroProps) {
-  const t = useT();
-  const spec = useThemeSpec();
-  const ink = color("ink");
-  const dim = color("ink", "inkDim");
-  const B = spec.border;
-  const facts: [string, string, (() => void)?][] = [
-    ["Wanneer", f.date],
-    ["Gasten", guestsLabel(f), onGuests],
-    ["Bijdragen", contribLabel(f)],
-    ["Toegang", f.open ? "Open · met de link" : "Gesloten · op goedkeuring"],
-  ];
-  return (
-    <Panel>
-      <View style={{ flexDirection: "row", minHeight: wide ? 240 : 150 }}>
-        <View
-          style={{
-            width: wide ? 200 : 92,
-            backgroundColor: f.fill.fill,
-            borderRightWidth: B,
-            borderRightColor: ink,
-            paddingVertical: wide ? 22 : 12,
-            paddingHorizontal: wide ? 24 : 12,
-            justifyContent: "space-between",
-          }}
-        >
-          <Text style={meta(wide ? 11 : 10, f.fill.ink)}>{f.month}</Text>
-          <Text style={[head(), { fontSize: wide ? 120 : 60, lineHeight: wide ? 98 : 50, color: f.fill.ink }]}>{f.day}</Text>
-        </View>
-        <View style={{ flex: 1, minWidth: 0, padding: wide ? 32 : 14, gap: wide ? 18 : 10, justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <Text style={meta(10, dim)}>
-              {f.host} {t.invites} · {f.when}
-            </Text>
-            {f.live ? (
-              <View style={{ backgroundColor: color("acid"), paddingHorizontal: 5, paddingVertical: 1 }}>
-                <Text style={[meta(9, ON_LIGHT), { fontFamily: mono(600).fontFamily }]}>{f.status}</Text>
-              </View>
-            ) : (
-              <Text style={meta(10, dim)}>· {f.status}</Text>
-            )}
-          </View>
-          <Text numberOfLines={3} style={[head(), { fontSize: wide ? 64 : 30, lineHeight: wide ? 58 : 28, color: ink }]}>
-            {f.title}
-          </Text>
-          <View style={{ flexDirection: wide ? "row" : "column", gap: wide ? 28 : 4 }}>
-            {f.place ? <Text style={meta(11, ink, 0.66)}>◎ {f.place}</Text> : null}
-            <Text numberOfLines={1} style={meta(11, dim, 0.66)}>
-              {f.whoGo}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {f.description ? (
-        <View style={{ borderTopWidth: B, borderTopColor: ink, paddingVertical: wide ? 20 : 12, paddingHorizontal: wide ? 32 : 14 }}>
-          <Text style={[sans(400), { fontSize: wide ? 16 : 14, lineHeight: wide ? 24 : 20, color: ink, maxWidth: 720 }]}>{f.description}</Text>
-        </View>
-      ) : null}
-
-      {cover ? <View style={{ borderTopWidth: B, borderTopColor: ink, aspectRatio: wide ? 16 / 7 : 4 / 3 }}>{cover}</View> : null}
-
-      {/* De feiten als strook van gelijke kolommen, met de gezichten erbij. */}
-      <View style={{ flexDirection: wide ? "row" : "column", borderTopWidth: B, borderTopColor: ink }}>
-        {facts.map(([label, value, press], i) => {
-          const cell = (
-            <>
-              <Text style={meta(9, dim)}>{label}</Text>
-              <Text numberOfLines={1} style={[meta(11, ink, 0.5), { marginTop: 4 }]}>
-                {value}
-              </Text>
-            </>
-          );
-          const style: ViewStyle = {
-            flex: wide ? 1 : undefined,
-            minWidth: 0,
-            paddingVertical: 12,
-            paddingHorizontal: wide ? 20 : 14,
-            ...(i === 0
-              ? null
-              : wide
-                ? { borderLeftWidth: B, borderLeftColor: ink }
-                : { borderTopWidth: B, borderTopColor: color("ink", "postRule") }),
-          };
-          return press ? (
-            <Pressable key={label} accessibilityRole="button" onPress={press} style={({ pressed }) => [style, { opacity: pressed ? 0.7 : 1 }]}>
-              {cell}
-            </Pressable>
-          ) : (
-            <View key={label} style={style}>
-              {cell}
-            </View>
-          );
-        })}
-      </View>
-      {faces.length ? (
-        <View style={{ borderTopWidth: B, borderTopColor: ink, paddingVertical: 10, paddingHorizontal: wide ? 20 : 14 }}>
-          <Faces faces={faces} onPress={onGuests} ink={ink} label={guestsLabel(f)} />
-        </View>
-      ) : null}
-    </Panel>
-  );
 }
 
 // ---- MAGAZINE -------------------------------------------------
@@ -415,50 +300,10 @@ function HeroModern({ f, wide, cover, faces, onGuests }: HeroProps) {
 export function EventActions({ wide, actions }: { wide: boolean; actions: EventAction[] }) {
   const th = useTh();
   if (th === "magazine") return <ActionsMagazine wide={wide} actions={actions} />;
-  if (th === "modern") return <ActionsModern wide={wide} actions={actions} />;
-  return <ActionsKleur wide={wide} actions={actions} />;
+  return <ActionsModern wide={wide} actions={actions} />;
 }
 
 type ActionsProps = Parameters<typeof EventActions>[0];
-
-function ActionsKleur({ wide, actions }: ActionsProps) {
-  const spec = useThemeSpec();
-  const ink = color("ink");
-  const B = spec.border;
-  return (
-    <Panel>
-      <View style={{ flexDirection: "row" }}>
-        {actions.map((a, i) => (
-          <Pressable
-            key={a.label}
-            accessibilityRole="button"
-            accessibilityLabel={a.label}
-            onPress={a.onPress}
-            disabled={a.disabled}
-            style={({ pressed }) => ({
-              flex: a.primary ? 1.3 : 1,
-              minWidth: 0,
-              minHeight: wide ? 64 : 56,
-              flexDirection: wide ? "row" : "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: wide ? 8 : 4,
-              paddingHorizontal: 6,
-              backgroundColor: a.primary ? color("acid") : pressed ? color("ink", "postRule") : "transparent",
-              opacity: a.disabled ? 0.5 : pressed && a.primary ? 0.85 : 1,
-              ...(i === 0 ? null : { borderLeftWidth: B, borderLeftColor: ink }),
-            })}
-          >
-            <Ionicons name={a.icon} size={wide ? 15 : 16} color={a.primary ? ON_LIGHT : ink} />
-            <Text numberOfLines={1} style={[meta(wide ? 10 : 9, a.primary ? ON_LIGHT : ink, 0.8), { fontFamily: mono(600).fontFamily, flexShrink: 1 }]}>
-              {a.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </Panel>
-  );
-}
 
 function ActionsMagazine({ wide, actions }: ActionsProps) {
   const ink = color("ink");
@@ -541,10 +386,9 @@ export function EventNotice({ text, tone = "dim" }: { text: string; tone?: "dim"
 // BIJDRAGEN
 // ---------------------------------------------------------------
 
-/** De kop boven de bijdragen: kleur een band, magazine een kicker met serif, modern mono. */
+/** De kop boven de bijdragen: magazine een kicker met serif, modern mono. */
 export function ContributionsHead({ count, wide }: { count: number; wide: boolean }) {
   const th = useTh();
-  const spec = useThemeSpec();
   const ink = color("ink");
   if (th === "magazine") {
     return (
@@ -554,18 +398,10 @@ export function ContributionsHead({ count, wide }: { count: number; wide: boolea
       </View>
     );
   }
-  if (th === "modern") {
-    return (
-      <View style={{ paddingTop: 12, paddingBottom: 4, paddingHorizontal: 18, flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={meta(9, color("ink", "inkDim"), 1.44)}>Bijdragen</Text>
-        <Text style={meta(9, color("ink", "inkDim"), 1.44)}>{count}</Text>
-      </View>
-    );
-  }
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", borderBottomWidth: spec.border, borderBottomColor: ink, paddingBottom: 8, marginTop: wide ? 12 : 6 }}>
-      <Text style={[head(), { fontSize: wide ? 34 : 24, lineHeight: wide ? 32 : 23, color: ink }]}>Bijdragen</Text>
-      <Text style={meta(10, color("ink", "inkDim"))}>{String(count).padStart(2, "0")}</Text>
+    <View style={{ paddingTop: 12, paddingBottom: 4, paddingHorizontal: 18, flexDirection: "row", justifyContent: "space-between" }}>
+      <Text style={meta(9, color("ink", "inkDim"), 1.44)}>Bijdragen</Text>
+      <Text style={meta(9, color("ink", "inkDim"), 1.44)}>{count}</Text>
     </View>
   );
 }
@@ -575,15 +411,6 @@ export function EventEmpty({ icon, title, body }: { icon: keyof typeof Ionicons.
   const th = useTh();
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  if (th === "kleur") {
-    return (
-      <View style={{ borderWidth: 1.5, borderStyle: "dashed", borderColor: ink, paddingVertical: 28, paddingHorizontal: 20, alignItems: "center", gap: 8 }}>
-        <Ionicons name={icon} size={22} color={ink} />
-        <Text style={[head(), { fontSize: 22, lineHeight: 22, color: ink, textAlign: "center" }]}>{title}</Text>
-        <Text style={[sans(400), { fontSize: 13, lineHeight: 19, color: dim, textAlign: "center", maxWidth: 460 }]}>{body}</Text>
-      </View>
-    );
-  }
   return (
     <Panel style={{ paddingVertical: 34, paddingHorizontal: 22, alignItems: "center", gap: 8 }}>
       <Ionicons name={icon} size={20} color={dim} />
@@ -610,11 +437,9 @@ export function ContributionGrid({
   onDelete: (c: ContributionWithAuthor) => void;
   onOpen: (c: ContributionWithAuthor) => void;
 }) {
-  const spec = useThemeSpec();
-  const th = spec.id;
   const [w, setW] = useState(0);
   const cols = wide ? 4 : 2;
-  const gap = th === "kleur" ? (wide ? 12 : 8) : SEAM;
+  const gap = SEAM;
   const size = w ? (w - gap * (cols - 1)) / cols : 0;
   return (
     <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap", gap }}>
@@ -645,11 +470,9 @@ function ContributionTile({
   const ink = color("ink");
   const author = c.author?.display_name ?? c.author?.username ?? "Onbekend";
   const frame: ViewStyle =
-    th === "kleur"
-      ? { borderWidth: spec.border, borderColor: ink, backgroundColor: color("paper") }
-      : th === "magazine"
-        ? { backgroundColor: color("paper2") }
-        : { borderRadius: 14, overflow: "hidden", backgroundColor: color("tile", "tileFill") };
+    th === "magazine"
+      ? { backgroundColor: color("paper2") }
+      : { borderRadius: 14, overflow: "hidden", backgroundColor: color("tile", "tileFill") };
   const badge: ViewStyle = {
     position: "absolute",
     top: 8,
@@ -677,7 +500,7 @@ function ContributionTile({
           <Image source={{ uri: c.image_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} />
         </Pressable>
       ) : (
-        <View style={{ flex: 1, padding: 14, justifyContent: "center", backgroundColor: th === "kleur" ? color("paper2") : "transparent" }}>
+        <View style={{ flex: 1, padding: 14, justifyContent: "center", backgroundColor: "transparent" }}>
           <Text numberOfLines={5} style={th === "magazine" ? [serif(true), { fontSize: 17, lineHeight: 22, color: ink }] : [sans(400), { fontSize: 14, lineHeight: 19, color: ink }]}>
             {c.caption ?? c.link_url ?? ""}
           </Text>
@@ -695,9 +518,8 @@ function ContributionTile({
       {media}
       <View
         style={{
-          paddingVertical: th === "kleur" ? 6 : 8,
-          paddingHorizontal: th === "kleur" ? 8 : 10,
-          ...(th === "kleur" ? { borderTopWidth: spec.border, borderTopColor: ink } : null),
+          paddingVertical: 8,
+          paddingHorizontal: 10,
         }}
       >
         <Text numberOfLines={1} style={th === "magazine" ? [serif(true), { fontSize: 14, lineHeight: 18, color: color("ink", "inkDim") }] : meta(9, color("ink", "inkDim"), 0.9)}>
@@ -736,8 +558,6 @@ export type EventMenuItem = {
  * eigen letter en lijnen, midden op een pagina die verder wél het thema
  * droeg.
  *
- *   kleur     kader van 1.5 inkt op papier; de kop in mono, de regels in
- *             Archivo 900 smal met een inktlijn ertussen.
  *   magazine  zoals de voorpagina op de telefoon: elke keuze een eigen
  *             kleurvlak met een naad van 6, een verticale rail met het
  *             nummer, de keuze groot in serif en het icoon in een rondje.
@@ -761,7 +581,6 @@ export function EventMenu({
   const th = spec.id;
   const ink = color("ink");
   const dim = color("ink", "inkDim");
-  const B = spec.border;
   const pick = (item: EventMenuItem) => {
     onClose();
     // Kleine vertraging zodat dit venster weg is voor er een volgend opent
@@ -785,9 +604,7 @@ export function EventMenu({
             maxHeight: "86%",
             alignSelf: "center",
             backgroundColor: color("paper"),
-            borderWidth: th === "kleur" ? B : 0,
-            borderColor: ink,
-            borderRadius: th === "modern" ? RASTER.tileRadius : 0,
+            borderRadius: RASTER.tileRadius,
             overflow: "hidden",
           }}
         >
@@ -796,20 +613,12 @@ export function EventMenu({
               flexDirection: "row",
               alignItems: "center",
               gap: 12,
-              paddingHorizontal: th === "modern" ? 22 : 18,
-              paddingTop: th === "kleur" ? 14 : 20,
-              paddingBottom: th === "kleur" ? 14 : 8,
-              ...(th === "kleur" ? { borderBottomWidth: B, borderBottomColor: ink } : null),
+              paddingHorizontal: 22,
+              paddingTop: 20,
+              paddingBottom: 8,
             }}
           >
-            <Text
-              style={[
-                th === "modern" ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7, color: ink } : meta(10, dim, 1),
-                { flex: 1 },
-              ]}
-            >
-              {title}
-            </Text>
+            <Text style={[{ ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7, color: ink }, { flex: 1 }]}>{title}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Sluiten"
@@ -820,9 +629,9 @@ export function EventMenu({
                 height: 32,
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: th === "kleur" ? 0 : 16,
-                borderWidth: th === "kleur" ? B : 1,
-                borderColor: th === "kleur" ? ink : color("ink", "postRule"),
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: color("ink", "postRule"),
               }}
             >
               <Ionicons name="close" color={ink} size={18} />
@@ -835,10 +644,9 @@ export function EventMenu({
                 { ...sans(400), fontSize: 13.5, lineHeight: 19 },
                 {
                   color: dim,
-                  paddingHorizontal: th === "modern" ? 22 : 18,
-                  paddingTop: th === "kleur" ? 12 : 0,
-                  paddingBottom: th === "kleur" ? 12 : 14,
-                  ...(th === "kleur" ? { borderBottomWidth: B, borderBottomColor: ink } : null),
+                  paddingHorizontal: 22,
+                  paddingTop: 0,
+                  paddingBottom: 14,
                 },
               ]}
             >
@@ -846,10 +654,7 @@ export function EventMenu({
             </Text>
           ) : null}
 
-          <ScrollView
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={th === "modern" ? { padding: SEAM, gap: SEAM } : undefined}
-          >
+          <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: SEAM, gap: SEAM }}>
             {items.map((item, i) => (
               <Pressable
                 key={`${item.label}-${i}`}
@@ -860,35 +665,18 @@ export function EventMenu({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 14,
-                  minHeight: th === "kleur" ? 60 : 56,
-                  paddingHorizontal: th === "modern" ? 14 : 18,
+                  minHeight: 56,
+                  paddingHorizontal: 14,
                   paddingVertical: 10,
-                  ...(th === "modern"
-                    ? { borderRadius: 14, backgroundColor: pressed ? color("ink", "postRule") : color("tile", "tileFill") }
-                    : {
-                        backgroundColor: pressed ? color("ink", "postRule") : "transparent",
-                        ...(i === 0 ? null : { borderTopWidth: B, borderTopColor: ink }),
-                      }),
+                  borderRadius: 14,
+                  backgroundColor: pressed ? color("ink", "postRule") : color("tile", "tileFill"),
                 })}
               >
-                <View
-                  style={
-                    th === "modern"
-                      ? { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: color("ink", "postRule"), alignItems: "center", justifyContent: "center" }
-                      : { width: 24, alignItems: "center" }
-                  }
-                >
-                  <Ionicons name={item.icon} size={th === "modern" ? 16 : 20} color={ink} />
+                <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: color("ink", "postRule"), alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name={item.icon} size={16} color={ink} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <Text
-                    numberOfLines={1}
-                    style={
-                      th === "modern"
-                          ? { ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3, color: ink }
-                          : { ...head(), fontSize: 19, lineHeight: 20, color: ink }
-                    }
-                  >
+                  <Text numberOfLines={1} style={{ ...sans(400), fontSize: 16, lineHeight: 20, letterSpacing: -0.3, color: ink }}>
                     {item.label}
                   </Text>
                   {item.sub ? (

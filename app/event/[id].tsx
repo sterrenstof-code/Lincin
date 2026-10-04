@@ -45,7 +45,7 @@ import {
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { head, mono, sans, serif } from "@/lib/design/type";
+import { mono, sans, serif } from "@/lib/design/type";
 import { useHeroTag } from "@/lib/hero-transition";
 import { humanizeError } from "@/lib/errors";
 import { useLang, useT, type Lang } from "@/lib/i18n";
@@ -594,7 +594,7 @@ export default function EventDetailScreen() {
 
 /**
  * Beheer van de host: wie mag binnen, en wie wacht. Een blad in de vorm van
- * het thema: kader (kleur), tweede papier (magazine), tegel (modern).
+ * het thema: tweede papier (magazine), tegel (modern).
  */
 function AccessModal({
   visible,
@@ -618,7 +618,7 @@ function AccessModal({
   const spec = useThemeSpec();
   const th = spec.id;
   const ink = color("ink");
-  const rule = th === "kleur" ? ink : color("ink", "postRule");
+  const rule = color("ink", "postRule");
   const B = spec.border;
   const round = th === "modern";
   const label = (size: number, c: string) =>
@@ -634,7 +634,7 @@ function AccessModal({
         height: 36,
         paddingHorizontal: 14,
         justifyContent: "center",
-        borderRadius: round || th === "magazine" ? 999 : 0,
+        borderRadius: 999,
         borderWidth: filled ? 0 : B,
         borderColor: rule,
         backgroundColor: filled ? ink : "transparent",
@@ -654,8 +654,6 @@ function AccessModal({
             maxWidth: 520,
             alignSelf: "center",
             backgroundColor: th === "magazine" ? color("paper2") : color("paper"),
-            borderWidth: th === "kleur" ? B : 0,
-            borderColor: ink,
             borderRadius: round ? RASTER.tileRadius : 0,
             overflow: "hidden",
           }}
@@ -663,7 +661,7 @@ function AccessModal({
           <View style={{ flexDirection: "row", alignItems: "center", padding: 18, borderBottomWidth: B, borderBottomColor: rule }}>
             <Text
               style={[
-                th === "magazine" ? { ...serif(), fontSize: 30, lineHeight: 32 } : th === "modern" ? { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7 } : { ...head(), fontSize: 26, lineHeight: 26 },
+                th === "magazine" ? { ...serif(), fontSize: 30, lineHeight: 32 } : { ...sans(400), fontSize: 24, lineHeight: 28, letterSpacing: -0.7 },
                 { color: ink, flex: 1 },
               ]}
             >
@@ -680,8 +678,8 @@ function AccessModal({
               : "Open: iedereen met je link of QR staat meteen in de gastenlijst."}
           </Text>
 
-          <View style={{ flexDirection: "row", gap: round || th === "magazine" ? 6 : 0, paddingHorizontal: th === "kleur" ? 0 : 18, paddingBottom: th === "kleur" ? 0 : 18, borderTopWidth: th === "kleur" ? B : 0, borderTopColor: ink }}>
-            {(["closed", "open"] as const).map((p, i) => {
+          <View style={{ flexDirection: "row", gap: 6, paddingHorizontal: 18, paddingBottom: 18 }}>
+            {(["closed", "open"] as const).map((p) => {
               const on = policy === p;
               return (
                 <Pressable
@@ -696,10 +694,9 @@ function AccessModal({
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: on ? ink : pressed ? color("ink", "postRule") : "transparent",
-                    borderRadius: th === "kleur" ? 0 : 999,
-                    borderWidth: th === "kleur" ? 0 : 1,
+                    borderRadius: 999,
+                    borderWidth: 1,
                     borderColor: on ? ink : rule,
-                    ...(th === "kleur" && i > 0 ? { borderLeftWidth: B, borderLeftColor: ink } : null),
                   })}
                 >
                   <Text style={label(10, on ? color("paper") : ink)}>{p === "closed" ? "Gesloten" : "Open"}</Text>

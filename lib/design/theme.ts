@@ -60,13 +60,19 @@ export type Scheme = "light" | "dark";
 /** Wat de gebruiker koos. `system` volgt het besturingssysteem. */
 export type ThemePreference = "system" | "light" | "dark";
 
-/** Het thema: kleur (standaard), magazine of modern. Per gebruiker bewaard. */
-export type LincinTheme = "kleur" | "magazine" | "modern";
+/**
+ * Het thema: magazine of modern. Per gebruiker bewaard.
+ *
+ * Kleur is vervallen (handoff okt 2026). Een oude bewaarde waarde
+ * `"kleur"` — in het profiel of op een toestel — is daarom geen thema meer
+ * en telt als "nooit gekozen": wie hem had krijgt de standaard.
+ */
+export type LincinTheme = "magazine" | "modern";
 
-export const THEMES: LincinTheme[] = ["kleur", "magazine", "modern"];
+export const THEMES: LincinTheme[] = ["magazine", "modern"];
 
 export function isLincinTheme(v: unknown): v is LincinTheme {
-  return v === "kleur" || v === "magazine" || v === "modern";
+  return v === "magazine" || v === "modern";
 }
 
 /**
@@ -99,6 +105,9 @@ type Token =
   | "line"
   // ---- 2.2: het vlak van een bento-tegel (modern) ----
   | "tile"
+  // ---- okt 2026: het getinte blok (antwoorden in een draad, de
+  // linkerbel in een gesprek, je eigen emoji in de lade) ----
+  | "tint"
   // ---- de oude namen, met v2-waarden ----
   | "page"
   | "panel"
@@ -153,7 +162,7 @@ type Alphas = Record<AlphaToken, number>;
  * `--p-*`-variabelen uit te schrijven; zie `color()` onderaan.
  */
 const TOKENS: Token[] = [
-  "paper", "paper2", "acid", "red", "line", "tile",
+  "paper", "paper2", "acid", "red", "line", "tile", "tint",
   "page", "panel", "paperWarm", "paperLight",
   "shell", "shellSoft",
   "desk", "deskInk", "deskSoft", "deskMuted", "deskPanel",
@@ -182,7 +191,8 @@ const LIGHT: Palette = {
   acid: "229 255 58", // #E5FF3A
   red: "216 50 31", // #D8321F
   line: "35 31 26", // = ink
-  tile: "255 255 255", // het tegelvlak van modern; kleur gebruikt het niet
+  tile: "255 255 255", // het tegelvlak van modern
+  tint: "236 231 220", // #ECE7DC
 
   page: "246 243 237", // = paper
   panel: "246 243 237", // = paper — een kaart heeft geen eigen vulling
@@ -236,6 +246,7 @@ const DARK: Palette = {
   red: "228 85 63", // #E4553F
   line: "237 232 220",
   tile: "24 24 26",
+  tint: "36 33 27",
 
   page: "26 25 23",
   panel: "26 25 23",
@@ -299,12 +310,11 @@ export type ThemeSpec = {
   /** Koppen in Instrument Serif (regular, geen kapitaal) in plaats van Archivo. */
   serifHeads: boolean;
   /**
-   * De letter van de koppen. `archivo900` is de smalle kapitaal van kleur,
-   * `serif` de Instrument Serif van magazine, `archivo` de gewone Archivo
+   * De letter van de koppen: `serif` de Instrument Serif van magazine, `archivo` de gewone Archivo
    * van modern (400–600, onderkast, strak gespatieerd). `serifHeads`
    * blijft ernaast bestaan: de rest van de app leest hem nog.
    */
-  heads: "archivo900" | "serif" | "archivo";
+  heads: "serif" | "archivo";
   /** Het blad kleurt mee met de vriend in beeld. Alleen kleur. */
   tint: boolean;
   /**
@@ -329,9 +339,9 @@ export type ThemeSpec = {
    *   `spread`  volvlaks kleurvlakken met een naad van 6 — magazine.
    *   `bento`   een raster van tegels van twee kolommen — modern.
    */
-  layout: "lijst" | "spread" | "bento";
+  layout: "spread" | "bento";
   /** De navigatie: het kader van kleur, de rugstrook (1d), of de zwevende pil. */
-  nav: "rubrieken" | "rugstrook" | "pil";
+  nav: "rugstrook" | "pil";
 
   // ---- de vorm, vooral voor desktop (2.2 §9) ----
   /** De naad in een raster: 10 in kleur, 6 in magazine en modern. */
@@ -353,28 +363,6 @@ export type ThemeSpec = {
 };
 
 const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
-  kleur: {
-    id: "kleur",
-    border: 1.5,
-    serifHeads: false,
-    heads: "archivo900",
-    tint: true,
-    haze: false,
-    bandFilled: true,
-    stripFilled: true,
-    feedHeader: true,
-    cardTitle: 22,
-    radius: 0,
-    layout: "lijst",
-    nav: "rubrieken",
-    gap: 10,
-    cardRadius: 0,
-    cardFill: "paper",
-    cardBorder: 1.5,
-    borderTone: "ink",
-    listGap: 1,
-    spine: 34,
-  },
   magazine: {
     id: "magazine",
     border: 1,
@@ -437,7 +425,7 @@ function mix(a: string, b: string, wA: number): string {
  */
 function derive(
   base: Palette,
-  o: { paper: string; paper2: string; ink: string; acid: string; red: string; line: string; tile: string },
+  o: { paper: string; paper2: string; ink: string; acid: string; red: string; line: string; tile: string; tint: string },
 ): Palette {
   return {
     ...base,
@@ -447,6 +435,7 @@ function derive(
     red: o.red,
     line: o.line,
     tile: o.tile,
+    tint: o.tint,
     page: o.paper,
     panel: o.paper,
     paperWarm: o.paper2,
@@ -497,6 +486,7 @@ const MAGAZINE_LIGHT: Palette = {
     red: "229 39 28",
     line: "22 22 15",
     tile: "255 255 255",
+    tint: "236 231 220", // #ECE7DC — Bijdrage/Gesprek Voorbeeld
   }),
   inkSoft: mix("22 22 15", "247 244 238", 0.8),
 };
@@ -509,6 +499,9 @@ const MAGAZINE_DARK: Palette = {
     red: "240 83 62",
     line: "239 231 214",
     tile: "27 24 19",
+    // Het prototype kent geen donkere tint: één stap boven paper2, zoals
+    // #ECE7DC één stap onder paper2 ligt op licht.
+    tint: "36 32 25", // #242019
   }),
   inkSoft: mix("239 231 214", "20 18 14", 0.82),
 };
@@ -527,6 +520,10 @@ export const OMSLAG = {
   hairline: 1,
   seam: RASTER.seam,
   spine: 5,
+  /** De rug van een draad of citaat: in de kleur van de oorspronkelijke schrijver. */
+  threadSpine: 3,
+  /** De rug van een eventdatum op de telefoon. */
+  eventSpine: 4,
   /** Hoe sterk een vriendblok met iets nieuws getint is (color-mix 12%). */
   tintNew: 0.12,
   redPressed: { light: "#C41E14", dark: "#FF5A43" } as Record<Scheme, string>,
@@ -536,6 +533,45 @@ export const OMSLAG = {
   onImage: "#FFFFFF",
   /** De sluier over een foto: bijna-zwart, warm. */
   scrim: "16 16 12",
+} as const;
+
+/**
+ * MODERN — de vormen van het bento-rooster, naast `RASTER`.
+ *
+ * De tinten van een vriendrij worden gemengd over de tegel (wit op 82%),
+ * niet over het papier: zo staat het in desktop-modern-home.
+ */
+export const MODERN = {
+  tileRadius: RASTER.tileRadius,
+  innerRadius: 14,
+  pill: 999,
+  /** Een vriendrij met iets nieuws / al gezien (color-mix over de tegel). */
+  tintNew: 0.22,
+  tintSeen: 0.1,
+  /** De drie radiale vlekken van de haze, in procent. */
+  haze: [40, 36, 26] as const,
+  /** Het glas van de zwevende navigatie: papier op 72%. */
+  glass: 0.72,
+} as const;
+
+/**
+ * De breedtes en de omslag (HANDOFF "Breed scherm").
+ *
+ *   desktopMin  vanaf hier de desktopvorm met de balk bovenaan
+ *   wideMin     vanaf hier kop en omslag over de volle breedte
+ *   column      de kolom waarin alles onder de omslag blijft staan
+ */
+export const LAYOUT = {
+  desktopMin: 1024,
+  wideMin: 1680,
+  column: 1440,
+  headerH: 56,
+  /** Omslag: 960 hoog; breed = vensterhoogte − kop, minstens 960. */
+  cover: { h: 960, wideOffset: 56 },
+  /** Het woordmerk op de omslag. */
+  mast: { mobile: 112, desktop: 340, wide: 440 },
+  /** De covertitel in serif italic. */
+  coverTitle: { desktop: 84, wide: 112 },
 } as const;
 
 /**
@@ -554,6 +590,7 @@ const MODERN_LIGHT: Palette = derive(LIGHT, {
   red: "192 80 58", // #C0503A
   line: "23 23 15",
   tile: "255 255 255", // op .82 → rgba(255,255,255,.82)
+  tint: "234 231 223", // = paper2: modern kent geen aparte tint
 });
 const MODERN_DARK: Palette = derive(DARK, {
   paper: "12 12 13", // #0C0C0D
@@ -563,25 +600,25 @@ const MODERN_DARK: Palette = derive(DARK, {
   red: "228 103 78", // #E4674E
   line: "239 236 230",
   tile: "24 24 26", // op .9 → rgba(24,24,26,.9)
+  tint: "21 21 23", // = paper2
 });
 
 /**
  * De doorzichtigheden per thema en stand. `postDim`/`inkDim` is de `--dim`
  * uit het prototype, `postRule`/`linePaper` de `--rule`.
  */
-const MAGAZINE_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.62, inkDim: 0.62, postRule: 0.16, linePaper: 0.16 };
+// De haarlijn volgt de Voorbeeld-bestanden (.18); mobile-app had .16.
+const MAGAZINE_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.62, inkDim: 0.62, postRule: 0.18, linePaper: 0.18 };
 const MAGAZINE_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.54, inkDim: 0.54, postRule: 0.14, linePaper: 0.14 };
 const MODERN_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.56, inkDim: 0.56, postRule: 0.12, linePaper: 0.12 };
 const MODERN_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.58, inkDim: 0.58, postRule: 0.14, linePaper: 0.14 };
 
 const THEME_PALETTE: Record<LincinTheme, Record<Scheme, Palette>> = {
-  kleur: PALETTE,
   magazine: { light: MAGAZINE_LIGHT, dark: MAGAZINE_DARK },
   modern: { light: MODERN_LIGHT, dark: MODERN_DARK },
 };
 
 const THEME_ALPHA: Record<LincinTheme, Record<Scheme, Alphas>> = {
-  kleur: ALPHA,
   magazine: { light: MAGAZINE_LIGHT_ALPHA, dark: MAGAZINE_DARK_ALPHA },
   modern: { light: MODERN_LIGHT_ALPHA, dark: MODERN_DARK_ALPHA },
 };
@@ -613,11 +650,10 @@ export function themeVarCss(): string {
     return `${selector} {\n${lines.join("\n")}\n}`;
   };
   const out: string[] = [];
-  // Kleur is de basis in global.css; alleen zijn nieuwe tokens (het
-  // tegelvlak, de stippellijn) moeten er nog bij.
+  // De basis in global.css is het oude palet; elk thema zet er zijn eigen
+  // waarden overheen, en `data-lincin-theme` staat altijd op een thema.
   for (const t of THEMES) {
     for (const s of ["light", "dark"] as Scheme[]) {
-      if (t === "kleur") continue;
       const sel = s === "dark" ? `html:root.dark[data-lincin-theme="${t}"]` : `html:root[data-lincin-theme="${t}"]`;
       out.push(block(sel, THEME_PALETTE[t][s], THEME_ALPHA[t][s]));
     }
@@ -677,7 +713,7 @@ const FRIEND: Record<Scheme, Record<Hue, FriendColor>> = {
  */
 export function hueFor(id: string | null | undefined): Hue {
   if (!id) return "orange";
-  return (theme === "kleur" ? hueChoices[id] : undefined) ?? defaultHueFor(id);
+  return defaultHueFor(id);
 }
 
 /** De kleur die iemand krijgt als je zelf niets koos. */
@@ -1021,7 +1057,7 @@ export function usePreference(): ThemePreference {
   return useSyncExternalStore(subscribe, getPreference, getPreference);
 }
 
-/** Het thema — `kleur` of `magazine`. */
+/** Het thema — `magazine` of `modern`. */
 export function useTheme(): LincinTheme {
   return useSyncExternalStore(subscribe, getTheme, getTheme);
 }

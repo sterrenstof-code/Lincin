@@ -111,11 +111,9 @@ function DeviceLinkScreenBody() {
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
 
-  const spec = useThemeSpec();
-  const th = spec.id;
+  const th = useThemeSpec().id;
   const scheme = useScheme();
   const { width } = useWindowDimensions();
-  const pad = th === "kleur" ? 18 : RASTER.seam;
   const dim = color("ink", "inkDim");
   const expired = secondsLeft === 0;
   const qrSize = Math.max(170, Math.min(220, columnWidth(width) - 2 * QUIET - 90));
@@ -145,8 +143,6 @@ function DeviceLinkScreenBody() {
         padding: QUIET,
         backgroundColor: ON_DARK,
         borderRadius: th === "modern" ? 14 : 0,
-        borderWidth: th === "kleur" ? spec.border : 0,
-        borderColor: color("ink"),
         opacity: expired ? 0.25 : 1,
       }}
     >
@@ -159,9 +155,9 @@ function DeviceLinkScreenBody() {
   return (
     <LincinScreen tab="you" back={null} tabs={false} actions={false} header="none" tint={friendColor(HUE, scheme).fill}>
       <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <View style={{ padding: pad, paddingTop: th === "kleur" ? 8 : SEAM_TOP, gap: th === "kleur" ? 16 : RASTER.seam }}>
+        <View style={{ padding: RASTER.seam, paddingTop: SEAM_TOP, gap: RASTER.seam }}>
           {/* Het kruisje: sluiten trekt het pakket in (zie `onClose`). */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: th === "kleur" ? 0 : 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: 12 }}>
             <IconBtn icon="close" label="Sluiten" tone="ink" onPress={onClose} />
             <Text style={labelStyle(th, 10, dim)}>Toestel koppelen</Text>
           </View>
@@ -184,7 +180,7 @@ function DeviceLinkScreenBody() {
                   {code}
                 </Poster>
               ) : (
-                <Panel style={{ padding: th === "modern" ? RASTER.tilePadLarge : 18, alignItems: "center", gap: 16 }}>
+                <Panel style={{ padding: RASTER.tilePadLarge, alignItems: "center", gap: 16 }}>
                   {code}
                   {timer}
                 </Panel>
