@@ -359,6 +359,26 @@ export function timeLabel(iso: string, t: Dict, lang: Lang): string {
   return d.toLocaleDateString(LOCALE[lang], { day: "numeric", month: "short" });
 }
 
+/**
+ * De tijd bij een reactie (HANDOFF okt 2026, "Reacties"): relatief tot een
+ * etmaal — "Zojuist", "4 min", "2 u" — daarna "Gisteren 14:06", binnen de
+ * week "di 14:06", en ouder een datum. Anders dan `timeLabel`, dat voor
+ * bijdragen de klok van vandaag toont.
+ */
+export function relTime(iso: string, t: Dict, lang: Lang, now = new Date()): string {
+  const d = new Date(iso);
+  const ms = now.getTime() - d.getTime();
+  if (ms < 60_000) return t.justNow;
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} ${t.minShort}`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)} ${t.hourShort}`;
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (sameDay(d, y)) return `${t.yesterday} ${hhmm(iso)}`;
+  if (ms < 7 * 86_400_000) return `${d.toLocaleDateString(LOCALE[lang], { weekday: "short" })} ${hhmm(iso)}`;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString(LOCALE[lang], sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
+}
+
 export function shortDate(iso: string, lang: Lang): string {
   return new Date(iso).toLocaleDateString(LOCALE[lang], { day: "numeric", month: "short" });
 }

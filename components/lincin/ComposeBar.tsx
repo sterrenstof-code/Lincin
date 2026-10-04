@@ -1,14 +1,14 @@
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { color, line, useThemeSpec } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { lincinType, sans, serif } from "@/lib/design/type";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useT } from "@/lib/i18n";
 
 import { MentionSuggestions, useMentionSuggest } from "./MentionSuggest";
-import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
+import { BORDER, Btn, GUTTER, Mono } from "./ui";
 
 /**
  * De balk onderaan een bladzijde en een gesprek (README §02, §05):
@@ -18,6 +18,9 @@ import { BORDER, Btn, CONTROL, GUTTER, Mono, SquareBtn } from "./ui";
  * emoji dóet bepaalt de aanroeper — op een bladzijde is het een reactie
  * op de bijdrage, in een gesprek gaat hij in het bericht.
  */
+
+/** De hoogte van de magazinebalk (Bijdrage Voorbeeld). */
+const MAG_BAR = 64;
 
 const EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "🌅", "☕", "🛶", "🎧", "✨"];
 
@@ -170,7 +173,10 @@ export function ComposeBar({
   onToggleBox,
   sending = false,
   above,
+  inputRef,
 }: {
+  /** Het veld zelf, om het te focussen (Antwoord zet de balk in antwoord-stand). */
+  inputRef?: Ref<TextInput>;
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
@@ -183,7 +189,7 @@ export function ComposeBar({
 }) {
   const spec = useThemeSpec();
   const emoji = useComposeSuggest(value, onChange);
-  const field = useMultilineInput({ value, onSend, suggest: emoji, minH: CONTROL });
+  const field = useMultilineInput({ value, onSend, suggest: emoji, minH: MAG_BAR });
   if (spec.id === "modern") {
     return (
       <ModernBar
@@ -196,25 +202,32 @@ export function ComposeBar({
         sending={sending}
         above={above}
         emoji={emoji}
+        inputRef={inputRef}
       />
     );
   }
+  // Magazine (Bijdrage Voorbeeld): één balk van 64 onder een lijn van 2
+  // inkt — ☺ in een cel van 56, het veld in serif, en rechts de verzendcel
+  // van 64: grijs tot er iets te sturen is, dan rood (HANDOFF "Schrijfbalk").
+  const ready = value.trim().length > 0 && !sending;
+  const empty = value.length === 0;
   return (
-    <View style={{ borderTopWidth: BORDER, borderTopColor: line(), backgroundColor: color("paper") }}>
+    <View style={{ borderTopWidth: 2, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
       {above}
       <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={false} />
       <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round={false} />
-      <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
-        <SquareBtn
-          glyph="☺"
-          size={CONTROL}
-          fontSize={18}
-          fill={boxOpen}
-          onPress={onToggleBox}
+      <View style={{ flexDirection: "row", alignItems: "stretch", minHeight: 64 }}>
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Emoji en gifs"
-          style={{ borderRightWidth: 0 }}
-        />
+          accessibilityState={{ expanded: boxOpen }}
+          onPress={onToggleBox}
+          style={{ width: 56, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: color("ink", "postRule"), backgroundColor: boxOpen ? color("ink") : "transparent" }}
+        >
+          <Text style={{ fontSize: 18, lineHeight: 22, color: boxOpen ? color("paper") : color("ink") }}>☺</Text>
+        </Pressable>
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={emoji.onChangeText}
           onKeyPress={field.onKeyPress}
@@ -225,16 +238,17 @@ export function ComposeBar({
           placeholderTextColor={color("ink", "inkDim")}
           editable={!sending}
           style={[
-            lincinType.body,
+            serif(empty),
             {
               flex: 1,
               minWidth: 0,
+              alignSelf: "center",
               height: field.height,
               overflow: field.overflow,
-              borderWidth: BORDER,
-              borderColor: line(),
-              paddingHorizontal: 12,
-              paddingVertical: (CONTROL - 20) / 2,
+              fontSize: 18,
+              lineHeight: 22,
+              paddingHorizontal: 16,
+              paddingVertical: (MAG_BAR - 22) / 2,
               textAlignVertical: "top",
               color: color("ink"),
               backgroundColor: "transparent",
@@ -242,8 +256,34 @@ export function ComposeBar({
             } as object,
           ]}
         />
-        <SquareBtn glyph="↑" size={CONTROL} fontSize={18} fill onPress={onSend} accessibilityLabel="Verstuur" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Verstuur"
+          accessibilityState={{ disabled: !ready }}
+          onPress={onSend}
+          disabled={!ready}
+          style={{ width: 64, alignItems: "center", justifyContent: "center", backgroundColor: ready ? color("red") : color("ink", "pillSoft") }}
+        >
+          <Text style={{ fontSize: 18, lineHeight: 22, color: "#F7F4EE" }}>↑</Text>
+        </Pressable>
       </View>
+    </View>
+  );
+}
+
+/**
+ * "ANTWOORD AAN Lotte ×": boven de schrijfbalk zolang je antwoordt
+ * (Bijdrage Voorbeeld 1d). Het kruisje zet hem terug op een gewone reactie.
+ */
+export function ReplyStrip({ label, name, onCancel }: { label: string; name: string; onCancel: () => void }) {
+  return (
+    <View style={{ height: 36, paddingHorizontal: GUTTER, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: color("ink", "postRule") }}>
+      <Text numberOfLines={1} style={[sans(700), { flex: 1, fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+        {label} <Text style={{ color: color("ink"), textTransform: "none", letterSpacing: 0.2 }}>{name}</Text>
+      </Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Annuleer antwoord" onPress={onCancel} hitSlop={12}>
+        <Text style={{ fontSize: 16, lineHeight: 20, color: color("ink") }}>×</Text>
+      </Pressable>
     </View>
   );
 }
@@ -263,7 +303,9 @@ function ModernBar({
   sending,
   above,
   emoji,
+  inputRef,
 }: {
+  inputRef?: Ref<TextInput>;
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
@@ -315,6 +357,7 @@ function ModernBar({
           <Text style={{ fontSize: 18, lineHeight: 22, color: boxOpen ? color("paper") : ink }}>☺</Text>
         </Pressable>
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={emoji.onChangeText}
           onKeyPress={field.onKeyPress}
@@ -340,8 +383,15 @@ function ModernBar({
             } as object,
           ]}
         />
-        <Pressable accessibilityRole="button" accessibilityLabel="Verstuur" onPress={onSend} style={round(true)}>
-          <Text style={{ fontSize: 17, lineHeight: 20, color: color("paper") }}>↑</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Verstuur"
+          accessibilityState={{ disabled: !value.trim() || sending }}
+          onPress={onSend}
+          disabled={!value.trim() || sending}
+          style={[round(false), { backgroundColor: value.trim() && !sending ? color("red") : color("ink", "pillSoft") }]}
+        >
+          <Text style={{ fontSize: 17, lineHeight: 20, color: "#F7F4EE" }}>↑</Text>
         </Pressable>
       </View>
       </View>

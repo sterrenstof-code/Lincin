@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, TextInput, View, type StyleProp, type TextStyle } from "react-native";
 
 import { updateEntityComment, type EntityComment } from "@/lib/api/entity-comments";
@@ -28,15 +28,35 @@ export function CommentText({
   comment: c,
   own,
   textStyle,
+  editing: editingProp,
+  onEditingChange,
+  body,
 }: {
   comment: EntityComment;
   own: boolean;
   textStyle: StyleProp<TextStyle>;
+  /**
+   * Gestuurd van buitenaf (Bijdrage Voorbeeld: bewerken zit in het menu
+   * onder vasthouden / ⋯). Dan tekent dit onderdeel alleen de tekst of het
+   * veld; "bewerkt" en de knop staan elders.
+   */
+  editing?: boolean;
+  onEditingChange?: (editing: boolean) => void;
+  /** De tekst zelf, als de aanroeper hem anders tekent (vermeldingen, links). */
+  body?: ReactNode;
 }) {
   const t = useT();
   const qc = useQueryClient();
   const toast = useToast();
-  const [editing, setEditing] = useState(false);
+  const [editingOwn, setEditingOwn] = useState(false);
+  const controlled = editingProp !== undefined;
+  const editing = controlled ? editingProp : editingOwn;
+  const setEditing = (v: boolean) => (controlled ? onEditingChange?.(v) : setEditingOwn(v));
+  // Opent het veld van buitenaf, dan begint het bij de tekst van nu.
+  useEffect(() => {
+    if (editingProp) setDraft(c.body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingProp]);
   const [draft, setDraft] = useState(c.body);
   const [saving, setSaving] = useState(false);
   /** De hoogte van de tekst in het veld, zodat het meegroeit. */
@@ -127,6 +147,8 @@ export function CommentText({
       </View>
     );
   }
+
+  if (controlled) return c.body ? <>{body ?? <Text style={textStyle}>{c.body}</Text>}</> : null;
 
   return (
     <>

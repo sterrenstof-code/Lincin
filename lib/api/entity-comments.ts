@@ -55,6 +55,8 @@ export type EntityComment = {
   created_at: string;
   /** Wanneer de schrijver de tekst aanpaste; leeg = nooit (0080). */
   edited_at: string | null;
+  /** De hoofdreactie waaronder dit antwoord hangt; leeg = een hoofdreactie (0084). */
+  parent_id: string | null;
   author: Profile | null;
   /** Pad van een gif of meme bij deze reactie. */
   image_path: string | null;
@@ -68,7 +70,7 @@ export async function listEntityComments(
 ): Promise<EntityComment[]> {
   const { data, error } = await supabase
     .from("entity_comments")
-    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path")
+    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path, parent_id")
     .eq("entity_type", entityType)
     .eq("entity_id", entityId)
     .order("created_at", { ascending: true });
@@ -111,6 +113,8 @@ export async function addEntityComment(args: {
   body: string;
   /** Optioneel: user_id van de eigenaar van de entiteit, voor notificatie */
   ownerId?: string;
+  /** Een antwoord: de reactie waarop je antwoordt (0084 hangt hem onder de hoofdreactie). */
+  parentId?: string | null;
   /**
    * Een gif of een meme bij deze reactie. Wordt geüpload naar de eigen map
    * in de posts-bucket, waar vrienden hem mogen lezen — dezelfde regel als
@@ -131,8 +135,9 @@ export async function addEntityComment(args: {
       user_id: args.userId,
       body: args.body.trim(),
       image_path: imagePath,
+      parent_id: args.parentId ?? null,
     })
-    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path")
+    .select("id, entity_type, entity_id, user_id, body, created_at, edited_at, image_path, parent_id")
     .single();
   if (error) {
     if (imagePath) {
@@ -197,6 +202,34 @@ export async function addEntityComment(args: {
  */
 export async function updateEntityComment(id: string, body: string): Promise<void> {
   const { error } = await supabase.from("entity_comments").update({ body: body.trim() }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Weg ermee: je eigen reactie, of elke reactie op wat jij maakte (0084). */
+export async function deleteEntityComment(id: string): Promise<void> {
+  const { error } = await supabase.from("entity_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Verbergen: alleen voor jezelf, de reactie blijft voor de rest staan (0084). */
+export async function hideEntityComment(userId: string, commentId: string): Promise<void> {
+  const { error } = await supabase.from("comment_hides").upsert({ user_id: userId, comment_id: commentId });
+  if (error) throw error;
+}
+
+export async function listHiddenCommentIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from("comment_hides").select("comment_id").eq("user_id", userId);
+  if (error) return new Set();
+  return new Set((data ?? []).map((r) => r.comment_id as string));
+}
+
+/** Rapporteren: komt bij de beheerders terecht, niet bij de schrijver (0084). */
+export async function reportEntityComment(args: { commentId: string; postId?: string | null; reason?: string }): Promise<void> {
+  const { error } = await supabase.from("content_reports").insert({
+    entity_comment_id: args.commentId,
+    post_id: args.postId ?? null,
+    reason: args.reason ?? null,
+  });
   if (error) throw error;
 }
 

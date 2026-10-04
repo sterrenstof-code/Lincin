@@ -159,6 +159,11 @@ function buildNotificationBody(args: {
       return emoji ? `${emoji} op ${postLabel}` : `reageerde op ${postLabel}`;
     case "mention":
       return `noemde je${said}`;
+    // ---- reacties op reacties (0084) ----
+    case "comment_reply":
+      return `antwoordde op je reactie${said}`;
+    case "comment_like":
+      return emoji && emoji !== "❤️" ? `${emoji} op je reactie` : "vond je reactie leuk";
 
     // ---- het bugbord (0049) ----
     case "bug_resolved":

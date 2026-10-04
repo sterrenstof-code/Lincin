@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase/client";
  *   visible      lincs zien mijn bijdragen
  *   openDefault  vrienden in de feed staan standaard open (uit: ingeklapt)
  *   feedView     editie | friends | time; leeg = de standaard van het toestel
+ *   commentSort  newest | oldest — de volgorde van reacties (Bijdrage Voorbeeld)
  *   openFriends  per vriend (of groep) je eigen keuze: open of dicht
  *   edition      het editienummer: de hoeveelste dag dat je Lincin opent
  *               ("Editie wo 23 sep · № 38"), met de dag van de laatste
@@ -26,6 +27,9 @@ import { supabase } from "@/lib/supabase/client";
  */
 export type FeedView = "editie" | "friends" | "time";
 
+/** De volgorde van reacties onder een bijdrage (Bijdrage Voorbeeld). */
+export type CommentSort = "newest" | "oldest";
+
 export type Prefs = {
   tint: boolean;
   pushNew: boolean;
@@ -33,6 +37,8 @@ export type Prefs = {
   visible: boolean;
   openDefault: boolean;
   feedView: FeedView | null;
+  /** Reacties: nieuwste eerst (de standaard) of oudste eerst. */
+  commentSort: CommentSort;
   openFriends: Record<string, boolean>;
   edition: { n: number; day: string } | null;
 };
@@ -47,6 +53,7 @@ const DEFAULTS: Prefs = {
   visible: true,
   openDefault: false,
   feedView: null,
+  commentSort: "newest",
   openFriends: {},
   edition: null,
 };
@@ -67,6 +74,7 @@ function clean(raw: unknown): Partial<Prefs> {
     if (typeof r[k] === "boolean") out[k] = r[k] as boolean;
   }
   if (r.feedView === "editie" || r.feedView === "friends" || r.feedView === "time") out.feedView = r.feedView;
+  if (r.commentSort === "newest" || r.commentSort === "oldest") out.commentSort = r.commentSort;
   if (r.openFriends && typeof r.openFriends === "object") out.openFriends = r.openFriends as Record<string, boolean>;
   const e = r.edition as { n?: unknown; day?: unknown } | undefined;
   if (e && typeof e.n === "number" && typeof e.day === "string") out.edition = { n: e.n, day: e.day };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
@@ -21,6 +21,38 @@ type ZoomMeta = Omit<LightboxPayload, "uris" | "cacheKeys" | "index">;
  * 150px hoog op een kaart, 300px op de bladzijde. Elke soort tekent
  * zichzelf op het tweede vlak (`paper2`); een foto vult het vlak.
  */
+/** Hoe lang een tik wacht op een tweede, voor hij als enkele tik telt. */
+const DOUBLE_TAP_MS = 280;
+
+/**
+ * Een tik: zonder `onDouble` meteen `single`. Met: wacht of er een tweede
+ * komt — dan `onDouble` en geen `single` — anders na `DOUBLE_TAP_MS`
+ * alsnog `single`.
+ */
+function useDoubleTap(onDouble?: () => void) {
+  const last = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  return (single: () => void) => {
+    if (!onDouble) return single();
+    const now = Date.now();
+    if (now - last.current < DOUBLE_TAP_MS) {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      last.current = 0;
+      onDouble();
+      return;
+    }
+    last.current = now;
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      single();
+    }, DOUBLE_TAP_MS);
+  };
+}
+
 export function Media({
   media,
   height,
@@ -31,6 +63,7 @@ export function Media({
   zoom,
   photoFit,
   maxPhotoH,
+  onDoubleTap,
 }: {
   media: CardMedia;
   height: number;
@@ -48,7 +81,14 @@ export function Media({
   photoFit?: "ratio";
   /** Met `photoFit`: de foto nooit hoger dan dit. */
   maxPhotoH?: number;
+  /**
+   * Dubbeltik op de foto (HANDOFF: dubbeltik = like). Gegeven, dan wacht
+   * een enkele tik even of er een tweede komt, en opent pas daarna de
+   * lichtbak.
+   */
+  onDoubleTap?: () => void;
 }) {
+  const zoomTo = useDoubleTap(onDoubleTap);
   switch (media.kind) {
     case "foto":
       return (
@@ -59,7 +99,11 @@ export function Media({
           maxHeight={maxPhotoH}
           size={size}
           video={media.video}
-          onZoom={zoom ? (index) => openLightbox({ ...zoom, uris: media.uris, cacheKeys: media.cacheKeys, index }) : undefined}
+          onZoom={
+            zoom || onDoubleTap
+              ? (index) => zoomTo(() => (zoom ? openLightbox({ ...zoom, uris: media.uris, cacheKeys: media.cacheKeys, index }) : undefined))
+              : undefined
+          }
         />
       );
     case "tekst":

@@ -115,6 +115,20 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
       };
+      /** 0084 — reacties die je voor jezelf verborg. */
+      comment_hides: {
+        Row: { user_id: string; comment_id: string; created_at: string };
+        Insert: { user_id: string; comment_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["comment_hides"]["Insert"]>;
+        Relationships: [];
+      };
+      /** 0084 — rapporten; de melder ziet alleen zijn eigen. */
+      content_reports: {
+        Row: { id: string; reporter_id: string; entity_comment_id: string | null; post_id: string | null; reason: string | null; status: "open" | "handled"; created_at: string };
+        Insert: { id?: string; reporter_id?: string; entity_comment_id?: string | null; post_id?: string | null; reason?: string | null; status?: "open" | "handled"; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["content_reports"]["Insert"]>;
+        Relationships: [];
+      };
       /** 0083 — wat je opende; alleen van jou (geen leesbevestiging). */
       item_seen: {
         Row: { user_id: string; item_id: string; seen_at: string };
@@ -888,6 +902,8 @@ export type Database = {
           body: string;
           created_at: string;
           edited_at: string | null;
+          /** 0084 — de hoofdreactie; leeg = hoofdreactie. */
+          parent_id: string | null;
           /** 0046_comment_media — gif of meme bij een reactie. */
           image_path: string | null;
         };
@@ -899,6 +915,7 @@ export type Database = {
           body: string;
           created_at?: string;
           edited_at?: string | null;
+          parent_id?: string | null;
           image_path?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["entity_comments"]["Insert"]>;
