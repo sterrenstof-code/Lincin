@@ -9,7 +9,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { listUnifiedFeed } from "@/lib/api/posts";
 import { getProfile } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { LAYOUT, OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { capf, mono, sans } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, groupByFriend, timeLabel, toCardPost, type CardPost } from "@/lib/lincin/model";
@@ -76,6 +76,7 @@ export function DesktopShell({
   tint,
   hideMark = false,
   navExtra = null,
+  wide = false,
   children,
 }: {
   active: Tab;
@@ -93,10 +94,19 @@ export function DesktopShell({
   hideMark?: boolean;
   /** Magazine: rechts in de balk, vóór ✳ — de weergaven van de feed. */
   navExtra?: ReactNode;
+  /**
+   * Breed scherm (≥1680, HANDOFF): kop en inhoud over de volle breedte.
+   * De pagina houdt zelf alles onder de omslag in een kolom van 1440
+   * (`LAYOUT.column`). Alleen de feed vraagt dit; elke andere pagina blijft
+   * in zijn kolom.
+   */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const spec = useThemeSpec();
   const scheme = useScheme();
+  const { width } = useWindowDimensions();
+  const full = wide && width >= LAYOUT.wideMin;
   const round = spec.id === "modern";
   const bloom = tint ?? friendColor("blue", scheme).fill;
   const lit = tint && spec.tint ? pageTint(tint, scheme, DESKTOP_TINT) : null;
@@ -113,7 +123,7 @@ export function DesktopShell({
         Platform.OS === "web" ? ({ transitionProperty: "background-color", transitionDuration: "700ms", transitionTimingFunction: "ease" } as object) : null,
       ]}
     >
-      <View style={[{ flex: 1, minHeight: 0, width: "100%", maxWidth: PAGE_MAX, alignSelf: "center" }, round ? { padding: SEAM, gap: SEAM } : null]}>
+      <View style={[{ flex: 1, minHeight: 0, width: "100%", maxWidth: full ? undefined : PAGE_MAX, alignSelf: "center" }, round ? { padding: SEAM, gap: SEAM } : null]}>
         {spec.id === "magazine" ? <NavMagazine active={active} extra={navExtra} /> : <NavModern active={active} />}
         <View style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>{children}</View>
       </View>

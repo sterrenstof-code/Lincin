@@ -115,6 +115,20 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
       };
+      /** 0083 — wat je opende; alleen van jou (geen leesbevestiging). */
+      item_seen: {
+        Row: { user_id: string; item_id: string; seen_at: string };
+        Insert: { user_id: string; item_id: string; seen_at?: string };
+        Update: Partial<Database["public"]["Tables"]["item_seen"]["Insert"]>;
+        Relationships: [];
+      };
+      /** 0083 — het einde van je vorige bezoek, over al je toestellen. */
+      reading_state: {
+        Row: { user_id: string; last_active_at: string };
+        Insert: { user_id: string; last_active_at?: string };
+        Update: Partial<Database["public"]["Tables"]["reading_state"]["Insert"]>;
+        Relationships: [];
+      };
       /** 0082 — één vriendcode per persoon; alleen de eigenaar leest hem. */
       friend_codes: {
         Row: { code: string; user_id: string; created_at: string };
@@ -1019,6 +1033,11 @@ export type Database = {
     };
 
     Functions: {
+      /** 0083 — "ik ben hier"; schuift alleen vooruit. */
+      touch_reading_state: {
+        Args: { p_at: string };
+        Returns: string;
+      };
       /** 0082 — een vriendcode inwisselen; zie lib/api/friend-codes.ts. */
       redeem_friend_code: {
         Args: { p_code: string };

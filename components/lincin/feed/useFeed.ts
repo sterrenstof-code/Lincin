@@ -98,16 +98,6 @@ export function useFeed() {
   /** Nieuwste eerst, over alle vrienden heen. */
   const byTime = useMemo(() => [...cards].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), [cards]);
   /**
-   * Het hero van magazine: de foto waar de laatste maand het meest mee
-   * gedaan is (comments, emoji, duwen). Bij gelijkstand de nieuwste. Geen
-   * foto in de feed: de nieuwste bijdrage.
-   */
-  const heroPost = useMemo(() => {
-    const photos = byTime.filter((c) => c.media.kind === "foto" && !c.media.video);
-    if (!photos.length) return byTime[0];
-    return photos.reduce((best, c) => (c.monthInteractions > best.monthInteractions ? c : best), photos[0]);
-  }, [byTime]);
-  /**
    * Het nummer van een bijdrage: "№ 01" is de oudste in de feed, zoals het
    * prototype zijn bijdragen telt. Magazine zet het in de inhoudsopgave.
    */
@@ -121,7 +111,7 @@ export function useFeed() {
   const reactions = usePostReactions(postIds, myUserId);
 
   // ---- gelezen ----
-  const { isSeen } = useSeenPosts();
+  const { isSeen, ready: seenReady } = useSeenPosts();
   /**
    * Gezien: wat er al stond bij je vorige bezoek, wat je opende of voorbij
    * scrolde, en alles wat je zelf maakte.
@@ -131,6 +121,27 @@ export function useFeed() {
     [isSeen, cards, myUserId],
   );
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
+
+  /**
+   * De omslag (handoff okt 2026, desktop-magazine-home): de eerste foto die
+   * je nog niet zag, anders de eerste bijdrage die je nog niet zag, anders
+   * de nieuwste. Tot 2.2 was het de foto waar de laatste maand het meest
+   * mee gedaan was — die kon je al tien keer gezien hebben.
+   *
+   * Hij blijft staan tijdens een bezoek: open je hem, dan is hij gezien,
+   * maar hij springt niet weg onder je vinger. Pas als het gelezen-zijn
+   * bekend is (`ready`) wordt hij vastgezet; daarvóór telt alles even als
+   * gezien en zou de keuze nergens op slaan.
+   */
+  const heroPin = useRef<string | null>(null);
+  const heroPost = useMemo(() => {
+    const pinned = heroPin.current ? byTime.find((c) => c.id === heroPin.current) : undefined;
+    if (pinned) return pinned;
+    const unread = byTime.filter((c) => !seen.has(c.id));
+    const pick = unread.find((c) => c.media.kind === "foto" && !c.media.video) ?? unread[0] ?? byTime[0];
+    if (seenReady && pick) heroPin.current = pick.id;
+    return pick;
+  }, [byTime, seen, seenReady]);
 
   /**
    * Nieuw en Gezien (HANDOFF 23 sep): twee groepen, nieuwe vrienden eerst.

@@ -28,7 +28,7 @@ export function DesktopFeed() {
 export type Tile = CardPost & { hue: Hue; isNew: boolean };
 
 export function useEdition(f: Feed) {
-  const { byTime, groups, seen, isMine } = f;
+  const { byTime, groups, seen, isMine, heroPost } = f;
   return useMemo(() => {
     const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
     const tiles: Tile[] = byTime.map((c) => ({
@@ -36,12 +36,9 @@ export function useEdition(f: Feed) {
       hue: c.swatch ?? hueOf.get(c.authorId) ?? "orange",
       isNew: !seen.has(c.id),
     }));
-    // De omslag: de bijdrage waar de laatste maand het meest mee gedaan is
-    // (comments, emoji, duwen) — een foto als die er is, want de omslag is
-    // een beeld. Bij gelijkstand de nieuwste (`byTime` is nieuwste eerst).
-    const photos = tiles.filter((p) => p.media.kind === "foto" && !p.media.video);
-    const pool = photos.length ? photos : tiles;
-    const hero = pool.reduce<Tile | null>((best, p) => (!best || p.monthInteractions > best.monthInteractions ? p : best), null);
+    // De omslag: dezelfde keuze als op de telefoon (`heroPost` in useFeed):
+    // de eerste foto die je nog niet zag, vastgezet voor dit bezoek.
+    const hero = tiles.find((p) => p.id === heroPost?.id) ?? null;
     // Wat je zelf het laatste etmaal plaatste staat bovenaan, vóór het
     // nieuws van je vrienden: wie iets plaatst en naar de feed gaat, wil
     // het daar meteen zien. Ouder werk van jezelf zakt naar de rest.
@@ -53,7 +50,7 @@ export function useEdition(f: Feed) {
     const friends = new Set(tiles.filter((p) => !isMine(p.authorId)).map((p) => p.authorId)).size;
     const newCount = tiles.filter((p) => p.isNew).length;
     return { hero, alsoNew, rest, friends, newCount, total: tiles.length };
-  }, [byTime, groups, seen, isMine]);
+  }, [byTime, groups, seen, isMine, heroPost]);
 }
 
 export type EditionData = ReturnType<typeof useEdition>;

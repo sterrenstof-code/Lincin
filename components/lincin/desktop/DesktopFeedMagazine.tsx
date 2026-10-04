@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
+import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { SafeImage } from "@/components/SafeImage";
 import { listEntityComments } from "@/lib/api/entity-comments";
-import { OMSLAG, friendColor, type Hue } from "@/lib/design/theme";
+import { LAYOUT, OMSLAG, friendColor, type Hue } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import { useLang, type Lang } from "@/lib/i18n";
 import { displayName, timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
@@ -43,9 +43,25 @@ const COVER_H = 960;
 const SPREAD_H = 340;
 const webPointer = Platform.OS === "web" ? ({ cursor: "pointer" } as ViewStyle) : null;
 
+/**
+ * Breed scherm (≥1680, HANDOFF "Breed scherm"): kop en omslag over de
+ * volle breedte, al de rest in een kolom van 1440 in het midden.
+ */
+function useWide() {
+  const { width, height } = useWindowDimensions();
+  return { wide: width >= LAYOUT.wideMin, height };
+}
+
+/** De kolom van 1440 onder een brede omslag; daaronder doet hij niets. */
+function Column({ wide, children }: { wide: boolean; children: ReactNode }) {
+  if (!wide) return <>{children}</>;
+  return <View style={{ width: "100%", maxWidth: LAYOUT.column, alignSelf: "center" }}>{children}</View>;
+}
+
 export function DesktopFeedMagazine({ f, ed }: { f: Feed; ed: EditionData }) {
   const { t, view, feed, sheet, setSheet } = f;
   const noFriends = f.empty && f.friendCount === 0;
+  const { wide } = useWide();
 
   let body: ReactNode;
   if (feed.isLoading) body = <Note text={t.loading} />;
@@ -56,11 +72,17 @@ export function DesktopFeedMagazine({ f, ed }: { f: Feed; ed: EditionData }) {
   else body = <ByTime f={f} />;
 
   return (
-    <DesktopShell active="feed" navExtra={<Views f={f} />}>
+    <DesktopShell active="feed" navExtra={<Views f={f} />} wide>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {view !== "editie" && !noFriends && !feed.isLoading ? <ListHead f={f} /> : null}
-        {body}
-        {!feed.isLoading && !noFriends ? <End f={f} /> : null}
+        {view === "editie" && !feed.isLoading && !noFriends ? (
+          body
+        ) : (
+          <Column wide={wide}>
+            {view !== "editie" && !noFriends && !feed.isLoading ? <ListHead f={f} /> : null}
+            {body}
+          </Column>
+        )}
+        <Column wide={wide}>{!feed.isLoading && !noFriends ? <End f={f} /> : null}</Column>
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </DesktopShell>
@@ -115,13 +137,22 @@ function useEditionLine() {
   };
 }
 
+/** Hoeveel van "Inhoud" er meteen staat, en hoeveel er per tik bij komen. */
+const INHOUD_FIRST = 4;
+const INHOUD_STEP = 8;
+
 function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
   const { t } = f;
   const o = useOmslag();
   const seen = ed.rest;
+  // Wat je al zag staat er niet eindeloos onder: vier, en dan "Verder
+  // lezen" (desktop-magazine-home). Geen oneindig scrollen.
+  const [shown, setShown] = useState(INHOUD_FIRST);
+  const { wide } = useWide();
   return (
     <View>
       {ed.hero ? <Cover f={f} ed={ed} hero={ed.hero} /> : null}
+      <Column wide={wide}>
       {ed.alsoNew.length ? (
         <>
           <ChapterHead
@@ -142,9 +173,56 @@ function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
           {/* Ook wat je al zag als gekleurde spreads, zoals op de telefoon:
               een index met nummers las als een inhoudstafel, niet als je
               vrienden. */}
-          <Spreads f={f} posts={seen} />
+          <Spreads f={f} posts={seen.slice(0, shown)} />
+          {seen.length > shown ? (
+            <ReadOn left={seen.length - shown} onPress={() => setShown((n) => n + INHOUD_STEP)} label={t.readOn} more={`${t.moreLeft} ${seen.length - shown} · ${t.loadMore} ↓`.trim()} />
+          ) : null}
         </>
       ) : null}
+      </Column>
+    </View>
+  );
+}
+
+/**
+ * "Verder lezen — eerdere bijdragen": een strook van 64 met een rug van 5
+ * in inkt, op het tweede papier. Bij hover wordt hij inkt met papier erop.
+ */
+function ReadOn({ label, more, onPress }: { left: number; label: string; more: string; onPress: () => void }) {
+  const o = useOmslag();
+  return (
+    <View style={{ paddingTop: SEAM, paddingHorizontal: SEAM }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${more}`}
+        onPress={onPress}
+        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+          {
+            height: 64,
+            paddingLeft: 21,
+            paddingRight: 26,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 24,
+            borderLeftWidth: SPINE,
+            borderLeftColor: o.ink,
+            backgroundColor: pressed || hovered ? o.ink : o.paper2,
+          },
+          Platform.OS === "web" ? ({ cursor: "pointer" } as ViewStyle) : null,
+        ]}
+      >
+        {({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => (
+          <>
+            <Ser size={26} italic color={pressed || hovered ? o.paper : o.ink} numberOfLines={1}>
+              {label}
+            </Ser>
+            <Label size={11} color={pressed || hovered ? o.paper : o.ink}>
+              {more}
+            </Label>
+          </>
+        )}
+      </Pressable>
     </View>
   );
 }
@@ -155,15 +233,22 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
   const lang = useLang();
   const line = useEditionLine();
   const [w, setW] = useState(1428);
+  const { wide, height } = useWide();
   const fc = friendColor(h.hue, o.scheme);
   const photo = h.media.kind === "foto" ? h.media : null;
   const fg = photo ? OMSLAG.onImage : fc.ink;
   const accent = photo ? OMSLAG.redOnImage : o.red;
-  // Het woordmerk schaalt mee met de breedte; op 1428 is het 340.
+  // Het woordmerk schaalt mee met de breedte; op 1428 is het 340. Breed
+  // (≥1680): 440, en de omslag zo hoog als het venster onder de kop.
   const k = Math.min(1, w / 1428);
-  const mast = Math.round(340 * k);
-  const top = 26 + Math.round(mast * 0.76) + 36;
+  const mast = wide ? LAYOUT.mast.wide : Math.round(LAYOUT.mast.desktop * k);
+  const coverH = wide ? Math.max(LAYOUT.cover.h, height - LAYOUT.cover.wideOffset) : COVER_H;
+  const top = wide ? 420 : 26 + Math.round(mast * 0.76) + 36;
   const roomy = w >= 1300;
+  /** De posities van "Breed Scherm Opties" 1a; daaronder die van 1440. */
+  const L = wide
+    ? { side: 70, sideW: 620, right: 64, rightTop: 430, spine: 22, title: LAYOUT.coverTitle.wide, friends: 52, text: 760 }
+    : { side: 52, sideW: 440, right: 52, rightTop: top, spine: 14, title: LAYOUT.coverTitle.desktop, friends: Math.round(40 * k), text: 560 };
   const comments = useQuery({
     queryKey: ["entity-comments", "post", h.id],
     queryFn: () => listEntityComments("post", h.id),
@@ -182,7 +267,7 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
   const half = Math.ceil(words.length / 2);
   return (
     <View style={{ paddingTop: SEAM, paddingHorizontal: SEAM }} onLayout={(e) => setW(e.nativeEvent.layout.width - SEAM * 2)}>
-      <View style={{ height: COVER_H, overflow: "hidden", backgroundColor: fc.fill }}>
+      <View style={{ height: coverH, overflow: "hidden", backgroundColor: fc.fill }}>
         {photo ? (
           <SafeImage uri={photo.uri} cacheKey={photo.cacheKey} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
         ) : null}
@@ -205,26 +290,26 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
         {/* het woordmerk, en "& vrienden" verticaal ernaast */}
         <View style={{ pointerEvents: "none", position: "absolute", left: 36, top: 26, flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
           <Wordmark size={mast} />
-          <VText dir="down" length={Math.round(mast * 0.8)} thickness={Math.round(40 * k * 0.9)} style={[sans(900), { fontSize: Math.round(40 * k), letterSpacing: -0.8 * k, textTransform: "uppercase", color: o.red }]}>
+          <VText dir="down" length={Math.round(mast * 0.8)} thickness={Math.round(L.friends * 0.9)} style={[sans(900), { fontSize: L.friends, letterSpacing: -0.02 * L.friends, textTransform: "uppercase", color: o.red }]}>
             {t.omAndFriends}
           </VText>
         </View>
 
         {/* de rugtekst: alle titels van de editie */}
-        <View style={{ pointerEvents: "none", position: "absolute", left: 14, top, bottom: 24, width: 16 }}>
-          <VText length={COVER_H - top - 24} thickness={16} style={[sans(500), { fontSize: 12, letterSpacing: 0.48, textTransform: "uppercase", color: fg }]}>
+        <View style={{ pointerEvents: "none", position: "absolute", left: L.spine, top, bottom: 24, width: 16 }}>
+          <VText length={coverH - top - 24} thickness={16} style={[sans(500), { fontSize: 12, letterSpacing: 0.48, textTransform: "uppercase", color: fg }]}>
             {spine}
           </VText>
         </View>
 
         {/* links: jouw editie van vandaag */}
-        <Pressable accessibilityRole="link" onPress={() => f.openPost(h)} style={[{ position: "absolute", left: 52, top, width: 440 }, webPointer]}>
+        <Pressable accessibilityRole="link" onPress={() => f.openPost(h)} style={[{ position: "absolute", left: L.side, top, width: L.sideW }, webPointer]}>
           <Text style={[sans(400), { fontSize: 40, lineHeight: 40, letterSpacing: -0.4, textTransform: "uppercase", color: fg }]}>{t.omCoverA}</Text>
           <Text style={[sans(800), { fontSize: 40, lineHeight: 40, letterSpacing: -0.4, textTransform: "uppercase", color: fg }]}>{t.omCoverB}</Text>
           <Text style={[sans(400), { marginTop: 6, fontSize: 15, lineHeight: 19, fontStyle: "italic", letterSpacing: 0.3, textTransform: "uppercase", color: fg }]}>
             {f.fresh ? `${f.fresh} ${t.new}` : t.upToDate} · {t.omFrom} {ed.friends} {ed.friends === 1 ? t.omFriend1 : t.omFriendsN}
           </Text>
-          <Ser size={84} italic f={0.9} ls={-0.01} color={fg} numberOfLines={3} style={{ marginTop: 56 }}>
+          <Ser size={L.title} italic f={0.9} ls={-0.01} color={fg} numberOfLines={3} style={{ marginTop: 56 }}>
             {words.length > 1 ? `${words.slice(0, half).join(" ")}\n${words.slice(half).join(" ")}` : h.title}
           </Ser>
           <Text numberOfLines={4} style={[sans(400), { marginTop: 14, maxWidth: 380, fontSize: 17, lineHeight: 23, color: fg }]}>
@@ -233,7 +318,7 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
         </Pressable>
 
         {/* rechts: ook nieuw */}
-        <View style={{ position: "absolute", right: 52, top, width: roomy ? 370 : 300, alignItems: "flex-end" }}>
+        <View style={{ position: "absolute", right: L.right, top: L.rightTop, width: roomy ? 370 : 300, alignItems: "flex-end" }}>
           <Ser size={100} italic f={0.78} color={fg}>
             {t.alsoNew.split(" ")[0]}
           </Ser>
@@ -258,7 +343,7 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
 
         {/* de lopende tekst, met de eerste comments erin */}
         {roomy && (h.body || h.caption || cm.length) ? (
-          <View style={{ pointerEvents: "none", position: "absolute", left: 560, top: top + 240, width: 320 }}>
+          <View style={{ pointerEvents: "none", position: "absolute", left: L.text, top: top + (wide ? 300 : 240), width: 320 }}>
             <Text numberOfLines={12} style={[serif(), { fontSize: 21, lineHeight: 27, color: fg, textAlign: coverText.length > 160 ? "justify" : "left" }]}>
               {h.body || h.caption}
               {cm[0] ? (
@@ -273,7 +358,7 @@ function Cover({ f, ed, hero: h }: { f: Feed; ed: EditionData; hero: Tile }) {
         ) : null}
 
         {/* onderaan: open, en de reacties */}
-        <View style={{ position: "absolute", left: 52, bottom: 40, flexDirection: "row", alignItems: "center", gap: 20 }}>
+        <View style={{ position: "absolute", left: L.side, bottom: 40, flexDirection: "row", alignItems: "center", gap: 20 }}>
           <Pressable
             accessibilityRole="link"
             onPress={() => f.openPost(h)}
