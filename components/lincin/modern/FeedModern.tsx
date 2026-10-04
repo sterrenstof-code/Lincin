@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { Fragment, useId, useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
@@ -6,10 +6,10 @@ import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
 import { BellIcon, PlusIcon } from "@/components/lincin/chrome/Header";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
-import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
+import { MODERN, ON_DARK, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, useScheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
-import { timeLabel, type CardPost } from "@/lib/lincin/model";
-import type { Dict, Lang } from "@/lib/i18n";
+import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
+import { useLang, type Dict, type Lang } from "@/lib/i18n";
 
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed } from "../feed/useFeed";
@@ -37,12 +37,12 @@ import { KindPreview } from "./KindPreview";
  * `LincinScreen` krijgt daarom `header="none"`.
  */
 
-/** Zoveel tegels voor het eerst een rij over de volle breedte wordt. */
-const TILE_COUNT = 6;
+/** Zoveel tegels voor het eerst een rij over de volle breedte wordt (prototype: 4). */
+const TILE_COUNT = 4;
 
 export function FeedModern() {
   const f = useFeed();
-  const { t, lang, feed, byTime, groups, sheet, setSheet } = f;
+  const { t, lang, feed, byTime, groups, sheet, setSheet, view } = f;
   const scheme = useScheme();
   useHueChoices();
 
@@ -102,25 +102,35 @@ export function FeedModern() {
         {/* De vriendenchips, en rechts meldingen en een nieuwe bijdrage. */}
         <FriendChips f={f} />
 
-        {hero ? <Hero post={hero} onPress={() => f.openPost(hero)} scheme={scheme} lang={lang} t={t} /> : null}
+        {hero && view === "editie" ? <Hero post={hero} onPress={() => f.openPost(hero)} scheme={scheme} lang={lang} t={t} /> : null}
 
-        {/* Per vriend | op tijd. */}
+        {/* Editie · Per vriend · Op tijd: de weergave die aan staat in inkt,
+            de andere gedimd met een pijl. Tot okt 2026 veranderde deze
+            schakelaar alleen zijn eigen label. */}
         <Tile span={2} pad={0} style={{ height: 52, paddingHorizontal: 20, justifyContent: "center" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => f.changeView("friends")}
-              style={{ paddingVertical: 14, marginVertical: -14 }}
-            >
-              <Counter align="left">{f.view === "friends" ? t.perFriend : `${t.perFriend} →`}</Counter>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => f.changeView("time")}
-              style={{ paddingVertical: 14, marginVertical: -14 }}
-            >
-              <Counter>{f.view === "time" ? t.byTime : `${t.byTime} →`}</Counter>
-            </Pressable>
+          <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            {(
+              [
+                { v: "editie", label: t.editie },
+                { v: "friends", label: t.perFriend },
+                { v: "time", label: t.byTime },
+              ] as const
+            ).map((o) => {
+              const on = view === o.v;
+              return (
+                <Pressable
+                  key={o.v}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => f.changeView(o.v)}
+                  style={{ paddingVertical: 14, marginVertical: -14 }}
+                >
+                  <Text style={{ ...mono(500), fontSize: 9.5, lineHeight: 13, letterSpacing: 1.52, textTransform: "uppercase", color: on ? color("ink") : color("ink", "inkDim") }}>
+                    {on ? o.label : `${o.label} →`}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </Tile>
 
@@ -136,18 +146,136 @@ export function FeedModern() {
           </Tile>
         ) : null}
 
-        {tiles.map((p) => (
-          <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
-        ))}
+        {view === "editie" ? (
+          <>
+            {tiles.map((p) => (
+              <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
+            ))}
+            {rows.map((p) => (
+              <PostRow key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
+            ))}
+          </>
+        ) : null}
 
-        {rows.map((p) => (
-          <PostRow key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
-        ))}
+        {view === "friends" && !f.empty ? <ByFriend f={f} /> : null}
+
+        {view === "time" && !f.empty
+          ? f.timeGroups.map((g) => (
+              <Fragment key={g.key}>
+                <SectionTile label={g.label} meta={g.range} />
+                {g.posts.map((p) => (
+                  <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
+                ))}
+              </Fragment>
+            ))
+          : null}
 
         {!f.empty ? <EndTile onPress={f.compose} endLine={t.endLine} endTitle={t.endTitle} /> : null}
       </Bento>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </LincinScreen>
+  );
+}
+
+/**
+ * Per vriend (desktop-modern-home, mobiel): Nieuw en Gezien, elke vriend
+ * een rij getint in zijn kleur — 22% als er iets nieuw is, anders 10%,
+ * gemengd over de tegel. Standaard ingeklapt; een tik klapt open en toont
+ * zijn bijdragen als tegels.
+ */
+function ByFriend({ f }: { f: ReturnType<typeof useFeed> }) {
+  const { t, sections } = f;
+  const scheme = useScheme();
+  const lang = useLang();
+  const block = (list: FriendGroup[], isNew: boolean) =>
+    list.map((g) => {
+      const open = f.isOpen(g.key);
+      return (
+        <Fragment key={g.key}>
+          <FriendRow f={f} g={g} isNew={isNew} open={open} />
+          {open
+            ? g.posts.map((p) => <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />)
+            : null}
+        </Fragment>
+      );
+    });
+  return (
+    <>
+      {sections.neu.length ? (
+        <>
+          <SectionTile label={t.secNew} meta={`${sections.neu.length} ${t.friends}`} isNew action={f.fresh ? t.markAllRead : undefined} onAction={f.markAllRead} />
+          {block(sections.neu, true)}
+        </>
+      ) : null}
+      {sections.old.length ? (
+        <>
+          <SectionTile label={t.secSeen} meta={`${sections.old.length} ${t.friends}`} />
+          {block(sections.old, false)}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function FriendRow({ f, g, isNew, open }: { f: ReturnType<typeof useFeed>; g: FriendGroup; isNew: boolean; open: boolean }) {
+  const { t } = f;
+  const scheme = useScheme();
+  const lang = useLang();
+  const fc = friendColor(g.hue, scheme);
+  const fresh = f.freshIn(g).length;
+  const n = g.posts.length;
+  const status = [isNew ? `${fresh} ${t.new}` : null, `${n} ${n === 1 ? t.post1 : t.posts}`, timeLabel(g.latest, t, lang)].filter(Boolean).join(" · ");
+  return (
+    <Tile
+      span={2}
+      pad={0}
+      onPress={() => f.toggleOpen(g.key)}
+      accessibilityLabel={`${g.name}, ${open ? t.closeAll : t.openAll}`}
+      style={{
+        minHeight: 68,
+        paddingVertical: 10,
+        paddingLeft: 12,
+        paddingRight: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        backgroundColor: pageTint(fc.fill, scheme, isNew ? { light: MODERN.tintNew, dark: 0.2 } : { light: MODERN.tintSeen, dark: 0.1 }),
+      }}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: g.isGroup ? 12 : 22, overflow: "hidden", backgroundColor: fc.fill, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ ...sans(700), fontSize: 15, lineHeight: 18, color: fc.ink }}>{g.initial}</Text>
+        {g.isGroup ? null : <AvatarPhoto url={g.avatarUrl} size={44} />}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <Text numberOfLines={1} style={{ ...sans(500), fontSize: 19, lineHeight: 22, letterSpacing: -0.5, color: color("ink") }}>
+          {g.name}
+        </Text>
+        <Text numberOfLines={1} style={{ ...mono(500), fontSize: 8.5, lineHeight: 11, letterSpacing: 1.36, textTransform: "uppercase", color: color("ink", "inkDim") }}>
+          {status}
+        </Text>
+      </View>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color("ink"), alignItems: "center", justifyContent: "center", transform: [{ rotate: open ? "45deg" : "0deg" }] }}>
+        <Text style={{ fontSize: 16, lineHeight: 20, color: color("paper") }}>+</Text>
+      </View>
+    </Tile>
+  );
+}
+
+/** Een kop van 52 over de volle breedte: een stip (rood als er iets nieuw is), het label, rechts een handeling. */
+function SectionTile({ label, meta, isNew = false, action, onAction }: { label: string; meta?: string; isNew?: boolean; action?: string; onAction?: () => void }) {
+  const style = { ...mono(500), fontSize: 9.5, lineHeight: 13, letterSpacing: 1.52, textTransform: "uppercase" as const };
+  return (
+    <Tile span={2} pad={0} style={{ height: 52, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ width: 7, height: 7, borderRadius: 4, borderWidth: 1, borderColor: isNew ? color("red") : color("ink", "inkDim"), backgroundColor: isNew ? color("red") : "transparent" }} />
+      <Text style={{ ...style, color: color("ink") }}>{label}</Text>
+      {meta ? <Text style={{ ...style, color: color("ink", "inkDim") }}>{meta}</Text> : null}
+      <View style={{ flex: 1 }} />
+      {action && onAction ? (
+        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={10}>
+          <Text style={{ ...style, color: color("ink", "inkDim") }}>{action} →</Text>
+        </Pressable>
+      ) : null}
+    </Tile>
   );
 }
 
