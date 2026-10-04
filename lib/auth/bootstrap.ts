@@ -1,18 +1,27 @@
 import { bytesToBase64, base64ToBytes } from "../crypto/base64";
 import {
+  clearIdentity,
   generateAndStoreIdentity,
+  getIdentityOwner,
   loadIdentity,
+  setIdentityOwner,
   storeIdentity,
 } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 
 /**
  * Wordt aangeroepen na succesvolle login. Zorgt voor:
- *   1. Identity keypair beschikbaar op dit toestel.
- *   2. Sleutels gesynchroniseerd met de server (profiles.identity_privkey).
+ *   1. Een sleutelpaar op dit toestel dat bij dít account hoort.
+ *   2. Een kopie van de privésleutel op de server (`private_keys`, 0090:
+ *      alleen jij leest je eigen rij), zodat een nieuw toestel hem terugvindt.
  *
- * Defensief ontworpen: werkt ook als migratie 0026 (identity_privkey kolom)
- * nog niet is uitgevoerd — in dat geval worden sleutels alleen lokaal bewaard.
+ * De regels (veiligheidscontrole okt 2026):
+ *   - Sleutels op het toestel horen bij één account (`identity_owner_v1`).
+ *     Sleutels van een ander account worden nooit gebruikt of geüpload —
+ *     anders nam wie op hetzelfde toestel inlogde (of je liet inloggen in
+ *     zijn account) jouw sleutel mee naar zijn profiel.
+ *   - Staat er op de server al een sleutel en verschilt die van de lokale,
+ *     dan wint de server; de lokale overschrijft hem niet meer.
  */
 export async function bootstrapProfile(args: {
   userId: string;
@@ -26,7 +35,6 @@ export async function bootstrapProfile(args: {
   isNewDevice: boolean;
   needsDeviceConfirm: boolean;
 }> {
-  // ── Stap 1: Haal basisprofiel op (stabiele kolommen — werkt altijd) ──────
   const { data: existing, error: selErr } = await supabase
     .from("profiles")
     .select("id, username, identity_pubkey")
@@ -34,123 +42,75 @@ export async function bootstrapProfile(args: {
     .maybeSingle();
   if (selErr) throw selErr;
 
-  // ── Stap 2: Probeer identity_privkey op te halen (migratie 0026) ─────────
-  // Kan mislukken als de migratie nog niet is uitgevoerd — we vangen dit op.
   let storedPrivkey: string | null = null;
   if (existing) {
-    try {
-      const { data: privRow } = await supabase
-        .from("profiles")
-        .select("identity_privkey")
-        .eq("id", args.userId)
-        .maybeSingle();
-      storedPrivkey = (privRow as any)?.identity_privkey ?? null;
-    } catch {
-      // Kolom bestaat nog niet (migratie 0026 niet uitgevoerd) — doorgaan.
-    }
+    const { data: row } = await supabase.from("private_keys").select("privkey").eq("user_id", args.userId).maybeSingle();
+    storedPrivkey = row?.privkey ?? null;
   }
 
-  // Helper: sla privkey op in server (fire-and-forget bij kolomfout)
-  async function saveKeysToServer(pubB64: string, privB64: string): Promise<void> {
-    try {
-      await supabase
-        .from("profiles")
-        .update({ identity_pubkey: pubB64, identity_privkey: privB64 } as any)
-        .eq("id", args.userId);
-    } catch {
-      // Kolom bestaat nog niet — lokale sleutels volstaan voor nu.
-    }
+  async function savePrivkey(privB64: string) {
+    await supabase
+      .from("private_keys")
+      .upsert({ user_id: args.userId, privkey: privB64, updated_at: new Date().toISOString() })
+      .then(() => {}, () => {});
   }
 
-  // ── A. Lokale sleutels aanwezig ──────────────────────────────────────────
-  const localIdentity = await loadIdentity();
-  if (localIdentity) {
-    const pubB64 = bytesToBase64(localIdentity.publicKey);
-    const privB64 = bytesToBase64(localIdentity.secretKey);
-
-    if (!existing) {
-      // Nieuw account, lokale keys al aanwezig.
-      const username =
-        args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
-      // Probeer met identity_privkey; val terug op alleen identity_pubkey bij fout.
-      const { error: insErr } = await supabase.from("profiles").insert({
-        id: args.userId,
-        username,
-        identity_pubkey: pubB64,
-        identity_privkey: privB64,
-      } as any);
-      if (insErr) {
-        // Kolom bestaat nog niet — insert zonder privkey.
-        const { error: insErr2 } = await supabase.from("profiles").insert({
-          id: args.userId,
-          username,
-          identity_pubkey: pubB64,
-        });
-        if (insErr2) throw insErr2;
-      }
-      return { username, pubkeyMismatch: false, isNewDevice: false, needsDeviceConfirm: false };
-    }
-
-    // Sync sleutels naar server als ze er nog niet staan of als pubkey veranderd is.
-    if (!storedPrivkey || (existing as any).identity_pubkey !== pubB64) {
-      await saveKeysToServer(pubB64, privB64);
-    }
-
-    return {
-      username: existing.username,
-      pubkeyMismatch: false,
-      isNewDevice: false,
-      needsDeviceConfirm: false,
-    };
+  // Lokale sleutels: alleen als ze van dit account zijn (of van vóór de
+  // eigenaarsregel én ze passen bij wat de server van dit account kent).
+  let local = await loadIdentity();
+  const owner = await getIdentityOwner();
+  if (local && owner && owner !== args.userId) {
+    await clearIdentity();
+    local = null;
   }
+  const localPub = local ? bytesToBase64(local.publicKey) : null;
+  const ownedHere = !!local && owner === args.userId;
 
-  // ── B. Geen lokale sleutels — herstel van server ─────────────────────────
-  if (storedPrivkey && existing?.identity_pubkey) {
-    const kp = {
-      secretKey: base64ToBytes(storedPrivkey),
-      publicKey: base64ToBytes(existing.identity_pubkey),
-    };
-    await storeIdentity(kp);
-    return {
-      username: existing.username,
-      pubkeyMismatch: false,
-      isNewDevice: true,
-      needsDeviceConfirm: false,
-    };
-  }
-
-  // ── C. Nergens — genereer nieuw keypair ──────────────────────────────────
-  const fresh = await generateAndStoreIdentity();
-  const pubB64 = bytesToBase64(fresh.publicKey);
-  const privB64 = bytesToBase64(fresh.secretKey);
-
+  // ── Nieuw account ────────────────────────────────────────────────────────
   if (!existing) {
-    const username =
-      args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
+    // Nooit sleutels hergebruiken die niet aantoonbaar van dit account zijn.
+    const kp = ownedHere && local ? local : await generateAndStoreIdentity();
+    await setIdentityOwner(args.userId);
+    const username = args.preferredUsername ?? args.email.split("@")[0].toLowerCase();
     const { error: insErr } = await supabase.from("profiles").insert({
       id: args.userId,
       username,
-      identity_pubkey: pubB64,
-      identity_privkey: privB64,
-    } as any);
-    if (insErr) {
-      // Kolom bestaat nog niet — insert zonder privkey.
-      const { error: insErr2 } = await supabase.from("profiles").insert({
-        id: args.userId,
-        username,
-        identity_pubkey: pubB64,
-      });
-      if (insErr2) throw insErr2;
-    }
+      identity_pubkey: bytesToBase64(kp.publicKey),
+    });
+    if (insErr) throw insErr;
+    await savePrivkey(bytesToBase64(kp.secretKey));
     return { username, pubkeyMismatch: false, isNewDevice: true, needsDeviceConfirm: false };
   }
 
-  await saveKeysToServer(pubB64, privB64);
+  const serverPub = existing.identity_pubkey || null;
 
-  return {
-    username: existing.username,
-    pubkeyMismatch: false,
-    isNewDevice: true,
-    needsDeviceConfirm: false,
-  };
+  // ── Lokaal en server zijn dezelfde sleutel ───────────────────────────────
+  if (local && serverPub && localPub === serverPub) {
+    await setIdentityOwner(args.userId);
+    if (!storedPrivkey) await savePrivkey(bytesToBase64(local.secretKey));
+    return { username: existing.username, pubkeyMismatch: false, isNewDevice: false, needsDeviceConfirm: false };
+  }
+
+  // ── De server heeft de sleutel van dit account: die wint ─────────────────
+  if (storedPrivkey && serverPub) {
+    await storeIdentity({ secretKey: base64ToBytes(storedPrivkey), publicKey: base64ToBytes(serverPub) });
+    await setIdentityOwner(args.userId);
+    return { username: existing.username, pubkeyMismatch: false, isNewDevice: true, needsDeviceConfirm: false };
+  }
+
+  // ── Server kent nog geen sleutel: een eigen lokale mag erheen ────────────
+  if (local && (ownedHere || !serverPub)) {
+    await setIdentityOwner(args.userId);
+    await supabase.from("profiles").update({ identity_pubkey: localPub! }).eq("id", args.userId);
+    await savePrivkey(bytesToBase64(local.secretKey));
+    return { username: existing.username, pubkeyMismatch: false, isNewDevice: false, needsDeviceConfirm: false };
+  }
+
+  // ── Nergens een bruikbare sleutel: een nieuwe ────────────────────────────
+  if (local) await clearIdentity();
+  const fresh = await generateAndStoreIdentity();
+  await setIdentityOwner(args.userId);
+  await supabase.from("profiles").update({ identity_pubkey: bytesToBase64(fresh.publicKey) }).eq("id", args.userId);
+  await savePrivkey(bytesToBase64(fresh.secretKey));
+  return { username: existing.username, pubkeyMismatch: false, isNewDevice: true, needsDeviceConfirm: false };
 }

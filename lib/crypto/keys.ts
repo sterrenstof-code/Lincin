@@ -6,6 +6,13 @@ import { secureStorage } from "./storage";
 
 const IDENTITY_PRIVATE_KEY = "identity_private_key_v1";
 const IDENTITY_PUBLIC_KEY = "identity_public_key_v1";
+/**
+ * Van wie de sleutels op dit toestel zijn. Zonder dit kon een tweede account
+ * op hetzelfde toestel (of een aanvaller die je in zijn account liet
+ * inloggen) de sleutel van de vorige gebruiker overnemen en naar zijn eigen
+ * profiel laten uploaden. Zie lib/auth/bootstrap.ts.
+ */
+const IDENTITY_OWNER = "identity_owner_v1";
 
 type IdentityKeyPair = {
   publicKey: Uint8Array;
@@ -78,4 +85,23 @@ export function deriveSharedSecret(
  */
 export function derivePublicFromPrivate(secretKey: Uint8Array): Uint8Array {
   return generateKeyPairFromSeed(secretKey).publicKey;
+}
+
+/** Het account waarvoor de sleutels op dit toestel bewaard zijn (of null: van vóór okt 2026). */
+export async function getIdentityOwner(): Promise<string | null> {
+  return secureStorage.getItem(IDENTITY_OWNER);
+}
+
+export async function setIdentityOwner(userId: string): Promise<void> {
+  await secureStorage.setItem(IDENTITY_OWNER, userId);
+}
+
+/** Sleutels van dit toestel wissen (uitloggen, of sleutels van een ander account). */
+export async function clearIdentity(): Promise<void> {
+  cached = null;
+  await Promise.all([
+    secureStorage.removeItem(IDENTITY_PRIVATE_KEY),
+    secureStorage.removeItem(IDENTITY_PUBLIC_KEY),
+    secureStorage.removeItem(IDENTITY_OWNER),
+  ]).catch(() => {});
 }

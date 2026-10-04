@@ -108,7 +108,8 @@ import {
 } from "@/lib/crypto/file";
 import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
-import { getPollWithDetails, votePoll } from "@/lib/api/polls";
+import { createNotification } from "@/lib/api/notifications";
+import { getPollWithDetails, votePollOption } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
 import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
@@ -4424,7 +4425,11 @@ function ChatPollCard({
     if (voting || showResults) return;
     setVoting(true);
     try {
-      await votePoll({ optionId, userId: myUserId, pollId: poll!.id });
+      // Via vote_poll_option (0085): gesloten polls en één keuze worden daar bewaakt.
+      const r = await votePollOption(optionId);
+      if (r === "voted" && poll!.user_id !== myUserId) {
+        createNotification({ userId: poll!.user_id, actorId: myUserId, type: "vote_on_poll", pollId: poll!.id });
+      }
       refetch();
     } finally {
       setVoting(false);

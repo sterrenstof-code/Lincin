@@ -13,6 +13,8 @@ import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 
 import { clearAppLock } from "../app-lock";
+import { clearChatPreviews } from "../chat-preview";
+import { clearIdentity } from "../crypto/keys";
 import { clearHues, type Hue } from "../design/theme";
 import { supabase } from "../supabase/client";
 
@@ -252,6 +254,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       },
       async signOut() {
+        // Je sleutel van het toestel halen — maar alleen als de server een
+        // kopie heeft, anders ben je je oude berichten kwijt.
+        const uid = session?.user.id;
+        if (uid) {
+          const { data } = await supabase.from("private_keys").select("user_id").eq("user_id", uid).maybeSingle();
+          if (data) await clearIdentity();
+        }
+        await clearChatPreviews();
         await supabase.auth.signOut();
         // Je kleuren per persoon horen bij jou, niet bij het toestel.
         clearHues();

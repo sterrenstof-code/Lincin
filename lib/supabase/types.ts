@@ -68,6 +68,13 @@ export type EventMetaRow = Database["public"]["Tables"]["events"]["Row"] & {
 export type Database = {
   public: {
     Tables: {
+      /** 0090 — je eigen privésleutel (base64 X25519); alleen jij leest je rij. */
+      private_keys: {
+        Row: { user_id: string; privkey: string; updated_at: string };
+        Insert: { user_id: string; privkey: string; updated_at?: string };
+        Update: { privkey?: string; updated_at?: string };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -75,8 +82,6 @@ export type Database = {
           display_name: string | null;
           avatar_url: string | null;
           identity_pubkey: string;
-          /** Base64 X25519 privé-sleutel. Alleen ophalen voor de eigen user. */
-          identity_privkey: string | null;
           created_at: string;
           /** 0035_last_seen — voedt de activiteitsindicator. */
           last_seen_at: string | null;
@@ -102,7 +107,6 @@ export type Database = {
           display_name?: string | null;
           avatar_url?: string | null;
           identity_pubkey: string;
-          identity_privkey?: string | null;
           created_at?: string;
           last_seen_at?: string | null;
           bio?: string | null;

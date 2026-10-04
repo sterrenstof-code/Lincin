@@ -1,6 +1,5 @@
 import { supabase } from "../supabase/client";
 import { getProfiles, type Profile } from "./profiles";
-import { createNotification } from "./notifications";
 
 export type PollOption = {
   id: string;
@@ -210,65 +209,6 @@ export async function listFeedPolls(limit = 30): Promise<PollWithDetails[]> {
     (polls as PollRow[]).map((p) => getPollWithDetails(p.id, myUserId))
   );
   return results.filter((p): p is PollWithDetails => p !== null);
-}
-
-export async function votePoll(args: {
-  optionId: string;
-  userId: string;
-  pollId: string;
-  /**
-   * Meerkeuze: de tik zet déze keuze aan of uit en laat de andere staan.
-   * Zonder: de vorige stem gaat weg en deze komt ervoor in de plaats.
-   */
-  multiple?: boolean;
-  /** Bij `multiple`: of deze keuze al aangevinkt was (dan gaat hij weg). */
-  wasOn?: boolean;
-}): Promise<void> {
-  if (args.multiple && args.wasOn) {
-    const { error } = await supabase
-      .from("poll_votes")
-      .delete()
-      .eq("user_id", args.userId)
-      .eq("poll_option_id", args.optionId);
-    if (error) throw error;
-    return;
-  }
-  // Verwijder eventuele vorige stem op dezelfde poll
-  const { data: existingOptions } = args.multiple ? { data: null } : await supabase
-    .from("poll_options")
-    .select("id")
-    .eq("poll_id", args.pollId);
-
-  if (existingOptions && existingOptions.length > 0) {
-    await supabase
-      .from("poll_votes")
-      .delete()
-      .eq("user_id", args.userId)
-      .in("poll_option_id", existingOptions.map((o: any) => o.id));
-  }
-
-  const { error } = await supabase.from("poll_votes").insert({
-    poll_option_id: args.optionId,
-    user_id: args.userId,
-  });
-  if (error) throw error;
-
-  // Notify poll owner (fire-and-forget)
-  supabase
-    .from("polls")
-    .select("user_id")
-    .eq("id", args.pollId)
-    .single()
-    .then(({ data }) => {
-      if (data?.user_id) {
-        createNotification({
-          userId: data.user_id,
-          actorId: args.userId,
-          type: "vote_on_poll",
-          pollId: args.pollId,
-        });
-      }
-    });
 }
 
 /**

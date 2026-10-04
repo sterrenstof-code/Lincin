@@ -85,6 +85,13 @@ async function persist(next: Store) {
   }
 }
 
+/** Bij uitloggen: de ontsleutelde regels horen niet op het toestel te blijven. */
+export async function clearChatPreviews() {
+  cache = {};
+  for (const fn of listeners) fn({});
+  await AsyncStorage.removeItem(KEY).catch(() => {});
+}
+
 /** Eén regel, ingekort tot wat er op een rij past. */
 export function shortenForPreview(text: string): string {
   const oneLine = text.replace(/\s+/g, " ").trim();

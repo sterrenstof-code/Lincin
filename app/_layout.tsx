@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Fragment, useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
 import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import "react-native-reanimated";
 
@@ -174,6 +174,15 @@ export default function RootLayout() {
  */
 function RootStack() {
   const { session, loading } = useAuth();
+  // Uitgelogd: niets van het vorige account in het geheugen laten staan.
+  const hadSession = useRef(false);
+  useEffect(() => {
+    if (session) hadSession.current = true;
+    else if (hadSession.current) {
+      hadSession.current = false;
+      queryClient.clear();
+    }
+  }, [session]);
   const router = useRouter();
 
   useEffect(() => {
