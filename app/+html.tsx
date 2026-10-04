@@ -88,50 +88,14 @@ export default function Root({ children }: PropsWithChildren) {
 
             Archivo, Instrument Serif en IBM Plex Mono komen bij Google
             vandaan: snel, gecachet, en met alle gewichten die de oude
-            schalen nog vragen. Alleen de smalle Archivo (900, 75% breed)
-            komt uit `public/fonts/`: bij Google is dat een as van het
-            variabele bestand, en react-native-web zet geen font-stretch.
-            Onder een eigen familienaam hoeft dat ook niet.
+            schalen nog vragen. De smalle Archivo (font-stretch) hoorde
+            bij kleur en ging met dat thema weg.
             --------------------------------------------------------------- */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-        />
-        <link
-          rel="preload"
-          href="/fonts/ArchivoCond-Black.ttf"
-          as="font"
-          type="font/ttf"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/fonts/ArchivoXCond-Black.ttf"
-          as="font"
-          type="font/ttf"
-          crossOrigin="anonymous"
-        />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-@font-face {
-  font-family: 'ArchivoCond-Black';
-  font-style: normal;
-  font-weight: 900;
-  font-display: swap;
-  src: url(/fonts/ArchivoCond-Black.ttf) format('truetype');
-}
-@font-face {
-  font-family: 'ArchivoXCond-Black';
-  font-style: normal;
-  font-weight: 900;
-  font-display: swap;
-  src: url(/fonts/ArchivoXCond-Black.ttf) format('truetype');
-}
-`,
-          }}
         />
 
         {/* ---------------------------------------------------------------

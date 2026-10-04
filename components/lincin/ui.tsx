@@ -168,13 +168,9 @@ export function Head({
     | "postTitle"
     | "profileName"
     | "emptyTitle"
-    | "numeral"
-    | "numeralSmall"
-    | "numeralTiny"
     | "track"
     | "mini"
-    | "endTitle"
-    | "masthead";
+    | "endTitle";
 }) {
   return (
     <Text {...rest} style={[lincinType[variant], { color: toneColor(tone, c) }, style]}>

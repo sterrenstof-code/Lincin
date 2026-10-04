@@ -112,7 +112,10 @@ export function DesktopEvents() {
   const answer = rsvp.answer;
 
   const upcoming = rows.filter((r) => !r.past);
-  const months = upcoming.length ? `${upcoming[0].month} – ${upcoming[upcoming.length - 1].month}` : "";
+  const first = upcoming[0]?.month ?? "";
+  const last = upcoming[upcoming.length - 1]?.month ?? "";
+  // Eén maand is "JAN", niet "JAN – JAN".
+  const months = first === last ? first : `${first} – ${last}`;
   const th = spec.id;
   const [gridW, setGridW] = useState(0);
   const open = (id: string) => router.push(`/event/${id}` as never);

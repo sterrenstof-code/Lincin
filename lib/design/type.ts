@@ -21,9 +21,7 @@ import { color, subscribeScheme, subscribeTheme, themeSpec, type LincinTheme } f
  * uitgeschreven, dus zonder variabele as). Native laadt ze met expo-font
  * in `app/_layout.tsx`, onder de naam van het bestand. Web haalt Archivo,
  * Instrument Serif en IBM Plex Mono bij Google zelf (sneller, gecachet)
- * en alleen de smalle Archivo via `@font-face` uit `public/fonts/`, want
- * die smalle snit bestaat bij Google alleen als as van het variabele
- * bestand en react-native-web zet geen `font-stretch`.
+ * (de smalle Archivo van kleur ging met dat thema weg).
  *
  * Daarom staan de gewichten hier als losse *snitten* en niet als
  * `fontWeight`: op native heet Archivo 700 "Archivo-Bold", en een
@@ -35,9 +33,6 @@ const isWeb = Platform.OS === "web";
 
 /** De familienamen zoals ze geregistreerd zijn (native) of op web heten. */
 export const FONT = {
-  head: isWeb ? "'ArchivoCond-Black', 'Archivo', 'Helvetica Neue', sans-serif" : "ArchivoCond-Black",
-  /** Archivo 900 op 62% breed: cijfers, initialen in een kleurcel, het masthead. */
-  headX: isWeb ? "'ArchivoXCond-Black', 'ArchivoCond-Black', 'Archivo', sans-serif" : "ArchivoXCond-Black",
   sans: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Regular",
   sansMedium: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Medium",
   sansBold: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Bold",
@@ -54,8 +49,6 @@ export const FONT = {
 
 /** De snitten die `app/_layout.tsx` op native laadt; sleutel = familienaam. */
 export const FONT_FILES = {
-  "ArchivoCond-Black": require("../../assets/fonts/ArchivoCond-Black.ttf"),
-  "ArchivoXCond-Black": require("../../assets/fonts/ArchivoXCond-Black.ttf"),
   "Archivo-Regular": require("../../assets/fonts/Archivo-Regular.ttf"),
   "Archivo-Medium": require("../../assets/fonts/Archivo-Medium.ttf"),
   "Archivo-Bold": require("../../assets/fonts/Archivo-Bold.ttf"),
@@ -141,15 +134,6 @@ export function head(): TextStyle {
 }
 
 /**
- * Het cijfer: Archivo 900 op 62% — de dag in een eventkaart, de initiaal
- * in een kleurcel, de drie cijfers op "Jij". In élk thema, want het
- * prototype zet hier `font-stretch: 62%` los van `--tf`.
- */
-export function numeral(): TextStyle {
-  return isWeb ? { fontFamily: FONT.headX, fontWeight: "900" } : { fontFamily: FONT.headX };
-}
-
-/**
  * De typeschaal van v2. Maten uit README §Typography.
  *
  * Regelhoogtes staan in px: RN kent geen `line-height: 1`. Koppen op
@@ -225,18 +209,12 @@ function buildLincinType() {
   profileName: { ...head(), fontSize: 44, lineHeight: 41, letterSpacing: ls(44) } as TextStyle,
   /** "Je feed is zo leeg als een nieuw schetsboek". */
   emptyTitle: { ...head(), fontSize: 40, lineHeight: 37, letterSpacing: ls(40) } as TextStyle,
-  /** De dag in een eventkaart, de initiaal in een gesprek. */
-  numeral: { ...numeral(), fontSize: 44, lineHeight: 42 } as TextStyle,
-  numeralSmall: { ...numeral(), fontSize: 28, lineHeight: 28 } as TextStyle,
-  numeralTiny: { ...numeral(), fontSize: 26, lineHeight: 26 } as TextStyle,
   /** Track in een muziekkaart. */
   track: { ...head(), fontSize: 18, lineHeight: 18, textTransform: "uppercase" } as TextStyle,
   /** "Niemand maakte iets nieuws. Jij wel?" op de eindkaart: 26px. */
   endTitle: { ...head(), fontSize: 26, lineHeight: 25, textTransform: "uppercase" } as TextStyle,
   /** Vermelde bijdrage in een gesprek. */
   mini: { ...head(), fontSize: 12, lineHeight: 12 } as TextStyle,
-  /** Het masthead van magazine: "LINCIN" op 132px, 62% breed. */
-  masthead: { ...numeral(), fontSize: 132, lineHeight: 108, letterSpacing: -5.28, textTransform: "uppercase" } as TextStyle,
   } as const;
 }
 
@@ -925,8 +903,8 @@ export function headStep(step: HeadStep): TextStyle {
   const base: TextStyle =
     step <= 12
       ? isWeb
-        ? { fontFamily: FONT.head, fontWeight: spec.heads === "archivo" ? "600" : "500" }
-        : { fontFamily: FONT.head }
+        ? { fontFamily: FONT.sans, fontWeight: spec.heads === "archivo" ? "600" : "500" }
+        : { fontFamily: spec.heads === "archivo" ? FONT.sansSemi : FONT.sansMedium }
       : head();
   const lh = spec.heads === "serif" ? size * 0.96 : size * 1.15;
   return {
