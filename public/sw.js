@@ -29,7 +29,12 @@ self.addEventListener("push", (event) => {
     // Groepeert notificaties per chat zodat ze niet opstapelen
     // Groepeert per gesprek of per vondst zodat drie reacties op dezelfde
     // vondst één regel op het vergrendelscherm worden, geen drie.
-    tag: payload.data?.chat_id
+    // De functie geeft zelf een tag mee voor gebundelde meldingen
+    // (send-push: "3 nieuwe berichten", "Noor en 2 anderen…"): die
+    // vervangt de vorige van dezelfde soort.
+    tag: payload.data?.tag
+      ? payload.data.tag
+      : payload.data?.chat_id
       ? `chat-${payload.data.chat_id}`
       : payload.data?.post_id
       ? `post-${payload.data.post_id}`

@@ -196,6 +196,76 @@ function buildNotificationBody(args: {
   }
 }
 
+
+// ---------------------------------------------------------------
+// Instellingen en bundelen (HANDOFF okt 2026: "Pushmeldingen … gebundeld
+// … Instelbaar in Instellingen")
+// ---------------------------------------------------------------
+//
+// De webhooks die deze functie aanroepen (on-message-insert,
+// on-friendship-insert, on-notification-insert) staan in Supabase Studio
+// en níet in een migratie: ze dragen de service-sleutel in hun headers, en
+// die hoort niet in git.
+
+type PushCategory = "messages" | "likes" | "comments" | "mentions" | "posts" | "other";
+
+/** Welke soort melding dit is, voor de schakelaars in Instellingen. */
+function categoryOf(type: string): PushCategory {
+  if (type === "post_reaction" || type === "thread_reaction" || type === "comment_like") return "likes";
+  if (type === "comment_on_post" || type === "comment_on_thread" || type === "comment_reply" || type === "followed_post_comment") return "comments";
+  if (type === "mention") return "mentions";
+  if (type === "friend_post" || type === "friend_poll") return "posts";
+  return "other";
+}
+
+/** Is het nu tussen 22:00 en 07:00 in de tijdzone van de ontvanger? */
+function inQuietHours(tz: string | undefined): boolean {
+  try {
+    const hour = Number(
+      new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: tz || "Europe/Brussels" }).format(new Date()),
+    );
+    return hour >= 22 || hour < 7;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Wie van deze ontvangers deze soort melding wil krijgen.
+ *   - `push.<soort>` false: uit (alles staat standaard aan)
+ *   - `pushNew` false: geen meldingen over nieuwe bijdragen (bestond al)
+ *   - `quiet` aan: stil tussen 22:00 en 07:00 — behalve berichten, die
+ *     "komen wel binnen" (zo staat het in Instellingen)
+ */
+async function allowedRecipients(admin: any, userIds: string[], category: PushCategory): Promise<Set<string>> {
+  const ok = new Set(userIds);
+  if (userIds.length === 0) return ok;
+  const { data } = await admin.from("user_prefs").select("user_id, prefs").in("user_id", userIds);
+  for (const row of data ?? []) {
+    const p = (row.prefs ?? {}) as Record<string, any>;
+    const push = (p.push ?? {}) as Record<string, any>;
+    if (push[category] === false) ok.delete(row.user_id);
+    if (category === "posts" && p.pushNew === false) ok.delete(row.user_id);
+    if (category !== "messages" && p.quiet === true && inQuietHours(p.tz)) ok.delete(row.user_id);
+  }
+  return ok;
+}
+
+/** "vonden je bijdrage leuk": wat meerdere mensen samen deden. */
+function bundledBody(type: string, postLabel: string): string | null {
+  switch (type) {
+    case "post_reaction": return "vonden je vondst leuk";
+    case "thread_reaction": return `reageerden op ${postLabel}`;
+    case "comment_like": return "vonden je reactie leuk";
+    case "comment_on_post": return "reageerden op je vondst";
+    case "comment_on_thread": return `reageerden ook op ${postLabel}`;
+    case "comment_reply": return "antwoordden op je reactie";
+    case "vote_on_poll": return "stemden op je poll";
+    case "post_boost": return "duwden je vondst omhoog";
+    default: return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -234,8 +304,28 @@ Deno.serve(async (req: Request) => {
         .select("user_id")
         .eq("chat_id", chatId)
         .neq("user_id", senderId);
-      const recipientIds = (members ?? []).map((m: any) => m.user_id);
+      const allRecipients = (members ?? []).map((m: any) => m.user_id);
+      const allowed = await allowedRecipients(admin, allRecipients, "messages");
+      const recipientIds = allRecipients.filter((id: string) => allowed.has(id));
       if (recipientIds.length === 0) return new Response("no recipients", { status: 200 });
+
+      // Gebundeld per gesprek: hoeveel er sinds je laatste keer lezen
+      // binnenkwamen. "3 nieuwe berichten" vervangt de vorige melding van
+      // dit gesprek (zelfde tag) in plaats van er een vierde bij te zetten.
+      const { data: reads } = await admin
+        .from("chat_members")
+        .select("user_id, last_read_at")
+        .eq("chat_id", chatId)
+        .in("user_id", recipientIds);
+      const unreadFor = new Map<string, number>();
+      await Promise.all(
+        (reads ?? []).map(async (r: any) => {
+          let q = admin.from("messages").select("id", { count: "exact", head: true }).eq("chat_id", chatId).neq("sender_id", r.user_id);
+          if (r.last_read_at) q = q.gt("created_at", r.last_read_at);
+          const { count } = await q;
+          unreadFor.set(r.user_id, count ?? 1);
+        }),
+      );
 
       const { data: sender } = await admin
         .from("profiles")
@@ -246,7 +336,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: devices } = await admin
         .from("user_devices")
-        .select("push_token")
+        .select("push_token, user_id")
         .in("user_id", recipientIds);
 
       const title =
@@ -254,12 +344,16 @@ Deno.serve(async (req: Request) => {
           ? `${senderName} in ${chat.name ?? "groep"}`
           : senderName;
 
-      notifications = (devices ?? []).map((d: any) => ({
-        to: d.push_token,
-        title,
-        body: "Nieuw bericht",
-        data: { chat_id: chatId, type: "message" },
-      }));
+      notifications = (devices ?? []).map((d: any) => {
+        const n = unreadFor.get(d.user_id) ?? 1;
+        return {
+          to: d.push_token,
+          title,
+          // De inhoud is versleuteld; de server kan hem niet tonen.
+          body: n > 1 ? `${n} nieuwe berichten` : "Nieuw bericht",
+          data: { chat_id: chatId, type: "message", tag: `chat-${chatId}` },
+        };
+      });
     } else if (table === "friendships") {
       if (record.status !== "pending") {
         return new Response("not a new request", { status: 200 });
@@ -293,12 +387,36 @@ Deno.serve(async (req: Request) => {
         return new Response("incomplete notification", { status: 200 });
       }
 
+      const allowed = await allowedRecipients(admin, [recipientId], categoryOf(type));
+      if (!allowed.has(recipientId)) return new Response("muted by prefs", { status: 200 });
+
       const { data: devices } = await admin
         .from("user_devices")
         .select("push_token")
         .eq("user_id", recipientId);
       if (!devices || devices.length === 0) {
         return new Response("no devices", { status: 200 });
+      }
+
+      // Gebundeld: hoeveel verschillende mensen hetzelfde deden met
+      // hetzelfde (nog ongelezen, laatste etmaal). "Noor en 2 anderen
+      // vonden je vondst leuk" in plaats van drie losse meldingen.
+      let others = 0;
+      {
+        let q = admin
+          .from("notifications")
+          .select("actor_id")
+          .eq("user_id", recipientId)
+          .eq("type", type)
+          .eq("read", false)
+          .gt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+        if (record.post_id) q = q.eq("post_id", record.post_id);
+        else if (record.poll_id) q = q.eq("poll_id", record.poll_id);
+        if (type === "comment_like" && record.entity_comment_id) q = q.eq("entity_comment_id", record.entity_comment_id);
+        const { data: same } = await q;
+        const actors = new Set((same ?? []).map((r: any) => r.actor_id).filter(Boolean));
+        actors.delete(actorId);
+        others = actors.size;
       }
 
       // Alle context in één ronde: wie het deed, waarover het gaat.
@@ -380,13 +498,16 @@ Deno.serve(async (req: Request) => {
         listTitle,
       });
 
+      const bundled = others > 0 ? bundledBody(type, describePost(post)) : null;
+      const tag = `${type}-${record.post_id ?? record.poll_id ?? record.event_id ?? record.entity_comment_id ?? record.id}`;
       notifications = devices.map((d: any) => ({
         to: d.push_token,
-        title: actorName,
-        body,
+        title: bundled ? `${actorName} en ${others} ${others === 1 ? "ander" : "anderen"}` : actorName,
+        body: bundled ?? body,
         data: {
           type,
           path,
+          tag,
           notification_id: record.id,
           ...(record.post_id ? { post_id: record.post_id } : {}),
           ...(record.event_id ? { event_id: record.event_id } : {}),
