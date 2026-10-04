@@ -108,7 +108,7 @@ export function useFeed() {
   const reactions = usePostReactions(postIds, myUserId);
 
   // ---- gelezen ----
-  const { isSeen, ready: seenReady } = useSeenPosts();
+  const { isSeen } = useSeenPosts();
   /**
    * Gezien: wat er al stond bij je vorige bezoek, wat je opende of voorbij
    * scrolde, en alles wat je zelf maakte.
@@ -120,25 +120,24 @@ export function useFeed() {
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
 
   /**
-   * De omslag (handoff okt 2026, desktop-magazine-home): de eerste foto die
-   * je nog niet zag, anders de eerste bijdrage die je nog niet zag, anders
-   * de nieuwste. Tot 2.2 was het de foto waar de laatste maand het meest
-   * mee gedaan was — die kon je al tien keer gezien hebben.
+   * De omslag: de populairste bijdrage — de foto waar de laatste maand het
+   * meest mee gedaan is (comments, emoji, duwen; `monthInteractions`). Bij
+   * gelijkstand de nieuwste (`byTime` is nieuwste eerst). Geen foto in de
+   * feed: de nieuwste bijdrage. (De oktoberhandoff koos de eerste ongelezen
+   * foto; op vraag van de eigenaar blijft de populairste de omslag.)
    *
-   * Hij blijft staan tijdens een bezoek: open je hem, dan is hij gezien,
-   * maar hij springt niet weg onder je vinger. Pas als het gelezen-zijn
-   * bekend is (`ready`) wordt hij vastgezet; daarvóór telt alles even als
-   * gezien en zou de keuze nergens op slaan.
+   * Hij blijft staan tijdens een bezoek: een like of comment terwijl je
+   * kijkt laat hem niet onder je vinger wisselen.
    */
   const heroPin = useRef<string | null>(null);
   const heroPost = useMemo(() => {
     const pinned = heroPin.current ? byTime.find((c) => c.id === heroPin.current) : undefined;
     if (pinned) return pinned;
-    const unread = byTime.filter((c) => !seen.has(c.id));
-    const pick = unread.find((c) => c.media.kind === "foto" && !c.media.video) ?? unread[0] ?? byTime[0];
-    if (seenReady && pick) heroPin.current = pick.id;
+    const photos = byTime.filter((c) => c.media.kind === "foto" && !c.media.video);
+    const pick = photos.length ? photos.reduce((best, c) => (c.monthInteractions > best.monthInteractions ? c : best), photos[0]) : byTime[0];
+    if (pick) heroPin.current = pick.id;
     return pick;
-  }, [byTime, seen, seenReady]);
+  }, [byTime]);
 
   /**
    * Nieuw en Gezien (HANDOFF 23 sep): twee groepen, nieuwe vrienden eerst.

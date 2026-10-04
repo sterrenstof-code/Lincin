@@ -37,7 +37,7 @@ export function useEdition(f: Feed) {
       isNew: !seen.has(c.id),
     }));
     // De omslag: dezelfde keuze als op de telefoon (`heroPost` in useFeed):
-    // de eerste foto die je nog niet zag, vastgezet voor dit bezoek.
+    // de populairste foto van de laatste maand, vastgezet voor dit bezoek.
     const hero = tiles.find((p) => p.id === heroPost?.id) ?? null;
     // Wat je zelf het laatste etmaal plaatste staat bovenaan, vóór het
     // nieuws van je vrienden: wie iets plaatst en naar de feed gaat, wil
