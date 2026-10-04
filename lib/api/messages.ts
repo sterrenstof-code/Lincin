@@ -68,7 +68,14 @@ export type MessageContent = {
   reply?: ReplyInfo;
   /** Systeemmelding — gecentreerd weergegeven in de chat. */
   system?: { event: "group_avatar_updated"; actorName: string };
+  /**
+   * Een gedeelde plek (+ Bijlage → Plek). Zit in de versleutelde inhoud:
+   * de server weet niet waar je bent.
+   */
+  place?: SharedPlace;
 };
+
+export type SharedPlace = { lat: number; lng: number; label?: string };
 
 export type DecryptedMessage = {
   id: string;
@@ -337,8 +344,9 @@ export async function sendMessage(args: {
   reply?: ReplyInfo;
   postRef?: PostRef;
   system?: { event: "group_avatar_updated"; actorName: string };
+  place?: SharedPlace;
 }): Promise<{ id: string; created_at: string }> {
-  if (!args.text && !args.attachment && !args.call && !args.system && !args.call_plan_id && !args.poll_id) {
+  if (!args.text && !args.attachment && !args.call && !args.system && !args.call_plan_id && !args.poll_id && !args.place) {
     throw new Error("Bericht heeft tekst, bijlage, call, poll of call-plan nodig.");
   }
 
@@ -356,6 +364,7 @@ export async function sendMessage(args: {
   if (args.reply) content.reply = args.reply;
   if (args.postRef) content.postRef = args.postRef;
   if (args.system) content.system = args.system;
+  if (args.place) content.place = args.place;
 
   const payloads = encryptForRecipients(
     enc.encode(JSON.stringify(content)),

@@ -145,6 +145,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     [
+      // Een plek delen in een gesprek ("+ Bijlage → Plek"). Alleen tijdens
+      // gebruik, en alleen als je het zelf aantikt.
+      "expo-location",
+      {
+        locationWhenInUsePermission: "Lincin gebruikt je locatie alleen als je zelf een plek deelt in een gesprek.",
+      },
+    ],
+    [
       "expo-image-picker",
       {
         photosPermission: "Lincin gebruikt je fotobibliotheek om afbeeldingen te delen.",

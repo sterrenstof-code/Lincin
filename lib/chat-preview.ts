@@ -111,6 +111,8 @@ export async function rememberChatPreview(chatId: string, preview: ChatPreview) 
 export function previewLine(msg: DecryptedMessage): string | null {
   const text = msg.content?.text?.trim();
   if (text) return shortenForPreview(text);
+  const place = msg.content?.place;
+  if (place) return `📍 ${place.label || "Plek"}`;
   const attachment = msg.content?.attachment;
   if (!attachment) return null;
   return attachment.type === "video" ? "Clip" : attachment.type === "audio" ? "Spraakbericht" : "Foto";

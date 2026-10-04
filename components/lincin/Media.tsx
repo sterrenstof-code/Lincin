@@ -261,7 +261,7 @@ function Poll({
 }
 
 /** Een plek: raster, gestreepte route, een speld met de naam. */
-function Place({ place, coords, height, hue }: { place: string; coords: string; height: number; hue: Hue }) {
+export function Place({ place, coords, height, hue }: { place: string; coords: string; height: number; hue: Hue }) {
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const [w, setW] = useState(0);

@@ -83,6 +83,7 @@ import {
   type DecryptedMessage,
   type ReplyInfo,
   type PostRef,
+  type SharedPlace,
 } from "@/lib/api/messages";
 import { getProfile } from "@/lib/api/profiles";
 import {
@@ -120,6 +121,8 @@ import { useReactionWho } from "@/lib/lincin/reactors";
 import { NL } from "@/lib/locale";
 import { hhmm, relTime } from "@/lib/lincin/model";
 import { PostRefCard } from "@/components/lincin/post/PostRefCard";
+import { Place } from "@/components/lincin/Media";
+import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
 /**
@@ -339,6 +342,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     filename?: string;
   }[] | null>(null);
   const [pendingCaption, setPendingCaption] = useState("");
+  /** + Bijlage → Plek: je huidige plek, klaar om te delen, met een naam erbij. */
+  const [pendingPlace, setPendingPlace] = useState<SharedPlace | null>(null);
+  const [placeName, setPlaceName] = useState("");
   const [selectedPendingIdx, setSelectedPendingIdx] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   /** Het hoeveelste bestand van hoeveel, tijdens een reeks. */
@@ -992,14 +998,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
    */
   async function retryFailedMessage(tempId: string) {
     const msg = messages?.find((m) => m.id === tempId);
-    if (!msg?.content?.text || !id || !myUserId) return;
+    if ((!msg?.content?.text && !msg?.content?.place) || !id || !myUserId) return;
     setFailedMessages((p) => {
       const n = new Set(p);
       n.delete(tempId);
       return n;
     });
     try {
-      const real = await sendMessage({ chatId: id, senderId: myUserId, text: msg.content.text, reply: msg.content.reply ?? undefined });
+      const real = await sendMessage({ chatId: id, senderId: myUserId, text: msg.content.text, reply: msg.content.reply ?? undefined, place: msg.content.place });
       setMessages((prev) => {
         if (!prev) return prev;
         if (prev.some((m) => m.id === real.id)) return prev.filter((m) => m.id !== tempId);
@@ -1120,6 +1126,39 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     })));
     setPendingCaption("");
     setSelectedPendingIdx(0);
+  }
+
+  async function pickPlace() {
+    setAttachMenuOpen(false);
+    try {
+      const p = await currentPlace();
+      setPendingPlace(p);
+      setPlaceName(p.label ?? "");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Je locatie kon niet gelezen worden.");
+    }
+  }
+
+  /** Een plek versturen: meteen zichtbaar, zoals een tekst (zie onSend). */
+  async function sendPlace() {
+    if (!pendingPlace || !id || !myUserId) return;
+    const place: SharedPlace = { lat: pendingPlace.lat, lng: pendingPlace.lng, ...(placeName.trim() ? { label: placeName.trim() } : null) };
+    setPendingPlace(null);
+    setPlaceName("");
+    const tempId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: DecryptedMessage = { id: tempId, chat_id: id, sender_id: myUserId, content: { place }, created_at: new Date().toISOString() };
+    setMessages((prev) => (prev ? [...prev, optimistic] : [optimistic]));
+    try {
+      const real = await sendMessage({ chatId: id, senderId: myUserId, place });
+      setMessages((prev) => {
+        if (!prev) return prev;
+        if (prev.some((m) => m.id === real.id)) return prev.filter((m) => m.id !== tempId);
+        return prev.map((m) => (m.id === tempId ? { ...m, id: real.id, created_at: real.created_at } : m));
+      });
+    } catch (e: any) {
+      console.warn("sendMessage (plek)", e?.message ?? e);
+      setFailedMessages((prev) => new Set(prev).add(tempId));
+    }
   }
 
   /** Camera: een foto nemen en hem klaarzetten zoals een gekozen foto. */
@@ -2227,6 +2266,28 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               </ComposerInset>
             )}
 
+            {/* Een plek, klaar om te delen: de naam aanpassen, of annuleren. */}
+            {pendingPlace ? (
+              <View style={{ borderTopWidth: 1, borderTopColor: color("ink"), backgroundColor: color("paper"), padding: 12, gap: 10 }}>
+                <Place place={placeName.trim() || placeCoords(pendingPlace)} coords={placeCoords(pendingPlace)} height={96} hue={hueFor(myUserId)} />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <TextInput
+                    value={placeName}
+                    onChangeText={setPlaceName}
+                    placeholder="Naam van de plek (mag leeg)"
+                    placeholderTextColor={color("ink", "inkDim")}
+                    style={[serif(), { flex: 1, minWidth: 0, fontSize: 17, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color("ink"), color: color("ink") }, Platform.OS === "web" ? ({ outlineWidth: 0 } as object) : null]}
+                  />
+                  <Pressable accessibilityRole="button" onPress={() => setPendingPlace(null)} hitSlop={8}>
+                    <Text style={[sans(700), { fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink", "inkDim") }]}>Annuleer</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={sendPlace} style={{ height: 40, paddingHorizontal: 14, justifyContent: "center", backgroundColor: color("red") }}>
+                    <Text style={[sans(700), { fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: "#F7F4EE" }]}>Deel plek</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             {/* + Bijlage (Gesprek Voorbeeld 1d): één gelinieerde rij cellen
                 boven de schrijfbalk in plaats van een lijst die opschuift. */}
             {attachMenuOpen ? (
@@ -2235,6 +2296,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   { key: "foto", glyph: "▣", label: "Foto", onPress: () => pickImage(["images"]) },
                   { key: "video", glyph: "▶", label: "Video", onPress: () => pickImage(["videos"]) },
                   { key: "camera", glyph: "◉", label: "Camera", onPress: takePhoto },
+                  { key: "plek", glyph: "⌖", label: "Plek", onPress: pickPlace },
                   { key: "bestand", glyph: "▤", label: "Bestand", onPress: pickFile },
                   { key: "poll", glyph: "☰", label: "Poll", onPress: () => { setAttachMenuOpen(false); router.push(`/poll-compose?chatId=${id}`); } },
                   { key: "call", glyph: "◷", label: "Call", onPress: () => { setAttachMenuOpen(false); router.push(`/call-plan-compose?chatId=${id}`); } },
@@ -3262,6 +3324,11 @@ function MessageBubble({
               </Pressable>
             )}
             {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
+            {content?.place ? (
+              <Pressable accessibilityRole="link" accessibilityLabel={`Plek: ${content.place.label ?? placeCoords(content.place)}`} onPress={() => openPlace(content.place!)} style={{ width: 240 }}>
+                <Place place={content.place.label || "Plek"} coords={placeCoords(content.place)} height={130} hue={hueFor(msg.sender_id)} />
+              </Pressable>
+            ) : null}
             <View
               style={
                 hasAttachment
