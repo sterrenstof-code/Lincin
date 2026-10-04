@@ -557,6 +557,7 @@ export function DesktopPost({ id }: { id: string }) {
                 flex: 1,
                 minWidth: 0,
                 height: field.height,
+                overflow: field.overflow,
                 fontSize: mag ? 20 : 14,
                 lineHeight: mag ? 26 : 18,
                 paddingVertical: (inputMinH - (mag ? 26 : 18)) / 2,

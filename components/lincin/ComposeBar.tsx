@@ -108,6 +108,9 @@ export function useMultilineInput({
     },
     height: Math.min(maxH, Math.max(minH, h)),
     scrollEnabled: h > maxH,
+    // Op web telt de rand van het veld niet mee in de gemeten hoogte, dus
+    // stond er bij één regel al een schuifbalk. Pas scrollen als het moet.
+    overflow: (h > maxH ? "scroll" : "hidden") as "scroll" | "hidden",
   };
 }
 
@@ -227,6 +230,7 @@ export function ComposeBar({
               flex: 1,
               minWidth: 0,
               height: field.height,
+              overflow: field.overflow,
               borderWidth: BORDER,
               borderColor: line(),
               paddingHorizontal: 12,
@@ -326,6 +330,7 @@ function ModernBar({
               flex: 1,
               minWidth: 0,
               height: field.height,
+              overflow: field.overflow,
               paddingHorizontal: 6,
               paddingVertical: 9,
               textAlignVertical: "top",
