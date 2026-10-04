@@ -1,33 +1,32 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Platform, Pressable, ScrollView, Text, TextInput, View, type TextStyle } from "react-native";
 
 import { Carousel, Dashes } from "@/components/lincin/Carousel";
-import { CommentReactions } from "@/components/lincin/CommentReactions";
+import { EmojiSuggestions, ReplyStrip, useComposeSuggest, useMultilineInput } from "@/components/lincin/ComposeBar";
 import { EditPost } from "@/components/lincin/EditPost";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
-import { isLightboxOpen, openCommentImage, openLightbox } from "@/components/lincin/Lightbox";
-import { Media } from "@/components/lincin/Media";
+import { isLightboxOpen, openLightbox } from "@/components/lincin/Lightbox";
+import { Media, useDoubleTap } from "@/components/lincin/Media";
+import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
+import { CommentList, SortToggle } from "@/components/lincin/post/Comments";
+import { ActionRow, EmojiDrawer, LikedBy, LikesPanel } from "@/components/lincin/post/Reactions";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
-import { WhoReacted } from "@/components/lincin/WhoReacted";
-import { SafeImage } from "@/components/SafeImage";
-import { addEntityComment, listEntityComments, subscribeToEntityComments, type EntityComment } from "@/lib/api/entity-comments";
+import type { EntityComment } from "@/lib/api/entity-comments";
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { EmojiSuggestions, useComposeSuggest, useMultilineInput } from "@/components/lincin/ComposeBar";
-import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
-import { CommentText } from "@/components/lincin/CommentEdit";
 import { ON_DARK, OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
+import { useComments } from "@/lib/lincin/comments";
 import { COMMENTS_W } from "@/lib/lincin/desktop";
+import { useDraft } from "@/lib/lincin/drafts";
+import { usePostLikes } from "@/lib/lincin/likes";
 import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
 import { useMeasure } from "@/lib/lincin/measure";
 import { useImageRatio } from "@/lib/lincin/ratio";
-import { useCommentReactions, usePostReactions } from "@/lib/lincin/reactions";
-import { useReactionWho } from "@/lib/lincin/reactors";
 import { safeBack, useBackTarget } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
@@ -52,8 +51,6 @@ import { CloseBox, DesktopShell, MonoLink, TopBar } from "./Shell";
  * sluit (tenzij de lichtbak openstaat).
  */
 
-/** Het reactievak van de bijdrage (prototype `emojiGrid`). */
-const POST_EMOJI = ["🔥", "❤️", "😂", "😮", "🥹", "👏", "🌊", "✨"];
 const ON_IMAGE = ON_DARK;
 
 export function DesktopPost({ id }: { id: string }) {
@@ -76,15 +73,9 @@ export function DesktopPost({ id }: { id: string }) {
       return feed?.find((i) => i.type === "post" && i.data.id === id)?.data;
     },
   });
-  const comments = useQuery({ queryKey: ["entity-comments", "post", id], queryFn: () => listEntityComments("post", id), enabled: !!id });
+  const { c: highlight } = useLocalSearchParams<{ c?: string }>();
   useEffect(() => {
-    if (!id) return;
-    markSeen(id);
-    const ch = subscribeToEntityComments("post", id, () => comments.refetch());
-    return () => {
-      ch.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (id) markSeen(id);
   }, [id]);
 
   const p = post.data ?? null;
@@ -96,20 +87,20 @@ export function DesktopPost({ id }: { id: string }) {
   // De kleur die de maker koos, anders zijn eigen kleur.
   const hue = card?.swatch ?? hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
-  const reactions = usePostReactions(useMemo(() => (id ? [id] : []), [id]), myUserId);
-  const grouped = reactions.grouped(id);
-  const who = useReactionWho(grouped);
-  const commentIds = useMemo(() => (comments.data ?? []).map((c) => c.id), [comments.data]);
-  const commentReactions = useCommentReactions(commentIds, myUserId);
+  // Likes, emoji en reacties (Bijdrage Voorbeeld; desktop-magazine-home).
+  const likes = usePostLikes(id || undefined, myUserId);
+  const m = useComments({ entityType: "post", entityId: id || undefined, myUserId, ownerId: post.data?.user_id });
+  const [panel, setPanel] = useState(false);
+  const [replyTo, setReplyTo] = useState<EntityComment | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  const doubleTap = useDoubleTap(() => likes.like());
 
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft, clearDraft] = useDraft(id ? `post:${id}` : null);
   const emoji = useComposeSuggest(draft, setDraft);
   // Magazine en modern 44: de hoogte van één regel invoer.
   const inputMinH = 44;
   const field = useMultilineInput({ value: draft, onSend: () => void send(), suggest: emoji, minH: inputMinH });
-  const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
-  const [pickOpen, setPickOpen] = useState<string | null>(null);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
   const [slide, setSlide] = useState(0);
   const { ref: stageRef, size: stage, onLayout: onStageLayout } = useMeasure();
@@ -134,21 +125,23 @@ export function DesktopPost({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet]);
 
-  async function send() {
+  function send() {
     if (!p || !myUserId) return;
     const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true);
-    try {
-      await addEntityComment({ entityType: "post", entityId: id, userId: myUserId, body, ownerId: p.user_id });
-      setDraft("");
-      await comments.refetch();
-      invalidatePostCaches(qc);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t.failed);
-    } finally {
-      setSending(false);
-    }
+    if (!body) return;
+    m.send({ body, parentId: replyTo?.id ?? null });
+    clearDraft();
+    setReplyTo(null);
+    invalidatePostCaches(qc);
+  }
+
+  function reply(c: EntityComment) {
+    const author = c.user_id === myUserId ? null : m.authorOf(c);
+    setReplyTo(c);
+    // Een antwoord op een antwoord begint met @naam (HANDOFF).
+    if (c.parent_id && author?.username && !draft.includes(`@${author.username}`)) setDraft((d) => `@${author.username} ${d}`);
+    m.setOpen(c.parent_id ?? c.id, true);
+    inputRef.current?.focus();
   }
 
   async function remove() {
@@ -250,7 +243,10 @@ export function DesktopPost({ id }: { id: string }) {
               index={slide}
               onIndex={setSlide}
               onZoom={(index) =>
-                openLightbox({ uris: photos.uris, cacheKeys: photos.cacheKeys, index, number, author: authorName, kind: card.kind, time: hhmm(p.created_at), title: card.title })
+                // Dubbelklik = like; een enkele klik opent de lichtbak.
+                doubleTap(() =>
+                  openLightbox({ uris: photos.uris, cacheKeys: photos.cacheKeys, index, number, author: authorName, kind: card.kind, time: hhmm(p.created_at), title: card.title }),
+                )
               }
             />
           </View>
@@ -330,48 +326,29 @@ export function DesktopPost({ id }: { id: string }) {
     </View>
   );
 
-  // ---- de reacties op de bijdrage ----
-  const reactChip = (on: boolean): ViewStyle =>
-    modern
-      ? { height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? ink : color("paper") }
-      : { height: 36, paddingHorizontal: 12, borderWidth: 1, borderColor: on ? ink : color("ink", "postDim"), backgroundColor: on ? ink : "transparent" };
+  // ---- de reacties op de bijdrage (desktop-magazine-home): hart, ☺, wie,
+  // en rechts "Privé aan X". De lade en het paneel staan inline eronder. ----
+  const privateLink = own ? null : mag ? (
+    <SerifLink size={22} italic onPress={() => setSheet(privTarget())}>
+      {t.omPrivateTo} {authorName}
+    </SerifLink>
+  ) : (
+    <Pressable accessibilityRole="button" onPress={() => setSheet(privTarget())} style={{ height: 44, paddingHorizontal: 20, borderRadius: 999, justifyContent: "center", backgroundColor: ink }}>
+      <Text style={lbl(10, color("paper"), 1.2)}>
+        {t.privateMsg} · {authorName}
+      </Text>
+    </Pressable>
+  );
   const reactRow = (
-    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-      {grouped.map((r) => (
-        <Pressable
-          key={r.emoji}
-          accessibilityRole="button"
-          {...who.chip(r)}
-          accessibilityState={{ selected: r.mine }}
-          onPress={() => reactions.toggle(id, r.emoji)}
-          style={[reactChip(r.mine), { flexDirection: "row", alignItems: "center", gap: 6 }]}
-        >
-          <Text style={[sans(mag ? 600 : 500), { fontSize: 13, lineHeight: 16, color: r.mine ? color("paper") : ink }]}>
-            {r.emoji} {r.count}
-          </Text>
-        </Pressable>
-      ))}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Reageer"
-        accessibilityState={{ expanded: boxOpen }}
-        onPress={() => setBoxOpen((v) => !v)}
-        style={[reactChip(boxOpen), { justifyContent: "center" }]}
-      >
-        <Text style={[mono(600), { fontSize: 15, lineHeight: 18, color: boxOpen ? color("paper") : ink }]}>☺ +</Text>
-      </Pressable>
-      <View style={{ flex: 1 }} />
-      {own ? null : mag ? (
-        <SerifLink size={22} italic onPress={() => setSheet(privTarget())}>
-          {t.omPrivateTo} {authorName}
-        </SerifLink>
-      ) : (
-        <Pressable accessibilityRole="button" onPress={() => setSheet(privTarget())} style={{ height: 44, paddingHorizontal: 20, borderRadius: 999, justifyContent: "center", backgroundColor: ink }}>
-          <Text style={lbl(10, color("paper"), 1.2)}>
-            {t.privateMsg} · {authorName}
-          </Text>
-        </Pressable>
-      )}
+    <View style={{ gap: 12, marginTop: 6 }}>
+      <ActionRow likes={likes} commentCount={m.total} drawerOpen={boxOpen} onDrawer={() => setBoxOpen((v) => !v)} onComments={() => inputRef.current?.focus()} right={privateLink} />
+      {boxOpen ? (
+        <View style={{ maxWidth: 6 * 64 + 54 }}>
+          <EmojiDrawer mine={likes.mine} onPick={likes.toggle} onClose={() => setBoxOpen(false)} cell={56} />
+        </View>
+      ) : null}
+      <LikedBy likes={likes} onOpen={() => setPanel((v) => !v)} size={24} />
+      <LikesPanel likes={likes} visible={panel} onClose={() => setPanel(false)} inline />
     </View>
   );
 
@@ -423,26 +400,6 @@ export function DesktopPost({ id }: { id: string }) {
         </>
       )}
       {reactRow}
-      <WhoReacted line={who.line} />
-      {boxOpen ? (
-        <View style={{ flexDirection: "row", gap: 4, padding: 4, alignSelf: "flex-start", borderRadius: 999, backgroundColor: color("ink", "postRule") }}>
-          {POST_EMOJI.map((e) => {
-            const on = grouped.some((g) => g.emoji === e && g.mine);
-            return (
-              <Pressable
-                key={e}
-                accessibilityRole="button"
-                accessibilityLabel={e}
-                accessibilityState={{ selected: on }}
-                onPress={() => reactions.toggle(id, e)}
-                style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: on ? ink : "transparent" }}
-              >
-                <Text style={{ fontSize: 18, lineHeight: 22 }}>{e}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
       {p.author?.username ? (
         <View style={{ flexDirection: "row" }}>
           <MonoLink label={`${t.profileOf} ${authorName} →`} active onPress={() => router.push(`/user/${p.author!.username}` as never)} />
@@ -452,7 +409,8 @@ export function DesktopPost({ id }: { id: string }) {
   );
 
   // ---- de comments ----
-  const count = comments.data?.length ?? p.comment_count ?? 0;
+  const count = m.total;
+  const replyName = replyTo ? (replyTo.user_id === myUserId ? t.me : displayName(m.authorOf(replyTo))) : "";
   const commentsColumn = (
     <View
       style={[
@@ -476,25 +434,17 @@ export function DesktopPost({ id }: { id: string }) {
         )}
         <Text style={lbl(mag ? 11 : 9, mag ? ink : dim)}>{count}</Text>
       </View>
-      <View style={modern ? { gap: 6, paddingHorizontal: 10 } : null}>
-        {(comments.data ?? []).map((c) => (
-          <Comment
-            key={c.id}
-            comment={c}
-            myUserId={myUserId}
-            reactions={commentReactions.grouped(c.id)}
-            onToggle={(emoji) => commentReactions.toggle(c.id, emoji)}
-            open={pickOpen === c.id}
-            onOpenChange={(o) => setPickOpen(o ? c.id : null)}
-          />
-        ))}
+      <View style={{ paddingHorizontal: mag ? 28 : 24, paddingTop: 12 }}>
+        <SortToggle m={m} />
+        <CommentList m={m} myUserId={myUserId} variant="desktop" onReply={reply} highlightId={typeof highlight === "string" ? highlight : null} />
       </View>
-      {count === 0 && !comments.isLoading ? (
+      {count === 0 && !m.isLoading && m.pendingFor(null).length === 0 ? (
         <Text style={[mag ? serif(true) : sans(400), { padding: mag ? 28 : 24, paddingTop: modern ? 0 : 24, fontSize: modern ? 16 : 21, lineHeight: mag ? 27 : 24, color: dim }]}>
           {t.firstComment}
         </Text>
       ) : null}
       <View style={{ marginTop: "auto" }}>
+        {replyTo ? <ReplyStrip label={t.replyTo} name={replyName} onCancel={() => setReplyTo(null)} /> : null}
         <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round pad={20} />
         <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round pad={20} />
         <View
@@ -505,13 +455,14 @@ export function DesktopPost({ id }: { id: string }) {
           ]}
         >
           <TextInput
+            ref={inputRef}
             value={draft}
             onChangeText={emoji.onChangeText}
             onKeyPress={field.onKeyPress}
             multiline
             onContentSizeChange={field.onContentSizeChange}
             scrollEnabled={field.scrollEnabled}
-            placeholder={t.writeBack}
+            placeholder={replyTo ? t.replyPh.replace("{name}", replyName) : t.writeBack}
             placeholderTextColor={dim}
             style={[
               mag ? serif(true) : sans(),
@@ -534,17 +485,16 @@ export function DesktopPost({ id }: { id: string }) {
             accessibilityRole="button"
             accessibilityLabel={t.comment}
             onPress={send}
-            disabled={sending || !draft.trim()}
+            disabled={!draft.trim()}
             style={{
               width: 44,
               height: 44,
               alignSelf: "auto",
               borderRadius: mag ? 0 : 22,
-              // Magazine: de primaire actie is een rood vlak.
-              backgroundColor: mag ? color("red") : ink,
+              // Grijs tot er iets te sturen is, dan rood (HANDOFF "Schrijfbalk").
+              backgroundColor: draft.trim() ? color("red") : color("ink", "pillSoft"),
               alignItems: "center",
               justifyContent: "center",
-              opacity: sending ? 0.6 : 1,
             }}
           >
             <Text style={{ fontSize: mag ? 18 : 17, lineHeight: 20, color: mag ? OMSLAG.onImage : color("paper") }}>↑</Text>
@@ -574,87 +524,3 @@ export function DesktopPost({ id }: { id: string }) {
 /** `@keyframes rise` uit het prototype: 16px omhoog en in beeld. */
 const RISE = [{ "0%": { opacity: 0, transform: [{ translateY: 16 }] }, "100%": { opacity: 1, transform: [{ translateY: 0 }] } }];
 
-function Comment({
-  comment: c,
-  myUserId,
-  reactions,
-  onToggle,
-  open,
-  onOpenChange,
-}: {
-  comment: EntityComment;
-  myUserId: string;
-  reactions: ReturnType<ReturnType<typeof useCommentReactions>["grouped"]>;
-  onToggle: (emoji: string) => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const t = useT();
-  const lang = useLang();
-  const scheme = useScheme();
-  const own = c.user_id === myUserId;
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
-  useHueChoices();
-  const fc = own ? { fill: color("ink"), ink: color("paper") } : friendColor(hueFor(c.user_id), scheme);
-  const name = own ? t.me : displayName(c.author);
-  const router = useRouter();
-  const th = useThemeSpec().id;
-  const modern = th === "modern";
-  const mag = th === "magazine";
-  // Een naam opent een profiel — ook "Jij" het jouwe.
-  const toProfile = c.author?.username ? () => router.push(`/user/${c.author!.username}` as never) : undefined;
-  const size = modern ? 40 : 32;
-  const when = timeLabel(c.created_at, t, lang);
-  return (
-    <View
-      style={[
-        { flexDirection: "row", gap: modern ? 12 : 14 },
-        modern
-          ? { padding: 14, borderRadius: 14, backgroundColor: color("paper") }
-          : { paddingVertical: 18, paddingHorizontal: 28, borderBottomWidth: 1, borderBottomColor: color("ink", "postRule") },
-      ]}
-    >
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={name}
-        onPress={toProfile}
-        disabled={!toProfile}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: modern ? 12 : size / 2,
-          backgroundColor: mag ? "transparent" : fc.fill,
-          borderWidth: mag ? 1 : 0,
-          borderColor: fc.fill,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={[mag ? serif() : sans(700), { fontSize: mag ? 17 : 14, lineHeight: mag ? 20 : 16, color: mag ? fc.fill : fc.ink }]}>
-          {name.slice(0, 1).toUpperCase()}
-        </Text>
-      </Pressable>
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <Text numberOfLines={1} onPress={toProfile} style={[mag ? sans(700) : mono(500), { fontSize: mag ? 10 : 9, lineHeight: 13, letterSpacing: mag ? 1 : 1.44, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
-          {name} · {when}
-        </Text>
-        {c.image_url ? (
-          <Pressable
-            accessibilityRole="imagebutton"
-            accessibilityLabel={`${t.gifNote}, ${name}`}
-            onPress={() => openCommentImage(c, name)}
-            style={[
-              { width: 160, height: 110, marginTop: 4, backgroundColor: color("paper2"), overflow: "hidden" },
-              { borderRadius: 12 },
-              Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null,
-            ]}
-          >
-            <SafeImage uri={c.image_url} cacheKey={c.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-          </Pressable>
-        ) : null}
-        <CommentText comment={c} own={own} textStyle={[mag ? serif() : sans(), { fontSize: mag ? 21 : 15, lineHeight: mag ? 27 : 21, color: color("ink") }]} />
-        <CommentReactions reactions={reactions} onToggle={onToggle} open={open} onOpenChange={onOpenChange} />
-      </View>
-    </View>
-  );
-}

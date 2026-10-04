@@ -103,8 +103,10 @@ function NotificationsPhone() {
 
 export function destinationFor(item: NotificationWithDetails): string | null {
   if (item.event_id) return `/event/${item.event_id}`;
-  if (item.post_id) return `/post/${item.post_id}`;
-  if (item.poll_id) return `/poll/${item.poll_id}`;
+  // Over een reactie: de draad open en de reactie even gemarkeerd (?c=).
+  const c = item.entity_comment_id ? `?c=${item.entity_comment_id}` : "";
+  if (item.post_id) return `/post/${item.post_id}${c}`;
+  if (item.poll_id) return `/poll/${item.poll_id}${c}`;
   if (item.list_id) return `/list/${item.list_id}`;
   // Een call heeft geen eigen bladzijde; hij leeft in het gesprek.
   if (item.call_chat_id) return `/chat/${item.call_chat_id}`;
@@ -145,6 +147,8 @@ export function describe(item: NotificationWithDetails): { text: string } {
     case "event_join_approved": return { text: `liet je toe tot ${eventName}` };
     case "event_contribution": return { text: `plaatste iets in ${eventName}` };
     case "mention": return { text: "noemde je" };
+    case "comment_reply": return { text: `antwoordde op je reactie${item.comment_body ? `: ${truncate(item.comment_body, 48)}` : ""}` };
+    case "comment_like": return { text: item.detail && item.detail !== "❤️" ? `${item.detail} op je reactie` : "vond je reactie leuk" };
     case "post_boost": return { text: "duwde jouw bijdrage omhoog" };
     case "followed_post_comment": return { text: "reageerde op een bijdrage die je volgt" };
     default: return { text: "deed iets" };

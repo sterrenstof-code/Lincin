@@ -346,12 +346,14 @@ Deno.serve(async (req: Request) => {
       // Waar een tik naartoe gaat. Eén plek, zodat de service worker en de
       // native app niet elk hun eigen lijst bijhouden (die kenden alleen
       // gesprek, bijdrage en event — een poll opende de app op de feed).
+      // Over een reactie: de draad open en de reactie even gemarkeerd (0084).
+      const c = record.entity_comment_id ? `?c=${record.entity_comment_id}` : "";
       const path = record.event_id
         ? `/event/${record.event_id}`
         : record.post_id
-          ? `/post/${record.post_id}`
+          ? `/post/${record.post_id}${c}`
           : record.poll_id
-            ? `/poll/${record.poll_id}`
+            ? `/poll/${record.poll_id}${c}`
             : record.list_id
               ? `/list/${record.list_id}`
               : callChatId

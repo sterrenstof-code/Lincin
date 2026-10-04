@@ -47,12 +47,21 @@ function emojiOnly(text: string): boolean {
 
 type Variant = "mobile" | "desktop";
 
-export function CommentsHead({ m, count }: { m: CommentsModel; count: number }) {
+/** Alleen Nieuwste / Oudste, voor wie zijn eigen kop al heeft (desktop). */
+export function SortToggle({ m }: { m: CommentsModel }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingBottom: 4 }}>
+      <SortTabs m={m} />
+    </View>
+  );
+}
+
+function SortTabs({ m }: { m: CommentsModel }) {
   const t = useT();
   const opt = (v: "newest" | "oldest", label: string) => {
     const on = m.sort === v;
     return (
-      <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => m.setSort(v)} hitSlop={8} style={pointer}>
+      <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => m.setSort(v)} hitSlop={8} style={pointer}>
         <Text
           style={[
             sans(700),
@@ -66,14 +75,21 @@ export function CommentsHead({ m, count }: { m: CommentsModel; count: number }) 
     );
   };
   return (
+    <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 14 }}>
+      {opt("newest", t.newest)}
+      {opt("oldest", t.oldest)}
+    </View>
+  );
+}
+
+export function CommentsHead({ m, count }: { m: CommentsModel; count: number }) {
+  const t = useT();
+  return (
     <View style={{ borderTopWidth: 2, borderTopColor: color("ink"), paddingTop: 14, paddingBottom: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
       <Text style={[sans(700), { fontSize: 10, lineHeight: 14, letterSpacing: 1.4, textTransform: "uppercase", color: color("ink") }]}>
         {t.comments} · {count}
       </Text>
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 14 }}>
-        {opt("newest", t.newest)}
-        {opt("oldest", t.oldest)}
-      </View>
+      <SortTabs m={m} />
     </View>
   );
 }
@@ -323,7 +339,9 @@ function Item({
   return (
     <Pressable
       ref={ref}
-      onLongPress={Platform.OS === "web" ? undefined : () => setMenu(true)}
+      // Vasthouden opent het menu — ook in de browser op een telefoon, waar
+      // de meeste mensen Lincin gebruiken. Desktop heeft daarnaast de ⋯.
+      onLongPress={actions.length ? () => setMenu(true) : undefined}
       delayLongPress={350}
       style={{
         flexDirection: "row",

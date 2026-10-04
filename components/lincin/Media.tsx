@@ -29,7 +29,7 @@ const DOUBLE_TAP_MS = 280;
  * komt — dan `onDouble` en geen `single` — anders na `DOUBLE_TAP_MS`
  * alsnog `single`.
  */
-function useDoubleTap(onDouble?: () => void) {
+export function useDoubleTap(onDouble?: () => void) {
   const last = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {

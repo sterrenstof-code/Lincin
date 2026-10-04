@@ -33,7 +33,10 @@ export type NotificationRow = {
     // 0049 — je bugmelding is afgehandeld
     | "bug_resolved"
     // 0079 — een vriend start een poll in de feed
-    | "friend_poll";
+    | "friend_poll"
+    // 0084 — een antwoord op je reactie, een hart op je reactie
+    | "comment_reply"
+    | "comment_like";
   post_id: string | null;
   comment_id: string | null;
   /** 0048 — de reactie zelf, zodat het fragment in de melding kan staan. */
