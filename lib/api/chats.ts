@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
 import { forgetChatRecipients } from "./messages";
 import type { Profile } from "./profiles";
@@ -127,11 +128,14 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   const memberUserIds = Array.from(new Set(members.map((m) => m.user_id)));
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    // last_seen_at voor "actief · 2 min geleden" in de kop van een gesprek,
+    // hue voor de eigen kleur van wie erin zit (0082).
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, hue")
     .in("id", memberUserIds)
     .abortSignal(timeoutSignal());
   if (pErr) throw pErr;
-  const profileById = new Map(profiles?.map((p) => [p.id, p]) ?? []);
+  rememberHues(profiles ?? []);
+  const profileById = new Map<string, Profile>(profiles?.map((p) => [p.id, p]) ?? []);
 
   const membersByChat = new Map<string, Profile[]>();
   for (const m of members) {
@@ -259,10 +263,11 @@ export async function listChatMembers(
   const profileIds = rows.map((r) => r.user_id);
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, identity_pubkey")
+    .select("id, username, display_name, avatar_url, identity_pubkey, last_seen_at, hue")
     .in("id", profileIds);
   if (pErr) throw pErr;
-  const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+  rememberHues(profiles ?? []);
+  const byId = new Map<string, Profile>((profiles ?? []).map((p) => [p.id, p]));
   return rows.map((r) => ({
     user_id: r.user_id,
     role: r.role as "owner" | "member",

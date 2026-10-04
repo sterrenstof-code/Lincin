@@ -29,7 +29,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
@@ -43,7 +42,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActionSheet } from "@/components/ActionSheet";
 import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { LincinScreen } from "@/components/lincin/Chrome";
-import { BORDER, GUTTER, Head, Serif, line } from "@/components/lincin/ui";
+import { BORDER, GUTTER, Head, line } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
 import { VideoCallModal } from "@/components/VideoCallModal";
 import { MentionsText } from "@/components/MentionsText";
@@ -112,7 +111,7 @@ import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
 import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import {
   previewLine,
   rememberChatPreview,
@@ -120,7 +119,7 @@ import {
 import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { NL } from "@/lib/locale";
-import { hhmm } from "@/lib/lincin/model";
+import { hhmm, relTime } from "@/lib/lincin/model";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
 /**
@@ -1271,6 +1270,20 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       ? friendColor("green", schemeNow)
       : friendColor(hueFor(chat?.members.find((m) => m.id !== myUserId)?.id), schemeNow);
   const partnerFill = chat ? partner.fill : null;
+  /**
+   * De regel onder de naam: "ACTIEF · 2 MIN GELEDEN" voor één persoon
+   * (profiles.last_seen_at), het aantal leden voor een groep.
+   */
+  const lang = useLang();
+  const headerStatus = useMemo(() => {
+    if (!chat) return null;
+    if (chat.type === "group") return `${chat.members.length} leden`;
+    const other = chat.members.find((m) => m.id !== myUserId);
+    if (!other?.last_seen_at) return null;
+    const ms = Date.now() - new Date(other.last_seen_at).getTime();
+    if (ms < 2 * 60_000) return "actief · nu";
+    return `actief · ${relTime(other.last_seen_at, t2, lang)}${ms < 86_400_000 ? " geleden" : ""}`;
+  }, [chat, myUserId, t2, lang]);
   /** De foto van de ander (of de groep) in de kop, over de initiaal heen. */
   const headerAvatarUrl = chat && myUserId ? chatAvatarUrl(chat, myUserId) : null;
   /** Start een videogesprek en meldt dat één keer in het gesprek. */
@@ -1428,68 +1441,74 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             </Pressable>
           </View>
         ) : (
-        <View
-          style={{
-            marginTop: 8,
-            marginHorizontal: 18,
-            height: 48,
-            flexDirection: "row",
-            borderWidth: BORDER,
-            borderColor: line(),
-            backgroundColor: color("paper"),
-            // In het desktoppaneel draagt het paneel zelf naam en profiel.
-            display: embedded ? "none" : "flex",
-          }}
-        >
-          {otherUnread > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${otherUnread} ${t2.newMsgs}`}
-              onPress={() => router.push("/chats")}
-              style={{ paddingHorizontal: 10, alignItems: "center", justifyContent: "center", backgroundColor: color("red"), borderRightWidth: BORDER, borderRightColor: line() }}
-            >
-              <Text style={[sans(800), { fontSize: 14, lineHeight: 17, color: creamOnDark.DEFAULT }]}>
-                {otherUnread > 99 ? "99+" : otherUnread}
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={onPressHeaderTitle}
-            hitSlop={4}
-            style={{ flex: 1, minWidth: 0, justifyContent: "center", paddingHorizontal: 12 }}
-          >
-            <Serif variant="name" numberOfLines={1}>
-              {title}
-            </Serif>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Videogesprek starten"
-            onPress={startCall}
-            style={{ width: 44, alignItems: "center", justifyContent: "center", borderLeftWidth: BORDER, borderLeftColor: line() }}
-          >
-            <Ionicons name="videocam-outline" color={color("ink")} size={18} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={chat?.type === "group" ? "Groepsinfo openen" : "Profiel"}
-            onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
+          // Magazine (Gesprek Voorbeeld): een rij van 56 onder een lijn van 2
+          // inkt, met een rug van 5 in de kleur van de ander — avatar 32, de
+          // naam in serif, "ACTIEF · 2 MIN GELEDEN", en rechts PROFIEL.
+          <View
             style={{
-              width: 48,
-              overflow: "hidden",
-              backgroundColor: partner.fill,
+              marginTop: 8,
+              minHeight: 56,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              borderLeftWidth: BORDER,
-              borderLeftColor: line(),
+              gap: 12,
+              paddingLeft: 18,
+              borderTopWidth: 2,
+              borderTopColor: color("ink"),
+              borderBottomWidth: 1,
+              borderBottomColor: color("ink", "postRule"),
+              borderLeftWidth: 5,
+              borderLeftColor: partner.fill,
+              backgroundColor: color("paper"),
+              display: embedded ? "none" : "flex",
             }}
           >
-            <Head variant="numeralTiny" color={partner.ink} style={{ fontSize: 22, lineHeight: 24 }}>
-              {(title || "?").slice(0, 1).toUpperCase()}
-            </Head>
-            <AvatarPhoto url={headerAvatarUrl} size={48} />
-          </Pressable>
-        </View>
+            {otherUnread > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${otherUnread} ${t2.newMsgs}`}
+                onPress={() => router.push("/chats")}
+                style={{ minWidth: 22, height: 22, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: color("red") }}
+              >
+                <Text style={[sans(700), { fontSize: 11, lineHeight: 14, color: "#F7F4EE" }]}>{otherUnread > 99 ? "99+" : otherUnread}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={chat?.type === "group" ? "Groepsinfo openen" : "Profiel"}
+              onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
+              style={{ width: 32, height: 32, borderRadius: chat?.type === "group" ? 0 : 16, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: partner.fill }}
+            >
+              <Text style={[sans(700), { fontSize: 13, lineHeight: 16, color: partner.ink }]}>{(title || "?").slice(0, 1).toUpperCase()}</Text>
+              <AvatarPhoto url={headerAvatarUrl} size={32} />
+            </Pressable>
+            <Pressable onPress={onPressHeaderTitle} hitSlop={4} style={{ flex: 1, minWidth: 0, justifyContent: "center", gap: 2 }}>
+              <Text numberOfLines={1} style={[serif(), { fontSize: 21, lineHeight: 24, color: color("ink") }]}>
+                {title}
+              </Text>
+              {headerStatus ? (
+                <Text numberOfLines={1} style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+                  {headerStatus}
+                </Text>
+              ) : null}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Videogesprek starten"
+              onPress={startCall}
+              style={{ width: 44, alignSelf: "stretch", alignItems: "center", justifyContent: "center" }}
+            >
+              <Ionicons name="videocam-outline" color={color("ink")} size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
+              style={{ alignSelf: "stretch", paddingHorizontal: 16, justifyContent: "center", borderLeftWidth: 1, borderLeftColor: color("ink", "postRule") }}
+            >
+              <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink") }]}>
+                {chat?.type === "group" ? "Groep" : "Profiel"}
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         {mentioned.length > 0 && embedded ? (
@@ -2457,18 +2476,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   accessibilityLabel="Bericht versturen"
                   onPress={onSend}
                   disabled={sending || !draft.trim()}
-                  className={
-                    sending || !draft.trim()
-                      ? "bg-paper2"
-                      : magBar
-                        ? "bg-flame"
-                        : "bg-ink"
-                  }
+                  // Grijs tot er iets te sturen is, dan rood — in elk thema (HANDOFF "Schrijfbalk").
+                  className={sending || !draft.trim() ? "bg-paper2" : "bg-flame"}
                   style={magBar ? { ...AUX_BUTTON, borderWidth: 0 } : auxEnd}
                 >
                   <Ionicons
                     name="arrow-up"
-                    color={sending || !draft.trim() ? color("ink", "inkDim") : magBar ? "#FFFFFF" : creamOnDark.DEFAULT}
+                    color={sending || !draft.trim() ? color("ink", "inkDim") : "#FFFFFF"}
                     size={21}
                   />
                 </Pressable>
@@ -2862,41 +2876,6 @@ function SwipeWrap({
   return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
-/** Icoonmaat in de actiebalk onder een bubbel; de emoji staat er optisch op gelijke hoogte mee. */
-const TOOLBAR_ICON = 17;
-const TOOLBAR_EMOJI = { fontSize: 16, lineHeight: 20 } as const;
-
-/**
- * Eén knop in de actiebalk onder een bubbel: de hoogte van élk
- * besturingselement (CONTROL_H), een vaste breedte zodat een icoon en een
- * emoji hetzelfde hokje krijgen, en bij indrukken alleen wat lichter.
- */
-function ToolbarButton({
-  label,
-  onPress,
-  children,
-}: {
-  label: string;
-  onPress: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        width: CONTROL_H - space.xs,
-        height: CONTROL_H,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: pressed ? 0.45 : 1,
-      })}
-    >
-      {children}
-    </Pressable>
-  );
-}
 
 function MessageBubble({
   msg,
@@ -3391,61 +3370,55 @@ function MessageBubble({
           "reageren" van "doen met dit bericht". Alleen verwijderen is rood.
       */}
       {selected && (
-        <View
-          className={`flex-row items-center mt-1 bg-page-alt ${isMine ? "self-end" : "self-start"}`}
-          style={{
-            marginLeft: showAvatarSlot ? 44 : 0,
-            borderWidth: FEED_BORDER,
-            borderColor: feed.ink,
-          }}
-        >
-          {onReply && (
-            <ToolbarButton label="Antwoorden op dit bericht" onPress={onReply}>
-              <Ionicons name="return-down-back-outline" color={feed.ink} size={TOOLBAR_ICON} />
-            </ToolbarButton>
-          )}
-          <ToolbarButton label="Reageren met een hartje" onPress={() => onToggleReaction("❤️")}>
-            <Text style={TOOLBAR_EMOJI}>❤️</Text>
-          </ToolbarButton>
-          <ToolbarButton label="Reageren met een duim" onPress={() => onToggleReaction("👍")}>
-            <Text style={TOOLBAR_EMOJI}>👍</Text>
-          </ToolbarButton>
-          {(onCopy || onEdit || onDelete) && (
-            <View
-              style={{
-                width: StyleSheet.hairlineWidth,
-                alignSelf: "stretch",
-                marginVertical: space.sm,
-                backgroundColor: rule.card,
-              }}
-            />
-          )}
-          {onCopy && (
-            <ToolbarButton label="Bericht kopiëren" onPress={onCopy}>
-              <Ionicons name="copy-outline" color={feed.ink} size={TOOLBAR_ICON} />
-            </ToolbarButton>
-          )}
-          {/* De enige ingang naar het bewerken — zie renderItem voor
-              waarom die er tot nu toe niet was. Náást verwijderen, want
-              de twee horen bij elkaar: het zijn allebei dingen die je
-              alleen met je eigen bericht kunt. */}
-          {onEdit && (
-            <ToolbarButton label="Bericht bewerken" onPress={onEdit}>
-              <Ionicons name="pencil-outline" color={feed.ink} size={TOOLBAR_ICON} />
-            </ToolbarButton>
-          )}
-          {onDelete && (
-            <ToolbarButton label="Bericht verwijderen" onPress={onDelete}>
-              <Ionicons name="trash-outline" color={flameDeep} size={TOOLBAR_ICON} />
-            </ToolbarButton>
-          )}
+        // Gesprek Voorbeeld 1b: vijf snelle emoji in cellen van 42 en een
+        // zwart vlak "ANTWOORD", in een kader van 1 inkt met een schaduw.
+        // Kopiëren, bewerken en verwijderen (eigen bericht) eronder, stil.
+        <View style={{ alignSelf: isMine ? "flex-end" : "flex-start", marginLeft: showAvatarSlot ? 44 : 0, marginTop: 6, gap: 6, alignItems: isMine ? "flex-end" : "flex-start" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              borderWidth: 1,
+              borderColor: color("ink"),
+              backgroundColor: color("paper"),
+              ...(Platform.OS === "web" ? ({ boxShadow: "0 10px 30px rgba(22,22,15,.18)" } as object) : { elevation: 6 }),
+            }}
+          >
+            {QUICK_REACTIONS.map((e, i) => {
+              const on = reactions.some((r) => r.emoji === e && r.mine);
+              return (
+                <Pressable
+                  key={e}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reageren met ${e}`}
+                  accessibilityState={{ selected: on }}
+                  onPress={() => onToggleReaction(e)}
+                  style={{ width: 42, height: 42, alignItems: "center", justifyContent: "center", borderLeftWidth: i ? 1 : 0, borderLeftColor: color("ink", "postRule"), backgroundColor: on ? color("tint") : "transparent" }}
+                >
+                  <Text style={{ fontSize: 19, lineHeight: 24 }}>{e}</Text>
+                </Pressable>
+              );
+            })}
+            {onReply ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Antwoorden op dit bericht" onPress={onReply} style={{ paddingHorizontal: 14, justifyContent: "center", backgroundColor: color("ink") }}>
+                <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("paper") }]}>Antwoord</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {onCopy || onEdit || onDelete ? (
+            <View style={{ flexDirection: "row", gap: 16 }}>
+              {onCopy ? <QuietAction label="Kopiëren" onPress={onCopy} /> : null}
+              {onEdit ? <QuietAction label="Bewerken" onPress={onEdit} /> : null}
+              {onDelete ? <QuietAction label="Verwijderen" onPress={onDelete} tone={color("red")} /> : null}
+            </View>
+          ) : null}
         </View>
       )}
-
       {reactions.length > 0 && (
+        // Een klein kader onder het bericht, dat de bubbel 10 overlapt en
+        // 8 naar binnen staat aan de kant van de afzender (Gesprek Voorbeeld).
         <View
-          className={`flex-row gap-1 mt-1 ${isMine ? "self-end pr-1" : "self-start"}`}
-          style={showAvatarSlot ? { marginLeft: 44 } : undefined}
+          className={`flex-row gap-1 ${isMine ? "self-end" : "self-start"}`}
+          style={{ marginTop: -10, marginLeft: showAvatarSlot ? 44 + 8 : 0, marginRight: isMine ? 8 : 0, zIndex: 2 }}
         >
           {reactions.map((r) => (
             <Pressable
@@ -3457,14 +3430,16 @@ function MessageBubble({
               // Geen vulling: onder een bubbel die zélf al vol of leeg is
               // zou een derde vlak niets meer zeggen. De lijn verzwaart als
               // de reactie van jou is — zelfde tweedeling, ander middel.
-              className="flex-row items-center px-2 py-0.5"
+              className="flex-row items-center"
               style={{
-                borderWidth: BORDER,
-                borderColor: line(),
+                height: 22,
+                paddingHorizontal: 7,
+                borderWidth: 1,
+                borderColor: color("ink", "postRule"),
                 backgroundColor: color("paper"),
               }}
             >
-              <Text style={{ fontSize: 13 }}>{r.emoji}</Text>
+              <Text style={{ fontSize: 12, lineHeight: 15 }}>{r.emoji}</Text>
               <Text
                 style={[
                   feedType.label,
@@ -3502,6 +3477,17 @@ type BubbleStatus =
   | { kind: "failed" };
 
 /** Veelgebruikte emoji's voor de simpele in-chat picker. */
+/** De vijf snelle reacties onder vasthouden (Gesprek Voorbeeld 1b). */
+const QUICK_REACTIONS = ["❤️", "😂", "🔥", "👀", "👏"];
+
+function QuietAction({ label, onPress, tone }: { label: string; onPress: () => void; tone?: string }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={8}>
+      <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: tone ?? color("ink", "inkDim") }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const CHAT_EMOJIS = [
   "😀","😂","😍","🥰","😊","😎","🤔","😢","😱","😡",
   "🥺","😏","🤩","😇","🤗","😴","🥳","🤯","🫡","🤭",
