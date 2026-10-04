@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type RefObject } from "react";
+import { Platform, Pressable, Text, View, type ScrollView, type TextStyle, type ViewStyle } from "react-native";
 
 import { ActionSheet } from "@/components/ActionSheet";
 import { CommentText } from "@/components/lincin/CommentEdit";
@@ -36,7 +36,58 @@ import { HeartIcon, LikesPanel, PersonDot, fill } from "./Reactions";
  */
 
 const isWeb = Platform.OS === "web";
+
+/**
+ * Een reactie in beeld brengen: op web `scrollIntoView`, op de telefoon
+ * via de pagina (`useCommentScroll`), die weet waar zijn ScrollView is.
+ */
+const ScrollCtx = createContext<((node: View) => void) | null>(null);
+export const CommentScrollProvider = ScrollCtx.Provider;
+
+/**
+ * Voor een pagina met reacties in een ScrollView: zet `scrollRef` op de
+ * ScrollView en `contentRef` op één View die alle inhoud omvat, en geef
+ * `scrollTo` door met `CommentScrollProvider`.
+ */
+export function useCommentScroll(): { scrollRef: RefObject<ScrollView | null>; contentRef: RefObject<View | null>; scrollTo: (node: View) => void } {
+  const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null);
+  const scrollTo = useCallback((node: View) => {
+    const content = contentRef.current;
+    if (!content) return;
+    node.measureLayout(
+      content,
+      (_x, y) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 120), animated: true }),
+      () => {},
+    );
+  }, []);
+  return { scrollRef, contentRef, scrollTo };
+}
+
+function useBringIntoView() {
+  const ctx = useContext(ScrollCtx);
+  return useCallback(
+    (node: View | null) => {
+      if (!node) return;
+      if (isWeb) (node as unknown as HTMLElement).scrollIntoView?.({ block: "center", behavior: "smooth" });
+      else ctx?.(node);
+    },
+    [ctx],
+  );
+}
 const pointer = isWeb ? ({ cursor: "pointer" } as ViewStyle) : null;
+
+/**
+ * Tikdoel van 44 px (HANDOFF §Algemeen) zonder dat de regel verschuift:
+ * onzichtbare binnenmarge, teruggenomen met een negatieve buitenmarge.
+ * Alleen op web — daar telt `hitSlop` niet; native heeft `hitSlop`, en
+ * een aanraking buiten de ouder komt daar toch niet aan.
+ */
+function tap(h: number, left = 0, right = 0): ViewStyle | null {
+  if (!isWeb) return null;
+  const v = Math.max(0, (44 - h) / 2);
+  return { paddingVertical: v, marginVertical: -v, paddingLeft: left, marginLeft: -left, paddingRight: right, marginRight: -right };
+}
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|‍|️|\s)+$/u;
 
 /** Hoogstens drie emoji en verder niets: dan staan ze groter (HANDOFF). */
@@ -116,7 +167,10 @@ export function CommentList({
   useEffect(() => {
     if (!highlightId) return;
     const c = m.find(highlightId);
-    if (c?.parent_id) m.setOpen(c.parent_id, true);
+    if (!c) return;
+    // Staat de hoofdreactie voorbij de eerste 20, toon dan tot daar.
+    m.reveal(c.parent_id ?? c.id);
+    if (c.parent_id) m.setOpen(c.parent_id, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, m.find(highlightId ?? "")?.id]);
 
@@ -236,15 +290,20 @@ function Item({
   const [editing, setEditing] = useState(false);
   const [lit, setLit] = useState(false);
   const ref = useRef<View>(null);
+  const bring = useBringIntoView();
 
-  // Binnen via een melding: 1,5 s zacht gemarkeerd, en in beeld.
+  // Binnen via een melding: 1,5 s zacht gemarkeerd, en in beeld. Even
+  // wachten tot de draad open is en de lay-out staat.
   useEffect(() => {
     if (!highlight) return;
     setLit(true);
-    if (isWeb) (ref.current as unknown as HTMLElement | null)?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    const scroll = setTimeout(() => bring(ref.current), 120);
     const id = setTimeout(() => setLit(false), 1500);
-    return () => clearTimeout(id);
-  }, [highlight]);
+    return () => {
+      clearTimeout(scroll);
+      clearTimeout(id);
+    };
+  }, [highlight, bring]);
 
   const time = relTime(c.created_at, t, lang);
   const bodySize = variant === "desktop" ? (small ? 18 : 21) : small ? 17 : 18;
@@ -299,14 +358,14 @@ function Item({
       accessibilityState={{ selected: likes.liked }}
       onPress={() => m.toggleLike(c.id)}
       hitSlop={14}
-      style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, pointer]}
+      style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, tap(14, 24, 6), pointer]}
     >
       <HeartIcon on={likes.liked} size={small ? 13 : 14} ink={color("ink", "inkDim")} />
     </Pressable>
   );
   // Het aantal opent wie het was (zoals "Geliked door" bij een bijdrage).
   const likeCount = likes.count ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${t.likesTitle}: ${likes.count}`} onPress={() => setWhoOpen(true)} hitSlop={10} style={pointer}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${t.likesTitle}: ${likes.count}`} onPress={() => setWhoOpen(true)} hitSlop={10} style={[tap(14, 0, 10), pointer]}>
       <Text style={[meta, { textDecorationLine: "underline" }]}>
         {variant === "mobile" ? likes.count : likes.count === 1 ? t.oneLike : fill(t.nLikes, likes.count)}
       </Text>
@@ -314,7 +373,7 @@ function Item({
   ) : null;
 
   const reply = (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${t.replyTo} ${name}`} onPress={() => onReply(c)} hitSlop={12} style={pointer}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${t.replyTo} ${name}`} onPress={() => onReply(c)} hitSlop={12} style={[tap(14), pointer]}>
       <Text style={meta}>{t.replyC}</Text>
     </Pressable>
   );
@@ -384,7 +443,7 @@ function Item({
               {reply}
               <View style={{ flex: 1 }} />
               {repliesLabel ? (
-                <Pressable accessibilityRole="button" onPress={onToggleReplies} hitSlop={12} style={pointer}>
+                <Pressable accessibilityRole="button" onPress={onToggleReplies} hitSlop={12} style={[tap(14), pointer]}>
                   <Text style={meta}>{repliesLabel}</Text>
                 </Pressable>
               ) : null}
@@ -414,7 +473,7 @@ function Item({
               ) : null}
               {reply}
               {actions.length ? (
-                <Pressable accessibilityRole="button" accessibilityLabel="Meer" onPress={() => setMenu(true)} hitSlop={10} style={pointer}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Meer" onPress={() => setMenu(true)} hitSlop={10} style={[tap(14, 12, 12), pointer]}>
                   <Text style={meta}>⋯</Text>
                 </Pressable>
               ) : null}
@@ -433,8 +492,15 @@ function PendingItem({ p, m, variant, small = false }: { p: PendingComment; m: C
   const t = useT();
   const failed = p.status === "failed";
   const size = variant === "desktop" ? (small ? 18 : 21) : small ? 17 : 18;
+  // Net verstuurd: in beeld, zodat je ziet waar je antwoord kwam.
+  const ref = useRef<View>(null);
+  const bring = useBringIntoView();
+  useEffect(() => {
+    const id = setTimeout(() => bring(ref.current), 60);
+    return () => clearTimeout(id);
+  }, [bring]);
   return (
-    <View style={{ flexDirection: "row", gap: 12, paddingVertical: small ? 0 : 16, opacity: failed ? 1 : 0.6 }}>
+    <View ref={ref} style={{ flexDirection: "row", gap: 12, paddingVertical: small ? 0 : 16, opacity: failed ? 1 : 0.6 }}>
       <View style={{ width: small ? 24 : 32 }} />
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <Text style={[serif(), { fontSize: size, lineHeight: Math.round(size * 1.3), color: color("ink") }]}>{p.body || "GIF"}</Text>

@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import type { RsvpStatus } from "@/lib/api/event-rsvps";
@@ -96,7 +96,10 @@ export function ChatsMagazine({
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 {/* Ongelezen: een rode stip vóór de naam (HANDOFF). */}
                 {c.unread > 0 ? <View accessibilityElementsHidden style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color("red") }} /> : null}
-                <SpreadTitle ink={fc.ink} numberOfLines={2} style={{ flexShrink: 1 }}>
+                {/* Ongelezen: de naam vet. Instrument Serif heeft één
+                    gewicht, dus web laat de browser hem verdikken en native
+                    een haarlijn-schaduw in dezelfde inkt. */}
+                <SpreadTitle ink={fc.ink} numberOfLines={2} style={[{ flexShrink: 1 }, c.unread > 0 ? unreadName(fc.ink) : null]}>
                   {c.name}
                 </SpreadTitle>
               </View>
@@ -589,4 +592,10 @@ function Note({ children }: { children: React.ReactNode }) {
       {children}
     </Text>
   );
+}
+
+function unreadName(ink: string): TextStyle {
+  return Platform.OS === "web"
+    ? { fontWeight: "700" }
+    : { textShadowColor: ink, textShadowOffset: { width: 0.5, height: 0 }, textShadowRadius: 0.5 };
 }

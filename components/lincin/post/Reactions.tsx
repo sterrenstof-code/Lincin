@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react";
-import { Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { BottomSheet } from "@/components/lincin/BottomSheet";
+import { EmojiPicker } from "@/components/lincin/EmojiPicker";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { sans } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
@@ -26,13 +27,6 @@ import { displayName } from "@/lib/lincin/model";
 
 const isWeb = Platform.OS === "web";
 const pointer = isWeb ? ({ cursor: "pointer" } as ViewStyle) : null;
-
-/** Meer emoji, voor "Meer" in de lade. */
-const MORE_EMOJI = [
-  "❤️", "🥹", "🔥", "👏", "😂", "🎉", "😍", "🥰", "😮", "😢", "😭", "😅", "🙏", "💪", "👀", "✨",
-  "🌊", "🌅", "☕", "🍻", "🥂", "🎂", "🌸", "🌿", "🏠", "🚲", "✈️", "📸", "🎧", "🎶", "💯", "👍",
-  "🤍", "🧡", "💛", "💚", "💙", "💜", "🤯", "🫶", "🙌", "😎", "🤔", "😴", "🤗", "😬", "🥳", "🐶",
-];
 
 export function HeartIcon({ on, size = 26, ink }: { on: boolean; size?: number; ink: string }) {
   return (
@@ -112,7 +106,7 @@ export function ActionRow({
         accessibilityState={{ selected: likes.liked }}
         onPress={() => likes.toggle(LIKE)}
         hitSlop={8}
-        style={[{ flexDirection: "row", alignItems: "center", gap: 8 }, pointer]}
+        style={[{ flexDirection: "row", alignItems: "center", gap: 8 }, isWeb ? { paddingVertical: 9, marginVertical: -9 } : null, pointer]}
       >
         <HeartIcon on={likes.liked} ink={ink} />
         <Text style={[sans(700), { fontSize: 13, lineHeight: 16, color: ink }]}>{likes.count}</Text>
@@ -123,7 +117,7 @@ export function ActionRow({
         onPress={onComments}
         disabled={!onComments}
         hitSlop={8}
-        style={[{ flexDirection: "row", alignItems: "center", gap: 8 }, pointer]}
+        style={[{ flexDirection: "row", alignItems: "center", gap: 8 }, isWeb ? { paddingVertical: 9, marginVertical: -9 } : null, pointer]}
       >
         <BubbleIcon ink={ink} />
         <Text style={[sans(700), { fontSize: 13, lineHeight: 16, color: ink }]}>{commentCount}</Text>
@@ -208,21 +202,7 @@ export function EmojiDrawer({ mine, onPick, onClose, cell = 52 }: { mine: Set<st
           <Text style={[sans(700), { fontSize: 8, lineHeight: 11, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{t.moreEmoji}</Text>
         </Pressable>
       </View>
-      {more ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", borderWidth: 1, borderColor: color("ink", "postRule"), borderRadius: modern ? 14 : 0 }}>
-          {MORE_EMOJI.map((e) => (
-            <Pressable
-              key={e}
-              accessibilityRole="button"
-              accessibilityLabel={e}
-              onPress={() => pick(e)}
-              style={[{ width: "12.5%", height: 44, alignItems: "center", justifyContent: "center", backgroundColor: mine.has(e) ? color("tint") : "transparent" }, pointer]}
-            >
-              <Text style={{ fontSize: 22, lineHeight: 28 }}>{e}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      {more ? <EmojiPicker onPick={pick} selected={mine} /> : null}
     </View>
   );
 }
@@ -331,3 +311,34 @@ export function LikesPanel({
   );
 }
 
+/** Het hart dat even oplicht na een dubbeltik op de foto: 450 ms. */
+export function HeartBurst({ show }: { show: boolean }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!show) return;
+    a.setValue(0);
+    Animated.sequence([
+      Animated.timing(a, { toValue: 1, duration: 180, easing: Easing.out(Easing.back(2)), useNativeDriver: Platform.OS !== "web" }),
+      Animated.timing(a, { toValue: 0, duration: 270, delay: 0, useNativeDriver: Platform.OS !== "web" }),
+    ]).start();
+  }, [show, a]);
+  if (!show) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: a,
+        transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
+      }}
+    >
+      <HeartIcon on size={96} ink="#FFFFFF" />
+    </Animated.View>
+  );
+}

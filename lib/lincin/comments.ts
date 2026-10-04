@@ -318,6 +318,11 @@ export function useComments({
     hasMore: visibleRoots.length > limit,
     moreCount: Math.max(0, visibleRoots.length - limit),
     loadMore: () => setLimit((n) => n + PAGE),
+    /** Zorg dat deze hoofdreactie getoond wordt (een melding naar reactie 31). */
+    reveal: (rootId: string) => {
+      const i = visibleRoots.findIndex((c) => c.id === rootId);
+      if (i >= limit) setLimit(Math.ceil((i + 1) / PAGE) * PAGE);
+    },
     repliesOf: (rootId: string) => (replies.get(rootId) ?? []).filter((c) => !gone.has(c.id)),
     pendingFor: (rootId: string | null) => pending.filter((p) => p.parentId === rootId),
     find: (id: string) => all.find((c) => c.id === id) ?? null,

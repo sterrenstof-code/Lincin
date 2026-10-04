@@ -901,8 +901,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     const text = draft.trim();
     if (!text) return;
 
-    // Lichte impact-feedback bij verzenden — voelt responsief op iOS
-    if (Platform.OS === "ios") {
+    // Lichte tik bij verzenden (HANDOFF §Algemeen) — iOS én Android.
+    if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
 

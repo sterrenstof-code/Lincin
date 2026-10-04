@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type TextInput } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type TextInput } from "react-native";
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox, ReplyStrip } from "@/components/lincin/ComposeBar";
-import { CommentList, CommentsHead } from "@/components/lincin/post/Comments";
-import { ActionRow, EmojiDrawer, HeartIcon, LikedBy, LikesPanel, UnderlinedAction } from "@/components/lincin/post/Reactions";
+import { ActionRow, EmojiDrawer, HeartBurst, LikedBy, LikesPanel, UnderlinedAction } from "@/components/lincin/post/Reactions";
+import { CommentList, CommentScrollProvider, CommentsHead, useCommentScroll } from "@/components/lincin/post/Comments";
 import { Media } from "@/components/lincin/Media";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
@@ -105,6 +105,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   const [boxOpen, setBoxOpen] = useState(false);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const cs = useCommentScroll();
 
   function send(imageUri?: string) {
     if (!p || !myUserId) return;
@@ -202,7 +203,9 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
       }
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={cs.scrollRef} style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+          <CommentScrollProvider value={cs.scrollTo}>
+          <View ref={cs.contentRef} collapsable={false}>
           {post.isLoading && !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.loading}
@@ -340,6 +343,8 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
               </View>
             </>
           )}
+          </View>
+          </CommentScrollProvider>
         </ScrollView>
 
         <ComposeBar
@@ -374,34 +379,3 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
 
 const EMPTY = new Set<string>();
 
-/** Het hart dat even oplicht na een dubbeltik op de foto: 450 ms. */
-function HeartBurst({ show }: { show: boolean }) {
-  const a = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!show) return;
-    a.setValue(0);
-    Animated.sequence([
-      Animated.timing(a, { toValue: 1, duration: 180, easing: Easing.out(Easing.back(2)), useNativeDriver: Platform.OS !== "web" }),
-      Animated.timing(a, { toValue: 0, duration: 270, delay: 0, useNativeDriver: Platform.OS !== "web" }),
-    ]).start();
-  }, [show, a]);
-  if (!show) return null;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: a,
-        transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
-      }}
-    >
-      <HeartIcon on size={96} ink="#FFFFFF" />
-    </Animated.View>
-  );
-}

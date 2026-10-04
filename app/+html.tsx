@@ -42,6 +42,17 @@ export default function Root({ children }: PropsWithChildren) {
             terug op het besturingssysteem, zet de klasse. Alles wat er
             daarna mee gebeurt staat in lib/design/theme.ts.
             --------------------------------------------------------------- */}
+        {/* Toetsenbordstand: Tab zet hem aan, een klik of tik weer uit.
+            global.css toont daarmee ook in tekstvelden de rode focusring,
+            die de velden inline uitzetten (voor wie klikt is de cursor
+            genoeg). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var r=document.documentElement;
+addEventListener('keydown',function(e){if(e.key==='Tab')r.classList.add('kbd');},true);
+addEventListener('pointerdown',function(){r.classList.remove('kbd');},true);})();`,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{

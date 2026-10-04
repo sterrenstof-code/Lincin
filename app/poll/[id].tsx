@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type
 
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { ComposeBar, ReactBox, ReplyStrip } from "@/components/lincin/ComposeBar";
-import { CommentList, CommentsHead } from "@/components/lincin/post/Comments";
+import { CommentList, CommentScrollProvider, CommentsHead, useCommentScroll } from "@/components/lincin/post/Comments";
 import { PollBlock } from "@/components/lincin/post/Poll";
 import { Mono } from "@/components/lincin/ui";
 import type { EntityComment } from "@/lib/api/entity-comments";
@@ -63,6 +63,7 @@ export default function PollScreen() {
   const [replyTo, setReplyTo] = useState<EntityComment | null>(null);
   const [boxOpen, setBoxOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const cs = useCommentScroll();
 
   function send(imageUri?: string) {
     if (!p || !myUserId) return;
@@ -133,7 +134,9 @@ export default function PollScreen() {
       }
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={cs.scrollRef} style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+          <CommentScrollProvider value={cs.scrollTo}>
+          <View ref={cs.contentRef} collapsable={false}>
           {pm.isLoading && !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.loading}
@@ -181,6 +184,8 @@ export default function PollScreen() {
               </View>
             </>
           )}
+          </View>
+          </CommentScrollProvider>
         </ScrollView>
 
         <ComposeBar

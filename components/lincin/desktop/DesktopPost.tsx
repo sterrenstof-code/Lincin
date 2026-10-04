@@ -11,7 +11,7 @@ import { isLightboxOpen, openLightbox } from "@/components/lincin/Lightbox";
 import { Media, useDoubleTap } from "@/components/lincin/Media";
 import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
 import { CommentList, SortToggle } from "@/components/lincin/post/Comments";
-import { ActionRow, EmojiDrawer, LikedBy, LikesPanel } from "@/components/lincin/post/Reactions";
+import { ActionRow, EmojiDrawer, LikedBy, LikesPanel, HeartBurst } from "@/components/lincin/post/Reactions";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import type { EntityComment } from "@/lib/api/entity-comments";
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
@@ -93,7 +93,12 @@ export function DesktopPost({ id }: { id: string }) {
   const [panel, setPanel] = useState(false);
   const [replyTo, setReplyTo] = useState<EntityComment | null>(null);
   const inputRef = useRef<TextInput>(null);
-  const doubleTap = useDoubleTap(() => likes.like());
+  // Dubbelklik = like, met hetzelfde hart als op de telefoon.
+  const [burst, setBurst] = useState(0);
+  const doubleTap = useDoubleTap(() => {
+    likes.like();
+    setBurst((n) => n + 1);
+  });
 
   const [draft, setDraft, clearDraft] = useDraft(id ? `post:${id}` : null);
   const emoji = useComposeSuggest(draft, setDraft);
@@ -250,6 +255,7 @@ export function DesktopPost({ id }: { id: string }) {
               }
             />
           </View>
+          <HeartBurst key={burst} show={burst > 0} />
           {multi ? (
             <>
               <View style={{ pointerEvents: "box-none", position: "absolute", left: 18, right: 18, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

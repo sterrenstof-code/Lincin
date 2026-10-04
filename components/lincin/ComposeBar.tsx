@@ -7,6 +7,7 @@ import { lincinType, sans, serif } from "@/lib/design/type";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useT } from "@/lib/i18n";
 
+import { EmojiPicker } from "./EmojiPicker";
 import { MentionSuggestions, useMentionSuggest } from "./MentionSuggest";
 import { BORDER, Btn, GUTTER, Mono } from "./ui";
 
@@ -420,6 +421,8 @@ export function ReactBox({
 }) {
   const t = useT();
   const [tab, setTab] = useState<"emoji" | "gif">("emoji");
+  // "Meer": de volledige kiezer onder de twaalf vaste.
+  const [more, setMore] = useState(false);
   const ink = color("ink");
 
   async function pick() {
@@ -475,6 +478,22 @@ export function ReactBox({
                 </Pressable>
               );
             })}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t.moreEmoji}
+              accessibilityState={{ expanded: more }}
+              onPress={() => setMore((v) => !v)}
+              style={{ width: "100%", height: 36, alignItems: "center", justifyContent: "center", backgroundColor: more ? color("tint") : color("paper") }}
+            >
+              <Text style={[sans(700), { fontSize: 9, lineHeight: 12, letterSpacing: 1.4, textTransform: "uppercase", color: ink }]}>
+                {t.moreEmoji} {more ? "▴" : "▾"}
+              </Text>
+            </Pressable>
+            {more ? (
+              <View style={{ width: "100%", backgroundColor: color("paper") }}>
+                <EmojiPicker onPick={onEmoji} selected={active} height={220} />
+              </View>
+            ) : null}
           </View>
         ) : (
           <ScrollView horizontal={false} style={{ maxHeight: 160 }} contentContainerStyle={{ padding: 10, gap: 8 }}>

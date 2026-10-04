@@ -174,6 +174,15 @@
   outline: none;
 }
 
+/* Tekstvelden zetten hun ring inline uit (voor wie klikt is de cursor
+   genoeg). Wie met Tab door de pagina gaat — `html.kbd`, gezet in
+   app/+html.tsx — ziet hem toch, ook in de schrijfbalk. */
+html.kbd input:focus,
+html.kbd textarea:focus {
+  outline: 2px solid rgb(var(--c-flame)) !important;
+  outline-offset: 2px;
+}
+
 /* ===============================================================
    BEWEGING UIT
    ===============================================================
