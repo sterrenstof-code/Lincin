@@ -40,7 +40,7 @@ const NL = {
   writeComment: "Schrijf een reactie…", searchGif: "Zoek een gif… (dijk, zonsondergang, wow)", back: "Terug",
   lincSince: "linc sinds", privateChat: "Gesprek", planTogether: "Samen plannen", allFrom: "Alles van",
   chats: "Gesprekken", unread: "ongelezen", newMsg: "nieuw bericht", newMsgs: "nieuwe berichten", markRead: "Markeer als gelezen", markUnread: "Markeer als ongelezen", mentioned: "Vermeld", about: "over", typing: "schrijft…", writeTo: "Schrijf aan",
-  eventsA: "Wat er", eventsB: "komt", planned: "gepland", waitsForYou: "wacht op jou", imIn: "Ik kom", maybe: "Misschien",
+  eventsA: "Wat er", eventsB: "komt", planned: "gepland", waitsForYou: "wacht op jou", imIn: "Ik kom", maybe: "Misschien", withWho: "met", eventPast: "Voorbij", nowLive: "nu bezig", shareEventCode: "Deel code", openEvent: "Open →", rsvpAsk: "Kom je?", rsvpComing: "komen", rsvpMaybeN: "misschien",
   listsA: "Wat jullie", listsB: "bijhouden", list: "lijst", lists: "lijsten", newList: "Nieuwe lijst", myLists: "Mijn lijsten",
   noListsYet: "Nog geen lijsten", listEmpty: "nog leeg", ofWord: "van",
   planNew: "Plan iets nieuws", draftFrom: "concept · uit", sinceMar: "sinds", yourLatest: "Jouw laatste bijdragen",
@@ -56,7 +56,7 @@ const NL = {
   followsDevice: "Volgt je toestel", light: "licht", dark: "donker", tint: "Blad kleurt mee",
   tintSub: "Achtergrond neemt de kleur van de vriend in beeld", language: "Taal", languageSub: "Nederlands · English · Deutsch",
   notifTitle: "Meldingen", newPosts: "Nieuwe bijdragen", newPostsSub: "Eén melding per vriend per dag",
-  quiet: "Stil tussen 23:00 en 08:00", quietSub: "Berichten komen wel binnen", whoTitle: "Wie ziet wat",
+  quiet: "Stil tussen 22:00 en 07:00", quietSub: "Berichten komen wel binnen", whoTitle: "Wie ziet wat",
   visible: "Lincs zien mijn bijdragen", visibleSub: "Alleen wie je toevoegde", myLincs: "Mijn lincs", friends: "vrienden",
   gifNote: "gif", reply: "Antwoord", loading: "Laden…", failed: "Kon niet laden", retry: "Opnieuw",
   andWord: "en", othersWord: "anderen", otherWord: "ander", noFriendsYet: "Nog geen lincs", nothingNew: "Nog niets van je vrienden", me: "Jij",
@@ -64,6 +64,7 @@ const NL = {
   edition: "Editie", editionA: "In deze", editionB: "editie", spotA: "Op", spotB: "spotlight", privateShort: "Bericht",
   noAlgo: "geen algoritme · alleen vrienden",
   device: "toestel", profileOf: "Profiel van", panelNote: "een gesprek opent op volle breedte", on: "aan", off: "uit",
+  yourAccount: "Jouw account", accountTitle: "Account", invitationsLabel: "Uitnodigingen", yourLincs: "Jouw lincs", letIn: "Toelaten", lincDone: "Linc ✓", inviteMore: "Nodig uit +", asksToLinc: "wil met je lincen",
 };
 
 const EN: typeof NL = {
@@ -90,7 +91,7 @@ const EN: typeof NL = {
   writeComment: "Write a comment…", searchGif: "Search a gif… (dyke, sunset, wow)", back: "Back",
   lincSince: "linc since", privateChat: "Chat", planTogether: "Plan together", allFrom: "Everything from",
   chats: "Chats", unread: "unread", newMsg: "new message", newMsgs: "new messages", markRead: "Mark as read", markUnread: "Mark as unread", mentioned: "Mentioned", about: "about", typing: "is typing…", writeTo: "Write to",
-  eventsA: "What's", eventsB: "coming", planned: "planned", waitsForYou: "waits for you", imIn: "I'm in", maybe: "Maybe",
+  eventsA: "What's", eventsB: "coming", planned: "planned", waitsForYou: "waits for you", imIn: "I'm in", maybe: "Maybe", withWho: "with", eventPast: "Past", nowLive: "happening now", shareEventCode: "Share code", openEvent: "Open →", rsvpAsk: "Are you coming?", rsvpComing: "coming", rsvpMaybeN: "maybe",
   listsA: "What you", listsB: "keep", list: "list", lists: "lists", newList: "New list", myLists: "My lists",
   noListsYet: "No lists yet", listEmpty: "still empty", ofWord: "of",
   planNew: "Plan something new", draftFrom: "draft · from", sinceMar: "since", yourLatest: "Your latest posts",
@@ -106,7 +107,7 @@ const EN: typeof NL = {
   followsDevice: "Follows your device", light: "light", dark: "dark", tint: "Page takes the colour",
   tintSub: "Background tints with the friend in view", language: "Language", languageSub: "Nederlands · English · Deutsch",
   notifTitle: "Notifications", newPosts: "New posts", newPostsSub: "One notification per friend per day",
-  quiet: "Quiet between 23:00 and 08:00", quietSub: "Messages still arrive", whoTitle: "Who sees what",
+  quiet: "Quiet between 22:00 and 07:00", quietSub: "Messages still arrive", whoTitle: "Who sees what",
   visible: "Lincs see my posts", visibleSub: "Only people you added", myLincs: "My lincs", friends: "friends",
   gifNote: "gif", reply: "Reply", loading: "Loading…", failed: "Could not load", retry: "Retry",
   andWord: "and", othersWord: "others", otherWord: "other", noFriendsYet: "No lincs yet", nothingNew: "Nothing from your friends yet", me: "You",
@@ -114,6 +115,7 @@ const EN: typeof NL = {
   edition: "Edition", editionA: "In this", editionB: "edition", spotA: "On", spotB: "spotlight", privateShort: "Message",
   noAlgo: "no algorithm · friends only",
   device: "device", profileOf: "Profile of", panelNote: "a chat opens full width", on: "on", off: "off",
+  yourAccount: "Your account", accountTitle: "Account", invitationsLabel: "Invitations", yourLincs: "Your lincs", letIn: "Let in", lincDone: "Linc ✓", inviteMore: "Invite +", asksToLinc: "wants to linc with you",
 };
 
 const DE: typeof NL = {
@@ -140,7 +142,7 @@ const DE: typeof NL = {
   writeComment: "Kommentar schreiben…", searchGif: "GIF suchen… (Deich, Sonnenuntergang, wow)", back: "Zurück",
   lincSince: "Linc seit", privateChat: "Gespräch", planTogether: "Zusammen planen", allFrom: "Alles von",
   chats: "Gespräche", unread: "ungelesen", newMsg: "neue Nachricht", newMsgs: "neue Nachrichten", markRead: "Als gelesen markieren", markUnread: "Als ungelesen markieren", mentioned: "Erwähnt", about: "über", typing: "schreibt…", writeTo: "Schreib an",
-  eventsA: "Was", eventsB: "kommt", planned: "geplant", waitsForYou: "wartet auf dich", imIn: "Ich komme", maybe: "Vielleicht",
+  eventsA: "Was", eventsB: "kommt", planned: "geplant", waitsForYou: "wartet auf dich", imIn: "Ich komme", maybe: "Vielleicht", withWho: "mit", eventPast: "Vorbei", nowLive: "läuft gerade", shareEventCode: "Code teilen", openEvent: "Öffnen →", rsvpAsk: "Kommst du?", rsvpComing: "kommen", rsvpMaybeN: "vielleicht",
   listsA: "Was ihr", listsB: "festhaltet", list: "Liste", lists: "Listen", newList: "Neue Liste", myLists: "Meine Listen",
   noListsYet: "Noch keine Listen", listEmpty: "noch leer", ofWord: "von",
   planNew: "Etwas Neues planen", draftFrom: "Entwurf · aus", sinceMar: "seit", yourLatest: "Deine letzten Beiträge",
@@ -156,7 +158,7 @@ const DE: typeof NL = {
   followsDevice: "Folgt deinem Gerät", light: "hell", dark: "dunkel", tint: "Seite färbt sich mit",
   tintSub: "Hintergrund nimmt die Farbe des Freundes im Bild", language: "Sprache", languageSub: "Nederlands · English · Deutsch",
   notifTitle: "Mitteilungen", newPosts: "Neue Beiträge", newPostsSub: "Eine Mitteilung pro Freund pro Tag",
-  quiet: "Ruhe zwischen 23:00 und 08:00", quietSub: "Nachrichten kommen trotzdem an", whoTitle: "Wer sieht was",
+  quiet: "Ruhe zwischen 22:00 und 07:00", quietSub: "Nachrichten kommen trotzdem an", whoTitle: "Wer sieht was",
   visible: "Lincs sehen meine Beiträge", visibleSub: "Nur wer du hinzugefügt hast", myLincs: "Meine Lincs", friends: "Freunde",
   gifNote: "gif", reply: "Antworten", loading: "Laden…", failed: "Konnte nicht laden", retry: "Nochmal",
   andWord: "und", othersWord: "andere", otherWord: "andere:r", noFriendsYet: "Noch keine Lincs", nothingNew: "Noch nichts von deinen Freunden", me: "Du",
@@ -164,6 +166,7 @@ const DE: typeof NL = {
   edition: "Ausgabe", editionA: "In dieser", editionB: "Ausgabe", spotA: "Im", spotB: "Rampenlicht", privateShort: "Nachricht",
   noAlgo: "kein Algorithmus · nur Freunde",
   device: "Gerät", profileOf: "Profil von", panelNote: "ein Gespräch öffnet in voller Breite", on: "an", off: "aus",
+  yourAccount: "Dein Konto", accountTitle: "Konto", invitationsLabel: "Einladungen", yourLincs: "Deine Lincs", letIn: "Zulassen", lincDone: "Linc ✓", inviteMore: "Einladen +", asksToLinc: "möchte mit dir lincen",
 };
 
 export type Dict = typeof NL;

@@ -973,11 +973,23 @@ function getScheme(): Scheme {
   return scheme;
 }
 
-function getPreference(): ThemePreference {
+export function getPreference(): ThemePreference {
   return preference;
 }
 
-export function setPreference(next: ThemePreference) {
+/**
+ * Heeft de gebruiker in déze sessie zelf licht/donker gekozen? Dan wint die
+ * keuze van wat er later uit `user_prefs` binnenkomt — dezelfde regel als
+ * bij het thema (2.2 §6). Het lokaal bewaarde `lincin.theme` telt niet als
+ * keuze van deze sessie: dat is alleen de kopie voor het eerste beeld.
+ */
+let preferenceChosen = false;
+/** Kwam de stand al uit `user_prefs`? Dan is de lokale kopie (native, trager) te oud. */
+let preferenceFromServer = false;
+const choiceListeners = new Set<(next: ThemePreference) => void>();
+
+/** Zet de stand en bewaar hem lokaal, zonder te zeggen wie hem koos. */
+function applyPreference(next: ThemePreference) {
   if (next === preference) return;
   preference = next;
   writeLocal(STORAGE_KEY, next);
@@ -985,6 +997,37 @@ export function setPreference(next: ThemePreference) {
   scheme = next === "system" ? systemScheme() : next;
   if (scheme !== before) applyWeb();
   emit();
+}
+
+/**
+ * De gebruiker koos licht, donker of toestel. Lokaal meteen (voor het eerste
+ * beeld bij de volgende start), en `lib/lincin/prefs.ts` luistert mee om hem
+ * per gebruiker in `user_prefs` te bewaren.
+ */
+export function setPreference(next: ThemePreference) {
+  preferenceChosen = true;
+  if (next === preference) return;
+  applyPreference(next);
+  for (const fn of choiceListeners) fn(next);
+}
+
+/**
+ * De stand zoals hij in `user_prefs` staat (een ander toestel koos hem).
+ * Geweigerd zodra je in deze sessie zelf koos. Geeft terug of hij geldt.
+ */
+export function setPreferenceFromServer(next: ThemePreference): boolean {
+  if (preferenceChosen) return false;
+  preferenceFromServer = true;
+  applyPreference(next);
+  return true;
+}
+
+/** Luister naar keuzes van de gebruiker zelf — niet naar wat de server zet. */
+export function subscribePreferenceChoice(fn: (next: ThemePreference) => void): () => void {
+  choiceListeners.add(fn);
+  return () => {
+    choiceListeners.delete(fn);
+  };
 }
 
 /** Het thema dat nu geldt. */
@@ -1079,7 +1122,9 @@ export function loadStoredPreference() {
   }
   AsyncStorage.getItem(STORAGE_KEY)
     .then((raw) => {
-      if (raw === "light" || raw === "dark" || raw === "system") setPreference(raw);
+      // De lokale kopie is geen keuze van deze sessie: de server mag hem nog
+      // overschrijven, dus niet via `setPreference()`.
+      if ((raw === "light" || raw === "dark" || raw === "system") && !preferenceChosen && !preferenceFromServer) applyPreference(raw);
     })
     .catch(() => {});
   // Native heeft geen localStorage, dus de eigen keuze komt hier pas binnen.

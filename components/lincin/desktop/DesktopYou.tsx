@@ -17,15 +17,15 @@ import { displayName, fromPost, shortAgo, timeLabel, type CardPost } from "@/lib
 
 import { DesktopShell } from "./Shell";
 import { Black } from "../magazine/Omslag";
+import { AccountBand, LincsColumn, NotesColumn, SettingsColumn } from "./YouAccount";
 
 /**
- * Jij op desktop (desktop-*-pages.dc.html, JIJ): links jouw band en jouw
- * bijdragen, rechts de meldingen. Instellingen hebben een eigen pagina
- * (`/settings` → DesktopSettings); de ◉ in de balk komt hier uit.
+ * Jij op desktop (desktop-*-pages.dc.html, JIJ). Instellingen hebben een
+ * eigen pagina (`/settings` → DesktopSettings); de ◉ in de balk komt hier uit.
  *
- *   magazine  "Jij" in serif 220 op het tweede papier met je rug, drie
- *             feiten, meldingen met een kleurstreep; bijdragen in een raster
- *             dat van maat wisselt.
+ *   magazine  "Jouw account": een band met de rode titel en drie feiten,
+ *             daaronder Meldingen · Lincs · Instellingen (YouAccount.tsx);
+ *             je bijdragen, profiel en QR onder de kolommen.
  *   modern    een getinte tegel met avatar van 80, tegels, meldingen als
  *             kleine tegels.
  */
@@ -78,7 +78,10 @@ export function DesktopYou() {
     const to = destinationFor(n);
     if (to) router.push(to as never);
   };
+  // Optimistisch: alle stippen meteen weg; mislukt het, dan zet de
+  // invalidatie de echte stand terug.
   const readAll = async () => {
+    qc.setQueryData<NotificationWithDetails[]>(["notifications", myUserId], (old) => (old ?? []).map((x) => ({ ...x, read: true })));
     await markAllNotificationsRead(myUserId).catch(() => {});
     bump();
   };
@@ -195,41 +198,34 @@ export function DesktopYou() {
 
   // ---------------- MAGAZINE ----------------
   if (th === "magazine") {
+    // "Jouw account" (desktop-magazine-pages.dc.html, page='jij'): de band,
+    // dan Meldingen · Lincs · Instellingen. Wat het prototype niet toont
+    // maar de app wel heeft — je bijdragen, profiel, QR — staat eronder.
+    const extra = [
+      { label: t.editProfile, onPress: () => router.push("/profile-edit") },
+      { label: t.myQr, onPress: () => router.push("/qr-code") },
+      { label: `${t.newPost} +`, onPress: () => router.push("/post-compose") },
+    ];
     return (
       <DesktopShell active="you" tabTint={mine.fill}>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: SEAM, padding: SEAM }}>
-            <View style={{ flex: 1, minWidth: 0, gap: SEAM }}>
-              <View style={{ minHeight: 360, paddingTop: 30, paddingRight: 32, paddingBottom: 28, paddingLeft: 27, borderLeftWidth: 5, borderLeftColor: mine.fill, backgroundColor: color("paper2"), justifyContent: "space-between", gap: 24 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 20 }}>
-                  <Text style={magLabel(10, dim)}>{t.yourPage}</Text>
-                  <Pressable accessibilityRole="link" onPress={toSettings}>
-                    <Text style={[magLabel(10, ink), { textDecorationLine: "underline" }]}>{t.settings} →</Text>
-                  </Pressable>
-                </View>
-                {/* De omslag: JIJ rood in Archivo 900 van 260. */}
-                <Black size={260} f={0.76} upper nowrap>
-                  {t.me}
-                </Black>
-              </View>
-              <View style={{ flexDirection: "row", gap: SEAM }}>
-                {stats.map((s) => (
-                  <View key={s.k} style={{ flex: 1, backgroundColor: color("paper2"), paddingTop: 18, paddingHorizontal: 22, paddingBottom: 16, gap: 10 }}>
-                    <Text style={magLabel(8.5, dim)}>{s.k}</Text>
-                    <Text style={[serif(), { fontSize: 34, lineHeight: 34, color: ink }]}>{s.v}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-            {notesBlock}
+          <AccountBand spine={mine.fill} stats={stats} />
+          <View style={{ flexDirection: "row", alignItems: "stretch", gap: SEAM, padding: SEAM }}>
+            <NotesColumn list={list} loading={notes.isLoading} onOpen={openNote} onReadAll={readAll} />
+            <LincsColumn myUserId={myUserId} friendships={friendships.data ?? []} />
+            <SettingsColumn myUserId={myUserId} />
           </View>
-          <View style={{ marginHorizontal: SEAM, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
+          <View style={{ marginHorizontal: SEAM, marginTop: 18, paddingTop: 14, paddingHorizontal: 26, paddingBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 24, borderBottomWidth: OMSLAG.rule, borderBottomColor: ink }}>
             <Text style={[serif(), { fontSize: 30, lineHeight: 32, color: ink }]}>
               {t.myPosts.split(" ")[0]} <Text style={serif(true)}>{t.myPosts.split(" ").slice(1).join(" ")}</Text>
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push("/post-compose")}>
-              <Text style={[magLabel(9, ink), { textDecorationLine: "underline" }]}>{t.newPost} +</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 24 }}>
+              {extra.map((a) => (
+                <Pressable key={a.label} accessibilityRole="link" onPress={a.onPress}>
+                  <Text style={[magLabel(9, ink), { textDecorationLine: "underline" }]}>{a.label}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
           <View onLayout={(e) => setGridW(e.nativeEvent.layout.width - SEAM * 2)} style={{ flexDirection: "row", flexWrap: "wrap", gap: SEAM, padding: SEAM }}>
             {gridW ? postTiles(gridW) : null}

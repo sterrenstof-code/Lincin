@@ -60,7 +60,7 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
     };
   }, [userId]);
 
-  // Je voorkeuren (0070): weergave, open vrienden, taal, schakelaars.
+  // Je voorkeuren (0070): weergave, open vrienden, taal, licht/donker, schakelaars.
   useEffect(() => (userId ? syncUserPrefs(userId) : undefined), [userId]);
 
   const choose = useCallback(

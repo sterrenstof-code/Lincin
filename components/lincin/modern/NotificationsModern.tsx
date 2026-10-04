@@ -1,11 +1,11 @@
-import { Text, View } from "react-native";
+import { Platform, Pressable, Text, View, type TextStyle } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
 import { color, friendColor, hueFor, type Scheme } from "@/lib/design/theme";
-import { sans } from "@/lib/design/type";
+import { mono, sans } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
-import { Bento, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
+import { Bento, Counter, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
 
 /**
  * Meldingen in modern (prototype `MELDINGEN · MODERN`).
@@ -38,6 +38,7 @@ export function NotificationsModern({
   state,
   emptyLabel,
   onEmptyPress,
+  onMarkAll,
 }: {
   rows: NoteRowData[];
   unread: number;
@@ -46,11 +47,27 @@ export function NotificationsModern({
   state?: string | null;
   emptyLabel?: string;
   onEmptyPress?: () => void;
+  /** "Alles gelezen" — alleen getoond als er iets ongelezen is. */
+  onMarkAll?: () => void;
 }) {
   return (
     <LincinScreen tab="you" counter={t.notifications} back="/profile">
       <Bento>
-        <TitleTile title={t.notifications} meta={`${unread} ${t.new}`} />
+        <TitleTile
+          title={t.notifications}
+          meta={
+            // De teller met eronder "Alles gelezen": dezelfde mono-link als
+            // de Meldingen-kolom op desktop (desktop-modern-pages, jij).
+            <View style={{ alignItems: "flex-end", gap: 8 }}>
+              <Counter>{`${unread} ${t.new}`}</Counter>
+              {unread > 0 && onMarkAll ? (
+                <Pressable accessibilityRole="button" onPress={onMarkAll} hitSlop={12} style={Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null}>
+                  <Text style={linkStyle()}>{t.allRead}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          }
+        />
         {state ? (
           <Tile span={2}>
             <TileMeta>{state}</TileMeta>
@@ -70,7 +87,7 @@ export function NotificationsModern({
               <View style={{ flexShrink: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: fc.fill }} />
               <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
                 <Text style={{ ...sans(400), fontSize: 14, lineHeight: 19, color: color("ink") }}>
-                  {n.by ? <Text style={{ ...sans(500) }}>{n.by} </Text> : null}
+                  {n.by ? <Text style={{ ...sans(600) }}>{n.by} </Text> : null}
                   {n.text}
                 </Text>
                 <TileMeta>{n.when}</TileMeta>
@@ -88,3 +105,19 @@ export function NotificationsModern({
     </LincinScreen>
   );
 }
+
+/**
+ * Mono 9px op `.16em`, kapitaal, gedempt en onderstreept — de link van het
+ * prototype. Een functie, geen constante: op native levert `color()` de
+ * waarde van de stand van nú, en die moet meewisselen met licht/donker.
+ */
+const linkStyle = (): TextStyle => ({
+  ...mono(500),
+  fontSize: 9,
+  lineHeight: 14,
+  letterSpacing: 1.44,
+  textTransform: "uppercase",
+  color: color("ink", "inkDim"),
+  textDecorationLine: "underline",
+  textUnderlineOffset: 3,
+}) as TextStyle;

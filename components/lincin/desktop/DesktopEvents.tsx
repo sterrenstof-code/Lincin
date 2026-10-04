@@ -1,20 +1,21 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
 
-import { listRsvps, setRsvp, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
+import { useEventRsvps, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { getProfiles } from "@/lib/api/profiles";
 import { useAuth } from "@/lib/auth/provider";
-import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, hhmm } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
 import { DesktopShell, PageHead } from "./Shell";
-import { Black, Label } from "../magazine/Omslag";
+import { Black, Label, Scrim } from "../magazine/Omslag";
 
 /**
  * Events op desktop (desktop-*-pages.dc.html, EVENTS; handoff 23 sep).
@@ -52,7 +53,6 @@ export function DesktopEvents() {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
-  const qc = useQueryClient();
   const toast = useToast();
   const t = useT();
   const lang = useLang();
@@ -63,10 +63,11 @@ export function DesktopEvents() {
   const events = useQuery({ queryKey: ["events", myUserId], queryFn: () => listMyEvents(myUserId), refetchOnWindowFocus: true });
   const data = useMemo(() => events.data ?? [], [events.data]);
   const ids = useMemo(() => data.map((e) => e.id), [data]);
-  const rsvps = useQuery({ queryKey: ["event-rsvps", ids], queryFn: () => listRsvps(ids), enabled: ids.length > 0 });
+  const onRsvpError = useCallback((err: unknown) => toast.error(err instanceof Error ? err.message : t.failed), [toast, t.failed]);
+  const rsvp = useEventRsvps(ids, myUserId, onRsvpError);
   const peopleIds = useMemo(
-    () => Array.from(new Set([...data.map((e) => e.host_user_id), ...(rsvps.data ?? []).map((r) => r.user_id)])),
-    [data, rsvps.data],
+    () => Array.from(new Set([...data.map((e) => e.host_user_id), ...rsvp.rsvps.map((r) => r.user_id)])),
+    [data, rsvp.rsvps],
   );
   const people = useQuery({ queryKey: ["profiles", peopleIds], queryFn: () => getProfiles(peopleIds), enabled: peopleIds.length > 0, staleTime: 60_000 });
   const nameOf = useMemo(() => {
@@ -77,7 +78,7 @@ export function DesktopEvents() {
   const now = Date.now();
   const rows: Row[] = useMemo(() => {
     const byEvent = new Map<string, EventRsvp[]>();
-    for (const r of rsvps.data ?? []) byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), r]);
+    for (const r of rsvp.rsvps) byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), r]);
     const sorted = [...data].sort((a, b) => {
       const pa = new Date(a.ends_at).getTime() <= now;
       const pb = new Date(b.ends_at).getTime() <= now;
@@ -106,20 +107,9 @@ export function DesktopEvents() {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, rsvps.data, nameOf, lang, scheme, myUserId, t]);
+  }, [data, rsvp.rsvps, nameOf, lang, scheme, myUserId, t]);
 
-  const answer = async (eventId: string, next: RsvpStatus | null) => {
-    const key = ["event-rsvps", ids];
-    const prev = qc.getQueryData<EventRsvp[]>(key) ?? [];
-    const rest = prev.filter((r) => !(r.event_id === eventId && r.user_id === myUserId));
-    qc.setQueryData<EventRsvp[]>(key, next ? [...rest, { event_id: eventId, user_id: myUserId, status: next }] : rest);
-    try {
-      await setRsvp(eventId, myUserId, next);
-    } catch (err) {
-      qc.setQueryData(key, prev);
-      toast.error(err instanceof Error ? err.message : t.failed);
-    }
-  };
+  const answer = rsvp.answer;
 
   const upcoming = rows.filter((r) => !r.past);
   const months = upcoming.length ? `${upcoming[0].month} – ${upcoming[upcoming.length - 1].month}` : "";
@@ -172,9 +162,12 @@ type RowProps = { r: Row; onOpen: () => void; onAnswer: (s: RsvpStatus | null) =
 function RowMagazine({ r, onOpen }: RowProps) {
   const t = useT();
   const ink = color("ink");
-  // De omslag (handoff 24 sep): de dag rood in Archivo 900 van 130, de
-  // labels in Archivo 700. Geen "Ik kom / Misschien" in magazine — die
-  // keuze staat niet op de lijst.
+  // De omslag (handoff 24 sep): met een cover vult de foto de kolom van 200
+  // en staat de datum wit op een verloop onderaan; zonder cover de dag rood
+  // in Archivo 900 van 130 met de maand in de vriendkleur. Geen "Ik kom /
+  // Misschien" in magazine — het prototype zet die keuze niet op de lijst;
+  // ze staat op de eventpagina.
+  const cover = r.e.cover_url;
   return (
     <Pressable
       accessibilityRole="link"
@@ -182,13 +175,27 @@ function RowMagazine({ r, onOpen }: RowProps) {
       onPress={onOpen}
       style={{ flexDirection: "row", minHeight: 200, backgroundColor: color("paper2"), borderLeftWidth: 5, borderLeftColor: r.fill.fill, opacity: r.past ? 0.6 : 1 }}
     >
-      <View style={{ width: 200, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "space-between", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
-        <Label size={10} color={r.fill.fill}>
-          {r.month}
-        </Label>
-        <Black size={130} f={0.76} nowrap>
-          {r.day}
-        </Black>
+      <View style={{ width: 200, overflow: "hidden", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
+        {cover ? (
+          <>
+            <Image source={{ uri: cover }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={150} />
+            <Scrim css="linear-gradient(0deg,rgba(16,16,12,.66),rgba(16,16,12,0))" style={{ left: 0, right: 0, bottom: 0, height: 72 }} />
+            <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingVertical: 14, paddingHorizontal: 20 }}>
+              <Label size={10} color={OMSLAG.onImage}>
+                {r.day} {r.month}
+              </Label>
+            </View>
+          </>
+        ) : (
+          <View style={{ flex: 1, paddingVertical: 26, paddingHorizontal: 28, justifyContent: "space-between" }}>
+            <Label size={10} color={r.fill.fill}>
+              {r.month}
+            </Label>
+            <Black size={130} f={0.76} nowrap>
+              {r.day}
+            </Black>
+          </View>
+        )}
       </View>
       <View style={{ flex: 1, minWidth: 0, paddingVertical: 26, paddingHorizontal: 32, justifyContent: "space-between", gap: 14 }}>
         <Label size={10} color={color("ink", "inkDim")}>
@@ -198,7 +205,7 @@ function RowMagazine({ r, onOpen }: RowProps) {
           {r.e.name}
         </Text>
         <Text numberOfLines={1} style={[serif(true), { fontSize: 20, lineHeight: 25, color: color("inkSoft") }]}>
-          {r.place ? `${r.place} — ` : ""}
+          {r.place ? `${r.place} — ${t.withWho} ` : ""}
           {r.whoGo}
         </Text>
       </View>
@@ -242,7 +249,7 @@ function TileModern({ r, width, onOpen, onAnswer }: RowProps & { width: number }
           {r.host} {t.invites}
         </Text>
         <Pressable accessibilityRole="link" onPress={onOpen}>
-          <Text numberOfLines={2} style={[sans(400), { fontSize: 30, lineHeight: 32, letterSpacing: -1, color: ink }]}>
+          <Text numberOfLines={2} style={[sans(400), { fontSize: 30, lineHeight: 31.5, letterSpacing: -1.05, color: ink }]}>
             {r.e.name}
           </Text>
         </Pressable>

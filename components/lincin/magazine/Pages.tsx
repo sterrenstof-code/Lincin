@@ -1,11 +1,16 @@
 import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
+import type { RsvpStatus } from "@/lib/api/event-rsvps";
 import { color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
 import { MagazineHead, Spread, SpreadCaption, SpreadKicker, SpreadTitle } from "./Spread";
+// Meldingen: rijen met de bouwstenen van de omslag.
+import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
+import { OMSLAG } from "@/lib/design/theme";
+import { Black, Label, LabelLink, RedDot } from "./Omslag";
 
 /**
  * De subpagina's van magazine als poster-spreads (WIJZIGINGEN-2.2 §2).
@@ -121,6 +126,13 @@ export type EventSpreadData = {
   title: string;
   sub: string;
   past: boolean;
+  /** Het event openen: een tik op het vlak. */
+  onOpen?: () => void;
+  /** Jouw antwoord (0072), of `null` als je nog niets zei. */
+  mine?: RsvpStatus | null;
+  /** "Ik kom" / "Misschien"; ontbreekt op een voorbij event. `null` wist je antwoord. */
+  onAnswer?: (s: RsvpStatus | null) => void;
+  /** Bijkomende acties, onderstreept (de host: "Deel code"). */
   actions: { label: string; onPress: () => void }[];
 };
 
@@ -153,7 +165,7 @@ export function EventsMagazine({
         />
         {state ? <Note>{state}</Note> : null}
         {events.map((e, i) => (
-          <EventSpread key={e.key} e={e} index={i} scheme={scheme} />
+          <EventSpread key={e.key} e={e} index={i} scheme={scheme} t={t} />
         ))}
         <Pressable
           accessibilityRole="button"
@@ -173,24 +185,34 @@ export function EventsMagazine({
           <Text style={{ ...serif(true), fontSize: 19, lineHeight: 24, color: color("ink", "inkDim") }}>{t.planNew}</Text>
         </Pressable>
         {past.map((e, i) => (
-          <EventSpread key={e.key} e={e} index={i} scheme={scheme} />
+          <EventSpread key={e.key} e={e} index={i} scheme={scheme} t={t} />
         ))}
       </Page>
     </LincinScreen>
   );
 }
 
-/** Eén event als spread. Desktop legt ze in een rooster met een vaste hoogte en breedte. */
+/**
+ * Eén event als spread. Desktop legt ze in een rooster met een vaste hoogte en breedte.
+ *
+ * Onderaan "Ik kom" / "Misschien" in de vorm van de omslag: vierkant, een
+ * lijn van 1 in de inkt van het vlak. Jouw keuze vult zich — "Ik kom" in
+ * het rood van de primaire actie met wit, "Misschien" in de inkt van het
+ * vlak — en nog een tik wist hem. Het mobiele prototype zet geen knoppen
+ * op de spread; de keuze hoort wél bij elk event (HANDOFF: RSVP onthouden).
+ */
 export function EventSpread({
   e,
   index,
   scheme,
+  t,
   height,
   style,
 }: {
   e: EventSpreadData;
   index: number;
   scheme: Scheme;
+  t: Dict;
   height?: number;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -203,6 +225,8 @@ export function EventSpread({
       ink={fc.ink}
       rail={`${e.by} · ${e.when}`}
       height={height}
+      onPress={e.onOpen}
+      accessibilityLabel={e.title}
       style={[{ opacity: e.past ? 0.6 : 1 }, style]}
     >
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
@@ -215,7 +239,14 @@ export function EventSpread({
       <SpreadCaption ink={fc.ink} numberOfLines={1}>
         {e.sub}
       </SpreadCaption>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+        {e.onAnswer ? (
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {(["yes", "maybe"] as const).map((s) => (
+              <RsvpSquare key={s} s={s} on={e.mine === s} fc={fc} label={s === "yes" ? t.imIn : t.maybe} onPress={() => e.onAnswer?.(e.mine === s ? null : s)} />
+            ))}
+          </View>
+        ) : null}
         {e.actions.map((a) => (
           <Pressable
             key={a.label}
@@ -244,64 +275,186 @@ export function EventSpread({
   );
 }
 
+function RsvpSquare({
+  s,
+  on,
+  fc,
+  label,
+  onPress,
+}: {
+  s: RsvpStatus;
+  on: boolean;
+  fc: { fill: string; ink: string };
+  label: string;
+  onPress: () => void;
+}) {
+  const bg = on ? (s === "yes" ? color("red") : fc.ink) : "transparent";
+  const fg = on ? (s === "yes" ? OMSLAG.onImage : fc.fill) : fc.ink;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: on }}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        height: 44,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: on ? bg : fc.ink,
+        backgroundColor: bg,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <Text style={{ ...sans(700), fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: fg }}>
+        {label}
+        {on ? " ✓" : ""}
+      </Text>
+    </Pressable>
+  );
+}
+
 // ---------------------------------------------------------------
-// MELDINGEN — 126 / 158
+// MELDINGEN — rijen met een rug (mobile-app.dc.html, isMeldingenMag)
 // ---------------------------------------------------------------
 
 export type NoteSpreadData = {
   key: string;
   actorId: string | null;
+  /** De foto van wie het deed; zonder foto blijft de initiaal staan. */
+  avatarUrl?: string | null;
   by: string;
   text: string;
   when: string;
   no: string;
+  unread?: boolean;
   onPress: () => void;
 };
 
+/**
+ * Meldingen in magazine.
+ *
+ * Geen volvlaks kleurvlak per melding meer: het prototype zet ze als een
+ * lijst onder een lijn van 2 inkt, elke rij met een rug van 5 in de kleur
+ * van wie het deed, een ronde initiaal (of foto), naam en tijd als label,
+ * de zin in serif en een rode stip zolang je hem niet las. Veertig
+ * meldingen als posters waren veertig schermen scrollen; als rijen lees je
+ * ze in één blik.
+ */
 export function NotificationsMagazine({
   rows,
   unread,
   scheme,
   t,
   state,
+  onMarkAll,
 }: {
   rows: NoteSpreadData[];
   unread: number;
   scheme: Scheme;
   t: Dict;
   state?: string | null;
+  /** "Markeer als gelezen" — alleen getoond als er iets ongelezen is. */
+  onMarkAll?: () => void;
 }) {
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
   return (
     <LincinScreen tab="you" counter={t.notifications} back="/profile">
       <Page>
-        <MagazineHead
-          kicker={`${t.edition} · ${t.notifications}`}
-          title={t.notifications}
-          sub={`${unread} ${t.new}`}
-        />
+        {/* De kop van MagazineHead, maar met de actie rechts op de regel
+            van de teller — zoals de Meldingen-kolom op desktop. */}
+        <View style={{ paddingTop: 14, paddingHorizontal: 24, paddingBottom: 20, gap: 8 }}>
+          <Label size={8.5} weight={500} ls={0.2} color={dim}>
+            {`${t.edition} · ${t.notifications}`}
+          </Label>
+          <Black size={50} f={0.84} ls={-0.055}>
+            {t.notifications}
+          </Black>
+          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+            <Text style={{ ...serif(true), fontSize: 17, lineHeight: 23, color: dim }}>{`${unread} ${t.new}`}</Text>
+            {unread > 0 && onMarkAll ? (
+              <LabelLink size={10} onPress={onMarkAll}>
+                {t.markAllRead}
+              </LabelLink>
+            ) : null}
+          </View>
+        </View>
         {state ? <Note>{state}</Note> : null}
-        {rows.map((n, i) => {
-          const fc = friendColor(hueFor(n.actorId), scheme);
-          return (
-            <Spread
-              key={n.key}
-              index={i}
-              page="notes"
-              fill={fc.fill}
-              ink={fc.ink}
-              rail={`№ ${n.no} · ${n.when}`}
-              onPress={n.onPress}
-              accessibilityLabel={`${n.by} ${n.text}`}
-            >
-              {n.by ? <SpreadKicker ink={fc.ink}>{n.by}</SpreadKicker> : null}
-              <SpreadTitle ink={fc.ink} size={24} numberOfLines={3}>
-                {n.text}
-              </SpreadTitle>
-            </Spread>
-          );
-        })}
+        {rows.length ? (
+          <View style={{ marginTop: 4, marginHorizontal: 24, borderTopWidth: OMSLAG.rule, borderTopColor: ink, marginBottom: 24 }}>
+            {rows.map((n) => (
+              <NoteRow key={n.key} n={n} scheme={scheme} />
+            ))}
+          </View>
+        ) : null}
       </Page>
     </LincinScreen>
+  );
+}
+
+/** Eén melding: rug · initiaal · naam en tijd · de zin · rode stip. */
+function NoteRow({ n, scheme }: { n: NoteSpreadData; scheme: Scheme }) {
+  const fc = friendColor(hueFor(n.actorId), scheme);
+  const dim = color("ink", "inkDim");
+  // Een melding zonder afzender (bug_resolved) krijgt het teken van de omslag.
+  const initial = n.by ? n.by.trim().slice(0, 1).toUpperCase() : "✳";
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${n.by} ${n.text}, ${n.when}`}
+      onPress={n.onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+        paddingVertical: 14,
+        paddingLeft: 12,
+        borderLeftWidth: OMSLAG.spine,
+        borderLeftColor: fc.fill,
+        borderBottomWidth: OMSLAG.hairline,
+        borderBottomColor: color("ink", "postRule"),
+        // Ongelezen: de tweede papiertint (--p2), zoals het prototype.
+        backgroundColor: n.unread || pressed ? color("paper2") : "transparent",
+      })}
+    >
+      <View
+        style={{
+          flexShrink: 0,
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          overflow: "hidden",
+          backgroundColor: fc.fill,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ ...sans(700), fontSize: 12, lineHeight: 15, color: fc.ink }}>{initial}</Text>
+        <AvatarPhoto url={n.avatarUrl} size={30} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          {n.by ? (
+            <Text numberOfLines={1} style={{ ...sans(700), fontSize: 12, lineHeight: 16, color: color("ink"), flexShrink: 1 }}>
+              {n.by}
+            </Text>
+          ) : (
+            <View />
+          )}
+          <Label size={10} weight={500} color={dim} style={{ flexShrink: 0 }}>
+            {n.when}
+          </Label>
+        </View>
+        <Text style={{ ...serif(), fontSize: 18, lineHeight: 22.5, color: color("ink") }}>{n.text}</Text>
+      </View>
+      {/* Altijd een vakje van 8 rechts, zodat gelezen en ongelezen rijen
+          even breed tekst hebben en niet verspringen na een tik. */}
+      <View style={{ flexShrink: 0, width: 8, marginTop: 6, marginRight: 4 }}>
+        {n.unread ? <RedDot size={8} /> : null}
+      </View>
+    </Pressable>
   );
 }
 

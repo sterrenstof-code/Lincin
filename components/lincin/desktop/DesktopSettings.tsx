@@ -28,7 +28,11 @@ import { DesktopShell, PageHead } from "./Shell";
  * onder de kolommen.
  *
  * "Onthoud mijn keuzes" uit het prototype staat er niet: de app onthoudt
- * altijd, en een schakelaar die niets doet zou liegen.
+ * altijd, en een schakelaar die niets doet zou liegen. Om dezelfde reden is
+ * "Zichtbaar voor lincs" (`visible`) weg: geen RLS-regel of query leest hem.
+ *
+ * Licht of donker gaat via `setPreference()`; `lib/lincin/prefs.ts` luistert
+ * mee en bewaart hem als `scheme` per gebruiker.
  */
 
 const STAND_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
@@ -110,7 +114,6 @@ export function DesktopSettings() {
       num: "03",
       title: t.whoTitle,
       rows: [
-        { kind: "toggle", label: t.visible, sub: t.visibleSub, on: prefs.visible, flip: toggle("visible") },
         { kind: "value", label: t.myLincs, sub: pendingIn ? `${pendingIn} ${t.waitsForYou}` : t.peopleYouLet, value: String(lincs), onPress: () => router.push("/friends") },
         { kind: "value", label: t.groupsLabel, sub: groups.map((g) => g.name).filter(Boolean).slice(0, 3).join(", "), value: String(groups.length), onPress: () => router.push("/chats") },
         { kind: "value", label: t.myLists, sub: listCount === 0 ? t.noListsYet : "", value: String(listCount), onPress: () => router.push("/lists") },
@@ -134,7 +137,7 @@ export function DesktopSettings() {
   const valueStyle: TextStyle =
     th === "magazine"
       ? { ...serif(true), fontSize: 19, lineHeight: 23, color: ink }
-      : { ...mono(500), fontSize: 9.5, lineHeight: 14, letterSpacing: 1, textTransform: "uppercase", color: ink };
+      : { ...mono(500), fontSize: 9.5, lineHeight: 14, letterSpacing: 1.14, textTransform: "uppercase", color: ink };
 
   const account = [
     { label: t.editProfile, onPress: () => router.push("/profile-edit") },
@@ -157,7 +160,7 @@ export function DesktopSettings() {
                     : { paddingTop: 14, paddingHorizontal: 12, paddingBottom: 10, gap: 6 }
                 }
               >
-                <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: 1, color: dim }]}>{g.num}</Text>
+                <Text style={[th === "magazine" ? sans(700) : mono(500), { fontSize: th === "modern" ? 9 : 10, lineHeight: 12, letterSpacing: th === "modern" ? 1.44 : 1, color: dim }]}>{g.num}</Text>
                 <Text style={[th === "magazine" ? serif() : sans(400), { fontSize: th === "magazine" ? 40 : 32, lineHeight: th === "magazine" ? 38 : 32, letterSpacing: th === "modern" ? -1.1 : 0, color: ink }]}>{g.title}</Text>
               </View>
               {g.rows.map((r) => {
@@ -211,12 +214,12 @@ export function DesktopSettings() {
             </Pressable>
           ))}
         </View>
-        <View style={th === "modern" ? { borderRadius: RASTER.tileRadius, backgroundColor: ink, paddingVertical: 20, paddingHorizontal: 24 } : { paddingTop: 16, paddingHorizontal: 32, paddingBottom: 28 }}>
+        <View style={th === "modern" ? { borderRadius: RASTER.tileRadius, backgroundColor: ink, paddingVertical: 20, paddingHorizontal: 24 } : { paddingTop: 14, paddingHorizontal: 32, paddingBottom: 28 }}>
           <Text
             style={
               th === "magazine"
                 ? [serif(true), { fontSize: 19, lineHeight: 24, color: dim }]
-                : [mono(500), { fontSize: 9.5, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: th === "modern" ? color("paper") : dim }]
+                : [mono(500), { fontSize: 9.5, lineHeight: 13, letterSpacing: 1.33, textTransform: "uppercase", color: th === "modern" ? color("paper") : dim }]
             }
           >
             {t.rememberNote}

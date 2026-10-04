@@ -5,11 +5,13 @@ import { useState, type ReactNode } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
+import type { RsvpStatus } from "@/lib/api/event-rsvps";
 import type { ContributionWithAuthor } from "@/lib/api/events";
-import { color, friendColor, ON_DARK, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
+import { color, friendColor, OMSLAG, ON_DARK, RASTER, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 
+import { RedButton } from "./magazine/Omslag";
 import { Spread } from "./magazine/Spread";
 
 /**
@@ -21,8 +23,8 @@ import { Spread } from "./magazine/Spread";
  *
  *   magazine  de kop als volvlaks kleurvlak van wie uitnodigt, zoals de
  *             spreads op de voorpagina; daaronder vlakken op het tweede
- *             papier met een naad van 6. De dag en de titel in serif, labels in Archivo 9–10 op .2em. Pillen;
- *             de andere acties onderstreept.
+ *             papier met een naad van 6. De dag en de titel in serif, labels in Archivo 700 op .1em.
+ *             Vierkante knoppen: de primaire een rood vlak (omslag), de andere acties onderstreept.
  *   modern    tegels van 18 op het halfdoorzichtige vlak, naad 6. Een
  *             kleurtegel met de dag groot, Archivo 400 en Plex Mono,
  *             pillen.
@@ -73,9 +75,13 @@ function meta(size: number, c: string, spacing = size * 0.1): TextStyle {
   return { ...mono(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: spacing, textTransform: "uppercase", color: c };
 }
 
-/** Archivo 500 op .2em: de labels van magazine. */
+/**
+ * Archivo 700 op .1em: de labels van de omslag (HANDOFF §Thema's, "Labels:
+ * Archivo 700, 10–12px, uppercase, .08–.1em"). Was Archivo 500 op .2em,
+ * de labels van de spreads van vóór de omslag.
+ */
 function kicker(size: number, c: string): TextStyle {
-  return { ...sans(500), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.2, textTransform: "uppercase", color: c };
+  return { ...sans(700), fontSize: size, lineHeight: Math.round(size * 1.35), letterSpacing: size * 0.1, textTransform: "uppercase", color: c };
 }
 
 // ---------------------------------------------------------------
@@ -293,10 +299,7 @@ function HeroModern({ f, wide, cover, faces, onGuests }: HeroProps) {
 // ACTIES
 // ---------------------------------------------------------------
 
-/**
- * Wat je met het event kunt doen. Geen "ik kom" / "misschien": wie
- * uitgenodigd is, is erbij — er valt niets te antwoorden.
- */
+/** Wat je met het event kunt doen: kopiëren, uitnodigen, bewerken, toevoegen. */
 export function EventActions({ wide, actions }: { wide: boolean; actions: EventAction[] }) {
   const th = useTh();
   if (th === "magazine") return <ActionsMagazine wide={wide} actions={actions} />;
@@ -319,15 +322,11 @@ function ActionsMagazine({ wide, actions }: ActionsProps) {
         ))}
       </View>
       {primary ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={primary.label}
-          onPress={primary.onPress}
-          disabled={primary.disabled}
-          style={({ pressed }) => ({ height: 44, borderRadius: 22, paddingHorizontal: 24, backgroundColor: ink, alignItems: "center", justifyContent: "center", opacity: primary.disabled ? 0.5 : pressed ? 0.8 : 1 })}
-        >
-          <Text style={kicker(10, color("paper"))}>{primary.label} +</Text>
-        </Pressable>
+        // De primaire actie is in magazine een rood vlak met wit label,
+        // vierkant (HANDOFF §Thema's: geen afgeronde knoppen).
+        <View pointerEvents={primary.disabled ? "none" : "auto"} style={{ opacity: primary.disabled ? 0.5 : 1, alignSelf: wide ? "center" : "stretch" }}>
+          <RedButton label={primary.label} onPress={primary.onPress} size={11} />
+        </View>
       ) : null}
     </Panel>
   );
@@ -366,6 +365,135 @@ function ActionsModern({ wide, actions }: ActionsProps) {
     <Panel style={{ padding: wide ? 22 : RASTER.tilePad, flexDirection: wide ? "row" : "column", alignItems: wide ? "center" : "stretch", gap: wide ? 24 : 14 }}>
       <View style={{ flex: wide ? 1 : undefined, flexDirection: "row", flexWrap: "wrap", gap: SEAM, justifyContent: wide ? "flex-end" : "flex-start" }}>
         {actions.map((a) => pill(a.label, a.label, a.onPress, !!a.primary, { icon: a.icon, disabled: a.disabled, grow: !wide }))}
+      </View>
+    </Panel>
+  );
+}
+
+// ---------------------------------------------------------------
+// KOM JE? "Ik kom" / "Misschien" (0072)
+// ---------------------------------------------------------------
+
+export type EventRsvpProps = {
+  wide: boolean;
+  /** Jouw antwoord, of `null` als je nog niets zei. */
+  mine: RsvpStatus | null;
+  /** Nog een tik op je keuze wist hem (`null`). */
+  onAnswer: (s: RsvpStatus | null) => void;
+  /** "3 komen · 1 misschien", of leeg zolang niemand antwoordde. */
+  tally: string;
+  /** Voorbij: je antwoord blijft staan, maar kiezen kan niet meer. */
+  disabled?: boolean;
+};
+
+/**
+ * Je antwoord op de eventpagina, in de vorm van het thema — dezelfde keuze
+ * als op de lijst (Events), via dezelfde haak (`useEventRsvps`).
+ *
+ *   magazine  vierkant, zoals de omslag: "Ik kom" in het rood van de
+ *             primaire actie (lijn als hij uit staat, vlak als hij aan
+ *             staat), "Misschien" in inkt.
+ *   modern    twee pillen van 44, gevuld in inkt als ze aan staan, zoals
+ *             de tegels in desktop-modern-pages.
+ */
+export function EventRsvpBar(p: EventRsvpProps) {
+  const th = useTh();
+  if (th === "magazine") return <RsvpMagazine {...p} />;
+  return <RsvpModern {...p} />;
+}
+
+function RsvpMagazine({ wide, mine, onAnswer, tally, disabled }: EventRsvpProps) {
+  const t = useT();
+  const ink = color("ink");
+  const red = color("red");
+  const square = (s: RsvpStatus) => {
+    const on = mine === s;
+    const tone = s === "yes" ? red : ink;
+    return (
+      <Pressable
+        key={s}
+        accessibilityRole="button"
+        accessibilityLabel={s === "yes" ? t.imIn : t.maybe}
+        accessibilityState={{ selected: on, disabled }}
+        disabled={disabled}
+        onPress={() => onAnswer(on ? null : s)}
+        style={({ pressed }) => ({
+          flex: wide ? undefined : 1,
+          minWidth: wide ? 150 : undefined,
+          height: 44,
+          paddingHorizontal: 16,
+          borderWidth: 1,
+          borderColor: on ? tone : s === "yes" ? red : color("ink", "postRule"),
+          backgroundColor: on ? tone : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pressed ? 0.8 : 1,
+        })}
+      >
+        <Text style={[sans(700), { fontSize: 11, lineHeight: 14, letterSpacing: 0.88, textTransform: "uppercase", color: on ? (s === "yes" ? OMSLAG.onImage : color("paper")) : s === "yes" ? red : color("ink", "inkDim") }]}>
+          {s === "yes" ? t.imIn : t.maybe}
+          {on ? " ✓" : ""}
+        </Text>
+      </Pressable>
+    );
+  };
+  return (
+    <Panel style={{ flexDirection: wide ? "row" : "column", alignItems: wide ? "center" : "stretch", paddingVertical: wide ? 22 : 18, paddingHorizontal: wide ? 36 : 20, gap: wide ? 32 : 14, opacity: disabled ? 0.6 : 1 }}>
+      <View style={{ flex: wide ? 1 : undefined, gap: 4 }}>
+        <Text style={kicker(10, color("ink", "inkDim"))}>{t.rsvpAsk}</Text>
+        {tally ? <Text style={[serif(true), { fontSize: wide ? 20 : 17, lineHeight: wide ? 25 : 22, color: color("inkSoft") }]}>{tally}</Text> : null}
+      </View>
+      <View style={{ flexDirection: "row", gap: SEAM }}>
+        {square("yes")}
+        {square("maybe")}
+      </View>
+    </Panel>
+  );
+}
+
+function RsvpModern({ wide, mine, onAnswer, tally, disabled }: EventRsvpProps) {
+  const t = useT();
+  const ink = color("ink");
+  const dim = color("ink", "inkDim");
+  const pill = (s: RsvpStatus) => {
+    const on = mine === s;
+    return (
+      <Pressable
+        key={s}
+        accessibilityRole="button"
+        accessibilityLabel={s === "yes" ? t.imIn : t.maybe}
+        accessibilityState={{ selected: on, disabled }}
+        disabled={disabled}
+        onPress={() => onAnswer(on ? null : s)}
+        style={({ pressed }) => ({
+          flex: 1,
+          minWidth: wide ? 150 : undefined,
+          height: 44,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: on ? ink : color("ink", "postRule"),
+          backgroundColor: on ? ink : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pressed ? 0.75 : 1,
+        })}
+      >
+        <Text style={meta(9.5, on ? color("paper") : s === "maybe" ? dim : ink, 1.14)}>
+          {s === "yes" ? t.imIn : t.maybe}
+          {on ? " ✓" : ""}
+        </Text>
+      </Pressable>
+    );
+  };
+  return (
+    <Panel style={{ padding: wide ? 22 : RASTER.tilePad, flexDirection: wide ? "row" : "column", alignItems: wide ? "center" : "stretch", gap: wide ? 24 : 12, opacity: disabled ? 0.6 : 1 }}>
+      <View style={{ flex: wide ? 1 : undefined, gap: 6 }}>
+        <Text style={meta(9, dim, 1.44)}>{t.rsvpAsk}</Text>
+        {tally ? <Text style={[sans(400), { fontSize: 15, lineHeight: 20, color: ink }]}>{tally}</Text> : null}
+      </View>
+      <View style={{ flexDirection: "row", gap: SEAM }}>
+        {pill("yes")}
+        {pill("maybe")}
       </View>
     </Panel>
   );

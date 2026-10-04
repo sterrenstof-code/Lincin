@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { LincinScreen } from "@/components/lincin/Chrome";
 import { color, friendColor, hueFor, type Scheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
+import type { RsvpStatus } from "@/lib/api/event-rsvps";
 import type { Dict } from "@/lib/i18n";
 
 import { Bento, Counter, DashRule, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
@@ -13,12 +14,10 @@ import { Bento, Counter, DashRule, DashedTile, Tile, TileMeta, TitleTile } from 
  * Per event één tegel over twee kolommen: een gekleurd datumvierkant van
  * 58 met de dag groot en de maand in mono, daarnaast de maker en het
  * tijdstip boven de titel. Onder een GESTIPPELDE scheiding de plek en het
- * gezelschap, met rechts de knoppen.
- *
- * Het prototype zet daar "ik kom" en "misschien" neer. Die twee bestaan in
- * deze app niet: er is geen rsvp-tabel, en `app/(app)/events.tsx` toont
- * daarom al sinds eerder "Open →" en "Deel code". Die blijven staan —
- * 2.2 is een skinronde en voegt geen backend toe.
+ * gezelschap, met rechts de pillen "Ik kom" / "Misschien" (0072): jouw
+ * keuze gevuld in inkt, nog een tik wist hem. De tegel zelf opent het
+ * event; "Deel code" (alleen de host) staat als link naast de maker, want
+ * een derde pil laat geen plaats meer voor de plek.
  */
 
 export type EventTileData = {
@@ -33,6 +32,13 @@ export type EventTileData = {
   live: boolean;
   waiting: number;
   past: boolean;
+  /** Het event openen: een tik op de tegel. */
+  onOpen: () => void;
+  /** Jouw antwoord, of `null` als je nog niets zei. */
+  mine: RsvpStatus | null;
+  /** Antwoorden; ontbreekt op een voorbij event. `null` wist je antwoord. */
+  onAnswer?: (s: RsvpStatus | null) => void;
+  /** Bijkomende acties (de host: "Deel code"). */
   actions: { label: string; onPress: () => void; fill?: boolean }[];
 };
 
@@ -41,6 +47,7 @@ export function EventsModern({
   past,
   planned,
   liveCount,
+  waiting,
   scheme,
   t,
   state,
@@ -50,6 +57,8 @@ export function EventsModern({
   past: EventTileData[];
   planned: number;
   liveCount: number;
+  /** Toegangsverzoeken bij jouw events: "1 wacht op jou" in de teller, zoals het prototype. */
+  waiting: number;
   scheme: Scheme;
   t: Dict;
   state?: string | null;
@@ -63,7 +72,8 @@ export function EventsModern({
           meta={
             <Counter>
               {planned} {t.planned}
-              {liveCount > 0 ? `\n${liveCount} nu bezig` : ""}
+              {waiting > 0 ? `\n${waiting} ${t.waitsForYou}` : ""}
+              {liveCount > 0 ? `\n${liveCount} ${t.nowLive}` : ""}
             </Counter>
           }
         />
@@ -78,7 +88,7 @@ export function EventsModern({
         <DashedTile label={`${t.planNew} →`} onPress={onPlanNew} />
         {past.length ? (
           <Tile span={2} pad={0} style={{ backgroundColor: "transparent", paddingTop: 10, paddingHorizontal: 20 }}>
-            <TileMeta>Voorbij</TileMeta>
+            <TileMeta>{t.eventPast}</TileMeta>
           </Tile>
         ) : null}
         {past.map((e) => (
@@ -92,7 +102,7 @@ export function EventsModern({
 function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict }) {
   const fc = friendColor(hueFor(e.hostId), scheme);
   return (
-    <Tile span={2} style={{ gap: 16, opacity: e.past ? 0.6 : 1 }}>
+    <Tile span={2} onPress={e.onOpen} accessibilityLabel={e.title} style={{ gap: 16, opacity: e.past ? 0.6 : 1 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
         <View
           style={{
@@ -118,10 +128,17 @@ function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict
             <TileMeta>
               {e.by} · {e.when}
             </TileMeta>
-            {e.live ? <Pill label="nu bezig" tone={color("ink")} fg={color("paper")} /> : null}
+            {e.live ? <Pill label={t.nowLive} tone={color("ink")} fg={color("paper")} /> : null}
             {e.waiting > 0 ? (
               <Pill label={`${e.waiting} ${t.waitsForYou}`} tone={color("red")} fg={color("paper")} />
             ) : null}
+            {e.actions.map((a) => (
+              <Pressable key={a.label} accessibilityRole="button" accessibilityLabel={a.label} onPress={a.onPress} hitSlop={14}>
+                <Text style={{ ...mono(500), fontSize: 9, lineHeight: 12, letterSpacing: 1.44, textTransform: "uppercase", color: color("ink"), textDecorationLine: "underline" }}>
+                  {a.label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
           <Text
             numberOfLines={2}
@@ -139,11 +156,22 @@ function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict
         >
           {e.sub}
         </Text>
-        <View style={{ flexShrink: 0, flexDirection: "row", gap: 6 }}>
-          {e.actions.map((a) => (
-            <ActionPill key={a.label} label={a.label} onPress={a.onPress} fill={a.fill} />
-          ))}
-        </View>
+        {e.onAnswer ? (
+          <View style={{ flexShrink: 0, flexDirection: "row", gap: 6 }}>
+            {(["yes", "maybe"] as const).map((s) => {
+              const on = e.mine === s;
+              return (
+                <ActionPill
+                  key={s}
+                  label={s === "yes" ? t.imIn : t.maybe}
+                  selected={on}
+                  onPress={() => e.onAnswer?.(on ? null : s)}
+                  fill={on}
+                />
+              );
+            })}
+          </View>
+        ) : null}
       </View>
     </Tile>
   );
@@ -159,12 +187,13 @@ function Pill({ label, tone, fg }: { label: string; tone: string; fg: string }) 
   );
 }
 
-/** Een knop van 44 hoog, zoals het prototype ze in modern zet. */
-function ActionPill({ label, onPress, fill = false }: { label: string; onPress: () => void; fill?: boolean }) {
+/** Een knop van 44 hoog, zoals het prototype ze in modern zet: gevuld in inkt als hij aan staat. */
+function ActionPill({ label, onPress, fill = false, selected }: { label: string; onPress: () => void; fill?: boolean; selected?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={selected === undefined ? undefined : { selected }}
       onPress={onPress}
       style={({ pressed }) => ({
         height: 44,

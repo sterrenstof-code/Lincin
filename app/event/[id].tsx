@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { Avatar } from "@/components/Avatar";
@@ -18,12 +18,14 @@ import {
   EventHero,
   EventMenu,
   EventNotice,
+  EventRsvpBar,
   EventSheet,
   type EventAction,
   type EventFacts,
   type Face,
 } from "@/components/lincin/EventPage";
 import { openLightbox } from "@/components/lincin/Lightbox";
+import { useEventRsvps } from "@/lib/api/event-rsvps";
 import {
   approveEventJoinRequest,
   contributeToEvent,
@@ -132,6 +134,14 @@ export default function EventDetailScreen() {
     queryFn: () => listEventJoinRequests(eventId),
     refetchInterval: 60_000,
   });
+
+  /**
+   * "Ik kom" / "Misschien" (0072): dezelfde haak als de lijst, optimistisch
+   * met rollback. Een fout komt in dezelfde regel als de andere fouten.
+   */
+  const rsvpIds = useMemo(() => [eventId], [eventId]);
+  const onRsvpError = useCallback((e: unknown) => setError(e instanceof Error ? e.message : t.failed), [t.failed]);
+  const rsvp = useEventRsvps(rsvpIds, myUserId, onRsvpError);
 
   /** Hoeveel mensen op je goedkeuring wachten — telt in de knop. */
   const pendingCount = (joinRequests.data ?? []).length;
@@ -404,6 +414,12 @@ export default function EventDetailScreen() {
     const m = memberList.find((x) => x.user_id === userId);
     return m?.profile?.display_name ?? m?.profile?.username ?? "linc";
   };
+  const goingIds = rsvp.rsvps.filter((r) => r.status === "yes").map((r) => r.user_id);
+  const maybeCount = rsvp.rsvps.filter((r) => r.status === "maybe").length;
+  const tally = [goingIds.length ? `${goingIds.length} ${t.rsvpComing}` : null, maybeCount ? `${maybeCount} ${t.rsvpMaybeN}` : null]
+    .filter(Boolean)
+    .join(" · ");
+  const isPast = end.getTime() <= Date.now();
   const facts: EventFacts = {
     title: ev.name,
     description: ev.description?.trim() || null,
@@ -418,10 +434,12 @@ export default function EventDetailScreen() {
     guests: ev.members_count,
     contributions: ev.contributions_count,
     open: ev.join_policy !== "closed",
-    // Wie uitgenodigd is, is erbij: er valt niets te antwoorden.
-    whoGo: memberList.length
-      ? memberList.map((m) => nameOf(m.user_id)).slice(0, 4).join(", ") + (memberList.length > 4 ? ` +${memberList.length - 4}` : "")
-      : `${ev.members_count} ${ev.members_count === 1 ? "linc" : "lincs"}`,
+    // Wie "ik kom" zei; zolang niemand antwoordde de gastenlijst.
+    whoGo: goingIds.length
+      ? goingIds.map(nameOf).slice(0, 4).join(", ") + (goingIds.length > 4 ? ` +${goingIds.length - 4}` : "")
+      : memberList.length
+        ? memberList.map((m) => nameOf(m.user_id)).slice(0, 4).join(", ") + (memberList.length > 4 ? ` +${memberList.length - 4}` : "")
+        : `${ev.members_count} ${ev.members_count === 1 ? "linc" : "lincs"}`,
     fill: friendColor(hueFor(ev.host_user_id), scheme),
   };
   const faces: Face[] = memberList.map((m) => ({
@@ -484,6 +502,7 @@ export default function EventDetailScreen() {
   const body = (
     <EventSheet wide={wide}>
       <EventHero f={facts} wide={wide} cover={cover} faces={faces} onGuests={() => setGuestsOpen(true)} />
+      <EventRsvpBar wide={wide} mine={rsvp.mine(eventId)} onAnswer={(s) => rsvp.answer(eventId, s)} tally={tally} disabled={isPast} />
       <EventActions wide={wide} actions={actions} />
 
       {error ? <EventNotice text={error} tone="red" /> : null}

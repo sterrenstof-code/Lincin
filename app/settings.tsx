@@ -26,7 +26,14 @@ import { listMySharedLists } from "@/lib/api/shared-lists";
  * eruitziet (thema, taal, licht of donker, blad kleurt mee), meldingen,
  * en wie wat ziet. Onderaan uitloggen en "Lincin 2.0 · versleuteld op je
  * toestel". Het thema (HANDOFF §Themes) staat op het profiel en wisselt
- * zonder herlaad.
+ * zonder herlaad. Licht of donker gaat via `setPreference()`;
+ * `lib/lincin/prefs.ts` luistert mee en bewaart hem als `scheme` per
+ * gebruiker, zodat een tweede toestel dezelfde stand krijgt.
+ *
+ * "Lincs zien mijn bijdragen" (`visible`) staat er niet meer: geen RLS-regel
+ * of query leest die voorkeur, dus de schakelaar beloofde iets wat de app
+ * niet deed. De sleutel blijft in `prefs.ts` zodat bewaarde rijen geldig
+ * blijven.
  */
 
 const THEME_NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light: "dark", dark: "system" };
@@ -150,7 +157,6 @@ function SettingsMobile() {
     {
       title: t.whoTitle,
       rows: [
-        { key: "visible", label: t.visible, sub: t.visibleSub, onPress: toggle("visible"), right: <Toggle on={prefs.visible} /> },
         {
           key: "lincs",
           label: t.myLincs,
@@ -241,12 +247,15 @@ function SettingsMobile() {
         </Group>
 
         <Group title={t.whoTitle}>
-          <Row label={t.visible} sub={t.visibleSub} onPress={toggle("visible")}>
-            <Toggle on={prefs.visible} />
-          </Row>
-          <Row label={t.myLincs} sub={lincsSub} onPress={() => router.push("/friends")} last>
+          <Row label={t.myLincs} sub={lincsSub} onPress={() => router.push("/friends")}>
             <Val>
               {lincs} →
+            </Val>
+          </Row>
+          {/* Dezelfde rij als in modern: anders is Lijsten in magazine op de telefoon onvindbaar. */}
+          <Row label={t.myLists} sub={listsSub} onPress={() => router.push("/lists")} last>
+            <Val>
+              {listCount} →
             </Val>
           </Row>
         </Group>
@@ -332,17 +341,28 @@ function Row({
   );
 }
 
-/** 44×24, knop van 16: aan is inkt met een papieren knop. Magazine: een ronde knop. */
+/**
+ * De schakelaar. Magazine (mobile-app.dc.html, `tg()` bij mag): een lijn van
+ * 2 over 44 breed met een vierkante knop van 12 die van links (uit, dim)
+ * naar rechts (aan, inkt) schuift — geen blok. Modern: het kader van 44×24
+ * met een knop van 16. De hele rij is het tikvlak, dus de lijn mag dun zijn.
+ */
 function Toggle({ on }: { on: boolean }) {
   const mag = themeSpec().id === "magazine";
   if (mag)
     return (
-      <View
-        accessibilityRole="switch"
-        accessibilityState={{ checked: on }}
-        style={{ width: 44, height: 24, backgroundColor: on ? color("ink") : color("ink", "postRule") }}
-      >
-        <View style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, backgroundColor: color("paper") }} />
+      <View accessibilityRole="switch" accessibilityState={{ checked: on }} style={{ width: 44, height: 12, justifyContent: "center" }}>
+        <View style={{ height: 2, backgroundColor: color("ink", "postRule") }} />
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: on ? 32 : 0,
+            width: 12,
+            height: 12,
+            backgroundColor: on ? color("ink") : color("ink", "inkDim"),
+          }}
+        />
       </View>
     );
   return (

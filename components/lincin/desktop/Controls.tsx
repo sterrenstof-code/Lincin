@@ -8,9 +8,12 @@ import { useT } from "@/lib/i18n";
  * De schakelaar en de keuzerij van Instellingen (desktop-*-pages.dc.html,
  * `tg()` en `seg()`), thema-onafhankelijk: alleen vorm en tokens wisselen.
  *
- *   magazine  de omslag (handoff 24 sep): een vierkant spoor van 52×28 op
- *             inkt of haarlijn met een ronde knop van 22 op papier; de
- *             keuzes als losse vierkante vakken met een lijn van 1.
+ *   magazine  de omslag (mobile-app.dc.html, `tg()` bij mag): een lijn van
+ *             2 met een vierkante knop van 12 — inkt als hij aan staat, dim
+ *             als hij uit staat — die van links naar rechts schuift. Het
+ *             desktop-prototype tekent nog het oude blok van 52×28; de lijn is
+ *             de magazine-schakelaar, dus die geldt ook hier. De keuzes als
+ *             losse vierkante vakken met een lijn van 1.
  *   modern    dezelfde pil met een witte knop; de keuzes in een witte pil
  *             met een schuivend inktvlak.
  */
@@ -20,6 +23,32 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
   const t = useT();
   const ink = color("ink");
   const mag = spec.id === "magazine";
+  if (mag) {
+    // Het tikvlak blijft 28 hoog (en groter via hitSlop); alleen wat je
+    // ziet is een lijn en een knop.
+    return (
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: on }}
+        accessibilityLabel={`${label}: ${on ? t.on : t.off}`}
+        onPress={onPress}
+        hitSlop={8}
+        style={{ width: 44, height: 28, justifyContent: "center" }}
+      >
+        <View style={{ height: 2, backgroundColor: color("ink", "postRule") }} />
+        <View
+          style={{
+            position: "absolute",
+            top: 8,
+            left: on ? 32 : 0,
+            width: 12,
+            height: 12,
+            backgroundColor: on ? ink : color("ink", "inkDim"),
+          }}
+        />
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="switch"
@@ -29,7 +58,7 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
       style={{
         width: 52,
         height: 28,
-        borderRadius: mag ? 0 : 14,
+        borderRadius: 14,
         backgroundColor: on ? ink : color("ink", "postRule"),
       }}
     >
@@ -41,7 +70,7 @@ export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => voi
           width: 22,
           height: 22,
           borderRadius: 11,
-          backgroundColor: spec.id === "modern" ? color("tile") : color("paper"),
+          backgroundColor: color("tile"),
         }}
       />
     </Pressable>

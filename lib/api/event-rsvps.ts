@@ -1,3 +1,6 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+
 import { supabase } from "../supabase/client";
 
 /**
@@ -27,4 +30,57 @@ export async function setRsvp(eventId: string, userId: string, status: RsvpStatu
     .from("event_rsvps")
     .upsert({ event_id: eventId, user_id: userId, status, updated_at: new Date().toISOString() });
   if (error) throw error;
+}
+
+/** Vast, zodat wie `rsvps` in een useMemo leest niet elke render opnieuw rekent. */
+const NONE: EventRsvp[] = [];
+
+/**
+ * De antwoorden bij een reeks events, plus jouw antwoord zetten.
+ *
+ * Eén haak voor de lijst (desktop en telefoon) en de eventpagina, zodat
+ * ze alle drie hetzelfde doen: meteen tonen wat je koos, de server daarna,
+ * en bij een fout terug naar wat er stond (HANDOFF: "alle toggles
+ * optimistic met rollback"). `eventIds` moet stabiel zijn (useMemo) — het
+ * is een deel van de querysleutel.
+ *
+ * De lijst en de eventpagina hebben elk hun eigen sleutel (andere ids);
+ * na een gelukte keuze worden de andere ongeldig, zodat je bij terugkeren
+ * niet je oude antwoord ziet.
+ */
+export function useEventRsvps(eventIds: string[], myUserId: string, onError: (err: unknown) => void) {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["event-rsvps", eventIds],
+    queryFn: () => listRsvps(eventIds),
+    enabled: eventIds.length > 0,
+  });
+
+  const answer = useCallback(
+    async (eventId: string, next: RsvpStatus | null) => {
+      const key = ["event-rsvps", eventIds];
+      // Een refetch die nog onderweg is, mag de optimistische stand niet overschrijven.
+      await qc.cancelQueries({ queryKey: key, exact: true });
+      const prev = qc.getQueryData<EventRsvp[]>(key) ?? [];
+      const rest = prev.filter((r) => !(r.event_id === eventId && r.user_id === myUserId));
+      qc.setQueryData<EventRsvp[]>(key, next ? [...rest, { event_id: eventId, user_id: myUserId, status: next }] : rest);
+      try {
+        await setRsvp(eventId, myUserId, next);
+        const self = JSON.stringify(key);
+        qc.invalidateQueries({ queryKey: ["event-rsvps"], predicate: (q) => JSON.stringify(q.queryKey) !== self });
+      } catch (err) {
+        qc.setQueryData(key, prev);
+        onError(err);
+      }
+    },
+    [qc, eventIds, myUserId, onError],
+  );
+
+  const data = query.data;
+  const mine = useCallback(
+    (eventId: string): RsvpStatus | null => data?.find((r) => r.event_id === eventId && r.user_id === myUserId)?.status ?? null,
+    [data, myUserId],
+  );
+
+  return { rsvps: data ?? NONE, isLoading: query.isLoading, mine, answer };
 }

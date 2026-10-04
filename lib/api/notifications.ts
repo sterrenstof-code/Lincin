@@ -224,11 +224,14 @@ export async function countUnreadNotifications(userId: string): Promise<number> 
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await supabase
+  // Gooit bij een fout: de meldingen-pagina zet alles eerst optimistisch op
+  // gelezen en moet kunnen terugdraaien als de server nee zegt.
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("user_id", userId)
     .eq("read", false);
+  if (error) throw error;
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {

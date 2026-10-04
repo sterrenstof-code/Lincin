@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
+import { getPreference, setPreferenceFromServer, subscribePreferenceChoice, type ThemePreference } from "@/lib/design/theme";
 import { getLang, setLang, subscribeLang, type Lang } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase/client";
 
@@ -9,8 +10,12 @@ import { supabase } from "@/lib/supabase/client";
  *
  *   tint         (vervallen met kleur — blijft bewaard, doet niets meer)
  *   pushNew      een melding bij nieuwe bijdragen
- *   quiet        stil tussen 23:00 en 08:00
- *   visible      lincs zien mijn bijdragen
+ *   quiet        stil tussen 22:00 en 07:00
+ *   visible      lincs zien mijn bijdragen — staat niet meer in Instellingen:
+ *               geen RLS-regel of query leest hem, dus de schakelaar loog.
+ *               De sleutel blijft zodat bewaarde rijen geldig blijven.
+ *   scheme       system | light | dark — licht of donker, per gebruiker; het
+ *               lokale `lincin.theme` blijft de kopie voor het eerste beeld
  *   openDefault  vrienden in de feed staan standaard open (uit: ingeklapt)
  *   feedView     editie | friends | time; leeg = de standaard van het toestel
  *   commentSort  newest | oldest — de volgorde van reacties (Bijdrage Voorbeeld)
@@ -41,6 +46,8 @@ export type Prefs = {
   commentSort: CommentSort;
   openFriends: Record<string, boolean>;
   edition: { n: number; day: string } | null;
+  /** Licht of donker (of het toestel volgen), meegenomen naar een tweede toestel. */
+  scheme: ThemePreference;
 };
 
 /** De schakelaars van Instellingen: alleen de booleans. */
@@ -56,6 +63,7 @@ const DEFAULTS: Prefs = {
   commentSort: "newest",
   openFriends: {},
   edition: null,
+  scheme: "system",
 };
 
 const cache = new Map<string, Prefs>();
@@ -75,6 +83,7 @@ function clean(raw: unknown): Partial<Prefs> {
   }
   if (r.feedView === "editie" || r.feedView === "friends" || r.feedView === "time") out.feedView = r.feedView;
   if (r.commentSort === "newest" || r.commentSort === "oldest") out.commentSort = r.commentSort;
+  if (r.scheme === "system" || r.scheme === "light" || r.scheme === "dark") out.scheme = r.scheme;
   if (r.openFriends && typeof r.openFriends === "object") out.openFriends = r.openFriends as Record<string, boolean>;
   const e = r.edition as { n?: unknown; day?: unknown } | undefined;
   if (e && typeof e.n === "number" && typeof e.day === "string") out.edition = { n: e.n, day: e.day };
@@ -103,15 +112,28 @@ function load(userId: string): Promise<void> {
     } catch {
       // onleesbare opslag: de standaard
     }
+    // De stand is wat dit toestel nu toont (`lincin.theme`), niet de kopie
+    // hierboven: zo overschrijft een rij van vóór `scheme` die keuze niet met
+    // "system".
+    value.scheme = getPreference();
     if (!touched.has(userId)) {
       cache.set(userId, value);
       emit();
     }
     // 2. de database
     const { data } = await supabase.from("user_prefs").select("prefs").eq("user_id", userId).maybeSingle();
+    // Licht/donker apart: `theme.ts` weigert hem zelf als je in deze sessie
+    // al koos, ook als je intussen alleen iets ánders aanraakte.
+    const remoteScheme = data?.prefs ? clean(data.prefs).scheme : undefined;
+    if (remoteScheme && setPreferenceFromServer(remoteScheme) && touched.has(userId)) {
+      cache.set(userId, { ...(cache.get(userId) ?? DEFAULTS), scheme: remoteScheme });
+      emit();
+    }
     if (data?.prefs && !touched.has(userId)) {
       const remote = data.prefs as Record<string, unknown>;
-      cache.set(userId, { ...(cache.get(userId) ?? DEFAULTS), ...clean(remote) });
+      // `scheme` volgt wat er nu echt staat: de serverwaarde, of je eigen
+      // keuze als `theme.ts` die van de server weigerde.
+      cache.set(userId, { ...(cache.get(userId) ?? DEFAULTS), ...clean(remote), scheme: getPreference() });
       AsyncStorage.setItem(key(userId), JSON.stringify(cache.get(userId))).catch(() => {});
       const l = remote.lang;
       if (l === "nl" || l === "en" || l === "de") setLang(l as Lang, { quiet: true });
@@ -189,15 +211,22 @@ export function isFriendOpen(prefs: Prefs, friendKey: string): boolean {
 }
 
 /**
- * Houdt de taal in de rij bij: wie in Instellingen van taal wisselt,
- * schrijft hem meteen mee. Eén keer aanroepen zodra er een sessie is.
+ * Houdt de taal en licht/donker in de rij bij: wie in Instellingen
+ * wisselt, schrijft ze meteen mee. Eén keer aanroepen zodra er een sessie is.
  */
 export function syncUserPrefs(userId: string): () => void {
   load(userId);
-  return subscribeLang(() => {
+  const offLang = subscribeLang(() => {
     touched.add(userId);
     persist(userId);
   });
+  // Licht/donker: elke eigen keuze (Instellingen, of de schakelaar elders)
+  // gaat mee naar `user_prefs`, zodat een tweede toestel hem kent.
+  const offScheme = subscribePreferenceChoice((next) => setPref(userId, "scheme", next));
+  return () => {
+    offLang();
+    offScheme();
+  };
 }
 
 export function usePrefs(userId: string): Prefs {
