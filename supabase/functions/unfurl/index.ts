@@ -21,7 +21,7 @@
  */
 
 // @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 
 // @ts-ignore Deno
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -146,6 +146,53 @@ function assertPublicUrl(u: URL): void {
   }
 }
 
+/** Een IP-adres binnen een privé, lokaal of speciaal bereik? */
+function isPrivateIp(ip: string): boolean {
+  const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return (
+      a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 198 && (b === 18 || b === 19))
+    );
+  }
+  const v6 = ip.toLowerCase();
+  if (v6 === "::" || v6 === "::1") return true;
+  if (v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe8") || v6.startsWith("fe9") || v6.startsWith("fea") || v6.startsWith("feb")) return true;
+  const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  return mapped ? isPrivateIp(mapped[1]) : false;
+}
+
+/**
+ * Wat de hostnaam écht wordt: een naam als `169.254.169.254.nip.io` of een
+ * eigen domein kan naar een intern adres wijzen, en de tekstcontrole
+ * hierboven ziet dat niet. Daarom de DNS zelf vragen en elk privé-adres
+ * weigeren. (Kent de runtime geen `Deno.resolveDns`, dan blijft alleen de
+ * tekstcontrole.)
+ */
+async function assertPublicHost(u: URL): Promise<void> {
+  assertPublicUrl(u);
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (/^[\d.]+$/.test(host)) return; // IPv4-literal: al gecontroleerd
+  // @ts-ignore Deno
+  const resolve = typeof Deno !== "undefined" ? Deno.resolveDns : undefined;
+  if (typeof resolve !== "function") return;
+  const found: string[] = [];
+  for (const type of ["A", "AAAA"] as const) {
+    try {
+      found.push(...((await resolve(host, type)) as string[]));
+    } catch {
+      // geen record van dit soort
+    }
+  }
+  if (found.length === 0) throw new Error("Host niet gevonden.");
+  if (found.some(isPrivateIp)) throw new Error("Privaat IP geweigerd.");
+}
+
 async function sha256Hex(input: string): Promise<string> {
   const bytes = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -162,11 +209,25 @@ async function fetchWithTimeout(url: string, accept: string): Promise<Response> 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: { "user-agent": UA, accept, "accept-language": "nl,en;q=0.8" },
-    });
+    // Omleidingen zelf volgen, en elke stap opnieuw controleren: een
+    // publieke URL die doorstuurt naar een intern adres was de weg erin.
+    let current = url;
+    for (let hop = 0; hop < 4; hop++) {
+      await assertPublicHost(new URL(current));
+      const res = await fetch(current, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: { "user-agent": UA, accept, "accept-language": "nl,en;q=0.8" },
+      });
+      const location = res.headers.get("location");
+      if (res.status >= 300 && res.status < 400 && location) {
+        try { await res.body?.cancel(); } catch { /* al gesloten */ }
+        current = new URL(location, current).toString();
+        continue;
+      }
+      return res;
+    }
+    throw new Error("Te veel omleidingen.");
   } finally {
     clearTimeout(timer);
   }
@@ -248,7 +309,13 @@ function firstMeta(html: string, keys: string[]): string | null {
 
 function absolutize(candidate: string | null, base: string): string | null {
   if (!candidate) return null;
-  try { return new URL(candidate, base).toString(); } catch { return null; }
+  try {
+    const u = new URL(candidate, base);
+    // Nooit javascript:, data: of iets anders dan http(s) doorgeven.
+    return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Ruwe woordentelling van de zichtbare tekst → leestijd in de UI. */
@@ -482,6 +549,11 @@ function json(body: unknown, status = 200): Response {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  // Alleen voor ingelogde gebruikers: de publieke sleutel zit in elke app,
+  // dus de JWT-controle van het platform alleen houdt niemand tegen.
+  const { data: who } = await admin.auth.getUser((req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, ""));
+  if (!who?.user) return json({ error: "Niet ingelogd" }, 401);
 
   let rawUrl: string;
   try {

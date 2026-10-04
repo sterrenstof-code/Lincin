@@ -15,7 +15,7 @@
  */
 
 // @ts-ignore deno imports — runs in Supabase Edge Functions runtime
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,10 +32,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { email } = await req.json();
-    if (typeof email !== "string" || !email.includes("@")) {
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (cleanEmail.length < 3 || cleanEmail.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return json({ error: "Ongeldig e-mailadres" }, 400);
     }
-    const cleanEmail = email.trim().toLowerCase();
 
     const authHeader = req.headers.get("Authorization") ?? "";
 
@@ -64,22 +64,30 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Hoeveel je mag uitnodigen (veiligheidscontrole okt 2026): zonder rem
+    // kon één account onbeperkt mails laten versturen vanaf ons domein — en
+    // dat raakt de mailreputatie en de limiet waarmee ook echte
+    // aanmeldingen en wachtwoordherstel moeten werken.
+    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const [{ count: today }, { count: open }] = await Promise.all([
+      admin.from("pending_invites").select("id", { count: "exact", head: true }).eq("inviter_user_id", user.id).gt("created_at", dayAgo),
+      admin.from("pending_invites").select("id", { count: "exact", head: true }).eq("inviter_user_id", user.id),
+    ]);
+    if ((today ?? 0) >= 10 || (open ?? 0) >= 50) {
+      return json({ error: "Je hebt vandaag al genoeg mensen uitgenodigd. Probeer het morgen opnieuw." }, 429);
+    }
+
     // Send the Supabase invite email. Returns 422 if user already exists.
     const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
       cleanEmail
     );
     if (inviteErr) {
       const msg = inviteErr.message ?? "";
-      if (/already|exists|registered/i.test(msg)) {
-        return json(
-          {
-            error:
-              "Deze persoon heeft al een Lincin-account. Voeg ze direct toe via hun handle.",
-          },
-          400
-        );
-      }
-      return json({ error: msg }, 500);
+      // Bestaat het account al, dan zeggen we dat niet: anders kon je met
+      // deze functie nagaan wie er op Lincin zit.
+      if (/already|exists|registered/i.test(msg)) return json({ ok: true });
+      console.error("invite failed", msg);
+      return json({ error: "De uitnodiging kon niet verstuurd worden." }, 500);
     }
 
     // Record the pending invite so the post-signup trigger can use it.
@@ -90,12 +98,14 @@ Deno.serve(async (req: Request) => {
         { onConflict: "inviter_user_id,email" }
       );
     if (insertErr) {
-      return json({ error: insertErr.message }, 500);
+      console.error("pending_invites", insertErr.message);
+      return json({ error: "De uitnodiging kon niet bewaard worden." }, 500);
     }
 
     return json({ ok: true });
   } catch (e) {
-    return json({ error: (e as Error).message ?? "Onbekende fout" }, 500);
+    console.error("invite-by-email", (e as Error).message);
+    return json({ error: "Onbekende fout" }, 500);
   }
 });
 

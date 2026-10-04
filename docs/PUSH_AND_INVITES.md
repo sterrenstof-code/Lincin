@@ -62,7 +62,7 @@ De function gebruikt automatisch `SUPABASE_URL`, `SUPABASE_ANON_KEY` en `SUPABAS
 
 **Verificatie**: Supabase Studio → Authentication → Users → de invitee staat er nu met status "invited". Plus: Database → Tables → `pending_invites` → één rij die jou als inviter koppelt.
 
-Zodra de invitee zich aanmeldt (klikt op de mail-link, kiest wachtwoord), maakt onze trigger uit migratie 0009 automatisch een geaccepteerde vriendschap aan en verwijdert de invite-rij. Je krijgt ze in je Vrienden-lijst zonder verdere actie.
+Zodra de invitee zich aanmeldt via die mail, maakt de trigger (0009, aangescherpt in 0089) een vriendschap aan en verwijdert de invite-rij: meteen aanvaard als er precies één uitnodiger is, anders een verzoek dat de nieuwe gebruiker zelf aanvaardt. Alleen deze functie schrijft in `pending_invites` (hoogstens 10 per dag, 50 open per uitnodiger).
 
 ---
 
@@ -72,7 +72,9 @@ Zodra de invitee zich aanmeldt (klikt op de mail-link, kiest wachtwoord), maakt 
 supabase functions deploy send-push --no-verify-jwt
 ```
 
-De `--no-verify-jwt` flag is nodig omdat database webhooks geen JWT meesturen. We doen onze eigen authenticatie via de service-role.
+De `--no-verify-jwt` flag is nodig omdat database webhooks geen JWT meesturen. In de plaats daarvan controleert de functie de header `x-webhook-secret` tegen het geheim `PUSH_WEBHOOK_SECRET` (`supabase secrets set PUSH_WEBHOOK_SECRET=…`) en weigert ze alles zonder (401). Elke webhook hieronder moet die header meesturen; het geheim staat alleen in de functie-secrets en in de webhook-definities in de database, nooit in git.
+
+Er zijn **drie** webhooks: `on-message-insert` (messages), `on-friendship-insert` (friendships) en `on-notification-insert` (notifications).
 
 ---
 

@@ -30,7 +30,7 @@
  */
 
 // @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 // @ts-ignore
 import webpush from "https://esm.sh/web-push@3.6.7";
 
@@ -85,11 +85,27 @@ async function sendWebPush(
 }
 
 // @ts-ignore Deno
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Alleen de database roept deze functie aan (server tot server): geen
+// browser, dus geen CORS-toestemming voor andere sites.
+const CORS_HEADERS: Record<string, string> = {};
+
+/**
+ * Wie mag deze functie aanroepen: alleen de drie database-webhooks
+ * (on-message-insert, on-friendship-insert, on-notification-insert), die
+ * de header `x-webhook-secret` meesturen. De functie staat op
+ * --no-verify-jwt, dus zonder deze controle kon iedereen op internet een
+ * push naar elke gebruiker sturen, met eigen tekst en uit naam van een
+ * vriend. Ontbreekt het geheim (PUSH_WEBHOOK_SECRET), dan weigert hij alles.
+ */
+// @ts-ignore Deno
+const WEBHOOK_SECRET: string = Deno.env.get("PUSH_WEBHOOK_SECRET") ?? "";
+
+function sameSecret(given: string | null): boolean {
+  if (!WEBHOOK_SECRET || !given || given.length !== WEBHOOK_SECRET.length) return false;
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ WEBHOOK_SECRET.charCodeAt(i);
+  return diff === 0;
+}
 
 /** Kort de tekst in op een woordgrens — een half woord leest slordig. */
 function trim(text: string, max = 80): string {
@@ -272,6 +288,9 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: CORS_HEADERS });
+  }
+  if (!sameSecret(req.headers.get("x-webhook-secret"))) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   try {
@@ -490,7 +509,8 @@ Deno.serve(async (req: Request) => {
 
       const body = buildNotificationBody({
         type,
-        emoji: record.detail ?? null,
+        // `detail` is bij een reactie de emoji: nooit meer dan een paar tekens.
+        emoji: typeof record.detail === "string" ? record.detail.slice(0, 16) : null,
         postLabel: describePost(post),
         commentBody,
         eventName,
