@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { color, line, useThemeSpec } from "@/lib/design/theme";
@@ -59,6 +59,56 @@ export function useComposeSuggest(value: string, onChange: (v: string) => void) 
     emoji.onKeyPress(e);
   };
   return { ...emoji, onKeyPress, mention };
+}
+
+/**
+ * Een invoer die meerdere regels toelaat, zoals in een gesprek.
+ *
+ * Een comment was één regel en Return verstuurde meteen — wie een tweede
+ * zin op een nieuwe regel wou zetten, had zijn comment al gepost. Nu
+ * werkt het als in een gesprek: op web verstuurt Enter en maakt
+ * Shift+Enter een nieuwe regel; op een telefoon is Return een nieuwe regel
+ * en verstuurt de ↑. Het veld groeit mee tot `maxH` en scrolt daarna.
+ */
+export function useMultilineInput({
+  value,
+  onSend,
+  suggest,
+  minH,
+  maxH = 120,
+}: {
+  value: string;
+  onSend: () => void;
+  suggest: ReturnType<typeof useComposeSuggest>;
+  minH: number;
+  maxH?: number;
+}) {
+  const [h, setH] = useState(minH);
+  // Na versturen is het veld leeg: terug naar één regel.
+  useEffect(() => {
+    if (!value) setH(minH);
+  }, [value, minH]);
+  const onKeyPress = (e: { nativeEvent: { key: string; shiftKey?: boolean }; preventDefault?: () => void }) => {
+    if (Platform.OS !== "web") return;
+    if (e.nativeEvent.key === "Enter" && !e.nativeEvent.shiftKey) {
+      e.preventDefault?.();
+      onSend();
+      return;
+    }
+    suggest.onKeyPress(e);
+  };
+  return {
+    multiline: true as const,
+    onKeyPress,
+    // Alleen bij een echte verandering, anders kan de gemeten hoogte het
+    // veld blijven doen groeien.
+    onContentSizeChange: (e: { nativeEvent: { contentSize: { height: number } } }) => {
+      const next = Math.ceil(e.nativeEvent.contentSize.height);
+      setH((prev) => (Math.abs(prev - next) <= 1 ? prev : next));
+    },
+    height: Math.min(maxH, Math.max(minH, h)),
+    scrollEnabled: h > maxH,
+  };
 }
 
 export function EmojiSuggestions({
@@ -130,6 +180,7 @@ export function ComposeBar({
 }) {
   const spec = useThemeSpec();
   const emoji = useComposeSuggest(value, onChange);
+  const field = useMultilineInput({ value, onSend, suggest: emoji, minH: CONTROL });
   if (spec.id === "modern") {
     return (
       <ModernBar
@@ -150,7 +201,7 @@ export function ComposeBar({
       {above}
       <EmojiSuggestions list={emoji.list} onPick={emoji.apply} round={false} />
       <MentionSuggestions list={emoji.mention.list} onPick={emoji.mention.apply} round={false} />
-      <View style={{ flexDirection: "row", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: GUTTER, paddingTop: 8, paddingBottom: 10 }}>
         <SquareBtn
           glyph="☺"
           size={CONTROL}
@@ -163,22 +214,24 @@ export function ComposeBar({
         <TextInput
           value={value}
           onChangeText={emoji.onChangeText}
-          onKeyPress={emoji.onKeyPress}
+          onKeyPress={field.onKeyPress}
+          multiline
+          onContentSizeChange={field.onContentSizeChange}
+          scrollEnabled={field.scrollEnabled}
           placeholder={placeholder}
           placeholderTextColor={color("ink", "inkDim")}
-          onSubmitEditing={onSend}
-          blurOnSubmit={false}
-          returnKeyType="send"
           editable={!sending}
           style={[
             lincinType.body,
             {
               flex: 1,
               minWidth: 0,
-              height: CONTROL,
+              height: field.height,
               borderWidth: BORDER,
               borderColor: line(),
               paddingHorizontal: 12,
+              paddingVertical: (CONTROL - 20) / 2,
+              textAlignVertical: "top",
               color: color("ink"),
               backgroundColor: "transparent",
               ...(Platform.OS === "web" ? { outlineWidth: 0 } : null),
@@ -218,6 +271,7 @@ function ModernBar({
   emoji: ReturnType<typeof useComposeSuggest>;
 }) {
   const ink = color("ink");
+  const field = useMultilineInput({ value, onSend, suggest: emoji, minH: 38 });
   const round = (fill: boolean) => ({
     width: 38,
     height: 38,
@@ -239,10 +293,12 @@ function ModernBar({
       <View
         style={{
           flexDirection: "row",
-          alignItems: "center",
+          // Knoppen blijven onderaan als het veld meerdere regels hoog wordt,
+          // en de pil wordt dan een afgeronde rechthoek.
+          alignItems: "flex-end",
           gap: 4,
           padding: 4,
-          borderRadius: 999,
+          borderRadius: field.height > 38 ? 23 : 999,
           borderWidth: 1,
           borderColor: color("ink", "postRule"),
           backgroundColor: color("paper", "glass"),
@@ -257,20 +313,22 @@ function ModernBar({
         <TextInput
           value={value}
           onChangeText={emoji.onChangeText}
-          onKeyPress={emoji.onKeyPress}
+          onKeyPress={field.onKeyPress}
+          multiline
+          onContentSizeChange={field.onContentSizeChange}
+          scrollEnabled={field.scrollEnabled}
           placeholder={placeholder}
           placeholderTextColor={color("ink", "inkDim")}
-          onSubmitEditing={onSend}
-          blurOnSubmit={false}
-          returnKeyType="send"
           editable={!sending}
           style={[
             lincinType.body,
             {
               flex: 1,
               minWidth: 0,
-              height: 38,
+              height: field.height,
               paddingHorizontal: 6,
+              paddingVertical: 9,
+              textAlignVertical: "top",
               color: ink,
               backgroundColor: "transparent",
               ...(Platform.OS === "web" ? { outlineWidth: 0 } : null),

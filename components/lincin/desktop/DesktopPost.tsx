@@ -16,7 +16,7 @@ import { addEntityComment, listEntityComments, subscribeToEntityComments, type E
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { EmojiSuggestions, useComposeSuggest } from "@/components/lincin/ComposeBar";
+import { EmojiSuggestions, useComposeSuggest, useMultilineInput } from "@/components/lincin/ComposeBar";
 import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
 import { CommentText } from "@/components/lincin/CommentEdit";
 import { ON_DARK, OMSLAG, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
@@ -107,6 +107,9 @@ export function DesktopPost({ id }: { id: string }) {
 
   const [draft, setDraft] = useState("");
   const emoji = useComposeSuggest(draft, setDraft);
+  // Kleur 48, magazine en modern 44: de hoogte van één regel invoer.
+  const inputMinH = spec.id === "kleur" ? 48 : 44;
+  const field = useMultilineInput({ value: draft, onSend: () => void send(), suggest: emoji, minH: inputMinH });
   const [sending, setSending] = useState(false);
   const [boxOpen, setBoxOpen] = useState(false);
   const [pickOpen, setPickOpen] = useState<string | null>(null);
@@ -529,9 +532,9 @@ export function DesktopPost({ id }: { id: string }) {
         <View
           style={[
             { flexDirection: "row", alignItems: "center" },
-            kleur ? { height: 48, borderTopWidth: spec.border, borderTopColor: ink } : null,
+            kleur ? { minHeight: 48, alignItems: "stretch", borderTopWidth: spec.border, borderTopColor: ink } : null,
             mag ? { gap: 12, paddingTop: 18, paddingHorizontal: 28, paddingBottom: 24, borderTopWidth: OMSLAG.rule, borderTopColor: ink } : null,
-            modern ? { margin: 10, height: 56, gap: 8, paddingLeft: 20, paddingRight: 6, borderRadius: 999, backgroundColor: color("paper") } : null,
+            modern ? { margin: 10, minHeight: 56, paddingVertical: 6, alignItems: "flex-end", gap: 8, paddingLeft: 20, paddingRight: 6, borderRadius: field.height > inputMinH ? 28 : 999, backgroundColor: color("paper") } : null,
           ]}
         >
           {kleur ? (
@@ -542,16 +545,26 @@ export function DesktopPost({ id }: { id: string }) {
           <TextInput
             value={draft}
             onChangeText={emoji.onChangeText}
-            onKeyPress={emoji.onKeyPress}
-            onSubmitEditing={send}
-            blurOnSubmit={false}
+            onKeyPress={field.onKeyPress}
+            multiline
+            onContentSizeChange={field.onContentSizeChange}
+            scrollEnabled={field.scrollEnabled}
             placeholder={mag || modern ? t.writeBack : t.writeComment}
             placeholderTextColor={dim}
             style={[
               mag ? serif(true) : sans(),
-              { flex: 1, minWidth: 0, alignSelf: "stretch", fontSize: mag ? 20 : 14, color: ink },
+              {
+                flex: 1,
+                minWidth: 0,
+                height: field.height,
+                fontSize: mag ? 20 : 14,
+                lineHeight: mag ? 26 : 18,
+                paddingVertical: (inputMinH - (mag ? 26 : 18)) / 2,
+                textAlignVertical: "top",
+                color: ink,
+              },
               kleur ? { paddingHorizontal: 14 } : null,
-              mag ? { height: 44, borderBottomWidth: 1, borderBottomColor: ink } : null,
+              mag ? { borderBottomWidth: 1, borderBottomColor: ink } : null,
               Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null,
             ]}
           />
