@@ -2,6 +2,8 @@ import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 
+import { confirm } from "./confirm";
+
 /**
  * De app-vergrendeling (Instellingen → "Vergrendel met Face ID"): wie hem
  * aanzet, moet Lincin ontgrendelen met Face ID, Touch ID of een
@@ -90,6 +92,31 @@ export async function setAppLock(on: boolean): Promise<boolean> {
   enabled = on;
   for (const fn of listeners) fn();
   return true;
+}
+
+const OFFERED = "lincin.applock.offered";
+
+/**
+ * Eén keer per toestel, na de eerste keer inloggen: "biometrie optioneel na
+ * eerste login" (HANDOFF §Login). Alleen als het toestel het heeft en het
+ * slot nog uit staat; daarna nooit meer — Instellingen heeft de schakelaar.
+ */
+export async function offerAppLockOnce() {
+  try {
+    if (await SecureStore.getItemAsync(OFFERED)) return;
+    if (await loadAppLock()) return;
+    const b = await getBiometry();
+    if (!b.available) return;
+    await SecureStore.setItemAsync(OFFERED, "1");
+    const yes = await confirm(
+      `Vergrendelen met ${b.label}?`,
+      `Dan vraagt Lincin ${b.label} bij het openen en als je even weg was. Je kunt dit altijd wijzigen in Instellingen.`,
+      { affirmativeLabel: "Zet aan" },
+    );
+    if (yes) await setAppLock(true);
+  } catch {
+    // geen slot aangeboden: niets aan de hand
+  }
 }
 
 /** Bij uitloggen: het slot hoort bij wie er ingelogd was. */

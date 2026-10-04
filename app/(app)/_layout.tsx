@@ -3,6 +3,7 @@ import { Redirect, Tabs } from "expo-router";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { offerAppLockOnce } from "@/lib/app-lock";
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile } from "@/lib/auth/bootstrap";
 import { listMyChats } from "@/lib/api/chats";
@@ -193,6 +194,14 @@ export default function AppLayout() {
     if (!session || bootstrapping) return;
     registerPushToken(session.user.id).catch(() => {});
   }, [session, bootstrapping]);
+
+  // Native, één keer: Face ID / vingerafdruk aanbieden — pas als de
+  // stappen na het aanmaken klaar zijn, en even na het eerste beeld.
+  useEffect(() => {
+    if (!session || bootstrapping || onboarded.data !== true) return;
+    const t = setTimeout(() => void offerAppLockOnce(), 1500);
+    return () => clearTimeout(t);
+  }, [session, bootstrapping, onboarded.data]);
 
   // Activiteitsindicator: update last_seen_at bij opstarten + elke 2 min
   useEffect(() => {
