@@ -234,6 +234,8 @@ function RootStack() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
+      {/* Inloglinks op de telefoon (lib/auth/native-links.ts). */}
+      <Stack.Screen name="auth-callback" options={{ animation: "fade" }} />
       <Stack.Screen name="e/[code]" options={{ animation: "fade" }} />
       <Stack.Screen name="add/[username]" options={{ animation: "slide_from_bottom" }} />
 

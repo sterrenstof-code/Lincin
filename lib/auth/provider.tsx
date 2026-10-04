@@ -10,9 +10,13 @@ import {
 
 import { Platform } from "react-native";
 
+import * as Linking from "expo-linking";
+
 import { clearAppLock } from "../app-lock";
 import { clearHues, type Hue } from "../design/theme";
 import { supabase } from "../supabase/client";
+
+import { handleAuthLink, NATIVE_AUTH_REDIRECT, signInWithProviderNative } from "./native-links";
 
 type AuthError = { error: Error | null };
 
@@ -100,6 +104,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  * anders weigert Supabase de redirect.
  */
 function getAuthRedirectUrl(): string | undefined {
+  // Telefoon: terug naar de app (lib/auth/native-links.ts), niet naar de site.
+  if (Platform.OS !== "web") return NATIVE_AUTH_REDIRECT;
   if (typeof window !== "undefined" && window.location?.origin) {
     return window.location.origin;
   }
@@ -125,9 +131,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "PASSWORD_RECOVERY") setRecovering(true);
     });
 
+    // Telefoon: een inloglink uit een mail, of de terugkeer van Apple/Google.
+    let offLink: (() => void) | undefined;
+    if (Platform.OS !== "web") {
+      const onUrl = (url: string | null) =>
+        handleAuthLink(url).then((r) => {
+          if (r === "recovery" && mounted) setRecovering(true);
+        });
+      Linking.getInitialURL().then(onUrl);
+      const linkSub = Linking.addEventListener("url", (e) => void onUrl(e.url));
+      offLink = () => linkSub.remove();
+    }
+
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      offLink?.();
     };
   }, []);
 
@@ -198,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       },
       async signInWithProvider(provider: OAuthProvider) {
+        if (Platform.OS !== "web") return { error: await signInWithProviderNative(provider) };
         const { error } = await supabase.auth.signInWithOAuth({
           provider,
           options: { redirectTo: getAuthRedirectUrl() },

@@ -1,4 +1,15 @@
+import { existsSync } from "node:fs";
+
 import { ExpoConfig, ConfigContext } from "expo/config";
+
+/**
+ * Firebase voor pushmeldingen op Android (Expo push loopt daar via FCM).
+ * Lokaal `./google-services.json`; op EAS een omgevingsvariabele van het
+ * type "file" met de naam GOOGLE_SERVICES_JSON. Ontbreekt hij, dan bouwt
+ * de app nog steeds — alleen komen er op Android geen meldingen binnen.
+ */
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON ?? (existsSync("./google-services.json") ? "./google-services.json" : undefined);
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -106,6 +117,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: "io.beyondesign.lincin",
+    ...(googleServicesFile ? { googleServicesFile } : {}),
     adaptiveIcon: {
       backgroundColor: "#0A0A0B",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -125,6 +137,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
       "android.permission.VIBRATE",
+    ],
+    /**
+     * Wat bibliotheken meebrengen maar de app niet gebruikt. Play vraagt bij
+     * elk ervan een verklaring, en wie de lijst leest ziet een app die meer
+     * wil dan hij zegt:
+     *   WRITE_CONTACTS          expo-contacts; we lezen alleen
+     *   READ/WRITE_EXTERNAL_STORAGE  foto's lopen via de Photo Picker
+     *   SYSTEM_ALERT_WINDOW     alleen nodig voor het dev-menu
+     */
+    blockedPermissions: [
+      "android.permission.WRITE_CONTACTS",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.SYSTEM_ALERT_WINDOW",
     ],
   },
 
@@ -150,6 +176,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-location",
       {
         locationWhenInUsePermission: "Lincin gebruikt je locatie alleen als je zelf een plek deelt in een gesprek.",
+        // Nooit op de achtergrond: zonder deze twee zette de plugin Engelse
+        // "Always"-teksten in Info.plist voor iets wat de app niet doet.
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
       },
     ],
     [
