@@ -158,21 +158,26 @@ export function numeral(): TextStyle {
 function buildLincinType() {
   const heads = themeSpec().heads;
   const serif_ = heads === "serif";
+  /** De letter van een label: Archivo in magazine, Plex Mono in modern. */
+  const label = (w: 500 | 600 | 700): TextStyle => (serif_ ? sans(w) : mono(w === 700 ? 600 : w));
   /** Serifkoppen spatiëren niet; de gewone Archivo van modern op −.02em (2.2 §1). */
   const ls = (px: number) => (serif_ ? 0 : -px / 50);
   const cardTitle = themeSpec().cardTitle;
   return {
-  // ---- mono: meta, labels, knoppen ----
-  /** 11px, kapitaal, .06em — de kop van de app, chipteksten. */
-  meta: { ...mono(500), fontSize: 11, lineHeight: 14, letterSpacing: 0.66, textTransform: "uppercase" } as TextStyle,
-  /** 10px, kapitaal, .08em — de kleine regel: aantallen, tijd, rubriek. */
-  micro: { ...mono(500), fontSize: 10, lineHeight: 13, letterSpacing: 0.8, textTransform: "uppercase" } as TextStyle,
+  // ---- labels: meta, aantallen, knoppen ----
+  // Magazine zet zijn labels in Archivo 500/700 op .1em (de omslag laadt
+  // geen Plex); modern in IBM Plex Mono op .12–.16em (handoff okt 2026).
+  // Tot dan stond alles in Plex op .04–.08em, de maat van kleur.
+  /** 11px, kapitaal — de kop van de app, chipteksten. */
+  meta: { ...label(500), fontSize: 11, lineHeight: 14, letterSpacing: serif_ ? 1.1 : 1.54, textTransform: "uppercase" } as TextStyle,
+  /** 10px, kapitaal — de kleine regel: aantallen, tijd, rubriek. */
+  micro: { ...label(500), fontSize: 10, lineHeight: 13, letterSpacing: serif_ ? 1 : 1.4, textTransform: "uppercase" } as TextStyle,
   /** 9px — coördinaten, de allerkleinste noot. */
-  tiny: { ...mono(500), fontSize: 9, lineHeight: 12, letterSpacing: 0.54, textTransform: "uppercase" } as TextStyle,
-  /** 10px 600 — de actiebalk van een kaart, tabs in een blad. */
-  action: { ...mono(600), fontSize: 10, lineHeight: 13, letterSpacing: 0.4, textTransform: "uppercase" } as TextStyle,
-  /** 12px 600 — pollopties, naam bij een comment. */
-  monoBody: { ...mono(600), fontSize: 12, lineHeight: 16 } as TextStyle,
+  tiny: { ...label(500), fontSize: 9, lineHeight: 12, letterSpacing: serif_ ? 0.9 : 1.26, textTransform: "uppercase" } as TextStyle,
+  /** 10px — de actiebalk van een kaart, tabs in een blad. */
+  action: { ...label(serif_ ? 700 : 600), fontSize: 10, lineHeight: 13, letterSpacing: serif_ ? 1 : 1.2, textTransform: "uppercase" } as TextStyle,
+  /** 12px — pollopties, naam bij een comment. */
+  monoBody: { ...label(serif_ ? 700 : 600), fontSize: 12, lineHeight: 16 } as TextStyle,
 
   // ---- Archivo: lopende tekst en knoplabels ----
   body: { ...sans(400), fontSize: 15, lineHeight: 20 } as TextStyle,
