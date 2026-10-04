@@ -1,3 +1,5 @@
+import { useIsFocused } from "@react-navigation/native";
+import { tabsTag } from "@/lib/hero-transition";
 import { useRouter } from "expo-router";
 import { CountBadge } from "@/components/lincin/CountBadge";
 import { useEffect, useRef, useState } from "react";
@@ -75,8 +77,13 @@ export function FooterTabs({
   bottomInset?: number;
 }) {
   const spec = useThemeSpec();
-  if (spec.nav === "rugstrook") return <FooterRugstrook active={active} tint={tint} bottomInset={bottomInset} />;
-  return <FooterPil active={active} bottomInset={bottomInset} />;
+  // De tabbalk staat stil tijdens een paginaovergang; zie tabsTag.
+  const focused = useIsFocused();
+  return (
+    <View style={tabsTag(focused)}>
+      {spec.nav === "rugstrook" ? <FooterRugstrook active={active} tint={tint} bottomInset={bottomInset} /> : <FooterPil active={active} bottomInset={bottomInset} />}
+    </View>
+  );
 }
 
 /**

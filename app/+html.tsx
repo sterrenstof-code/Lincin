@@ -246,11 +246,11 @@ html, body {
   to   { opacity: 0; }
 }
 @keyframes lincin-page-in {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
 @keyframes lincin-page-in-back {
-  from { opacity: 0; transform: translateY(-12px); }
+  from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: none; }
 }
 @keyframes lincin-page-in-still {
@@ -259,14 +259,32 @@ html, body {
 }
 
 /* De oude pagina gaat sneller weg dan de nieuwe komt: zonder dat staan er
-   een halve seconde lang twee volle paginabeelden over elkaar. */
+   een halve seconde lang twee volle paginabeelden over elkaar. Korter en
+   met een kleinere stijging dan eerst (320 ms, 12 px): op een telefoon
+   voelde het hele scherm als een sprong. */
 ::view-transition-old(root) {
-  animation: lincin-page-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: lincin-page-out 120ms cubic-bezier(0.4, 0, 1, 1) both;
   object-fit: fill;
 }
 ::view-transition-new(root) {
-  animation: lincin-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: lincin-page-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
   object-fit: fill;
+}
+/* Achter de twee opnames: het papier, niet zwart. Tussen het wegvallen van
+   de oude en het opkomen van de nieuwe flitste anders de achtergrond door. */
+::view-transition {
+  background-color: var(--p-paper, #F7F4EE);
+}
+/* De tabbalk staat stil (lib/hero-transition.web.ts → tabsTag). */
+::view-transition-group(lincin-tabs) {
+  animation-duration: 0s;
+}
+::view-transition-old(lincin-tabs) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(lincin-tabs) {
+  animation: none;
 }
 :root[data-nav="back"]::view-transition-new(root) {
   animation-name: lincin-page-in-back;

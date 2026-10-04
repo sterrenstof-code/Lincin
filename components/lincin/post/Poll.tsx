@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, Text, TextInput, View, type ViewStyle } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, Pressable, ScrollView, Text, TextInput, View, type ViewStyle } from "react-native";
 
 import type { PollOption } from "@/lib/api/polls";
 import { color, useThemeSpec } from "@/lib/design/theme";
@@ -9,6 +8,8 @@ import { useT } from "@/lib/i18n";
 import { displayName } from "@/lib/lincin/model";
 import type { PollModel } from "@/lib/lincin/poll";
 import { useToast } from "@/lib/toast";
+
+import { BottomSheet } from "@/components/lincin/BottomSheet";
 
 import { PersonDot, fill } from "./Reactions";
 
@@ -207,7 +208,7 @@ export function PollBlock({ m, makerFill, myUserId }: { m: PollModel; makerFill:
         ) : null}
       </View>
 
-      {!poll.anonymous ? <WhoVoted m={m} visible={who} onClose={() => setWho(false)} myUserId={myUserId} /> : null}
+      {!poll.anonymous && voterStack.length ? <WhoVoted m={m} visible={who} onClose={() => setWho(false)} myUserId={myUserId} /> : null}
     </View>
   );
 }
@@ -215,28 +216,10 @@ export function PollBlock({ m, makerFill, myUserId }: { m: PollModel; makerFill:
 /** "Wie stemde", per keuze gegroepeerd — hetzelfde paneel als bij likes. */
 function WhoVoted({ m, visible, onClose, myUserId }: { m: PollModel; visible: boolean; onClose: () => void; myUserId: string }) {
   const t = useT();
-  const insets = useSafeAreaInsets();
-  const modern = useThemeSpec().id === "modern";
-  if (!visible || !m.poll) return null;
+  if (!m.poll) return null;
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable accessibilityLabel={t.closeC} onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(22,22,15,.45)" }} />
-      <View
-        style={{
-          // Op een breed scherm een blad van 520 in het midden, niet de hele breedte.
-          width: "100%",
-          maxWidth: 520,
-          alignSelf: "center",
-          maxHeight: "66%",
-          backgroundColor: color("paper"),
-          borderTopWidth: modern ? 0 : 2,
-          borderTopColor: color("ink"),
-          borderTopLeftRadius: modern ? 22 : 0,
-          borderTopRightRadius: modern ? 22 : 0,
-          paddingHorizontal: 24,
-          paddingBottom: insets.bottom + 12,
-        }}
-      >
+    <BottomSheet visible={visible} onClose={onClose}>
+      <View style={{ paddingHorizontal: 24, flexShrink: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14 }}>
           <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink") }]}>
             {t.whoVoted} · {m.voters}
@@ -261,6 +244,6 @@ function WhoVoted({ m, visible, onClose, myUserId }: { m: PollModel; visible: bo
             ))}
         </ScrollView>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }

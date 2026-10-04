@@ -115,6 +115,21 @@ export function asideTag(enabled = true): ViewStyle {
 }
 
 /**
+ * De **tabbalk** onderaan op de telefoon. Zonder eigen naam hoorde hij bij
+ * de pagina: bij elke navigatie vervaagde hij mee en schoof hij 12 px op,
+ * zodat het hele scherm leek te verspringen. Met een naam staat hij stil
+ * en wisselt alleen wat erin verandert (de actieve tab). Alleen het scherm
+ * dat je aankijkt draagt hem — twee dezelfde namen en de browser slaat de
+ * overgang over.
+ */
+export const TABS_TRANSITION_NAME = "lincin-tabs";
+
+export function tabsTag(enabled = true): ViewStyle {
+  if (!HERO_TRANSITION_SUPPORTED || !enabled) return {};
+  return { viewTransitionName: TABS_TRANSITION_NAME } as unknown as ViewStyle;
+}
+
+/**
  * Voert de navigatie uit als gedeelde-element-overgang.
  *
  * De `"hero"`-richting is het enige verschil met een gewone navigatie: de

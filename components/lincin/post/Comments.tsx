@@ -424,7 +424,7 @@ function Item({
       </View>
       {variant === "desktop" ? <View style={{ width: 20, paddingTop: 4, alignItems: "center" }}>{heart}</View> : null}
       <ActionSheet visible={menu} onClose={() => setMenu(false)} actions={actions} />
-      {whoOpen ? <CommentLikers likers={m.likersOf(c.id)} myUserId={myUserId} onClose={() => setWhoOpen(false)} /> : null}
+      {likes.count ? <CommentLikers visible={whoOpen} likers={m.likersOf(c.id)} myUserId={myUserId} onClose={() => setWhoOpen(false)} /> : null}
     </Pressable>
   );
 }
@@ -453,11 +453,11 @@ function PendingItem({ p, m, variant, small = false }: { p: PendingComment; m: C
 }
 
 /** Wie op een reactie reageerde: hetzelfde paneel als bij een bijdrage, jij bovenaan. */
-function CommentLikers({ likers, myUserId, onClose }: { likers: { userId: string; emojis: string[]; latest: string }[]; myUserId: string; onClose: () => void }) {
+function CommentLikers({ visible, likers, myUserId, onClose }: { visible: boolean; likers: { userId: string; emojis: string[]; latest: string }[]; myUserId: string; onClose: () => void }) {
   const ids = likers.map((l) => l.userId);
-  const profiles = useQuery({ queryKey: ["profiles", ...ids.slice().sort()], queryFn: () => getProfiles(ids), enabled: ids.length > 0, staleTime: 60_000 });
+  const profiles = useQuery({ queryKey: ["profiles", ...ids.slice().sort()], queryFn: () => getProfiles(ids), enabled: visible && ids.length > 0, staleTime: 60_000 });
   const reactors = likers
     .map((l) => ({ ...l, me: l.userId === myUserId, profile: profiles.data?.find((p) => p.id === l.userId) ?? null }))
     .sort((a, b) => (a.me !== b.me ? (a.me ? -1 : 1) : a.latest < b.latest ? 1 : -1));
-  return <LikesPanel likes={{ reactors, count: reactors.length }} visible onClose={onClose} />;
+  return <LikesPanel likes={{ reactors, count: reactors.length }} visible={visible} onClose={onClose} />;
 }

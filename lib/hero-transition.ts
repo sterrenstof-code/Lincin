@@ -60,6 +60,14 @@ export function chromeTag(enabled = true): ViewStyle {
   return {};
 }
 
+/** Zie de webvariant. Op native staat de tabbalk vanzelf stil. */
+export const TABS_TRANSITION_NAME = "lincin-tabs";
+
+export function tabsTag(enabled = true): ViewStyle {
+  void enabled;
+  return {};
+}
+
 /** Zie de webvariant. Op native heeft de gesprekskolom geen eigen morph. */
 export const ASIDE_TRANSITION_NAME = "lincin-aside";
 

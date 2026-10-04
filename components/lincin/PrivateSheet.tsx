@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, TextInput, View } from "react-native";
+import { useRef, useState } from "react";
+import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getOrCreateDirectChat } from "@/lib/api/chats";
@@ -11,6 +11,7 @@ import { useT } from "@/lib/i18n";
 import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
 import { useToast } from "@/lib/toast";
 
+import { useSheetMotion } from "./BottomSheet";
 import { BORDER, CONTROL, GUTTER, Mono, Serif, SquareBtn } from "./ui";
 
 /**
@@ -36,8 +37,14 @@ export type PrivateTarget = {
   postTitle?: string;
 };
 
-export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null; onClose: () => void }) {
+export function PrivateSheet({ target: current, onClose }: { target: PrivateTarget | null; onClose: () => void }) {
   const t = useT();
+  const motion = useSheetMotion(!!current);
+  // Tijdens het dichtgaan blijft het blad tonen voor wie het was; anders
+  // valt de inhoud weg terwijl hij nog naar beneden schuift.
+  const last = useRef<PrivateTarget | null>(current);
+  if (current) last.current = current;
+  const target = current ?? last.current;
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const toast = useToast();
@@ -80,14 +87,20 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
   // van 480 in het midden.
   const desktop = useIsDesktop();
 
+  // De sluier vervaagt op zijn plek; alleen het blad schuift (zie BottomSheet).
+  if (!motion.mounted) return null;
   return (
-    <Modal visible={!!target} transparent animationType="slide" onRequestClose={close}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t.cancel}
-        onPress={close}
-        style={{ flex: 1, backgroundColor: "rgba(20,20,20,.35)", justifyContent: desktop ? "center" : "flex-end", alignItems: desktop ? "center" : "stretch" }}
-      >
+    <Modal visible transparent animationType="none" onRequestClose={close}>
+      <View style={{ flex: 1, justifyContent: desktop ? "center" : "flex-end", alignItems: desktop ? "center" : "stretch" }}>
+        <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(20,20,20,.35)", opacity: motion.veil }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.cancel} onPress={close} style={{ flex: 1 }} />
+        </Animated.View>
+        <Animated.View
+          style={{
+            opacity: desktop ? motion.veil : 1,
+            transform: [{ translateY: motion.slide.interpolate({ inputRange: [0, 1], outputRange: [desktop ? 16 : 600, 0] }) }],
+          }}
+        >
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Pressable
             onPress={() => {}}
@@ -164,7 +177,8 @@ export function PrivateSheet({ target, onClose }: { target: PrivateTarget | null
             </View>
           </Pressable>
         </KeyboardAvoidingView>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }

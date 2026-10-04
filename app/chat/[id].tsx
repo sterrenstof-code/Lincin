@@ -2617,7 +2617,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         <Modal
           visible={!!pendingImages}
           transparent
-          animationType="slide"
+          // Een vol zwart vlak: zacht laten verschijnen, niet als rolluik.
+          animationType="fade"
           onRequestClose={() => {
             if (!sending) { setPendingImages(null); setPendingCaption(""); setSelectedPendingIdx(0); }
           }}

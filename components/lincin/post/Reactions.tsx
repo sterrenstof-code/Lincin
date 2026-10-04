@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { Modal, Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
+import { BottomSheet } from "@/components/lincin/BottomSheet";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { sans } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
@@ -299,9 +299,6 @@ export function LikesPanel({
   inline?: boolean;
 }) {
   const t = useT();
-  const insets = useSafeAreaInsets();
-  const modern = useThemeSpec().id === "modern";
-  if (!visible) return null;
   const head = (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14 }}>
       <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink") }]}>
@@ -316,6 +313,7 @@ export function LikesPanel({
   );
   const list = likes.reactors.map((r) => <ReactorRow key={r.userId} r={r} />);
   if (inline) {
+    if (!visible) return null;
     return (
       <View style={{ maxWidth: 420, borderTopWidth: 2, borderTopColor: color("ink"), paddingHorizontal: 0 }}>
         {head}
@@ -324,28 +322,12 @@ export function LikesPanel({
     );
   }
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable accessibilityLabel={t.closeC} onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(22,22,15,.45)" }} />
-      <View
-        style={{
-          // Op een breed scherm een blad van 520 in het midden, niet de hele breedte.
-          width: "100%",
-          maxWidth: 520,
-          alignSelf: "center",
-          maxHeight: "66%",
-          backgroundColor: color("paper"),
-          borderTopWidth: modern ? 0 : 2,
-          borderTopColor: color("ink"),
-          borderTopLeftRadius: modern ? 22 : 0,
-          borderTopRightRadius: modern ? 22 : 0,
-          paddingHorizontal: 24,
-          paddingBottom: insets.bottom + 12,
-        }}
-      >
+    <BottomSheet visible={visible} onClose={onClose}>
+      <View style={{ paddingHorizontal: 24, flexShrink: 1 }}>
         {head}
         <ScrollView>{list}</ScrollView>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
