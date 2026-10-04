@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
 import { Fragment } from "react";
-import { Linking, Text, type TextProps } from "react-native";
+import { Text, type TextProps } from "react-native";
+
+import { openExternal } from "@/lib/safe-url";
 
 const MENTION_REGEX = /@([a-z0-9._]{3,32})/gi;
 const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
@@ -52,8 +54,7 @@ function pushTextWithMentions(parts: Part[], text: string) {
 }
 
 function openUrl(url: string) {
-  const full = url.startsWith("http") ? url : `https://${url}`;
-  Linking.openURL(full).catch(() => {});
+  openExternal(/^https?:\/\//i.test(url) ? url : `https://${url}`);
 }
 
 /**

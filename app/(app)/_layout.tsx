@@ -216,7 +216,8 @@ export default function AppLayout() {
   useEffect(() => {
     return addNotificationTapListener((data) => {
       // `path` zet send-push zelf (zie daar); de rest is voor oudere meldingen.
-      if (typeof data?.path === "string" && data.path.startsWith("/")) {
+      // Alleen een pad binnen de app: "//ergens.anders" is een andere site.
+      if (typeof data?.path === "string" && /^\/(?![\/\\])/.test(data.path)) {
         import("expo-router").then(({ router }) => {
           router.push(data.path);
         });
@@ -243,7 +244,7 @@ export default function AppLayout() {
     function onMessage(event: MessageEvent) {
       if (event.data?.type !== "PUSH_NAV") return;
       const path = event.data.path as string;
-      if (!path) return;
+      if (typeof path !== "string" || !/^\/(?![\/\\])/.test(path)) return;
       import("expo-router").then(({ router }) => {
         router.push(path as any);
       });

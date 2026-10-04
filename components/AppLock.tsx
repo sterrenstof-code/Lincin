@@ -3,7 +3,7 @@ import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/lincin/SubPage";
-import { authenticate, clearAppLock, useAppLock } from "@/lib/app-lock";
+import { authenticate, clearAppLock, isAuthenticating, useAppLock } from "@/lib/app-lock";
 import { useAuth } from "@/lib/auth/provider";
 import { color, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
@@ -17,8 +17,9 @@ const GRACE_MS = 60_000;
  * was. Zolang de app op de achtergrond staat ligt er een blad over, zodat
  * de schermafdruk in de appkiezer geen gesprek toont.
  *
- * Alleen `background` telt als weg: de Face ID-vraag zelf maakt de app
- * even `inactive`, en daar mag het slot niet opnieuw op vallen.
+ * Alleen `background` telt als weg (voor de minuut): de Face ID-vraag zelf
+ * maakt de app even `inactive`, en daar mag het slot niet opnieuw op
+ * vallen. Afdekken gebeurt wel al bij `inactive`, behalve tijdens die vraag.
  */
 export function AppLock() {
   const { session, signOut } = useAuth();
@@ -47,6 +48,10 @@ export function AppLock() {
       if (s === "background") {
         awayAt.current = Date.now();
         setHidden(true);
+      } else if (s === "inactive") {
+        // De appkiezer maakt hier zijn schermafdruk: dan al afdekken. Niet
+        // als het de Face ID-vraag zelf is die de app even inactief maakt.
+        if (!isAuthenticating()) setHidden(true);
       } else if (s === "active") {
         setHidden(false);
         if (awayAt.current && Date.now() - awayAt.current > GRACE_MS) setLocked(true);

@@ -62,7 +62,14 @@ export async function getBiometry(): Promise<Biometry> {
 }
 
 /** Vraag Face ID / vingerafdruk (met de toegangscode als terugval). */
+/** Loopt er nu een Face ID-vraag? Die maakt de app even `inactive`. */
+let authenticating = false;
+export function isAuthenticating(): boolean {
+  return authenticating;
+}
+
 export async function authenticate(reason: string): Promise<boolean> {
+  authenticating = true;
   try {
     const r = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,
@@ -72,6 +79,8 @@ export async function authenticate(reason: string): Promise<boolean> {
     return r.success;
   } catch {
     return false;
+  } finally {
+    authenticating = false;
   }
 }
 

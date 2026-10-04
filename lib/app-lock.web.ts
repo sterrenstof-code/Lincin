@@ -18,6 +18,9 @@ export async function setAppLock(_on: boolean): Promise<boolean> {
   return false;
 }
 export async function clearAppLock() {}
+export function isAuthenticating(): boolean {
+  return false;
+}
 export async function offerAppLockOnce() {}
 export function useAppLock(): { enabled: boolean | null; biometry: Biometry | null } {
   return { enabled: false, biometry: { available: false, label: "" } };

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
+import { openExternal } from "@/lib/safe-url";
 import { ON_LIGHT, color, friendColor, line, type Hue, useScheme } from "@/lib/design/theme";
 import { lincinType, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
@@ -192,7 +193,7 @@ function Duo({
   italicSub?: boolean;
 }) {
   const open = () => {
-    if (url) Linking.openURL(url).catch(() => {});
+    openExternal(url);
   };
   return (
     <View style={{ height, flexDirection: "row" }}>

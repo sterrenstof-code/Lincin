@@ -57,7 +57,8 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data ?? {};
   let targetPath = "/";
   // `path` zet send-push zelf; de rest is voor meldingen van vóór dat veld.
-  if (typeof data.path === "string" && data.path.startsWith("/")) targetPath = data.path;
+  // Alleen een pad binnen de app: "//ergens.anders" is een andere site.
+  if (typeof data.path === "string" && /^\/(?![\/\\])/.test(data.path)) targetPath = data.path;
   else if (data.chat_id) targetPath = `/chat/${data.chat_id}`;
   else if (data.post_id) targetPath = `/post/${data.post_id}`;
   else if (data.event_id) targetPath = `/event/${data.event_id}`;
