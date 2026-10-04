@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
+import { uniqueTopic } from "../supabase/channel";
 import { supabase } from "../supabase/client";
 
 /**
@@ -55,6 +56,25 @@ export function useEventRsvps(eventIds: string[], myUserId: string, onError: (er
     queryFn: () => listRsvps(eventIds),
     enabled: eventIds.length > 0,
   });
+
+  // Live (0087): een antwoord van iemand anders op een van deze events
+  // haalt de lijst opnieuw. Je eigen antwoord staat er al (optimistisch).
+  const idsKey = eventIds.join(",");
+  useEffect(() => {
+    if (!idsKey) return;
+    const ids = new Set(idsKey.split(","));
+    const ch = supabase
+      .channel(uniqueTopic(`event-rsvps:${idsKey.slice(0, 40)}`))
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps" }, (p) => {
+        const row = (p.new && Object.keys(p.new).length ? p.new : p.old) as Partial<EventRsvp>;
+        if (!row?.event_id || !ids.has(row.event_id) || row.user_id === myUserId) return;
+        qc.invalidateQueries({ queryKey: ["event-rsvps"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [idsKey, myUserId, qc]);
 
   const answer = useCallback(
     async (eventId: string, next: RsvpStatus | null) => {
