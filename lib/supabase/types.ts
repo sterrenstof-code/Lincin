@@ -1072,6 +1072,11 @@ export type Database = {
         Returns: string;
       };
       /** 0082 — een vriendcode inwisselen; zie lib/api/friend-codes.ts. */
+      /** 0088 — wie van deze e-mailhashes al op Lincin zit. */
+      match_contacts: {
+        Args: { p_hashes: string[] };
+        Returns: { hash: string; id: string; username: string; display_name: string | null; avatar_url: string | null; hue: string | null }[];
+      };
       redeem_friend_code: {
         Args: { p_code: string };
         Returns: unknown;

@@ -10,6 +10,7 @@ import {
 
 import { Platform } from "react-native";
 
+import { clearAppLock } from "../app-lock";
 import { clearHues, type Hue } from "../design/theme";
 import { supabase } from "../supabase/client";
 
@@ -234,6 +235,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         // Je kleuren per persoon horen bij jou, niet bij het toestel.
         clearHues();
+        // Het slot ook: wie hierna inlogt, kiest zelf.
+        await clearAppLock();
       },
     }),
     [session, loading, hasPassword, recovering]

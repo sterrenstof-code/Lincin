@@ -120,6 +120,25 @@ export default function FriendsScreen() {
                 onPress={onShareLink}
               />
             </View>
+            {/* Op de telefoon: wie uit je contacten al op Lincin zit. */}
+            {Platform.OS !== "web" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Uit je contacten"
+                onPress={() => router.push("/contacts")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: space.sm,
+                  height: CONTROL_H,
+                  marginTop: space.xs,
+                }}
+              >
+                <Ionicons name="people-outline" color={feed.ink} size={15} />
+                <Text style={[feedType.label, { color: feed.ink }]}>Uit je contacten</Text>
+              </Pressable>
+            ) : null}
             {/* Secundaire actie: iemand uitnodigen die nog niet op Lincin zit */}
             <Pressable
               accessibilityRole="button"

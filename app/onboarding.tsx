@@ -156,11 +156,11 @@ function InviteStep({ userId, onBack }: { userId: string; onBack: () => void }) 
   const cells: CellAction[] = [
     { key: "share", glyph: "↗", label: "Deel link", onPress: onShare },
     { key: "scan", glyph: "▣", label: "Scan code", onPress: () => router.push("/qr-scan") },
-    // Contacten lezen kan alleen op een telefoon met een eigen pakket; op
+    // Contacten lezen kan alleen op een telefoon (app/contacts.tsx); op
     // web nodigt de derde cel uit per e-mail (de bestaande uitnodiging).
     Platform.OS === "web"
       ? { key: "mail", glyph: "✉", label: "E-mail", onPress: () => router.push("/invite-email") }
-      : { key: "contacts", glyph: "☷", label: "Contacten", onPress: onShare },
+      : { key: "contacts", glyph: "☷", label: "Contacten", onPress: () => router.push("/contacts") },
   ];
 
   return (

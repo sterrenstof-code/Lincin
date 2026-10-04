@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { OMSLAG, color, setPreference, themeSpec, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
+import { setAppLock, useAppLock } from "@/lib/app-lock";
 import { pushOn, setPref, setPushPref, usePrefs, type PushKind, type TogglePref } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { DesktopSettings } from "@/components/lincin/desktop/DesktopSettings";
@@ -67,6 +68,11 @@ function SettingsMobile() {
   const pendingIn = (friendships.data ?? []).filter(
     (f) => f.status === "pending" && f.addressee_id === myUserId
   ).length;
+  // Face ID / vingerafdruk: alleen als dit toestel het heeft en er iets
+  // ingesteld is (lib/app-lock.ts; op web nooit).
+  const lock = useAppLock();
+  const lockLabel = lock.biometry ? `${t.lockWith} ${lock.biometry.label}` : "";
+  const flipLock = () => void setAppLock(!lock.enabled);
   const lincsSub = `${lincs} ${t.friends}${pendingIn ? ` · ${pendingIn} ${t.waitsForYou}` : ""}`;
   const lists = useQuery({
     queryKey: ["shared-lists", myUserId],
@@ -193,6 +199,9 @@ function SettingsMobile() {
       title: "Account",
       rows: [
         { key: "edit", label: "Profiel bewerken", sub: session?.user.email ?? "", onPress: () => router.push("/profile-edit"), right: arrow() },
+        ...(lock.biometry?.available
+          ? [{ key: "lock", label: lockLabel, sub: t.lockSub, onPress: flipLock, right: <Toggle on={!!lock.enabled} /> }]
+          : []),
         { key: "device", label: "Toestel koppelen", sub: "Je sleutels naar een tweede toestel", onPress: () => router.push("/device-link"), right: arrow() },
         { key: "logout", label: "Uitloggen", sub: "Op dit toestel", onPress: logout, right: arrow(true) },
       ],
@@ -279,6 +288,11 @@ function SettingsMobile() {
               →
             </Val>
           </Row>
+          {lock.biometry?.available ? (
+            <Row label={lockLabel} sub={t.lockSub} onPress={flipLock}>
+              <Toggle on={!!lock.enabled} />
+            </Row>
+          ) : null}
           <Row label="Toestel koppelen" sub="Je sleutels naar een tweede toestel" onPress={() => router.push("/device-link")}>
             <Val>
               →

@@ -21,6 +21,7 @@ import { ToastProvider } from "@/lib/toast";
 import { loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/design/theme";
 import { desk, FONT_FILES } from "@/lib/design/type";
 import { useFonts } from "expo-font";
+import { AppLock } from "@/components/AppLock";
 import { LightboxHost } from "@/components/lincin/Lightbox";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 
@@ -92,7 +93,7 @@ export default function RootLayout() {
    * tot die tijd staat er niets — een halve tel systeemletter die daarna
    * verspringt is lelijker dan een halve tel leeg blad.
    */
-  const [fontsReady] = useFonts(Platform.OS === "web" ? {} : FONT_FILES);
+  const [fontsReady, fontsError] = useFonts(Platform.OS === "web" ? {} : FONT_FILES);
 
   useEffect(() => {
     // Haalt de bewaarde voorkeur op. Op web heeft het script in `+html.tsx`
@@ -106,6 +107,11 @@ export default function RootLayout() {
     setupNotificationChannels().catch(() => {});
     setupNotificationCategories().catch(() => {});
   }, []);
+
+  // Het lege blad van hierboven: stond beschreven maar werd nooit gelezen,
+  // dus native toonde eerst de systeemletter. Bij een fout gaan we toch
+  // door: een kapot bestand mag de app niet tegenhouden. Web wacht nooit.
+  if (Platform.OS !== "web" && !fontsReady && !fontsError) return null;
 
   return (
     // Op native staat de kleur van een prop als échte waarde in de boom (zie
@@ -132,6 +138,9 @@ export default function RootLayout() {
             <OfflineNotice />
             {/* De lichtbak van 2.1: één exemplaar, elke kaart kan hem openen. */}
             <LightboxHost />
+            {/* Face ID / vingerafdruk vóór de app, als je dat aanzette
+                (Instellingen). Bovenop alles, ook de lichtbak. */}
+            <AppLock />
           </ConfirmProvider>
           </ToastProvider>
           {/* De klok volgt het blad: donker op papier, licht op een
@@ -257,6 +266,7 @@ function RootStack() {
         <Stack.Screen name="group-create" options={MODAL} />
         <Stack.Screen name="group-add/[id]" options={MODAL} />
         <Stack.Screen name="invite-email" options={MODAL} />
+        <Stack.Screen name="contacts" options={MODAL} />
         <Stack.Screen name="event-create" options={MODAL} />
         <Stack.Screen name="event-qr/[id]" options={MODAL} />
         <Stack.Screen name="event-link/[id]" options={MODAL} />

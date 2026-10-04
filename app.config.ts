@@ -153,6 +153,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      // "Uit je contacten": alleen als je het zelf opent. De adressen gaan
+      // als hash naar de server (0088), nooit leesbaar.
+      "expo-contacts",
+      {
+        contactsPermission: "Lincin kijkt in je contacten wie er al op Lincin zit. Je adressen worden niet bewaard.",
+      },
+    ],
+    [
+      // De app-vergrendeling in Instellingen (Face ID / vingerafdruk).
+      "expo-local-authentication",
+      {
+        faceIDPermission: "Lincin gebruikt Face ID om de app te ontgrendelen als je dat aanzet.",
+      },
+    ],
+    [
       "expo-image-picker",
       {
         photosPermission: "Lincin gebruikt je fotobibliotheek om afbeeldingen te delen.",
