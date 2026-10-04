@@ -12,7 +12,7 @@ import { confirm } from "@/lib/confirm";
 import { RASTER, color, setPreference, type LincinTheme, type ThemePreference, usePreference, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { mono, sans, serif } from "@/lib/design/type";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
-import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
+import { pushOn, setPref, setPushPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
 
 import { Choice, Toggle } from "./Controls";
 import { DesktopShell, PageHead } from "./Shell";
@@ -99,13 +99,20 @@ export function DesktopSettings() {
           node: <Choice value={lang} onChange={(v: Lang) => setLang(v)} options={(["nl", "en", "de"] as Lang[]).map((l) => ({ value: l, label: l.toUpperCase() }))} />,
         },
         { kind: "value", label: t.lightDark, sub: t.followsDevice, value: standLabel, onPress: () => setPreference(STAND_NEXT[pref]) },
+        { kind: "toggle", label: t.foldedDefault, sub: t.foldedDefaultSub, on: !prefs.openDefault, flip: toggle("openDefault") },
       ],
     },
     {
       num: "02",
-      title: t.tabFeed,
+      title: t.notifTitle,
       rows: [
-        { kind: "toggle", label: t.foldedDefault, sub: t.foldedDefaultSub, on: !prefs.openDefault, flip: toggle("openDefault") },
+        ...(["messages", "comments", "mentions", "likes"] as const).map((k) => ({
+          kind: "toggle" as const,
+          label: { messages: t.pushMessages, comments: t.pushComments, mentions: t.pushMentions, likes: t.pushLikes }[k],
+          sub: { messages: t.pushMessagesSub, comments: t.pushCommentsSub, mentions: t.pushMentionsSub, likes: t.pushLikesSub }[k],
+          on: pushOn(prefs, k),
+          flip: () => setPushPref(myUserId, k, !pushOn(prefs, k)),
+        })),
         { kind: "toggle", label: t.newPosts, sub: t.newPostsSub, on: prefs.pushNew, flip: toggle("pushNew") },
         { kind: "toggle", label: t.quiet, sub: t.quietSub, on: prefs.quiet, flip: toggle("quiet") },
       ],

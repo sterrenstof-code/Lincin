@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { OMSLAG, color, setPreference, themeSpec, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
-import { setPref, usePrefs, type TogglePref } from "@/lib/lincin/prefs";
+import { pushOn, setPref, setPushPref, usePrefs, type PushKind, type TogglePref } from "@/lib/lincin/prefs";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { DesktopSettings } from "@/components/lincin/desktop/DesktopSettings";
 import { usePageTitle } from "@/lib/page-title";
@@ -87,6 +87,13 @@ function SettingsMobile() {
   }
 
   const toggle = (name: TogglePref) => () => setPref(myUserId, name, !prefs[name]);
+  const flipPush = (kind: PushKind) => () => setPushPref(myUserId, kind, !pushOn(prefs, kind));
+  const pushRows: { kind: PushKind; label: string; sub: string }[] = [
+    { kind: "messages", label: t.pushMessages, sub: t.pushMessagesSub },
+    { kind: "comments", label: t.pushComments, sub: t.pushCommentsSub },
+    { kind: "mentions", label: t.pushMentions, sub: t.pushMentionsSub },
+    { kind: "likes", label: t.pushLikes, sub: t.pushLikesSub },
+  ];
 
   /**
    * De vier groepen als gegevens. Magazine zet ze in kaders,
@@ -150,6 +157,7 @@ function SettingsMobile() {
     {
       title: t.notifTitle,
       rows: [
+        ...pushRows.map((r) => ({ key: `push-${r.kind}`, label: r.label, sub: r.sub, onPress: flipPush(r.kind), right: <Toggle on={pushOn(prefs, r.kind)} /> })),
         { key: "pushNew", label: t.newPosts, sub: t.newPostsSub, onPress: toggle("pushNew"), right: <Toggle on={prefs.pushNew} /> },
         { key: "quiet", label: t.quiet, sub: t.quietSub, onPress: toggle("quiet"), right: <Toggle on={prefs.quiet} /> },
       ],
@@ -238,6 +246,11 @@ function SettingsMobile() {
         </Group>
 
         <Group title={t.notifTitle}>
+          {pushRows.map((r) => (
+            <Row key={r.kind} label={r.label} sub={r.sub} onPress={flipPush(r.kind)}>
+              <Toggle on={pushOn(prefs, r.kind)} />
+            </Row>
+          ))}
           <Row label={t.newPosts} sub={t.newPostsSub} onPress={toggle("pushNew")}>
             <Toggle on={prefs.pushNew} />
           </Row>

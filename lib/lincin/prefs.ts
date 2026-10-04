@@ -20,6 +20,10 @@ import { supabase } from "@/lib/supabase/client";
  *   feedView     editie | friends | time; leeg = de standaard van het toestel
  *   commentSort  newest | oldest — de volgorde van reacties (Bijdrage Voorbeeld)
  *   openFriends  per vriend (of groep) je eigen keuze: open of dicht
+ *   push         per soort melding aan/uit (berichten, likes, reacties,
+ *               vermeldingen); ontbreekt = aan. `send-push` leest hem.
+ *   tz           de tijdzone van je laatst gebruikte toestel, zodat "stil
+ *               tussen 22:00 en 07:00" jouw nacht is en niet die van Brussel
  *   edition      het editienummer: de hoeveelste dag dat je Lincin opent
  *               ("Editie wo 23 sep · № 38"), met de dag van de laatste
  *
@@ -48,7 +52,15 @@ export type Prefs = {
   edition: { n: number; day: string } | null;
   /** Licht of donker (of het toestel volgen), meegenomen naar een tweede toestel. */
   scheme: ThemePreference;
+  /** Pushmeldingen per soort; ontbreekt een soort, dan staat hij aan. */
+  push: Partial<Record<PushKind, boolean>>;
+  /** IANA-tijdzone, bv. "Europe/Brussels", voor de stille uren. */
+  tz: string | null;
 };
+
+/** De soorten pushmelding die je apart kunt uitzetten (`send-push` §categoryOf). */
+export type PushKind = "messages" | "likes" | "comments" | "mentions";
+export const PUSH_KINDS: PushKind[] = ["messages", "likes", "comments", "mentions"];
 
 /** De schakelaars van Instellingen: alleen de booleans. */
 export type TogglePref = "tint" | "pushNew" | "quiet" | "visible" | "openDefault";
@@ -64,6 +76,8 @@ const DEFAULTS: Prefs = {
   openFriends: {},
   edition: null,
   scheme: "system",
+  push: {},
+  tz: null,
 };
 
 const cache = new Map<string, Prefs>();
@@ -85,6 +99,15 @@ function clean(raw: unknown): Partial<Prefs> {
   if (r.commentSort === "newest" || r.commentSort === "oldest") out.commentSort = r.commentSort;
   if (r.scheme === "system" || r.scheme === "light" || r.scheme === "dark") out.scheme = r.scheme;
   if (r.openFriends && typeof r.openFriends === "object") out.openFriends = r.openFriends as Record<string, boolean>;
+  if (r.push && typeof r.push === "object") {
+    const push: Partial<Record<PushKind, boolean>> = {};
+    for (const k of PUSH_KINDS) {
+      const v = (r.push as Record<string, unknown>)[k];
+      if (typeof v === "boolean") push[k] = v;
+    }
+    out.push = push;
+  }
+  if (typeof r.tz === "string" && r.tz) out.tz = r.tz;
   const e = r.edition as { n?: unknown; day?: unknown } | undefined;
   if (e && typeof e.n === "number" && typeof e.day === "string") out.edition = { n: e.n, day: e.day };
   return out;
@@ -140,6 +163,7 @@ function load(userId: string): Promise<void> {
       emit();
     }
     bumpEdition(userId);
+    keepTimezone(userId);
   })().catch(() => {});
   loading.set(userId, p);
   return p;
@@ -182,6 +206,36 @@ function bumpEdition(userId: string) {
   cache.set(userId, { ...cur, edition: { n: (cur.edition?.n ?? 0) + 1, day } });
   emit();
   persist(userId);
+}
+
+/** De tijdzone van dit toestel, of null als het platform hem niet kent. */
+function deviceTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Bewaar de tijdzone van dit toestel als hij anders is dan de bewaarde. */
+function keepTimezone(userId: string) {
+  const tz = deviceTimezone();
+  const cur = cache.get(userId) ?? DEFAULTS;
+  if (!tz || cur.tz === tz) return;
+  cache.set(userId, { ...cur, tz });
+  emit();
+  persist(userId);
+}
+
+/** Eén soort pushmelding aan of uit. */
+export function setPushPref(userId: string, kind: PushKind, on: boolean) {
+  const cur = cache.get(userId) ?? DEFAULTS;
+  setPref(userId, "push", { ...cur.push, [kind]: on });
+}
+
+/** Staat deze soort pushmelding aan? Ontbreekt hij, dan ja. */
+export function pushOn(prefs: Prefs, kind: PushKind): boolean {
+  return prefs.push[kind] !== false;
 }
 
 export function setPref<K extends keyof Prefs>(userId: string, name: K, value: Prefs[K]) {
