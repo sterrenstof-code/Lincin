@@ -97,6 +97,7 @@ import {
   type ReactionRow,
 } from "@/lib/api/reactions";
 import { subscribeToTyping, TYPING_EXPIRY_MS } from "@/lib/api/typing";
+import { useDraft } from "@/lib/lincin/drafts";
 import { supabase } from "@/lib/supabase/client";
 import { base64ToBytes } from "@/lib/crypto/base64";
 import {
@@ -119,6 +120,7 @@ import {
 import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { NL } from "@/lib/locale";
+import { hhmm } from "@/lib/lincin/model";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
 /**
@@ -306,7 +308,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   const messagesRef = useRef<DecryptedMessage[] | null>(null);
   messagesRef.current = messages;
   const [failedMessages, setFailedMessages] = useState<Set<string>>(new Set());
-  const [draft, setDraft] = useState("");
+  // Het concept blijft per gesprek bewaard, ook na een andere pagina (HANDOFF "Schrijfbalk").
+  const [draft, setDraft] = useDraft(id ? `chat:${id}` : null);
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState<Map<string, { name: string; expiresAt: number }>>(
     new Map()
@@ -753,6 +756,36 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
     return null;
   }, [messages, myUserId, chat, otherMembersLastRead]);
+  /**
+   * De status staat alleen onder je eigen laatste bericht (HANDOFF): eerst
+   * "verzenden…", dan "verzonden", en "gezien 22:48" met de kleurstip van
+   * wie het las. Mislukt: rood "niet verzonden · opnieuw".
+   */
+  const myLastId = useMemo(() => {
+    if (!messages) return null;
+    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].sender_id === myUserId) return messages[i].id;
+    return null;
+  }, [messages, myUserId]);
+  const statusScheme = useScheme();
+  const myLastStatus = useMemo((): BubbleStatus | null => {
+    const m = messages?.find((x) => x.id === myLastId);
+    if (!m) return null;
+    if (failedMessages.has(m.id)) return { kind: "failed" };
+    if (m.id.startsWith("optimistic-")) return { kind: "sending" };
+    if (readReceiptMessageId === m.id) {
+      // Wie het als laatste las, en wanneer.
+      let reader: string | null = null;
+      let at: string | null = null;
+      for (const [uid, when] of otherMembersLastRead) {
+        if (when && (!at || when > at)) {
+          at = when;
+          reader = uid;
+        }
+      }
+      return { kind: "seen", at: at ? hhmm(at) : undefined, dot: reader ? friendColor(hueFor(reader), statusScheme).fill : undefined };
+    }
+    return { kind: "sent" };
+  }, [messages, myLastId, failedMessages, readReceiptMessageId, otherMembersLastRead, statusScheme]);
   /** Tot waar alles van mij gelezen is: ✓✓ op alles tot en met dat bericht. */
   const readThroughAt = useMemo(
     () => (readReceiptMessageId ? messages?.find((m) => m.id === readReceiptMessageId)?.created_at ?? null : null),
@@ -953,20 +986,30 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
   }
 
-  function retryFailedMessage(tempId: string) {
-    setMessages((prev) => {
-      if (!prev) return prev;
-      const msg = prev.find((m) => m.id === tempId);
-      if (!msg || !msg.content?.text) return prev;
-      // Verwijder eerst de gefaalde rij, daarna sturen we opnieuw via onSend.
-      setDraft(msg.content.text);
-      setFailedMessages((p) => {
-        const n = new Set(p);
-        n.delete(tempId);
-        return n;
-      });
-      return prev.filter((m) => m.id !== tempId);
+  /**
+   * "niet verzonden · opnieuw": dezelfde bubbel gaat opnieuw, op zijn plek
+   * en met zijn citaat (HANDOFF "Schrijfbalk"). Tot okt 2026 ging de tekst
+   * terug naar de schrijfbalk en verdween de bubbel.
+   */
+  async function retryFailedMessage(tempId: string) {
+    const msg = messages?.find((m) => m.id === tempId);
+    if (!msg?.content?.text || !id || !myUserId) return;
+    setFailedMessages((p) => {
+      const n = new Set(p);
+      n.delete(tempId);
+      return n;
     });
+    try {
+      const real = await sendMessage({ chatId: id, senderId: myUserId, text: msg.content.text, reply: msg.content.reply ?? undefined });
+      setMessages((prev) => {
+        if (!prev) return prev;
+        if (prev.some((m) => m.id === real.id)) return prev.filter((m) => m.id !== tempId);
+        return prev.map((m) => (m.id === tempId ? { ...m, id: real.id, created_at: real.created_at } : m));
+      });
+    } catch (e: any) {
+      console.warn("sendMessage (opnieuw)", e?.message ?? e);
+      setFailedMessages((p) => new Set(p).add(tempId));
+    }
   }
 
   // Op web: Enter verstuurt, Shift+Enter voegt een nieuwe regel in. Op native
@@ -1688,8 +1731,15 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                 // Een "run" is een opeenvolgende reeks berichten van dezelfde
                 // afzender. We tonen de naam alleen op de eerste bubble van
                 // de run en de avatar alleen op de laatste — net als Telegram.
-                const showSenderGap =
-                  !prev || prev.sender_id !== item.sender_id;
+                // Gesprek Voorbeeld: dezelfde afzender binnen twee minuten (en
+                // op dezelfde dag) is één groep. De avatar staat bij het laatste
+                // bericht van de groep, de tijd ná de groep.
+                const together = (a?: DecryptedMessage | null, b?: DecryptedMessage | null) =>
+                  !!a && !!b && a.sender_id === b.sender_id &&
+                  new Date(a.created_at).toDateString() === new Date(b.created_at).toDateString() &&
+                  Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < 2 * 60_000;
+                const groupWithNext = together(item, next);
+                const showSenderGap = !together(prev, item);
 
                 // Datum-scheiding: toon wanneer dit bericht van een andere dag is dan het vorige (oudere)
                 const showDateSep =
@@ -1698,10 +1748,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     new Date(prev.created_at).toDateString();
                 const showSenderHeader =
                   isGroup && !isMine && showSenderGap;
-                const showAvatar =
-                  isGroup &&
-                  !isMine &&
-                  (!next || next.sender_id !== item.sender_id);
+                const showAvatar = !isMine && !groupWithNext;
                 const senderProfile = chat?.members.find(
                   (m) => m.id === item.sender_id
                 );
@@ -1849,6 +1896,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                       pending={isPending && !isFailed}
                       failed={isFailed}
                       read={!!readThroughAt && isMine && item.created_at <= readThroughAt}
+                      footer={
+                        item.id === myLastId
+                          ? { time: groupWithNext ? null : hhmm(item.created_at), status: myLastStatus }
+                          : groupWithNext
+                            ? null
+                            : { time: hhmm(item.created_at), status: null }
+                      }
                       onRetry={() => retryFailedMessage(item.id)}
                       reactions={reactionsForMessage(item.id)}
                       onLongPress={() => {
@@ -2692,8 +2746,9 @@ function typingLabel(
 ): string {
   const names = Array.from(typing.values()).map((t) => t.name);
   if (names.length === 0) return "";
-  if (names.length === 1) return `${names[0]} is aan het typen…`;
-  if (names.length === 2) return `${names[0]} en ${names[1]} zijn aan het typen…`;
+  // Gesprek Voorbeeld: "Noor typt…".
+  if (names.length === 1) return `${names[0]} typt…`;
+  if (names.length === 2) return `${names[0]} en ${names[1]} typen…`;
   return `${names[0]} en ${names.length - 1} anderen typen…`;
 }
 
@@ -2708,13 +2763,9 @@ function formatChatDate(iso: string): string {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
+  // Gesprek Voorbeeld: "Gisteren", "Vandaag", anders de datum.
   if (sameDay(d, now)) return "Vandaag";
   if (sameDay(d, yesterday)) return "Gisteren";
-
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays < 7) {
-    return d.toLocaleDateString(NL, { weekday: "long" });
-  }
   if (d.getFullYear() === now.getFullYear()) {
     return d.toLocaleDateString(NL, { day: "numeric", month: "long" });
   }
@@ -2872,7 +2923,13 @@ function MessageBubble({
   onSelect,
   accent,
   fill,
+  footer,
 }: {
+  /**
+   * Onder de bubbel: de tijd ná een groep, en onder je eigen laatste bericht
+   * de status. `null` midden in een groep.
+   */
+  footer?: { time: string | null; status: BubbleStatus | null } | null;
   msg: DecryptedMessage;
   /** De kleur van de ander: de rand van een aangetikte bubbel, de kantlijn van een vermelding. */
   accent?: string;
@@ -2905,13 +2962,6 @@ function MessageBubble({
   // Wie er reageerde, in woorden: "❤️ Jij en Noor" onder de chips, en de
   // namen bij hover (web). Een telling alleen zegt niet wie.
   const who = useReactionWho(reactions);
-  // `[]` betekende "de taal van het besturingssysteem", en op een toestel
-  // dat op Engels staat gaf dat `3:45 PM` — in dezelfde bubbel als een
-  // Nederlandse datum. Zie lib/locale.ts.
-  const time = new Date(msg.created_at).toLocaleTimeString(NL, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   const router = useRouter();
   const t2 = useT();
   const content = msg.content;
@@ -2922,9 +2972,10 @@ function MessageBubble({
   // Magazine (de omslag): een haarlijn van 1 en de tekst in serif.
   const mag = useThemeSpec().layout === "spread";
   const emojiOnly = !!content?.text && /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text);
-  // In groepsgesprekken: avatar-slot links van inkomende berichten
-  // zodat alles netjes uitlijnt. Avatar zichtbaar op elke bubble.
-  const showAvatarSlot = isGroup && !isMine;
+  // Een avatar-slot links van elk inkomend bericht — in een groep én met
+  // één persoon (Gesprek Voorbeeld); de avatar zelf alleen bij het laatste
+  // bericht van een groep.
+  const showAvatarSlot = !isMine;
   // De naam in de bubbel in de kleur van de afzender, zoals Telegram — zo
   // zie je in een groep wie het zei zonder de naam te lezen.
   const senderColor = friendColor(hueFor(msg.sender_id), useScheme());
@@ -3284,38 +3335,18 @@ function MessageBubble({
               }`}
               style={hasAttachment ? undefined : { marginLeft: "auto", paddingBottom: 1 }}
             >
-              <Text
-                style={[
-                  lincinType.micro,
-                  mag ? { ...sans(700), fontSize: 9, letterSpacing: 0.9 } : null,
-                  { textTransform: "none", color: isMine ? creamOnDark.muted : feed.inkDim },
-                ]}
-              >
-                {time}{msg.edited_at ? " · bewerkt" : ""}
-              </Text>
-              {isMine && pending && (
-                <Ionicons
-                  name="time-outline"
-                  size={10}
-                  color={isMine ? creamOnDark.muted : feed.inkDim}
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-              {isMine && !pending && !failed && (
-                // ✓ verstuurd, ✓✓ gelezen — zoals Telegram en WhatsApp.
-                <Ionicons
-                  name={read ? "checkmark-done" : "checkmark"}
-                  size={read ? 13 : 12}
-                  color={read ? creamOnDark.DEFAULT : creamOnDark.muted}
-                  accessibilityLabel={read ? "Gelezen" : "Verstuurd"}
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-              {failed && (
-                <Text className="text-cream text-[10px] ml-2 underline">
-                  Tik om opnieuw te proberen
+              {/* De tijd staat ná de groep (zie `footer`); hier alleen "bewerkt". */}
+              {msg.edited_at ? (
+                <Text
+                  style={[
+                    lincinType.micro,
+                    mag ? { ...sans(700), fontSize: 9, letterSpacing: 0.9 } : null,
+                    { textTransform: "none", color: isMine ? creamOnDark.muted : feed.inkDim },
+                  ]}
+                >
+                  bewerkt
                 </Text>
-              )}
+              ) : null}
             </View>
             </View>
           </>
@@ -3324,6 +3355,29 @@ function MessageBubble({
         </View>
       </Animated.View>
       </SwipeWrap>
+
+      {/* Gesprek Voorbeeld: de tijd ná de groep, en onder je eigen laatste
+          bericht de status — "verzenden…", "verzonden", "gezien 22:48" met
+          de kleurstip van wie het las; mislukt in rood, met opnieuw. */}
+      {footer && (footer.time || footer.status) ? (
+        <View style={{ alignSelf: isMine ? "flex-end" : "flex-start", marginLeft: showAvatarSlot ? 44 : 0, marginTop: 4, gap: 2, alignItems: isMine ? "flex-end" : "flex-start" }}>
+          {footer.time ? <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>{footer.time}</Text> : null}
+          {footer.status?.kind === "failed" ? (
+            <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={10}>
+              <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("red") }]}>niet verzonden · opnieuw</Text>
+            </Pressable>
+          ) : footer.status ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>
+                {footer.status.kind === "sending" ? "verzenden…" : footer.status.kind === "sent" ? "verzonden" : `gezien${footer.status.at ? ` ${footer.status.at}` : ""}`}
+              </Text>
+              {footer.status.kind === "seen" && footer.status.dot ? (
+                <View accessibilityLabel="gelezen" style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: footer.status.dot }} />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {/*
           De actiebalk — verschijnt bij tik (web) of lang drukken (native).
@@ -3439,6 +3493,13 @@ function MessageBubble({
  * feed ook aanhoudt voor lopende tekst.
  */
 const BUBBLE_MAX_W = 560;
+
+/** De status onder je eigen laatste bericht (Gesprek Voorbeeld). */
+type BubbleStatus =
+  | { kind: "sending" }
+  | { kind: "sent" }
+  | { kind: "seen"; at?: string; dot?: string }
+  | { kind: "failed" };
 
 /** Veelgebruikte emoji's voor de simpele in-chat picker. */
 const CHAT_EMOJIS = [

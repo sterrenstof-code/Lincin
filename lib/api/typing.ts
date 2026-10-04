@@ -25,7 +25,7 @@ type TypingHandle = {
 const SEND_THROTTLE_MS = 2000;
 
 /** Re-export of the receiver indicator's expiration (in ms) for use in UIs. */
-export const TYPING_EXPIRY_MS = 4000;
+export const TYPING_EXPIRY_MS = 5000; // "verdwijnt na 5 s stilte" (HANDOFF okt 2026)
 
 export function subscribeToTyping(
   chatId: string,
