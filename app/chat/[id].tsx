@@ -110,7 +110,7 @@ import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
-import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useLang, useT } from "@/lib/i18n";
 import {
   previewLine,
@@ -2365,103 +2365,85 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
 
             {magBar && !recording ? (
             /**
-             * De invoer van de omslag (desktop-magazine-pages, GESPREKKEN):
-             * geen vakjes, één lijn onder het veld, en rechts één knop die
-             * wisselt — de microfoon zolang er niets staat, een rood vlak
-             * met ↑ zodra je typt (zoals Telegram). De bijlage links en de
-             * emoji ín het veld zijn iconen zonder kader: ze horen bij de
-             * lijn, niet ernaast.
+             * De schrijfbalk van de omslag (Gesprek Voorbeeld): één balk van
+             * 64 onder een lijn van 2 inkt — ☺ in een cel van 56, het veld
+             * in serif, + in een cel van 56 (zwart zolang de bijlagerij open
+             * staat), en rechts een cel van 64: rood met ↑ zodra er iets te
+             * sturen is. Leeg staat daar de microfoon, voor een spraakbericht.
              */
-            <ComposerInset style={[{ paddingTop: 14, paddingBottom: 18 }, embedded ? { maxWidth: "100%", paddingHorizontal: 24 } : null]}>
-              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "stretch", minHeight: 64, borderTopWidth: 2, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Emoji"
+                accessibilityState={{ expanded: showEmojiPicker }}
+                onPress={() => {
+                  setShowEmojiPicker((v) => !v);
+                  if (!showEmojiPicker) inputRef.current?.blur();
+                  else inputRef.current?.focus();
+                }}
+                style={({ pressed }) => [{ width: 56, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: color("ink", "postRule"), backgroundColor: showEmojiPicker ? color("ink") : "transparent" }, pressed && AUX_PRESSED]}
+              >
+                <Text style={{ fontSize: 18, lineHeight: 22, color: showEmojiPicker ? color("paper") : color("ink") }}>☺</Text>
+              </Pressable>
+              <TextInput
+                ref={inputRef}
+                value={draft}
+                onChangeText={onDraftChange}
+                onKeyPress={onComposerKeyPress}
+                onFocus={() => setShowEmojiPicker(false)}
+                onContentSizeChange={(e) => setInputH(e.nativeEvent.contentSize.height)}
+                placeholder={sending ? "Bezig met versturen…" : `${t2.writeTo} ${title}…`}
+                placeholderTextColor={color("ink", "inkDim")}
+                multiline
+                numberOfLines={Platform.OS === "web" ? 1 : undefined}
+                editable={!sending}
+                style={{
+                  ...serif(draft.length === 0),
+                  flex: 1,
+                  minWidth: 0,
+                  alignSelf: "center",
+                  fontSize: 18,
+                  lineHeight: 23,
+                  color: color("ink"),
+                  paddingVertical: 0,
+                  paddingHorizontal: 16,
+                  marginVertical: 20,
+                  height: Math.min(115, Math.max(23, inputH)),
+                  ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none", resize: "none" } as any) : {}),
+                }}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Bijlage toevoegen"
+                accessibilityState={{ expanded: attachMenuOpen }}
+                onPress={() => setAttachMenuOpen((v) => !v)}
+                disabled={sending}
+                style={({ pressed }) => [{ width: 56, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderLeftColor: color("ink", "postRule"), backgroundColor: attachMenuOpen ? color("ink") : "transparent" }, pressed && AUX_PRESSED]}
+              >
+                <Text style={{ fontSize: 22, lineHeight: 26, color: attachMenuOpen ? color("paper") : color("ink") }}>+</Text>
+              </Pressable>
+              {draft.trim() || sending ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Bijlage toevoegen"
-                  onPress={() => setAttachMenuOpen((v) => !v)}
-                  disabled={sending}
-                  style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
+                  accessibilityLabel="Bericht versturen"
+                  onPress={onSend}
+                  disabled={sending || !draft.trim()}
+                  style={({ pressed }) => [{ width: 64, alignItems: "center", justifyContent: "center", backgroundColor: sending ? color("ink", "pillSoft") : color("red") }, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="add" color={color("ink")} size={26} />
+                  <Text style={{ fontSize: 18, lineHeight: 22, color: "#F7F4EE" }}>↑</Text>
                 </Pressable>
-                <View
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    flexDirection: "row",
-                    alignItems: "flex-end",
-                    minHeight: CONTROL_H,
-                    borderBottomWidth: 1,
-                    borderBottomColor: color("ink"),
-                  }}
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Spraakbericht opnemen"
+                  onPress={startRecording}
+                  disabled={sending}
+                  style={({ pressed }) => [{ width: 64, alignItems: "center", justifyContent: "center", backgroundColor: color("ink", "pillSoft") }, pressed && AUX_PRESSED]}
                 >
-                  <TextInput
-                    ref={inputRef}
-                    value={draft}
-                    onChangeText={onDraftChange}
-                    onKeyPress={onComposerKeyPress}
-                    onFocus={() => setShowEmojiPicker(false)}
-                    onContentSizeChange={(e) => setInputH(e.nativeEvent.contentSize.height)}
-                    placeholder={sending ? "Bezig met versturen…" : `${t2.writeTo} ${title}…`}
-                    placeholderTextColor={color("ink", "inkDim")}
-                    multiline
-                    // Web: één regel om mee te beginnen (anders twee), de
-                    // hoogte groeit daarna via onContentSizeChange.
-                    numberOfLines={Platform.OS === "web" ? 1 : undefined}
-                    editable={!sending}
-                    style={{
-                      ...sans(),
-                      flex: 1,
-                      minWidth: 0,
-                      fontSize: 16,
-                      lineHeight: 22,
-                      color: color("ink"),
-                      paddingVertical: 0,
-                      paddingHorizontal: 0,
-                      marginVertical: 11,
-                      height: Math.min(110, Math.max(22, inputH)),
-                      ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none", resize: "none" } as any) : {}),
-                    }}
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Emoji"
-                    onPress={() => {
-                      setShowEmojiPicker((v) => !v);
-                      if (!showEmojiPicker) inputRef.current?.blur();
-                      else inputRef.current?.focus();
-                    }}
-                    style={({ pressed }) => [{ width: 36, height: CONTROL_H, alignItems: "center", justifyContent: "center" }, pressed && AUX_PRESSED]}
-                  >
-                    <Ionicons name={showEmojiPicker ? "happy" : "happy-outline"} color={color("ink", "inkDim")} size={21} />
-                  </Pressable>
-                </View>
-                {draft.trim() || sending ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Bericht versturen"
-                    onPress={onSend}
-                    disabled={sending || !draft.trim()}
-                    style={({ pressed }) => [
-                      AUX_BUTTON,
-                      { backgroundColor: sending ? color("paper2") : color("red") },
-                      pressed && AUX_PRESSED,
-                    ]}
-                  >
-                    <Ionicons name="arrow-up" color={sending ? color("ink", "inkDim") : ON_DARK} size={21} />
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Spraakbericht opnemen"
-                    onPress={startRecording}
-                    disabled={sending}
-                    style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
-                  >
-                    <Ionicons name="mic-outline" color={color("ink")} size={23} />
-                  </Pressable>
-                )}
-              </View>
-            </ComposerInset>
+                  <Ionicons name="mic-outline" color="#F7F4EE" size={22} />
+                </Pressable>
+              )}
+            </View>
             ) : (
             <ComposerInset style={{ paddingVertical: space.md }}>
              <View
@@ -3437,29 +3419,6 @@ function MessageBubble({
       </Animated.View>
       </SwipeWrap>
 
-      {/* Gesprek Voorbeeld: de tijd ná de groep, en onder je eigen laatste
-          bericht de status — "verzenden…", "verzonden", "gezien 22:48" met
-          de kleurstip van wie het las; mislukt in rood, met opnieuw. */}
-      {footer && (footer.time || footer.status) ? (
-        <View style={{ alignSelf: isMine ? "flex-end" : "flex-start", marginLeft: showAvatarSlot ? 44 : 0, marginTop: 4, gap: 2, alignItems: isMine ? "flex-end" : "flex-start" }}>
-          {footer.time ? <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>{footer.time}</Text> : null}
-          {footer.status?.kind === "failed" ? (
-            <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={10}>
-              <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("red") }]}>niet verzonden · opnieuw</Text>
-            </Pressable>
-          ) : footer.status ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>
-                {footer.status.kind === "sending" ? "verzenden…" : footer.status.kind === "sent" ? "verzonden" : `gezien${footer.status.at ? ` ${footer.status.at}` : ""}`}
-              </Text>
-              {footer.status.kind === "seen" && footer.status.dot ? (
-                <View accessibilityLabel="gelezen" style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: footer.status.dot }} />
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
       {/*
           De actiebalk — verschijnt bij tik (web) of lang drukken (native).
 
@@ -3556,6 +3515,28 @@ function MessageBubble({
       )}
 
 
+      {/* Gesprek Voorbeeld: de tijd ná de groep, en onder je eigen laatste
+          bericht de status — "verzenden…", "verzonden", "gezien 22:48" met
+          de kleurstip van wie het las; mislukt in rood, met opnieuw. */}
+      {footer && (footer.time || footer.status) ? (
+        <View style={{ alignSelf: isMine ? "flex-end" : "flex-start", marginLeft: showAvatarSlot ? 44 : 0, marginTop: 4, gap: 2, alignItems: isMine ? "flex-end" : "flex-start" }}>
+          {footer.time ? <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>{footer.time}</Text> : null}
+          {footer.status?.kind === "failed" ? (
+            <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={10}>
+              <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("red") }]}>niet verzonden · opnieuw</Text>
+            </Pressable>
+          ) : footer.status ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>
+                {footer.status.kind === "sending" ? "verzenden…" : footer.status.kind === "sent" ? "verzonden" : `gezien${footer.status.at ? ` ${footer.status.at}` : ""}`}
+              </Text>
+              {footer.status.kind === "seen" && footer.status.dot ? (
+                <View accessibilityLabel="gelezen" style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: footer.status.dot }} />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
