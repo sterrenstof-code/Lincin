@@ -17,7 +17,7 @@ import { BORDER } from "../ui";
  * `één stem per linc` ↔ `meerdere keuzes`. De vraag zelf is de titel.
  */
 export function PollEditor({ c }: { c: Compose }) {
-  const { t, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti } = c;
+  const { t, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, pollAnon, setPollAnon, pollProposals, setPollProposals } = c;
   const dim = color("ink", "inkDim");
   const label = { ...mono(500), fontSize: 10, lineHeight: 13, textTransform: "uppercase" as const };
   const canRemove = pollOptions.length > POLL_MIN;
@@ -74,43 +74,44 @@ export function PollEditor({ c }: { c: Compose }) {
         </Pressable>
       ) : null}
 
-      <View
-        style={{
-          marginTop: "auto",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          paddingTop: 10,
-          borderTopWidth: 1,
-          borderTopColor: color("ink", "postRule"),
-        }}
-      >
-        <Text style={[label, { letterSpacing: 0.6, color: dim, flexShrink: 1 }]}>{t.pollOne}</Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: pollMulti }}
-          accessibilityLabel={t.pollMulti}
-          onPress={() => setPollMulti(!pollMulti)}
-          hitSlop={8}
-          style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}
-        >
-          <View
-            style={{
-              width: 26,
-              height: 16,
-              borderWidth: BORDER,
-              borderColor: line(),
-              padding: 1,
-              flexDirection: "row",
-              justifyContent: pollMulti ? "flex-end" : "flex-start",
-            }}
-          >
-            <View style={{ width: 10, backgroundColor: color("ink") }} />
-          </View>
-          <Text style={[label, { letterSpacing: 0.6, color: color("ink") }]}>{t.pollMulti}</Text>
-        </Pressable>
+      {/* De regels van de poll (Poll-spec): meerdere keuzes, anoniem, en of
+          vrienden een eigen voorstel mogen toevoegen. */}
+      <View style={{ marginTop: "auto", paddingTop: 10, gap: 10, borderTopWidth: 1, borderTopColor: color("ink", "postRule") }}>
+        <Text style={[label, { letterSpacing: 0.6, color: dim }]}>{pollMulti ? t.pollMultiVote : t.pollOne}</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+          <Switch on={pollMulti} label={t.pollMulti} onToggle={() => setPollMulti(!pollMulti)} labelStyle={label} />
+          <Switch on={pollAnon} label={t.pollAnonLabel} onToggle={() => setPollAnon(!pollAnon)} labelStyle={label} />
+          <Switch on={pollProposals} label={t.pollProposalsLabel} onToggle={() => setPollProposals(!pollProposals)} labelStyle={label} />
+        </View>
       </View>
     </View>
+  );
+}
+
+function Switch({ on, label: text, onToggle, labelStyle }: { on: boolean; label: string; onToggle: () => void; labelStyle: object }) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={text}
+      onPress={onToggle}
+      hitSlop={8}
+      style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}
+    >
+      <View
+        style={{
+          width: 26,
+          height: 16,
+          borderWidth: BORDER,
+          borderColor: line(),
+          padding: 1,
+          flexDirection: "row",
+          justifyContent: on ? "flex-end" : "flex-start",
+        }}
+      >
+        <View style={{ width: 10, backgroundColor: color("ink") }} />
+      </View>
+      <Text style={[labelStyle, { letterSpacing: 0.6, color: color("ink") }]}>{text}</Text>
+    </Pressable>
   );
 }

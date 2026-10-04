@@ -89,6 +89,9 @@ export function useCompose() {
   const setImageUri = (uri: string | null) => setImageUris(uri ? [uri] : []);
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollMulti, setPollMulti] = useState(false);
+  /** 0085 — anoniem, en of vrienden een eigen keuze mogen toevoegen. */
+  const [pollAnon, setPollAnon] = useState(false);
+  const [pollProposals, setPollProposals] = useState(false);
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [published, setPublished] = useState(false);
@@ -264,6 +267,8 @@ export function useCompose() {
           question: title.trim(),
           options: filledOptions,
           allowMultiple: pollMulti,
+          anonymous: pollAnon,
+          allowProposals: pollProposals,
           swatch,
         });
         await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
@@ -300,7 +305,7 @@ export function useCompose() {
   const [panelW, setPanelW] = useState(0);
   const green = friendColor("green", scheme).fill;
 
-  return { audience: kind === "poll" ? null : audience, setAudience, audiences, audienceLabel, router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, imageUris, addPhotos, removePhoto, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
+  return { audience: kind === "poll" ? null : audience, setAudience, audiences, audienceLabel, router, qc, t, scheme, myUserId, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, imageUri, setImageUri, imageUris, addPhotos, removePhoto, pollOptions, setPollOption, addPollOption, removePollOption, pollMulti, setPollMulti, pollAnon, setPollAnon, pollProposals, setPollProposals, preview, submitting, published, error, kept, fc, pickImage, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty };
 }
 
 export type Compose = ReturnType<typeof useCompose>;

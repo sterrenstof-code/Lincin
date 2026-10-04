@@ -1,101 +1,86 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type TextInput } from "react-native";
 
-import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
-import { CommentReactions } from "@/components/lincin/CommentReactions";
-import { CommentRow } from "@/components/lincin/CommentRow";
-import { ComposeBar, ReactBox } from "@/components/lincin/ComposeBar";
-import { PostCard } from "@/components/lincin/PostCard";
-import { GAP, GUTTER, Mono } from "@/components/lincin/ui";
-import { addEntityComment, listEntityComments, subscribeToEntityComments } from "@/lib/api/entity-comments";
-import { deletePoll, getPollWithDetails } from "@/lib/api/polls";
+import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
+import { ComposeBar, ReactBox, ReplyStrip } from "@/components/lincin/ComposeBar";
+import { CommentList, CommentsHead } from "@/components/lincin/post/Comments";
+import { PollBlock } from "@/components/lincin/post/Poll";
+import { Mono } from "@/components/lincin/ui";
+import type { EntityComment } from "@/lib/api/entity-comments";
+import { deletePoll } from "@/lib/api/polls";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { friendColor, hueFor, useHueChoices, useScheme } from "@/lib/design/theme";
-import { useT } from "@/lib/i18n";
+import { color, friendColor, hueFor, RASTER, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { sans, serif } from "@/lib/design/type";
+import { useLang, useT } from "@/lib/i18n";
+import { useComments } from "@/lib/lincin/comments";
 import { openProfile } from "@/lib/lincin/desktop";
-import { fromPoll } from "@/lib/lincin/model";
-import { useCommentReactions } from "@/lib/lincin/reactions";
+import { useDraft } from "@/lib/lincin/drafts";
+import { displayName, swatchOf, timeLabel } from "@/lib/lincin/model";
+import { usePoll } from "@/lib/lincin/poll";
+import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
 import { invalidatePostCaches } from "@/lib/post-cache";
-import { safeBack } from "@/lib/nav";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
 
 /**
- * De bladzijde van een poll uit de feed.
+ * De bladzijde van een poll (Poll-spec, okt 2026): dezelfde vorm als een
+ * bijdrage. De vraag en de toelichting ("Eén stem per linc. Eigen voorstel
+ * mag.") in het vriendenblok, daaronder de keuzes als één gelinieerde
+ * lijst (`PollBlock`), en de reacties met draden zoals bij een bijdrage.
  *
- * Een poll is geen bijdrage (hij staat in `polls`, niet in `posts`) en had
- * daarom geen eigen plek: een tik op hem in de inhoudsopgave deed niets.
- * Hier: de kaart zelf, waarin je stemt, en de comments eronder
- * (`entity_comments` met type `poll`). Wie hem mag zien bepaalt de
- * database (0063): de maker en zijn lincs.
+ * Wie hem mag zien bepaalt de database (0063): de maker en zijn lincs.
  */
 export default function PollScreen() {
-  const { id: raw } = useLocalSearchParams<{ id: string }>();
+  const { id: raw, c: highlight } = useLocalSearchParams<{ id: string; c?: string }>();
   const id = String(raw ?? "");
   const qc = useQueryClient();
   const router = useRouter();
   const t = useT();
+  const lang = useLang();
   const scheme = useScheme();
   const toast = useToast();
+  const modern = useThemeSpec().id === "modern";
   const { session } = useAuth();
   const myUserId = session?.user.id ?? "";
 
-  const poll = useQuery({
-    queryKey: ["poll", id],
-    queryFn: () => getPollWithDetails(id, myUserId),
-    enabled: !!id && !!myUserId,
-  });
-  const comments = useQuery({
-    queryKey: ["entity-comments", "poll", id],
-    queryFn: () => listEntityComments("poll", id),
-    enabled: !!id,
-  });
+  const pm = usePoll(id || undefined, myUserId);
+  const p = pm.poll;
   useEffect(() => {
-    if (!id) return;
-    markSeen(id);
-    const ch = subscribeToEntityComments("poll", id, () => comments.refetch());
-    return () => {
-      ch.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (id) markSeen(id);
   }, [id]);
-
-  const p = poll.data ?? null;
-  // Op zijn eigen bladzijde opent de kaart niets meer.
-  const card = useMemo(() => (p ? { ...fromPoll(p, t), href: "" } : null), [p, t]);
-  usePageTitle(card?.title ?? null);
-  // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
+  usePageTitle(p?.question ?? null);
   useHueChoices();
-  const hue = card?.swatch ?? hueFor(p?.user_id);
+  // De kleur die de maker koos, anders zijn eigen kleur.
+  const hue = (p ? swatchOf(p.swatch, p.user_id) : undefined) ?? hueFor(p?.user_id);
   const fc = friendColor(hue, scheme);
 
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
+  const m = useComments({ entityType: "poll", entityId: id || undefined, myUserId, ownerId: p?.user_id });
+  const [draft, setDraft, clearDraft] = useDraft(id ? `poll:${id}` : null);
+  const [replyTo, setReplyTo] = useState<EntityComment | null>(null);
   const [boxOpen, setBoxOpen] = useState(false);
-  const commentIds = useMemo(() => (comments.data ?? []).map((c) => c.id), [comments.data]);
-  const commentReactions = useCommentReactions(commentIds, myUserId);
-  const [pickOpen, setPickOpen] = useState<string | null>(null);
+  const inputRef = useRef<TextInput>(null);
 
-  async function send(imageUri?: string) {
+  function send(imageUri?: string) {
     if (!p || !myUserId) return;
     const body = draft.trim();
     if (!body && !imageUri) return;
-    setSending(true);
-    try {
-      await addEntityComment({ entityType: "poll", entityId: id, userId: myUserId, body, ownerId: p.user_id, imageUri });
-      setDraft("");
-      setBoxOpen(false);
-      await comments.refetch();
-      invalidatePostCaches(qc);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t.failed);
-    } finally {
-      setSending(false);
-    }
+    m.send({ body, imageUri: imageUri ?? null, parentId: replyTo?.id ?? null });
+    clearDraft();
+    setBoxOpen(false);
+    setReplyTo(null);
+    invalidatePostCaches(qc);
+  }
+
+  function reply(c: EntityComment) {
+    const author = c.user_id === myUserId ? null : m.authorOf(c);
+    setReplyTo(c);
+    if (c.parent_id && author?.username && !draft.includes(`@${author.username}`)) setDraft((d) => `@${author.username} ${d}`);
+    m.setOpen(c.parent_id ?? c.id, true);
+    inputRef.current?.focus();
   }
 
   // Een poll is geen bijdrage en had daarom geen "Verwijder": eenmaal
@@ -116,6 +101,13 @@ export default function PollScreen() {
     }
   }
 
+  const authorName = p ? displayName(p.author) : "";
+  const hint = p
+    ? [p.allow_multiple ? t.pollMultiVote : t.pollOneVote, p.allow_proposals ? t.pollProposalsOk : null, p.anonymous ? t.pollAnon : null].filter(Boolean).join(" ")
+    : "";
+  const replyName = replyTo ? (replyTo.user_id === myUserId ? t.me : displayName(m.authorOf(replyTo))) : "";
+  const onBlock = modern ? color("ink") : fc.ink;
+
   return (
     <LincinScreen
       tab="feed"
@@ -127,7 +119,7 @@ export default function PollScreen() {
           right={
             p && p.user_id === myUserId ? (
               <Pressable accessibilityRole="button" onPress={remove} hitSlop={8}>
-                <Mono variant="micro" style={{ textDecorationLine: "underline" }}>
+                <Mono variant="micro" tone="red">
                   Verwijder
                 </Mono>
               </Pressable>
@@ -141,64 +133,74 @@ export default function PollScreen() {
       }
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: GUTTER, paddingTop: 14, gap: GAP }} showsVerticalScrollIndicator={false}>
-          {poll.isLoading && !p ? (
+        <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+          {pm.isLoading && !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.loading}
             </Mono>
-          ) : !p || !card ? (
+          ) : !p ? (
             <Mono variant="micro" tone="dim" style={{ textAlign: "center", paddingVertical: 40 }}>
               {t.failed}
             </Mono>
           ) : (
             <>
-              <PostCard
-                post={card}
-                hue={hue}
-                myUserId={myUserId}
-                reactions={[]}
-                onReact={() => {}}
-                onOpen={() => {}}
-                onProfile={() => (p.author?.username ? openProfile(p.author.username) : undefined)}
-              />
-              <Mono variant="micro" tone="dim" style={{ marginTop: 6 }}>
-                {t.comments} · {comments.data?.length ?? 0}
-              </Mono>
-              {(comments.data ?? []).map((c) => (
-                <CommentRow
-                  key={c.id}
-                  comment={c}
-                  myUserId={myUserId}
-                  reactions={
-                    <CommentReactions
-                      reactions={commentReactions.grouped(c.id)}
-                      onToggle={(emoji) => commentReactions.toggle(c.id, emoji)}
-                      open={pickOpen === c.id}
-                      onOpenChange={(o) => setPickOpen(o ? c.id : null)}
-                    />
-                  }
-                />
-              ))}
+              {/* Het vriendenblok: wie en wanneer, de vraag, de toelichting. */}
+              <View
+                style={{
+                  marginHorizontal: 6,
+                  padding: 20,
+                  gap: 10,
+                  backgroundColor: modern ? color("tile", "tileFill") : fc.fill,
+                  borderRadius: modern ? RASTER.tileRadius : 0,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                  <Pressable accessibilityRole="link" onPress={() => p.author?.username && openProfile(p.author.username)} hitSlop={8}>
+                    <Text style={[sans(700), { fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", textDecorationLine: "underline", color: onBlock }]}>
+                      {authorName} · poll
+                    </Text>
+                  </Pressable>
+                  <Text style={[sans(700), { fontSize: 9, lineHeight: 12, letterSpacing: 1.8, textTransform: "uppercase", color: onBlock }]}>{timeLabel(p.created_at, t, lang)}</Text>
+                </View>
+                <Text accessibilityRole="header" style={[modern ? sans(400) : serif(), { fontSize: modern ? 30 : 38, lineHeight: modern ? 33 : 40, letterSpacing: modern ? -1.1 : -0.3, color: onBlock }]}>
+                  {p.question}
+                </Text>
+                <Text style={[serif(true), { fontSize: 18, lineHeight: 23, color: modern ? color("ink", "inkDim") : fc.ink }]}>{hint}</Text>
+              </View>
+
+              <View style={{ paddingHorizontal: 24, paddingTop: 18 }}>
+                <PollBlock m={pm} makerFill={fc.fill} myUserId={myUserId} />
+              </View>
+
+              <View style={{ paddingHorizontal: 24, marginTop: 22 }}>
+                <CommentsHead m={m} count={m.total} />
+                {m.rootCount === 0 && !m.isLoading && m.pendingFor(null).length === 0 ? (
+                  <Text style={[serif(true), { paddingVertical: 18, fontSize: 18, lineHeight: 23, color: color("ink", "inkDim") }]}>{t.firstComment}</Text>
+                ) : null}
+                <CommentList m={m} myUserId={myUserId} onReply={reply} highlightId={typeof highlight === "string" ? highlight : null} />
+              </View>
             </>
           )}
         </ScrollView>
 
         <ComposeBar
+          inputRef={inputRef}
           value={draft}
           onChange={setDraft}
           onSend={() => send()}
-          placeholder={t.writeComment}
+          placeholder={replyTo ? t.replyPh.replace("{name}", replyName) : t.writeComment}
           boxOpen={boxOpen}
           onToggleBox={() => setBoxOpen((v) => !v)}
-          sending={sending}
           above={
-            boxOpen ? (
-              // Een poll heeft geen emoji-reacties: een emoji gaat in je comment.
-              <ReactBox onClose={() => setBoxOpen(false)} onEmoji={(e) => setDraft((d) => d + e)} onImage={(uri) => send(uri)} />
-            ) : null
+            <>
+              {replyTo ? <ReplyStrip label={t.replyTo} name={replyName} onCancel={() => setReplyTo(null)} /> : null}
+              {boxOpen ? <ReactBox onClose={() => setBoxOpen(false)} onEmoji={(e) => setDraft((d) => d + e)} onImage={(uri) => send(uri)} active={EMPTY} /> : null}
+            </>
           }
         />
       </KeyboardAvoidingView>
     </LincinScreen>
   );
 }
+
+const EMPTY = new Set<string>();

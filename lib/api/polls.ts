@@ -8,7 +8,11 @@ export type PollOption = {
   label: string;
   position: number;
   vote_count: number;
+  /** Wie erop stemde; leeg bij een anonieme poll (0085). */
   voters: Profile[];
+  /** 0085 — wie deze keuze voorstelde; leeg = de maker zelf. */
+  created_by: string | null;
+  proposer: Profile | null;
 };
 
 export type PollRow = {
@@ -21,6 +25,10 @@ export type PollRow = {
   allow_multiple: boolean;
   /** 0078 — de gekozen kleur; `null` = de kleur van de maker. */
   swatch?: string | null;
+  /** 0085 — niemand ziet wie wat stemde, alleen de aantallen. */
+  anonymous?: boolean;
+  /** 0085 — "Eigen voorstel mag": iedereen mag een keuze toevoegen (tot zes). */
+  allow_proposals?: boolean;
 };
 
 export type PollWithDetails = PollRow & {
@@ -31,6 +39,8 @@ export type PollWithDetails = PollRow & {
   /** Alle eigen stemmen — meer dan één alleen bij `allow_multiple`. */
   my_vote_option_ids: string[];
   total_votes: number;
+  /** Hoeveel mensen stemden — bij meerdere keuzes de noemer van een percentage (0086). */
+  voter_count: number;
 };
 
 export async function createPoll(args: {
@@ -47,13 +57,19 @@ export async function createPoll(args: {
   chatId?: string | null;
   /** De kleur uit "Nieuwe bijdrage" (0078). */
   swatch?: string | null;
+  /** 0085 — anoniem: alleen aantallen, geen namen. */
+  anonymous?: boolean;
+  /** 0085 — "Eigen voorstel mag". */
+  allowProposals?: boolean;
 }): Promise<PollRow> {
-  const row: { user_id: string; question: string; ends_at: string | null; chat_id: string | null; allow_multiple?: boolean; swatch?: string } = {
+  const row: { user_id: string; question: string; ends_at: string | null; chat_id: string | null; allow_multiple?: boolean; swatch?: string; anonymous?: boolean; allow_proposals?: boolean } = {
     user_id: args.userId,
     question: args.question.trim(),
     ends_at: args.endsAt?.toISOString() ?? null,
     chat_id: args.chatId ?? null,
     ...(args.swatch ? { swatch: args.swatch } : null),
+    ...(args.anonymous ? { anonymous: true } : null),
+    ...(args.allowProposals ? { allow_proposals: true } : null),
   };
   const insert = (withMultiple: boolean) =>
     supabase
@@ -82,7 +98,7 @@ const POLL_COLUMNS_BASE = "id, user_id, question, ends_at, created_at";
 
 /** Leest `allow_multiple` als de kolom er is (0060), anders `false`. */
 async function selectPoll(pollId: string) {
-  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple, swatch`).eq("id", pollId).single();
+  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple, swatch, anonymous, allow_proposals`).eq("id", pollId).single();
   if (!withCol.error) return { data: withCol.data as unknown as PollRow, error: null };
   const base = await supabase.from("polls").select(POLL_COLUMNS_BASE).eq("id", pollId).single();
   return { data: base.data ? ({ ...base.data, allow_multiple: false } as PollRow) : null, error: base.error };
@@ -95,56 +111,84 @@ export async function getPollWithDetails(
   const { data: poll, error: pErr } = await selectPoll(pollId);
   if (pErr || !poll) return null;
 
-  const { data: options, error: oErr } = await supabase
-    .from("poll_options")
-    .select("id, poll_id, label, position, poll_votes(user_id)")
-    .eq("poll_id", pollId)
-    .order("position");
-  if (oErr) throw oErr;
-
-  const { data: myVotes } = await supabase
-    .from("poll_votes")
-    .select("poll_option_id")
-    .eq("user_id", myUserId)
-    .in("poll_option_id", (options ?? []).map((o: any) => o.id));
-  const myIds = (myVotes ?? []).map((v: { poll_option_id: string }) => v.poll_option_id);
-
-  // Collect all voter ids across all options
-  const allVoterIds = Array.from(new Set(
-    (options ?? []).flatMap((o: any) =>
-      (o.poll_votes ?? []).map((v: any) => v.user_id).filter(Boolean)
-    )
-  ));
-
-  const [authors, allVoterProfiles] = await Promise.all([
-    getProfiles([poll.user_id]),
-    allVoterIds.length > 0 ? getProfiles(allVoterIds) : Promise.resolve([]),
+  const [optionsRes, results, voterCount] = await Promise.all([
+    supabase.from("poll_options").select("id, poll_id, label, position, created_by").eq("poll_id", pollId).order("position"),
+    // De aantallen komen van de server: bij een anonieme poll ziet de app
+    // andermans stemmen niet (0085), maar wel hoeveel het er zijn.
+    supabase.rpc("poll_results", { p_poll_id: pollId }),
+    supabase.rpc("poll_voter_count", { p_poll_id: pollId }),
   ]);
-  const voterProfileMap = Object.fromEntries(allVoterProfiles.map((p) => [p.id, p]));
+  if (optionsRes.error) throw optionsRes.error;
+  const options = (optionsRes.data ?? []) as { id: string; poll_id: string; label: string; position: number; created_by: string | null }[];
+  const countOf = new Map(((results.data ?? []) as { option_id: string; votes: number }[]).map((r) => [r.option_id, r.votes]));
 
-  const mappedOptions: PollOption[] = (options ?? []).map((o: any) => {
-    const votes: { user_id: string }[] = o.poll_votes ?? [];
-    return {
-      id: o.id,
-      poll_id: o.poll_id,
-      label: o.label,
-      position: o.position,
-      vote_count: votes.length,
-      voters: votes.map((v) => voterProfileMap[v.user_id]).filter(Boolean) as Profile[],
-    };
-  });
+  // Wie stemde: wat de policy laat zien — alles bij een gewone poll, alleen
+  // jezelf bij een anonieme.
+  const { data: votes } = await supabase
+    .from("poll_votes")
+    .select("poll_option_id, user_id")
+    .in("poll_option_id", options.map((o) => o.id));
+  const visible = (votes ?? []) as { poll_option_id: string; user_id: string }[];
+  const myIds = visible.filter((v) => v.user_id === myUserId).map((v) => v.poll_option_id);
 
-  const totalVotes = mappedOptions.reduce((s, o) => s + o.voters.length, 0);
+  const anonymous = !!poll.anonymous;
+  const peopleIds = Array.from(
+    new Set([
+      poll.user_id,
+      ...(anonymous ? [] : visible.map((v) => v.user_id)),
+      ...options.map((o) => o.created_by).filter((x): x is string => !!x),
+    ]),
+  );
+  const people = await getProfiles(peopleIds);
+  const byId = Object.fromEntries(people.map((p) => [p.id, p]));
+
+  const mappedOptions: PollOption[] = options.map((o) => ({
+    id: o.id,
+    poll_id: o.poll_id,
+    label: o.label,
+    position: o.position,
+    vote_count: countOf.get(o.id) ?? 0,
+    voters: anonymous ? [] : (visible.filter((v) => v.poll_option_id === o.id).map((v) => byId[v.user_id]).filter(Boolean) as Profile[]),
+    created_by: o.created_by,
+    proposer: o.created_by ? byId[o.created_by] ?? null : null,
+  }));
 
   return {
     ...(poll as PollRow),
-    author: authors[0] ?? null,
+    author: byId[poll.user_id] ?? null,
     options: mappedOptions,
     allow_multiple: !!(poll as { allow_multiple?: boolean }).allow_multiple,
+    anonymous,
+    allow_proposals: !!poll.allow_proposals,
     my_vote_option_id: myIds[0] ?? null,
     my_vote_option_ids: myIds,
-    total_votes: totalVotes,
+    total_votes: mappedOptions.reduce((n, o) => n + o.vote_count, 0),
+    voter_count: typeof voterCount.data === "number" ? voterCount.data : 0,
   };
+}
+
+/**
+ * Een tik op een keuze (0085): stemmen, wisselen (bij één keuze) of je stem
+ * intrekken als je nog eens op dezelfde tikt. Gesloten na de einddatum.
+ */
+export async function votePollOption(optionId: string): Promise<"voted" | "withdrawn" | "closed"> {
+  const { data, error } = await supabase.rpc("vote_poll_option", { p_option_id: optionId });
+  if (error) throw error;
+  return data as "voted" | "withdrawn" | "closed";
+}
+
+/** Een eigen voorstel: toevoegen en meteen erop stemmen (0085). Zelfde tekst = stem op die keuze. */
+export async function proposePollOption(pollId: string, label: string): Promise<string> {
+  const { data, error } = await supabase.rpc("propose_poll_option", { p_poll_id: pollId, p_label: label });
+  if (error) throw error;
+  return data as string;
+}
+
+/** Een voorstel weghalen: de maker of wie het voorstelde, zolang niemand anders erop stemde. */
+export async function removePollOption(optionId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("remove_poll_option", { p_option_id: optionId });
+  if (error) throw error;
+  return !!data;
 }
 
 export async function listFeedPolls(limit = 30): Promise<PollWithDetails[]> {

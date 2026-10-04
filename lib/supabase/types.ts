@@ -535,6 +535,9 @@ export type Database = {
           chat_id: string | null;
           /** 0078 — de gekozen kleur; `null` = de kleur van de maker. */
           swatch: string | null;
+          /** 0085 — anoniem, en of eigen voorstellen mogen. */
+          anonymous: boolean;
+          allow_proposals: boolean;
         };
         Insert: {
           id?: string;
@@ -545,6 +548,8 @@ export type Database = {
           allow_multiple?: boolean;
           chat_id?: string | null;
           swatch?: string | null;
+          anonymous?: boolean;
+          allow_proposals?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["polls"]["Insert"]>;
         Relationships: [];
@@ -556,12 +561,17 @@ export type Database = {
           poll_id: string;
           label: string;
           position: number;
+          /** 0085 — wie deze keuze voorstelde; leeg = de maker. */
+          created_by: string | null;
+          created_at: string;
         };
         Insert: {
           id?: string;
           poll_id: string;
           label: string;
           position?: number;
+          created_by?: string | null;
+          created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["poll_options"]["Insert"]>;
         Relationships: [];
@@ -1050,6 +1060,12 @@ export type Database = {
     };
 
     Functions: {
+      /** 0085/0086 — polls. */
+      poll_results: { Args: { p_poll_id: string }; Returns: { option_id: string; votes: number }[] };
+      poll_voter_count: { Args: { p_poll_id: string }; Returns: number };
+      vote_poll_option: { Args: { p_option_id: string }; Returns: string };
+      propose_poll_option: { Args: { p_poll_id: string; p_label: string }; Returns: string };
+      remove_poll_option: { Args: { p_option_id: string }; Returns: boolean };
       /** 0083 — "ik ben hier"; schuift alleen vooruit. */
       touch_reading_state: {
         Args: { p_at: string };

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 
 import { SafeImage } from "@/components/SafeImage";
-import { usePollVote } from "@/lib/lincin/poll";
 import { ON_LIGHT, color, friendColor, line, type Hue, useScheme } from "@/lib/design/theme";
-import { lincinType } from "@/lib/design/type";
+import { lincinType, sans, serif } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { waveform, type CardMedia } from "@/lib/lincin/model";
 
@@ -223,6 +222,12 @@ function Duo({
 }
 
 /** Stemmen op een kaart: balken, de eigen stem in de vriendkleur. */
+/**
+ * Een poll op een kaart (Poll-spec, okt 2026): alleen de vraag en "N stemmen
+ * · stem". Stemmen gebeurt op de bladzijde zelf — een tik op de kaart opent
+ * hem. Hier stonden de keuzes als donkere rijen met tellers, en de vraag en
+ * de voetregel stonden er dubbel.
+ */
 function Poll({
   media,
   height,
@@ -238,59 +243,19 @@ function Poll({
   const scheme = useScheme();
   const fc = friendColor(hue, scheme);
   const poll = media.poll;
-  const { mine, counts, total, vote } = usePollVote(poll, myUserId);
-  // Past niet alles in het vlak, dan klapt "+N" de rest open: anders kon
-  // je op de verborgen keuzes nergens stemmen, ook niet op de pollpagina.
-  const [open, setOpen] = useState(false);
-  const fits = Math.max(1, Math.floor((height - 24 - 14) / 44));
-  const rows = open ? poll.options.length : Math.min(poll.options.length, fits);
-  const hidden = poll.options.length - rows;
-
+  const closed = !!poll.ends_at && new Date(poll.ends_at).getTime() <= Date.now();
+  const voted = poll.my_vote_option_ids.length > 0 || poll.options.some((o) => o.voters.some((v) => v.id === myUserId));
+  const n = poll.voter_count ?? poll.total_votes;
+  const people = n === 1 ? t.oneVoter : `${n} ${t.votesWord}`;
   return (
-    <View style={{ ...(open ? { minHeight: height } : { height }), backgroundColor: color("paper2"), padding: 12, justifyContent: "center", gap: 8 }}>
-      {poll.options.slice(0, rows).map((o, i) => {
-        const pct = total ? Math.round((counts[i] / total) * 100) : 0;
-        const on = mine.has(o.id);
-        return (
-          <Pressable
-            key={o.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${o.label}, ${counts[i]}`}
-            onPress={() => vote(o.id)}
-            style={{ height: 36, borderWidth: BORDER, borderColor: line(), overflow: "hidden" }}
-          >
-            <View
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: `${pct}%`,
-                backgroundColor: on ? fc.fill : color("ink", "postRule"),
-              }}
-            />
-            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10 }}>
-              <Mono variant="monoBody" numberOfLines={1} style={{ flex: 1 }} color={on ? fc.ink : undefined}>
-                {o.label}
-                {on ? " ✓" : ""}
-              </Mono>
-              <Mono variant="monoBody" color={on ? fc.ink : undefined}>{counts[i]}</Mono>
-            </View>
-          </Pressable>
-        );
-      })}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Mono variant="tiny" tone="dim" style={{ textTransform: "none" }}>
-          {total} {t.votes}
-        </Mono>
-        {hidden > 0 ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Nog ${hidden} ${hidden === 1 ? "keuze" : "keuzes"}`} onPress={() => setOpen(true)} hitSlop={8}>
-            <Mono variant="tiny" style={{ textTransform: "none", textDecorationLine: "underline" }}>
-              +{hidden} meer
-            </Mono>
-          </Pressable>
-        ) : null}
-      </View>
+    <View pointerEvents="none" style={{ height, backgroundColor: color("paper2"), padding: 16, justifyContent: "flex-end", gap: 10 }}>
+      <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: voted ? fc.fill : color("ink"), backgroundColor: voted ? fc.fill : "transparent" }} />
+      <Text numberOfLines={4} style={[serif(), { fontSize: 22, lineHeight: 26, color: color("ink") }]}>
+        {poll.question}
+      </Text>
+      <Text style={[sans(700), { fontSize: 10, lineHeight: 13, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink", "inkDim") }]}>
+        {closed ? `${t.closedC} · ${people}` : voted ? `${people} · ${t.youVoted}` : `${people} · ${t.voteC} →`}
+      </Text>
     </View>
   );
 }
