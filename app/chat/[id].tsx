@@ -39,7 +39,6 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActionSheet } from "@/components/ActionSheet";
 import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { LincinScreen } from "@/components/lincin/Chrome";
 import { BORDER, GUTTER, Head, line } from "@/components/lincin/ui";
@@ -120,6 +119,7 @@ import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { NL } from "@/lib/locale";
 import { hhmm, relTime } from "@/lib/lincin/model";
+import { PostRefCard } from "@/components/lincin/post/PostRefCard";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
 /**
@@ -1101,12 +1101,12 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
   }
 
-  async function pickImage() {
+  async function pickImage(kinds: ("images" | "videos")[] = ["images", "videos"]) {
     setAttachMenuOpen(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
+      mediaTypes: kinds,
       quality: 0.85,
       allowsEditing: false,
       allowsMultipleSelection: true,
@@ -1118,6 +1118,18 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       mimeType: asset.mimeType ?? (asset.type === "video" ? "video/mp4" : "image/jpeg"),
       filename: asset.fileName ?? undefined,
     })));
+    setPendingCaption("");
+    setSelectedPendingIdx(0);
+  }
+
+  /** Camera: een foto nemen en hem klaarzetten zoals een gekozen foto. */
+  async function takePhoto() {
+    setAttachMenuOpen(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85 });
+    if (result.canceled || !result.assets?.length) return;
+    setPendingImages(result.assets.map((asset) => ({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg", filename: asset.fileName ?? undefined })));
     setPendingCaption("");
     setSelectedPendingIdx(0);
   }
@@ -2215,6 +2227,21 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
               </ComposerInset>
             )}
 
+            {/* + Bijlage (Gesprek Voorbeeld 1d): één gelinieerde rij cellen
+                boven de schrijfbalk in plaats van een lijst die opschuift. */}
+            {attachMenuOpen ? (
+              <AttachRow
+                cells={[
+                  { key: "foto", glyph: "▣", label: "Foto", onPress: () => pickImage(["images"]) },
+                  { key: "video", glyph: "▶", label: "Video", onPress: () => pickImage(["videos"]) },
+                  { key: "camera", glyph: "◉", label: "Camera", onPress: takePhoto },
+                  { key: "bestand", glyph: "▤", label: "Bestand", onPress: pickFile },
+                  { key: "poll", glyph: "☰", label: "Poll", onPress: () => { setAttachMenuOpen(false); router.push(`/poll-compose?chatId=${id}`); } },
+                  { key: "call", glyph: "◷", label: "Call", onPress: () => { setAttachMenuOpen(false); router.push(`/call-plan-compose?chatId=${id}`); } },
+                ]}
+              />
+            ) : null}
+
             {/* Emoji picker panel */}
             {showEmojiPicker && (
               <View
@@ -2255,7 +2282,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Bijlage toevoegen"
-                  onPress={() => setAttachMenuOpen(true)}
+                  onPress={() => setAttachMenuOpen((v) => !v)}
                   disabled={sending}
                   style={({ pressed }) => [AUX_BUTTON, pressed && AUX_PRESSED]}
                 >
@@ -2356,7 +2383,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Bijlage toevoegen"
-                  onPress={() => setAttachMenuOpen(true)}
+                  onPress={() => setAttachMenuOpen((v) => !v)}
                   disabled={sending}
                   // Geen eigen vlak: een bijna-zwart vierkant op een zwarte
                   // balk is een kader zonder werk. Het icoon draagt zichzelf.
@@ -2689,25 +2716,6 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           </View>
         </Modal>
 
-        <ActionSheet
-          visible={attachMenuOpen}
-          onClose={() => setAttachMenuOpen(false)}
-          title="Voeg toe"
-          actions={[
-            { label: "Foto of video", icon: "image-outline", onPress: pickImage },
-            { label: "Bestand", icon: "document-outline", onPress: pickFile },
-            {
-              label: "Videocall plannen",
-              icon: "videocam-outline",
-              onPress: () => router.push(`/call-plan-compose?chatId=${id}`),
-            },
-            {
-              label: "Poll",
-              icon: "bar-chart-outline",
-              onPress: () => router.push(`/poll-compose?chatId=${id}`),
-            },
-          ]}
-        />
 
         {id && (
           <VideoCallModal
@@ -2941,8 +2949,6 @@ function MessageBubble({
   // Wie er reageerde, in woorden: "❤️ Jij en Noor" onder de chips, en de
   // namen bij hover (web). Een telling alleen zegt niet wie.
   const who = useReactionWho(reactions);
-  const router = useRouter();
-  const t2 = useT();
   const content = msg.content;
   const hasAttachment = !!content?.attachment;
   const hasText = !!content?.text && content.text.length > 0;
@@ -3034,30 +3040,12 @@ function MessageBubble({
         * de ingestelde gesture (die faalt bij >8px verticaal en dus wél
         * samenleeft met de lijst), op web niets.
         */}
-      {content?.postRef && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${t2.about} ${content.postRef.title}`}
-          onPress={() => router.push(`/post/${content.postRef!.id}` as never)}
-          style={{
-            alignSelf: isMine ? "flex-end" : "flex-start",
-            maxWidth: "82%",
-            marginLeft: showAvatarSlot ? 44 : 0,
-            borderLeftWidth: 3,
-            borderLeftColor: accent ?? color("ink"),
-            paddingVertical: 6,
-            paddingHorizontal: 10,
-            marginBottom: 2,
-          }}
-        >
-          <Text
-            numberOfLines={2}
-            style={[lincinType.asideSmall, { color: color("ink", "inkDim"), textDecorationLine: "underline" }]}
-          >
-            {t2.about} «{content.postRef.quote || content.postRef.title}»
-          </Text>
-        </Pressable>
-      )}
+      {/* Een gedeelde bijdrage: een kaart met rug, №, titel en foto (Gesprek Voorbeeld 1a). */}
+      {content?.postRef ? (
+        <View style={{ marginLeft: showAvatarSlot ? 44 : 0, alignSelf: isMine ? "flex-end" : "flex-start" }}>
+          <PostRefCard postRef={content.postRef} isMine={isMine} />
+        </View>
+      ) : null}
       <SwipeWrap gesture={Platform.OS !== "web" ? panGesture : null}>
       <Animated.View
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
@@ -3477,6 +3465,31 @@ type BubbleStatus =
   | { kind: "failed" };
 
 /** Veelgebruikte emoji's voor de simpele in-chat picker. */
+/**
+ * "+ Bijlage" (Gesprek Voorbeeld 1d): één rij van 72 met gelijke cellen,
+ * elk een teken en een label. Plek en GIF uit het prototype volgen zodra er
+ * een plek-bericht en een GIF-sleutel zijn; tot dan staan Poll en Call er,
+ * die hier al bestonden.
+ */
+function AttachRow({ cells }: { cells: { key: string; glyph: string; label: string; onPress: () => void }[] }) {
+  return (
+    <View style={{ flexDirection: "row", height: 72, borderTopWidth: 1, borderTopColor: color("ink"), backgroundColor: color("paper") }}>
+      {cells.map((c, i) => (
+        <Pressable
+          key={c.key}
+          accessibilityRole="button"
+          accessibilityLabel={c.label}
+          onPress={c.onPress}
+          style={({ pressed }) => ({ flex: 1, alignItems: "center", justifyContent: "center", gap: 6, borderLeftWidth: i ? 1 : 0, borderLeftColor: color("ink", "postRule"), opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={[sans(400), { fontSize: 18, lineHeight: 20, color: color("ink") }]}>{c.glyph}</Text>
+          <Text style={[sans(700), { fontSize: 8, lineHeight: 11, letterSpacing: 1.28, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{c.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 /** De vijf snelle reacties onder vasthouden (Gesprek Voorbeeld 1b). */
 const QUICK_REACTIONS = ["❤️", "😂", "🔥", "👀", "👏"];
 
