@@ -105,6 +105,20 @@ export function useComments({
     [likeRows, myUserId],
   );
 
+  /** Wie op een reactie reageerde, met welke emoji (voor het paneel). */
+  const likersOf = useCallback(
+    (id: string): { userId: string; emojis: string[]; latest: string }[] => {
+      const byUser = new Map<string, { userId: string; emojis: string[]; latest: string }>();
+      for (const r of likeRows[id] ?? []) {
+        const cur = byUser.get(r.user_id) ?? { userId: r.user_id, emojis: [], latest: (r as { created_at?: string }).created_at ?? "" };
+        if (!cur.emojis.includes(r.emoji)) cur.emojis.push(r.emoji);
+        byUser.set(r.user_id, cur);
+      }
+      return Array.from(byUser.values());
+    },
+    [likeRows],
+  );
+
   const toggleLike = useCallback(
     async (commentId: string) => {
       const current = likeRows[commentId] ?? [];
@@ -312,6 +326,7 @@ export function useComments({
     isOpen,
     setOpen,
     likesOf,
+    likersOf,
     toggleLike,
     send,
     retry,

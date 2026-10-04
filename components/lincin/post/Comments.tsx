@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from "react-native";
 
@@ -7,6 +8,7 @@ import { openCommentImage } from "@/components/lincin/Lightbox";
 import { MentionsText } from "@/components/MentionsText";
 import { SafeImage } from "@/components/SafeImage";
 import type { EntityComment } from "@/lib/api/entity-comments";
+import { getProfiles } from "@/lib/api/profiles";
 import { confirm } from "@/lib/confirm";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec, OMSLAG } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
@@ -15,7 +17,7 @@ import type { CommentsModel, PendingComment } from "@/lib/lincin/comments";
 import { displayName, relTime } from "@/lib/lincin/model";
 import { useToast } from "@/lib/toast";
 
-import { HeartIcon, PersonDot, fill } from "./Reactions";
+import { HeartIcon, LikesPanel, PersonDot, fill } from "./Reactions";
 
 /**
  * De reacties (Bijdrage Voorbeeld 1a, 1b, 1d; HANDOFF "Reacties" en
@@ -230,6 +232,7 @@ function Item({
   const name = own ? t.me : displayName(author);
   const likes = m.likesOf(c.id);
   const [menu, setMenu] = useState(false);
+  const [whoOpen, setWhoOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [lit, setLit] = useState(false);
   const ref = useRef<View>(null);
@@ -299,9 +302,16 @@ function Item({
       style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, pointer]}
     >
       <HeartIcon on={likes.liked} size={small ? 13 : 14} ink={color("ink", "inkDim")} />
-      {variant === "mobile" && likes.count ? <Text style={meta}>{likes.count}</Text> : null}
     </Pressable>
   );
+  // Het aantal opent wie het was (zoals "Geliked door" bij een bijdrage).
+  const likeCount = likes.count ? (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${t.likesTitle}: ${likes.count}`} onPress={() => setWhoOpen(true)} hitSlop={10} style={pointer}>
+      <Text style={[meta, { textDecorationLine: "underline" }]}>
+        {variant === "mobile" ? likes.count : likes.count === 1 ? t.oneLike : fill(t.nLikes, likes.count)}
+      </Text>
+    </Pressable>
+  ) : null;
 
   const reply = (
     <Pressable accessibilityRole="button" accessibilityLabel={`${t.replyTo} ${name}`} onPress={() => onReply(c)} hitSlop={12} style={pointer}>
@@ -367,7 +377,10 @@ function Item({
             {image}
             {body}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 4 }}>
-              {heart}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {heart}
+                {likeCount}
+              </View>
               {reply}
               <View style={{ flex: 1 }} />
               {repliesLabel ? (
@@ -391,9 +404,14 @@ function Item({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 }}>
               <Text style={meta}>
                 {time}
-                {edited}
-                {likes.count ? ` · ${likes.count === 1 ? t.oneLike : fill(t.nLikes, likes.count)}` : ""} ·
+                {edited} ·
               </Text>
+              {likeCount ? (
+                <>
+                  {likeCount}
+                  <Text style={meta}>·</Text>
+                </>
+              ) : null}
               {reply}
               {actions.length ? (
                 <Pressable accessibilityRole="button" accessibilityLabel="Meer" onPress={() => setMenu(true)} hitSlop={10} style={pointer}>
@@ -406,6 +424,7 @@ function Item({
       </View>
       {variant === "desktop" ? <View style={{ width: 20, paddingTop: 4, alignItems: "center" }}>{heart}</View> : null}
       <ActionSheet visible={menu} onClose={() => setMenu(false)} actions={actions} />
+      {whoOpen ? <CommentLikers likers={m.likersOf(c.id)} myUserId={myUserId} onClose={() => setWhoOpen(false)} /> : null}
     </Pressable>
   );
 }
@@ -431,4 +450,14 @@ function PendingItem({ p, m, variant, small = false }: { p: PendingComment; m: C
       </View>
     </View>
   );
+}
+
+/** Wie op een reactie reageerde: hetzelfde paneel als bij een bijdrage, jij bovenaan. */
+function CommentLikers({ likers, myUserId, onClose }: { likers: { userId: string; emojis: string[]; latest: string }[]; myUserId: string; onClose: () => void }) {
+  const ids = likers.map((l) => l.userId);
+  const profiles = useQuery({ queryKey: ["profiles", ...ids.slice().sort()], queryFn: () => getProfiles(ids), enabled: ids.length > 0, staleTime: 60_000 });
+  const reactors = likers
+    .map((l) => ({ ...l, me: l.userId === myUserId, profile: profiles.data?.find((p) => p.id === l.userId) ?? null }))
+    .sort((a, b) => (a.me !== b.me ? (a.me ? -1 : 1) : a.latest < b.latest ? 1 : -1));
+  return <LikesPanel likes={{ reactors, count: reactors.length }} visible onClose={onClose} />;
 }

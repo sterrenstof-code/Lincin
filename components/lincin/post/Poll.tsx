@@ -223,6 +223,10 @@ function WhoVoted({ m, visible, onClose, myUserId }: { m: PollModel; visible: bo
       <Pressable accessibilityLabel={t.closeC} onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(22,22,15,.45)" }} />
       <View
         style={{
+          // Op een breed scherm een blad van 520 in het midden, niet de hele breedte.
+          width: "100%",
+          maxWidth: 520,
+          alignSelf: "center",
           maxHeight: "66%",
           backgroundColor: color("paper"),
           borderTopWidth: modern ? 0 : 2,

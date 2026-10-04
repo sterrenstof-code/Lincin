@@ -286,7 +286,18 @@ function ReactorRow({ r }: { r: Reactor }) {
  * (een sluier eronder, tik erop sluit); op desktop staat hij inline onder
  * de knoppen.
  */
-export function LikesPanel({ likes, visible, onClose, inline = false }: { likes: PostLikes; visible: boolean; onClose: () => void; inline?: boolean }) {
+export function LikesPanel({
+  likes,
+  visible,
+  onClose,
+  inline = false,
+}: {
+  /** Alleen wie en hoeveel: ook bruikbaar voor de likes op een reactie. */
+  likes: Pick<PostLikes, "reactors" | "count">;
+  visible: boolean;
+  onClose: () => void;
+  inline?: boolean;
+}) {
   const t = useT();
   const insets = useSafeAreaInsets();
   const modern = useThemeSpec().id === "modern";
@@ -317,6 +328,10 @@ export function LikesPanel({ likes, visible, onClose, inline = false }: { likes:
       <Pressable accessibilityLabel={t.closeC} onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(22,22,15,.45)" }} />
       <View
         style={{
+          // Op een breed scherm een blad van 520 in het midden, niet de hele breedte.
+          width: "100%",
+          maxWidth: 520,
+          alignSelf: "center",
           maxHeight: "66%",
           backgroundColor: color("paper"),
           borderTopWidth: modern ? 0 : 2,
