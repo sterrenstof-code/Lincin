@@ -41,6 +41,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionSheet } from "@/components/ActionSheet";
+import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { LincinScreen } from "@/components/lincin/Chrome";
 import { BORDER, GUTTER, Head, Serif, line } from "@/components/lincin/ui";
 import { Avatar } from "@/components/Avatar";
@@ -60,6 +61,7 @@ import {
   fetchMemberLastRead,
   listMyChats,
   markChatRead,
+  chatAvatarUrl,
   otherMember,
   subscribeToChatMemberUpdates,
   type ChatWithMembers,
@@ -108,7 +110,7 @@ import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { getPollWithDetails, votePoll } from "@/lib/api/polls";
 import { CONTROL_H, creamOnDark, feed, FEED_BORDER, feedType, flame, flameDeep, lincinType, rule, sans, serif, space } from "@/lib/design/type";
-import { ON_DARK, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
+import { ON_DARK, RASTER, color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { useT } from "@/lib/i18n";
 import {
   previewLine,
@@ -1226,6 +1228,25 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       ? friendColor("green", schemeNow)
       : friendColor(hueFor(chat?.members.find((m) => m.id !== myUserId)?.id), schemeNow);
   const partnerFill = chat ? partner.fill : null;
+  /** De foto van de ander (of de groep) in de kop, over de initiaal heen. */
+  const headerAvatarUrl = chat && myUserId ? chatAvatarUrl(chat, myUserId) : null;
+  /** Start een videogesprek en meldt dat één keer in het gesprek. */
+  async function startCall() {
+    if (!id) return;
+    if (typeof window !== "undefined" && window.document) {
+      setCallOpen(true);
+    } else {
+      openJitsiCall(id).catch(() => {});
+    }
+    if (!callSentRef.current && myUserId) {
+      callSentRef.current = true;
+      try {
+        await sendMessage({ chatId: id, senderId: myUserId, call: { started: true } });
+      } catch (e: any) {
+        console.warn("sendCallMessage", e?.message ?? e);
+      }
+    }
+  }
   /** Bijdragen waar dit gesprek over ging — de strook "VERMELD". */
   const mentioned = useMemo(() => {
     const seen = new Map<string, PostRef>();
@@ -1305,6 +1326,65 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             de naam en de twee knoppen. Het aantal ongelezen berichten in
             ándere gesprekken stond op die cel; dat draagt nu de rode stip
             achter "Gesprekken" in de navigatie. */}
+        {spec.layout === "bento" ? (
+          /* Modern (WIJZIGINGEN-2.2 §1): geen kader maar een tegel met de
+             ronding van het raster, de naam in Archivo, en rechts twee ronde
+             knoppen van 44 — bellen, en de ander zelf: zijn foto, of zijn
+             initiaal op zijn kleur. */
+          <View
+            style={{
+              marginTop: 8,
+              marginHorizontal: RASTER.seam,
+              minHeight: 56,
+              paddingLeft: 18,
+              paddingRight: 6,
+              paddingVertical: 6,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              borderRadius: RASTER.tileRadius,
+              backgroundColor: color("tile", "tileFill"),
+              display: embedded ? "none" : "flex",
+            }}
+          >
+            {otherUnread > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${otherUnread} ${t2.newMsgs}`}
+                onPress={() => router.push("/chats")}
+                style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: color("red") }}
+              >
+                <Text style={[sans(600), { fontSize: 12, lineHeight: 15, color: creamOnDark.DEFAULT }]}>
+                  {otherUnread > 99 ? "99+" : otherUnread}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={onPressHeaderTitle} hitSlop={4} style={{ flex: 1, minWidth: 0, justifyContent: "center" }}>
+              <Text numberOfLines={1} style={[sans(500), { fontSize: 19, lineHeight: 23, letterSpacing: -0.4, color: color("ink") }]}>
+                {title}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Videogesprek starten"
+              onPress={startCall}
+              style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: color("paper2"), opacity: pressed ? 0.8 : 1 })}
+            >
+              <Ionicons name="videocam-outline" color={color("ink")} size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={chat?.type === "group" ? "Groepsinfo openen" : "Profiel"}
+              onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
+              style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: partner.fill, opacity: pressed ? 0.8 : 1 })}
+            >
+              <Text style={[sans(500), { fontSize: 16, lineHeight: 19, color: partner.ink }]}>
+                {(title || "?").slice(0, 1).toUpperCase()}
+              </Text>
+              <AvatarPhoto url={headerAvatarUrl} size={44} />
+            </Pressable>
+          </View>
+        ) : (
         <View
           style={{
             marginTop: 8,
@@ -1342,22 +1422,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Videogesprek starten"
-            onPress={async () => {
-              if (!id) return;
-              if (typeof window !== "undefined" && window.document) {
-                setCallOpen(true);
-              } else {
-                openJitsiCall(id).catch(() => {});
-              }
-              if (!callSentRef.current && myUserId) {
-                callSentRef.current = true;
-                try {
-                  await sendMessage({ chatId: id, senderId: myUserId, call: { started: true } });
-                } catch (e: any) {
-                  console.warn("sendCallMessage", e?.message ?? e);
-                }
-              }
-            }}
+            onPress={startCall}
             style={{ width: 44, alignItems: "center", justifyContent: "center", borderLeftWidth: BORDER, borderLeftColor: line() }}
           >
             <Ionicons name="videocam-outline" color={color("ink")} size={18} />
@@ -1368,6 +1433,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())}
             style={{
               width: 48,
+              overflow: "hidden",
               backgroundColor: partner.fill,
               alignItems: "center",
               justifyContent: "center",
@@ -1378,8 +1444,10 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             <Head variant="numeralTiny" color={partner.ink} style={{ fontSize: 22, lineHeight: 24 }}>
               {(title || "?").slice(0, 1).toUpperCase()}
             </Head>
+            <AvatarPhoto url={headerAvatarUrl} size={48} />
           </Pressable>
         </View>
+        )}
 
         {mentioned.length > 0 && embedded ? (
           // Desktop (Lincin Desktop.dc.html, GESPREKKEN): de strook ligt

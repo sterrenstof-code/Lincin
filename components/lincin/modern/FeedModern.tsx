@@ -2,6 +2,7 @@ import { useId, useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
+import { AvatarPhoto } from "@/components/lincin/AvatarPhoto";
 import { LincinScreen, useUnread } from "@/components/lincin/Chrome";
 import { BellIcon, PlusIcon } from "@/components/lincin/chrome/Header";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
@@ -198,16 +199,22 @@ function FriendChips({ f }: { f: ReturnType<typeof useFeed> }) {
                   justifyContent: "center",
                 }}
               >
-                <Text
-                  style={{
-                    ...sans(500),
-                    fontSize: 13,
-                    lineHeight: 16,
-                    color: unseen > 0 ? fc.ink : color("ink", "inkDim"),
-                  }}
-                >
-                  {g.initial}
-                </Text>
+                {/* De foto ligt over de initiaal, binnen een eigen ronde
+                    vlak: het getal hierna staat 2 px buiten de cirkel en
+                    mag dus niet mee afgeknipt worden. */}
+                <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
+                  <Text
+                    style={{
+                      ...sans(500),
+                      fontSize: 13,
+                      lineHeight: 16,
+                      color: unseen > 0 ? fc.ink : color("ink", "inkDim"),
+                    }}
+                  >
+                    {g.initial}
+                  </Text>
+                  <AvatarPhoto url={g.avatarUrl} size={44} />
+                </View>
                 {unseen > 0 ? (
                   <View
                     style={{
