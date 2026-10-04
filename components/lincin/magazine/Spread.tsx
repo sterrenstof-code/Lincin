@@ -1,4 +1,4 @@
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { color, RASTER } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
@@ -188,6 +188,7 @@ function RailText({ text, ink, height }: { text: string; ink: string; height: nu
 
 /** De kop van een spread: Instrument Serif op .98 regelafstand. */
 export function SpreadTitle({
+  style,
   children,
   ink,
   size = 30,
@@ -197,11 +198,12 @@ export function SpreadTitle({
   ink: string;
   size?: number;
   numberOfLines?: number;
+  style?: StyleProp<TextStyle>;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={{ ...serif(), fontSize: size, lineHeight: size * 0.98, letterSpacing: -size * 0.02, color: ink }}
+      style={[{ ...serif(), fontSize: size, lineHeight: size * 0.98, letterSpacing: -size * 0.02, color: ink }, style]}
     >
       {children}
     </Text>
@@ -210,6 +212,7 @@ export function SpreadTitle({
 
 /** Het onderschrift: cursieve serif op 14–15 px. */
 export function SpreadCaption({
+  style,
   children,
   ink,
   size = 14,
@@ -219,11 +222,12 @@ export function SpreadCaption({
   ink: string;
   size?: number;
   numberOfLines?: number;
+  style?: StyleProp<TextStyle>;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={{ ...serif(true), fontSize: size, lineHeight: size * 1.3, color: ink, opacity: 0.86 }}
+      style={[{ ...serif(true), fontSize: size, lineHeight: size * 1.3, color: ink, opacity: 0.86 }, style]}
     >
       {children}
     </Text>

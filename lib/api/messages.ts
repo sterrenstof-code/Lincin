@@ -73,6 +73,12 @@ export type MessageContent = {
    * de server weet niet waar je bent.
    */
   place?: SharedPlace;
+  /**
+   * Meerdere foto's in één bericht: een carrousel (HANDOFF "Bijlage").
+   * `attachment` draagt dan de eerste, zodat een oudere app die alleen
+   * `attachment` kent er tenminste één toont.
+   */
+  album?: AttachmentInfo[];
 };
 
 export type SharedPlace = { lat: number; lng: number; label?: string };
@@ -345,6 +351,7 @@ export async function sendMessage(args: {
   postRef?: PostRef;
   system?: { event: "group_avatar_updated"; actorName: string };
   place?: SharedPlace;
+  album?: AttachmentInfo[];
 }): Promise<{ id: string; created_at: string }> {
   if (!args.text && !args.attachment && !args.call && !args.system && !args.call_plan_id && !args.poll_id && !args.place) {
     throw new Error("Bericht heeft tekst, bijlage, call, poll of call-plan nodig.");
@@ -365,6 +372,7 @@ export async function sendMessage(args: {
   if (args.postRef) content.postRef = args.postRef;
   if (args.system) content.system = args.system;
   if (args.place) content.place = args.place;
+  if (args.album && args.album.length > 1) content.album = args.album;
 
   const payloads = encryptForRecipients(
     enc.encode(JSON.stringify(content)),

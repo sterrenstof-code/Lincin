@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
-import { ON_DARK, color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
+import { color, friendColor, hueFor, type Hue, type Scheme } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
@@ -79,19 +79,23 @@ export function ChatsMagazine({
               accessibilityLabel={c.unread > 0 ? `${c.name}, ${c.unread} ${t.unread}` : c.name}
               media={
                 c.unread > 0 ? (
-                  // Rood, niet in de kleur van de ander: een cijfer in de
-                  // tint van de band las als versiering en werd gemist.
-                  <View style={{ flex: 1, backgroundColor: color("red"), alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ ...serif(), fontSize: 26, lineHeight: 30, color: ON_DARK }}>{c.unread}</Text>
+                  // Het aantal op een vlak papier (mobile-app.dc.html); de
+                  // rode stip bij de naam zegt dat er iets nieuw is.
+                  <View style={{ flex: 1, backgroundColor: color("paper"), alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ ...serif(), fontSize: 26, lineHeight: 30, color: color("ink") }}>{c.unread}</Text>
                   </View>
                 ) : undefined
               }
               mediaWidth={52}
             >
-              <SpreadTitle ink={fc.ink} numberOfLines={2}>
-                {c.name}
-              </SpreadTitle>
-              <SpreadCaption ink={fc.ink} size={15} numberOfLines={2}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {/* Ongelezen: een rode stip vóór de naam (HANDOFF). */}
+                {c.unread > 0 ? <View accessibilityElementsHidden style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color("red") }} /> : null}
+                <SpreadTitle ink={fc.ink} numberOfLines={2} style={{ flexShrink: 1 }}>
+                  {c.name}
+                </SpreadTitle>
+              </View>
+              <SpreadCaption ink={fc.ink} size={15} numberOfLines={2} style={c.unread > 0 ? { ...sans(700), fontSize: 14 } : undefined}>
                 {c.preview}
               </SpreadCaption>
             </Spread>

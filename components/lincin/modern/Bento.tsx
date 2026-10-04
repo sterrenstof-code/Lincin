@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { color, RASTER } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
@@ -203,21 +203,26 @@ export function TileTitle({
   children,
   size = 14,
   numberOfLines = 2,
+  style,
 }: {
   children: React.ReactNode;
   size?: number;
   numberOfLines?: number;
+  style?: StyleProp<TextStyle>;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={{
-        ...sans(500),
-        fontSize: size,
-        lineHeight: size * 1.2,
-        letterSpacing: -size * 0.01,
-        color: color("ink"),
-      }}
+      style={[
+        {
+          ...sans(500),
+          fontSize: size,
+          lineHeight: size * 1.2,
+          letterSpacing: -size * 0.01,
+          color: color("ink"),
+        },
+        style,
+      ]}
     >
       {children}
     </Text>

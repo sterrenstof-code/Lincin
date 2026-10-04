@@ -119,9 +119,11 @@ import {
 import { usePageTitle } from "@/lib/page-title";
 import { useReactionWho } from "@/lib/lincin/reactors";
 import { NL } from "@/lib/locale";
-import { hhmm, relTime } from "@/lib/lincin/model";
+import { hhmm, relTime, waveform } from "@/lib/lincin/model";
 import { PostRefCard } from "@/components/lincin/post/PostRefCard";
 import { Place } from "@/components/lincin/Media";
+import { Carousel } from "@/components/lincin/Carousel";
+import { openLightbox } from "@/components/lincin/Lightbox";
 import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
 import { useImageRatio } from "@/lib/lincin/ratio";
 
@@ -1104,6 +1106,37 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     } finally {
       setSending(false);
       setUploadProgress(null);
+    }
+  }
+
+  /**
+   * Meerdere foto's als één bericht met een carrousel. Elke foto wordt
+   * apart versleuteld en geüpload; pas als ze er allemaal staan gaat het
+   * bericht weg — half verstuurd bestaat niet.
+   */
+  async function onSendAlbum(images: { uri: string; mimeType: string; filename?: string }[], caption: string): Promise<boolean> {
+    if (!myUserId || !id) return false;
+    setSending(true);
+    try {
+      const infos: AttachmentInfo[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const bytes = await uriToBytes(images[i].uri);
+        const { ciphertext, key, nonce } = encryptFileBytes(bytes);
+        const path = await uploadEncryptedAttachment({ chatId: id, ciphertext });
+        infos.push(
+          buildAttachmentInfo({ path, key, nonce, mimeType: images[i].mimeType, size: bytes.byteLength, filename: images[i].filename, attachmentType: "image" }),
+        );
+        setBatchProgress({ done: i + 1, total: images.length });
+      }
+      await sendMessage({ chatId: id, senderId: myUserId, text: caption.trim() || undefined, attachment: infos[0], album: infos });
+      setDraft("");
+      return true;
+    } catch (e: any) {
+      toast.error(e?.message ?? "De foto's konden niet verstuurd worden.");
+      return false;
+    } finally {
+      setSending(false);
+      setBatchProgress(null);
     }
   }
 
@@ -2719,6 +2752,16 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                     const images = [...pendingImages];
                     const caption = pendingCaption;
                     const batch = images.length > 1;
+                    // Alleen foto's: één bericht met een carrousel.
+                    if (batch && images.every((im) => im.mimeType.startsWith("image/"))) {
+                      setBatchProgress({ done: 0, total: images.length });
+                      if (await onSendAlbum(images, caption)) {
+                        setPendingImages(null);
+                        setPendingCaption("");
+                        setSelectedPendingIdx(0);
+                      }
+                      return;
+                    }
                     setBatchProgress(batch ? { done: 0, total: images.length } : null);
                     const failed: typeof images = [];
                     for (let i = 0; i < images.length; i++) {
@@ -3323,7 +3366,11 @@ function MessageBubble({
                 </Text>
               </Pressable>
             )}
-            {hasAttachment && <AttachmentView attachment={content.attachment!} isMine={isMine} />}
+            {content?.album && content.album.length > 1 ? (
+              <AlbumView album={content.album} />
+            ) : hasAttachment ? (
+              <AttachmentView attachment={content.attachment!} isMine={isMine} />
+            ) : null}
             {content?.place ? (
               <Pressable accessibilityRole="link" accessibilityLabel={`Plek: ${content.place.label ?? placeCoords(content.place)}`} onPress={() => openPlace(content.place!)} style={{ width: 240 }}>
                 <Place place={content.place.label || "Plek"} coords={placeCoords(content.place)} height={130} hue={hueFor(msg.sender_id)} />
@@ -3841,50 +3888,47 @@ function VoiceMessageBubble({
   }
 
   const progress = duration > 0 ? position / duration : 0;
+  // Gesprek Voorbeeld: 26 staafjes, het gespeelde deel in inkt. Er worden
+  // (nog) geen echte niveaus opgenomen; de vorm komt vast uit het bestand,
+  // zodat hetzelfde bericht altijd dezelfde golf heeft.
+  const bars = useMemo(() => waveform(uri ?? "spraak", 26), [uri]);
+  const fg = isMine ? creamOnDark.DEFAULT : color("ink");
+  const dimBar = isMine ? creamOnDark.muted : color("ink", "inkDim");
 
   return (
     <View
-      className={`flex-row items-center gap-3 px-3 py-3 m-1 ${
-        isMine ? "bg-ink/20" : "bg-paper-warm/60"
-      }`}
-      style={{ minWidth: 200, maxWidth: 260 }}
+      style={{
+        width: 230,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        margin: 4,
+        backgroundColor: isMine ? "rgba(247,244,238,.08)" : color("tint"),
+      }}
     >
-      {/* Play / pause */}
       <Pressable
-        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={isPlaying ? "Pauzeer spraakbericht" : "Speel spraakbericht"}
+        hitSlop={6}
         onPress={togglePlay}
-        className={`w-10 h-10 items-center justify-center ${
-          isMine ? "bg-cream/20" : "bg-paper-light"
-        }`}
+        style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: isMine ? creamOnDark.DEFAULT : color("ink") }}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={isMine ? creamOnDark.DEFAULT : feed.ink} />
+          <ActivityIndicator size="small" color={isMine ? color("ink") : color("paper")} />
         ) : (
-          <Ionicons
-            name={isPlaying ? "pause" : "play"}
-            color={isMine ? creamOnDark.DEFAULT : feed.ink}
-            size={18}
-          />
+          <Ionicons name={isPlaying ? "pause" : "play"} color={isMine ? "#16160F" : color("paper")} size={14} />
         )}
       </Pressable>
-
-      {/* Progress + timer */}
-      <View className="flex-1 gap-1">
-        {/* Track */}
-        <View
-          className={`h-1.5 ${isMine ? "bg-cream/20" : "bg-paper-warm"}`}
-        >
-          <View
-            className={`h-1.5 ${isMine ? "bg-cream" : "bg-ink-soft"}`}
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
-        </View>
-        <Text className={`text-[10px] ${isMine ? "text-cream-muted" : "text-ink-muted"}`}>
-          {duration > 0
-            ? `${fmtMs(position)} / ${fmtMs(duration)}`
-            : loading ? "…" : fmtMs(0)}
-        </Text>
+      <View style={{ flex: 1, height: 26, flexDirection: "row", alignItems: "center", gap: 2 }}>
+        {bars.map((h, k) => (
+          <View key={k} style={{ flex: 1, height: `${Math.max(14, h)}%`, backgroundColor: k / bars.length < progress ? fg : dimBar }} />
+        ))}
       </View>
+      <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: isMine ? creamOnDark.muted : color("ink", "inkDim") }]}>
+        {duration > 0 ? fmtMs(isPlaying || position > 0 ? position : duration) : loading ? "…" : fmtMs(0)}
+      </Text>
     </View>
   );
 }
@@ -3999,6 +4043,42 @@ function FullscreenVideo({ uri, width, height }: { uri: string; width: number; h
       nativeControls
       allowsFullscreen
     />
+  );
+}
+
+/** Een album: elke foto ontsleuteld, samen in een carrousel; een tik opent de lichtbak. */
+function AlbumView({ album }: { album: AttachmentInfo[] }) {
+  const [uris, setUris] = useState<(string | null)[]>(() => album.map(() => null));
+  useEffect(() => {
+    let cancelled = false;
+    album.forEach(async (a, i) => {
+      try {
+        const cipher = await downloadEncryptedAttachment(a.path);
+        const plain = decryptFileBytes(cipher, base64ToBytes(a.key_b64), base64ToBytes(a.nonce_b64));
+        if (!plain) return;
+        const display = await bytesToDisplayUri(plain, a.mime_type, `att-${a.path.split("/").pop()}`);
+        if (!cancelled) setUris((prev) => prev.map((u, k) => (k === i ? display : u)));
+      } catch {
+        // Eén foto die niet laadt houdt de rest niet tegen.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [album]);
+  return (
+    <View style={{ width: 260, overflow: "hidden" }}>
+      <Carousel
+        uris={uris}
+        cacheKeys={album.map((a) => a.path)}
+        height={260}
+        size="card"
+        onZoom={(index) => {
+          const ready = uris.filter((u): u is string => !!u);
+          if (ready.length) openLightbox({ uris: ready, index: Math.min(index, ready.length - 1), author: "", kind: "foto", time: "", title: "" });
+        }}
+      />
+    </View>
   );
 }
 

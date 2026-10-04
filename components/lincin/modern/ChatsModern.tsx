@@ -90,9 +90,13 @@ export function ChatsModern({
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
                 <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <TileTitle size={15} numberOfLines={1}>
-                    {r.name}
-                  </TileTitle>
+                  <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 7 }}>
+                    {/* Ongelezen: naam vet en een rode stip (HANDOFF). */}
+                    {r.unread > 0 ? <View accessibilityElementsHidden style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color("red") }} /> : null}
+                    <TileTitle size={15} numberOfLines={1} style={r.unread > 0 ? { ...sans(700) } : undefined}>
+                      {r.name}
+                    </TileTitle>
+                  </View>
                   <View style={{ flexShrink: 0 }}>
                     <TileMeta>{r.time}</TileMeta>
                   </View>
