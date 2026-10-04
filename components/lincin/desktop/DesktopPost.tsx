@@ -122,7 +122,12 @@ export function DesktopPost({ id }: { id: string }) {
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isLightboxOpen() && !sheet) close();
+      if (e.key !== "Escape" || isLightboxOpen() || sheet) return;
+      // In een invoerveld is Escape van het veld: een comment bewerken
+      // annuleert ermee, en dat mocht niet ook de bijdrage sluiten.
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      close();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);

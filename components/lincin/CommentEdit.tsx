@@ -40,6 +40,8 @@ export function CommentText({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(c.body);
   const [saving, setSaving] = useState(false);
+  /** De hoogte van de tekst in het veld, zodat het meegroeit. */
+  const [inputH, setInputH] = useState<number | undefined>(undefined);
   const suggest = useComposeSuggest(draft, setDraft);
 
   const canSave = !saving && (draft.trim().length > 0 || !!c.image_path) && draft.trim() !== c.body;
@@ -73,11 +75,27 @@ export function CommentText({
           value={draft}
           onChangeText={suggest.onChangeText}
           onKeyPress={(e) => {
-            if (Platform.OS === "web" && e.nativeEvent.key === "Escape") return cancel();
+            const ne = e.nativeEvent as { key: string; shiftKey?: boolean };
+            if (Platform.OS === "web" && ne.key === "Escape") return cancel();
+            // Op web: Enter bewaart, Shift+Enter is een nieuwe regel. Een
+            // open suggestie gaat voor — Tab neemt die, Enter bewaart nog niet.
+            if (Platform.OS === "web" && ne.key === "Enter" && !ne.shiftKey) {
+              (e as { preventDefault?: () => void }).preventDefault?.();
+              return void save();
+            }
             suggest.onKeyPress(e as never);
           }}
-          onSubmitEditing={save}
-          blurOnSubmit={false}
+          // Meerdere regels: een comment is vaak langer dan één regel, en
+          // op één regel schoof de tekst zijwaarts weg terwijl je typte.
+          multiline
+          scrollEnabled={false}
+          onContentSizeChange={(e) => {
+            // Alleen bij een echte verandering: op web is de gemeten hoogte
+            // die van het veld zelf, en elke extra pixel hier zou het veld
+            // opnieuw doen groeien — een lus zonder einde.
+            const h = Math.ceil(e.nativeEvent.contentSize.height);
+            setInputH((prev) => (prev !== undefined && Math.abs(prev - h) <= 1 ? prev : h));
+          }}
           returnKeyType="done"
           autoFocus
           maxLength={500}
@@ -86,6 +104,9 @@ export function CommentText({
             textStyle,
             {
               paddingVertical: 4,
+              textAlignVertical: "top",
+              height: inputH,
+              overflow: "hidden",
               borderBottomWidth: 1,
               borderBottomColor: color("ink"),
               ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null),
