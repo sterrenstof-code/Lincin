@@ -203,6 +203,7 @@ function SettingsMobile() {
           ? [{ key: "lock", label: lockLabel, sub: t.lockSub, onPress: flipLock, right: <Toggle on={!!lock.enabled} /> }]
           : []),
         { key: "device", label: "Toestel koppelen", sub: "Je sleutels naar een tweede toestel", onPress: () => router.push("/device-link"), right: arrow() },
+        { key: "recovery", label: "Herstelcode", sub: "Een nieuwe code maken", onPress: () => router.push("/recovery-code"), right: arrow() },
         { key: "logout", label: "Uitloggen", sub: "Op dit toestel", onPress: logout, right: arrow(true) },
       ],
     },
@@ -294,6 +295,11 @@ function SettingsMobile() {
             </Row>
           ) : null}
           <Row label="Toestel koppelen" sub="Je sleutels naar een tweede toestel" onPress={() => router.push("/device-link")}>
+            <Val>
+              →
+            </Val>
+          </Row>
+          <Row label="Herstelcode" sub="Een nieuwe code maken" onPress={() => router.push("/recovery-code")}>
             <Val>
               →
             </Val>

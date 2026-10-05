@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 
 import { offerAppLockOnce } from "@/lib/app-lock";
 import { useAuth } from "@/lib/auth/provider";
-import { bootstrapProfile } from "@/lib/auth/bootstrap";
+import { bootstrapProfile, type KeyStatus } from "@/lib/auth/bootstrap";
 import { listMyChats } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
@@ -15,6 +15,7 @@ import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
+import { KeyGate } from "@/components/KeyGate";
 import { PageTransition } from "@/components/PageTransition";
 import { useTheme } from "@/lib/design/theme";
 import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
@@ -34,6 +35,7 @@ const themedTabLayout = ({ children }: { children: ReactNode }) => <ThemedTab>{c
 export default function AppLayout() {
   const { session, loading, recovering } = useAuth();
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ state: "ready" });
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -44,10 +46,12 @@ export default function AppLayout() {
 
   async function runBootstrap() {
     try {
-      await bootstrapProfile({
-        userId: session!.user.id,
-        email: session!.user.email ?? "unknown@example.com",
-      });
+      setKeyStatus(
+        await bootstrapProfile({
+          userId: session!.user.id,
+          email: session!.user.email ?? "unknown@example.com",
+        })
+      );
     } catch (err) {
       console.warn("bootstrapProfile failed", err);
     }
@@ -268,6 +272,11 @@ export default function AppLayout() {
         <ActivityIndicator color={desk.ink} />
       </View>
     );
+  }
+
+  // Eerst je sleutel: op dit toestel, en met herstelcode op de server.
+  if (keyStatus.state !== "ready") {
+    return <KeyGate userId={session.user.id} status={keyStatus} onDone={runBootstrap} />;
   }
 
   return (

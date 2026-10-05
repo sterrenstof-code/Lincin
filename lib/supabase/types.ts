@@ -70,9 +70,9 @@ export type Database = {
     Tables: {
       /** 0090 — je eigen privésleutel (base64 X25519); alleen jij leest je rij. */
       private_keys: {
-        Row: { user_id: string; privkey: string; updated_at: string };
-        Insert: { user_id: string; privkey: string; updated_at?: string };
-        Update: { privkey?: string; updated_at?: string };
+        Row: { user_id: string; privkey: string | null; wrapped: string | null; updated_at: string };
+        Insert: { user_id: string; privkey?: null; wrapped?: string | null; updated_at?: string };
+        Update: { privkey?: null; wrapped?: string | null; updated_at?: string };
         Relationships: [];
       };
       profiles: {

@@ -284,6 +284,7 @@ function RootStack() {
         <Stack.Screen name="qr-code" options={MODAL} />
         <Stack.Screen name="device-link" options={MODAL} />
         <Stack.Screen name="device-receive" options={MODAL} />
+        <Stack.Screen name="recovery-code" options={MODAL} />
         <Stack.Screen
           name="event-camera/[id]"
           options={{ headerShown: false, presentation: "fullScreenModal", animation: "slide_from_bottom" }}

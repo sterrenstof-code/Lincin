@@ -150,6 +150,7 @@ export function DesktopSettings() {
     { label: t.editProfile, onPress: () => router.push("/profile-edit") },
     { label: t.myQr, onPress: () => router.push("/qr-code") },
     { label: t.linkDevice, onPress: () => router.push("/device-link") },
+    { label: t.recoveryCode, onPress: () => router.push("/recovery-code") },
     { label: t.logout, onPress: logout, red: true },
   ];
 
