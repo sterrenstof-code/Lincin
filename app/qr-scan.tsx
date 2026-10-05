@@ -6,7 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
-import { looksLikeFriendCode, normalizeFriendCode } from "@/lib/api/friend-codes";
+import { looksLikeFriendCode, looksLikeFriendToken, normalizeFriendCode } from "@/lib/api/friend-codes";
 import { color, ON_DARK, ON_LIGHT, useThemeSpec } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
@@ -31,7 +31,7 @@ export default function QRScanScreen() {
   function handleBarcodeScanned({ data }: { data: string }) {
     if (scannedRef.current) return;
 
-    // Een vriendcode (0082): meteen lincs, via het scherm dat hem inwisselt.
+    // Een vriendcode (0082): via het scherm dat hem inwisselt.
     const friendCode = extractFriendCode(data);
     if (friendCode) {
       scannedRef.current = true;
@@ -164,10 +164,10 @@ function extractUsername(raw: string): string | null {
   return null;
 }
 
-/** https://lincin.app/c/jv-4821, lincin://c/jv-4821, of de code zelf. */
+/** https://lincin.app/c/<token of jv-4821>, lincin://c/…, of de code zelf. */
 function extractFriendCode(raw: string): string | null {
   const text = raw.trim();
-  if (looksLikeFriendCode(text)) return normalizeFriendCode(text);
-  const match = text.match(/(?:^lincin:\/\/|\/)c\/([a-z]{2}-\d{4})(?:[/?#]|$)/i);
+  if (looksLikeFriendCode(text) || looksLikeFriendToken(text)) return normalizeFriendCode(text);
+  const match = text.match(/(?:^lincin:\/\/|\/)c\/([a-z]{2}-\d{4}|[0-9a-f]{32})(?:[/?#]|$)/i);
   return match ? normalizeFriendCode(match[1]) : null;
 }

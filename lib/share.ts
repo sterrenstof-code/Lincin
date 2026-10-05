@@ -78,5 +78,7 @@ export function buildAddFriendUrl(username: string): string {
  * (`app/c/[code].tsx`). Kleine letters, zoals in het prototype.
  */
 export function buildFriendCodeUrl(code: string): string {
+  // Geef hier het token (0093), niet de korte code: alleen de link met het
+  // geheim maakt meteen een linc; de korte code stuurt een verzoek.
   return `${publicBase()}/c/${encodeURIComponent(code.toLowerCase())}`;
 }

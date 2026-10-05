@@ -149,8 +149,8 @@ export type Database = {
       };
       /** 0082 — één vriendcode per persoon; alleen de eigenaar leest hem. */
       friend_codes: {
-        Row: { code: string; user_id: string; created_at: string };
-        Insert: { code: string; user_id: string; created_at?: string };
+        Row: { code: string; user_id: string; token: string; created_at: string };
+        Insert: { code: string; user_id: string; token?: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["friend_codes"]["Insert"]>;
         Relationships: [];
       };

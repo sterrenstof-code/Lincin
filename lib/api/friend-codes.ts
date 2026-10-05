@@ -1,21 +1,24 @@
 import { supabase } from "../supabase/client";
 
 /**
- * Vriendcodes (0082): `JV-4821`, één per persoon.
+ * Vriendcodes (0082, 0093): `JV-4821`, één per persoon.
  *
- * Wie jouw code (of de link of QR erbij) gebruikt, is meteen je linc —
- * geen verzoek, geen wachten. Lezen kan alleen je eigen code; inwisselen
- * gaat via `redeem_friend_code`, die ook raden afremt.
+ * De korte code is te raden, dus die stuurt een verzoek. De link en de QR
+ * die je deelt dragen een lang geheim (`token`): wie die opent, is meteen
+ * je linc — hij kreeg hem van jou. Lezen kan alleen je eigen code;
+ * inwisselen gaat via `redeem_friend_code`, die ook raden afremt.
  */
 
-export async function getMyFriendCode(userId: string): Promise<string | null> {
-  const { data, error } = await supabase.from("friend_codes").select("code").eq("user_id", userId).maybeSingle();
+export type MyFriendCode = { code: string; token: string };
+
+export async function getMyFriendCode(userId: string): Promise<MyFriendCode | null> {
+  const { data, error } = await supabase.from("friend_codes").select("code, token").eq("user_id", userId).maybeSingle();
   if (error) throw error;
-  return data?.code ?? null;
+  return data ? { code: data.code, token: data.token } : null;
 }
 
 export type RedeemResult =
-  | { status: "ok"; friend: { id: string; username: string; display_name: string | null } }
+  | { status: "ok" | "requested"; friend: { id: string; username: string; display_name: string | null } }
   | { status: "not_found" | "own" | "not_allowed" | "rate_limited" };
 
 export async function redeemFriendCode(code: string): Promise<RedeemResult> {
@@ -24,9 +27,15 @@ export async function redeemFriendCode(code: string): Promise<RedeemResult> {
   return data as RedeemResult;
 }
 
-/** Een code zoals iemand hem typt of uit een link haalt: hoofdletters, geen spaties. */
+/** Het geheim uit een gedeelde link: 32 hextekens. */
+export function looksLikeFriendToken(raw: string): boolean {
+  return /^[0-9a-f]{32}$/i.test(raw.trim());
+}
+
+/** Een code zoals iemand hem typt of uit een link haalt: hoofdletters, geen spaties. Een token blijft klein. */
 export function normalizeFriendCode(raw: string): string {
-  return raw.trim().replace(/\s+/g, "").toUpperCase();
+  const s = raw.trim().replace(/\s+/g, "");
+  return looksLikeFriendToken(s) ? s.toLowerCase() : s.toUpperCase();
 }
 
 /** Ziet dit eruit als een vriendcode? Twee letters, streepje, vier cijfers. */

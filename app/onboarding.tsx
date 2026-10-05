@@ -137,7 +137,7 @@ function InviteStep({ userId, onBack }: { userId: string; onBack: () => void }) 
   const [note, setNote] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
 
-  const link = code.data ? buildFriendCodeUrl(code.data) : null;
+  const link = code.data ? buildFriendCodeUrl(code.data.token) : null;
 
   async function finish() {
     setLeaving(true);
@@ -148,7 +148,7 @@ function InviteStep({ userId, onBack }: { userId: string; onBack: () => void }) 
 
   async function onShare() {
     if (!link || !code.data) return;
-    const result = await shareText({ title: "Linc met mij op Lincin", message: `Linc met mij op Lincin — mijn code is ${code.data}: ${link}` });
+    const result = await shareText({ title: "Linc met mij op Lincin", message: `Linc met mij op Lincin: ${link}` });
     if (result === "copied") setNote("Link gekopieerd.");
     else if (result === "failed" && (await copyToClipboard(link))) setNote("Link gekopieerd.");
   }
@@ -177,7 +177,7 @@ function InviteStep({ userId, onBack }: { userId: string; onBack: () => void }) 
       <View style={{ marginTop: 26, marginHorizontal: 6, backgroundColor: color("ink"), paddingVertical: 22, paddingHorizontal: 20, gap: 14, borderRadius: modern ? 18 : 0 }}>
         <Text style={[sans(500), { fontSize: 8.5, lineHeight: 11, letterSpacing: 8.5 * 0.2, textTransform: "uppercase", color: color("paper"), opacity: 0.7 }]}>Jouw code</Text>
         <Text selectable style={[sans(900), { fontSize: 54, lineHeight: Platform.OS === "web" ? 44 : 54, letterSpacing: 54 * -0.04, color: color("paper") }]}>
-          {code.data ?? (code.isLoading ? "…" : "—")}
+          {code.data?.code ?? (code.isLoading ? "…" : "—")}
         </Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
           <Text selectable numberOfLines={2} style={[serif(true), { flex: 1, fontSize: 16, lineHeight: 20, color: color("paper"), opacity: 0.85 }]}>
