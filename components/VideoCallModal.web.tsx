@@ -8,9 +8,9 @@
  * gevraagd bij binnenkomst in de room.
  */
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { useCallUrl } from "@/lib/jitsi";
 import { creamOnDark, feed } from "@/lib/design/type";
 
 interface Props {
@@ -20,9 +20,8 @@ interface Props {
 }
 
 export function VideoCallModal({ chatId, visible, onClose }: Props) {
+  const src = useCallUrl(chatId, visible);
   if (!visible) return null;
-
-  const src = buildJitsiEmbedUrl(chatId);
 
   return (
     <Modal
@@ -44,13 +43,19 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         </View>
 
         {/* JaaS iframe — neemt alle resterende ruimte in */}
-        {/* @ts-ignore — iframe is een geldig DOM-element in React Native Web */}
-        <iframe
-          src={src}
-          style={iframeStyle as any}
-          allow="camera; microphone; fullscreen; display-capture; autoplay"
-          allowFullScreen
-        />
+        {src ? (
+          // @ts-ignore — iframe is een geldig DOM-element in React Native Web
+          <iframe
+            src={src}
+            style={iframeStyle as any}
+            allow="camera; microphone; fullscreen; display-capture; autoplay"
+            allowFullScreen
+          />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color={creamOnDark.DEFAULT} />
+          </View>
+        )}
       </View>
     </Modal>
   );

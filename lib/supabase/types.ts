@@ -207,6 +207,8 @@ export type Database = {
           last_message_at: string | null;
           /** 0029_chat_avatar */
           avatar_url: string | null;
+          /** 0096 — geheime belkamer, wisselt als iemand vertrekt */
+          call_room: string;
         };
         Insert: {
           id?: string;

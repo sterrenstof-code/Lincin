@@ -14,7 +14,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import WebView from "react-native-webview";
 import { Camera } from "expo-camera";
 
-import { buildJitsiEmbedUrl } from "@/lib/jitsi";
+import { useCallUrl } from "@/lib/jitsi";
 import { creamOnDark } from "@/lib/design/type";
 
 interface Props {
@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function VideoCallModal({ chatId, visible, onClose }: Props) {
-  const url = buildJitsiEmbedUrl(chatId);
+  const url = useCallUrl(chatId, visible);
   const webviewRef = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -99,7 +99,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
         </View>
 
         {/* Wacht op toestemmingen */}
-        {!ready ? (
+        {!ready || !url ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
             <ActivityIndicator color={creamOnDark.DEFAULT} />
             <Text style={{ color: creamOnDark.DEFAULT, opacity: 0.6, fontSize: 13 }}>
