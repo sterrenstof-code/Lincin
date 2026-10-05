@@ -49,3 +49,13 @@ export async function toggleCommentReaction(args: {
     .insert({ comment_id: args.commentId, user_id: args.userId, emoji: args.emoji });
   if (error) throw error;
 }
+
+/** Al jouw reacties op één comment weg (het hart uitzetten, ook oude emoji). */
+export async function clearMyCommentReactions(commentId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("comment_reactions")
+    .delete()
+    .eq("comment_id", commentId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}

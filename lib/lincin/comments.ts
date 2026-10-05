@@ -11,7 +11,7 @@ import {
   type EntityComment,
   type EntityType,
 } from "@/lib/api/entity-comments";
-import { listReactionsForComments, toggleCommentReaction, type CommentReactionRow } from "@/lib/api/comment-reactions";
+import { clearMyCommentReactions, listReactionsForComments, toggleCommentReaction, type CommentReactionRow } from "@/lib/api/comment-reactions";
 import { getProfiles, type Profile } from "@/lib/api/profiles";
 import { setPref, usePrefs, type CommentSort } from "@/lib/lincin/prefs";
 import { uniqueTopic } from "@/lib/supabase/channel";
@@ -30,6 +30,8 @@ import { LIKE, tick } from "./likes";
  *     ingeklapt; open/dicht geldt voor deze sessie.
  *   - Een hart op een reactie is een like (een ❤️ in `comment_reactions`);
  *     het aantal telt unieke personen, ook wie vroeger een andere emoji gaf.
+ *     Zo'n oude emoji zet je hart ook aan: er is geen lade meer om hem
+ *     anders weg te halen, dus uitzetten haalt al jouw reacties weg.
  *   - Versturen verschijnt meteen ("verzenden…"); mislukt het, dan blijft
  *     hij staan met "niet verzonden · opnieuw".
  *   - Verwijderen (je eigen, of elke op wat jij maakte), verbergen en
@@ -100,7 +102,7 @@ export function useComments({
   const likesOf = useCallback(
     (id: string): CommentLikes => {
       const rows = likeRows[id] ?? [];
-      return { count: new Set(rows.map((r) => r.user_id)).size, liked: rows.some((r) => r.user_id === myUserId && r.emoji === LIKE) };
+      return { count: new Set(rows.map((r) => r.user_id)).size, liked: rows.some((r) => r.user_id === myUserId) };
     },
     [likeRows, myUserId],
   );
@@ -122,14 +124,15 @@ export function useComments({
   const toggleLike = useCallback(
     async (commentId: string) => {
       const current = likeRows[commentId] ?? [];
-      const on = current.some((r) => r.user_id === myUserId && r.emoji === LIKE);
+      const on = current.some((r) => r.user_id === myUserId);
       const next = on
-        ? current.filter((r) => !(r.user_id === myUserId && r.emoji === LIKE))
+        ? current.filter((r) => r.user_id !== myUserId)
         : [...current, { comment_id: commentId, user_id: myUserId, emoji: LIKE }];
       setLikeOverride((o) => ({ ...o, [commentId]: next }));
       tick();
       try {
-        await toggleCommentReaction({ commentId, userId: myUserId, emoji: LIKE, on });
+        if (on) await clearMyCommentReactions(commentId, myUserId);
+        else await toggleCommentReaction({ commentId, userId: myUserId, emoji: LIKE, on: false });
       } catch {
         setLikeOverride((o) => ({ ...o, [commentId]: current }));
       }
