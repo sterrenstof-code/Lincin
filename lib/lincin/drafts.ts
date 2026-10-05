@@ -52,3 +52,14 @@ export function useDraft(key: string | null): [string, (v: string | ((d: string)
   const clear = useCallback(() => set(""), [set]);
   return [value, set, clear];
 }
+
+/** Bij uitloggen: concepten horen bij wie ze schreef, niet bij het toestel. */
+export async function clearDrafts(): Promise<void> {
+  memory.clear();
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(PREFIX));
+    if (keys.length) await AsyncStorage.multiRemove(keys);
+  } catch {
+    // niets te wissen
+  }
+}

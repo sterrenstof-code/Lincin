@@ -14,8 +14,10 @@ import * as Linking from "expo-linking";
 
 import { clearAppLock } from "../app-lock";
 import { clearChatPreviews } from "../chat-preview";
+import { clearDecryptedAttachments } from "../crypto/file";
 import { clearIdentity } from "../crypto/keys";
 import { clearHues, type Hue } from "../design/theme";
+import { clearDrafts } from "../lincin/drafts";
 import { supabase } from "../supabase/client";
 
 import { handleAuthLink, NATIVE_AUTH_REDIRECT, signInWithProviderNative } from "./native-links";
@@ -262,6 +264,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data) await clearIdentity();
         }
         await clearChatPreviews();
+        await Promise.all([clearDrafts(), clearDecryptedAttachments()]);
         await supabase.auth.signOut();
         // Je kleuren per persoon horen bij jou, niet bij het toestel.
         clearHues();

@@ -92,7 +92,10 @@ export async function bytesToDisplayUri(
   filename: string
 ): Promise<string> {
   if (Platform.OS === "web") {
-    const blob = new Blob([bytes as any], { type: mimeType });
+    // Het type komt van de afzender. Een blob: URL draait op onze eigen
+    // origin, dus een "bestand" als text/html of SVG kon bij openen script
+    // uitvoeren met jouw sessie en sleutel. Alleen media krijgt zijn type.
+    const blob = new Blob([bytes as any], { type: safeBlobType(mimeType) });
     return URL.createObjectURL(blob);
   }
   const path = `${FileSystem.cacheDirectory}${filename}`;
@@ -102,10 +105,44 @@ export async function bytesToDisplayUri(
   return path;
 }
 
+const RENDERABLE = /^(image\/(jpeg|png|webp|gif|heic|heif|avif)|video\/(mp4|quicktime|webm|x-m4v)|audio\/(mpeg|mp4|aac|ogg|wav|webm|x-m4a))$/;
+
+function safeBlobType(mime: string): string {
+  const m = (mime ?? "").toLowerCase().split(";")[0].trim();
+  return RENDERABLE.test(m) ? m : "application/octet-stream";
+}
+
+/**
+ * Een bijlage bewaren op web: altijd als download, nooit door ernaar te
+ * navigeren (dan zou de browser hem op onze origin kunnen tonen).
+ */
+export function downloadBlobUri(uri: string, filename: string): void {
+  const a = document.createElement("a");
+  a.href = uri;
+  a.download = filename;
+  a.rel = "noopener";
+  a.click();
+}
+
 /** MIME-type → eenvoudige attachment-type categorie. */
 export function attachmentTypeFor(mime: string): "image" | "video" | "audio" | "file" {
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/")) return "video";
   if (mime.startsWith("audio/")) return "audio";
   return "file";
+}
+
+/** Bij uitloggen: ontsleutelde bijlagen (`att-…`) niet op het toestel laten. */
+export async function clearDecryptedAttachments(): Promise<void> {
+  if (Platform.OS === "web" || !FileSystem.cacheDirectory) return;
+  try {
+    const names = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+    await Promise.all(
+      names
+        .filter((n) => n.startsWith("att-"))
+        .map((n) => FileSystem.deleteAsync(FileSystem.cacheDirectory + n, { idempotent: true }))
+    );
+  } catch {
+    // de cache was al leeg of onleesbaar
+  }
 }

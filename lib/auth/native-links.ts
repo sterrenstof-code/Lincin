@@ -35,7 +35,10 @@ function paramsOf(url: string): URLSearchParams {
  * inloggen te maken hebben (een uitnodiging, een bijdrage).
  */
 export async function handleAuthLink(url: string | null | undefined): Promise<AuthLinkResult> {
-  if (!url || !url.includes("auth-callback")) return null;
+  if (!url) return null;
+  // Het pad moet exact auth-callback zijn, niet ergens in de link staan.
+  const path = url.split(/[?#]/)[0].replace(/\/+$/, "");
+  if (!/(^|[/:])auth-callback$/.test(path)) return null;
   const p = paramsOf(url);
   if (p.get("error") || p.get("error_description")) return "error";
   try {
@@ -46,6 +49,12 @@ export async function handleAuthLink(url: string | null | undefined): Promise<Au
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) return "error";
     } else if (access && refresh) {
+      // Losse tokens in een link kan iedereen maken, ook met de sleutels van
+      // een eigen account. Ben je al ingelogd, dan wisselen we daar niet
+      // stilletjes naar over (je zou anders posten in iemand anders' account).
+      // Een `code` (PKCE) kan niet vervalst worden zonder dit toestel.
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session) return null;
       const { error } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
       if (error) return "error";
     } else {

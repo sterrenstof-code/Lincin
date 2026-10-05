@@ -119,7 +119,7 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
             allowsProtectedMedia
             // iOS: de app heeft camera en microfoon al gekregen; zonder dit
             // vraagt WKWebView het bij elk gesprek nóg eens per site.
-            mediaCapturePermissionGrantType="grant"
+            mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
             // Sla de externe Jitsi API-referentie op zodat hangup werkt
             injectedJavaScriptBeforeContentLoaded={`
               window._jitsiApiReady = function(api) { window._jitsiApi = api; };
@@ -131,9 +131,14 @@ export function VideoCallModal({ chatId, visible, onClose }: Props) {
             `}
             // Voorkom externe navigatie binnen de WebView
             onShouldStartLoadWithRequest={(req) => {
-              return req.url.startsWith("https://meet.jit.si") ||
-                     req.url.startsWith("https://8x8.vc") ||
-                     req.url === url;
+              if (req.url === url) return true;
+              // Exacte host: startsWith liet ook https://8x8.vc.ander.site toe.
+              try {
+                const u = new URL(req.url);
+                return u.protocol === "https:" && (u.host === "8x8.vc" || u.host === "meet.jit.si");
+              } catch {
+                return false;
+              }
             }}
           />
         )}

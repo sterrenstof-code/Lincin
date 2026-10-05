@@ -102,6 +102,7 @@ import { base64ToBytes } from "@/lib/crypto/base64";
 import {
   attachmentTypeFor,
   bytesToDisplayUri,
+  downloadBlobUri,
   decryptFileBytes,
   encryptFileBytes,
   uriToBytes,
@@ -4161,7 +4162,11 @@ function AttachmentView({
       {uri && (
         <Pressable
           hitSlop={8}
-          onPress={() => Linking.openURL(uri!).catch(() => {})}
+          onPress={() =>
+            Platform.OS === "web"
+              ? downloadBlobUri(uri!, attachment.filename ?? "bestand")
+              : Linking.openURL(uri!).catch(() => {})
+          }
           className="ml-2 p-2"
         >
           <Ionicons

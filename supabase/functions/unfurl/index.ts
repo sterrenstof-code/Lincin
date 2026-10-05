@@ -117,7 +117,7 @@ function assertPublicUrl(u: URL): void {
   if (u.protocol !== "http:" && u.protocol !== "https:") {
     throw new Error("Alleen http(s) URL's zijn toegelaten.");
   }
-  const host = u.hostname.toLowerCase();
+  const host = u.hostname.toLowerCase().replace(/\.$/, "");
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||
@@ -128,18 +128,12 @@ function assertPublicUrl(u: URL): void {
     throw new Error("Interne host geweigerd.");
   }
   // IPv4-literals in private/link-local ranges
-  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    if (
-      a === 0 || a === 10 || a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127)
-    ) {
-      throw new Error("Privaat IP geweigerd.");
-    }
+  if (/^[\d.]+$/.test(host) && isPrivateIp(host)) {
+    throw new Error("Privaat IP geweigerd.");
+  }
+  // Enkel de gewone webpoorten: anders werd dit een poortscanner.
+  if (u.port !== "" && u.port !== "80" && u.port !== "443") {
+    throw new Error("Poort geweigerd.");
   }
   if (host === "::1" || host.startsWith("[")) {
     throw new Error("IPv6-literal geweigerd.");
@@ -157,22 +151,33 @@ function isPrivateIp(ip: string): boolean {
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && b === 168) ||
       (a === 100 && b >= 64 && b <= 127) ||
+      (a === 192 && b === 0 && Number(v4[3]) === 0) ||
       (a === 198 && (b === 18 || b === 19))
     );
   }
   const v6 = ip.toLowerCase();
   if (v6 === "::" || v6 === "::1") return true;
-  if (v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe8") || v6.startsWith("fe9") || v6.startsWith("fea") || v6.startsWith("feb")) return true;
-  const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  return mapped ? isPrivateIp(mapped[1]) : false;
+  // fc00::/7 (uniek-lokaal), fe80::/10 tot fec0::/10 (link/site-lokaal), ff00::/8 (multicast)
+  if (/^f[c-f]/.test(v6)) return true;
+  // NAT64 en 6to4 kunnen naar een intern IPv4-adres wijzen.
+  if (v6.startsWith("64:ff9b:") || v6.startsWith("2002:")) return true;
+  const mapped = v6.match(/^::(?:ffff:)?(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivateIp(mapped[1]);
+  // Dezelfde vorm in hex: ::ffff:7f00:1 is 127.0.0.1.
+  const hex = v6.match(/^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const hi = parseInt(hex[1], 16), lo = parseInt(hex[2], 16);
+    return isPrivateIp(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
+  return false;
 }
 
 /**
  * Wat de hostnaam écht wordt: een naam als `169.254.169.254.nip.io` of een
  * eigen domein kan naar een intern adres wijzen, en de tekstcontrole
  * hierboven ziet dat niet. Daarom de DNS zelf vragen en elk privé-adres
- * weigeren. (Kent de runtime geen `Deno.resolveDns`, dan blijft alleen de
- * tekstcontrole.)
+ * weigeren. Kent de runtime geen `Deno.resolveDns`, dan weigeren we liever
+ * alles dan dat we zonder die controle verder gaan.
  */
 async function assertPublicHost(u: URL): Promise<void> {
   assertPublicUrl(u);
@@ -180,7 +185,7 @@ async function assertPublicHost(u: URL): Promise<void> {
   if (/^[\d.]+$/.test(host)) return; // IPv4-literal: al gecontroleerd
   // @ts-ignore Deno
   const resolve = typeof Deno !== "undefined" ? Deno.resolveDns : undefined;
-  if (typeof resolve !== "function") return;
+  if (typeof resolve !== "function") throw new Error("DNS-controle niet beschikbaar.");
   const found: string[] = [];
   for (const type of ["A", "AAAA"] as const) {
     try {
@@ -228,8 +233,11 @@ async function fetchWithTimeout(url: string, accept: string): Promise<Response> 
       return res;
     }
     throw new Error("Te veel omleidingen.");
-  } finally {
+  } catch (e) {
+    // Bij succes loopt de timer door: die moet ook het lezen van de body
+    // afbreken, anders hield een server die traag druppelt de functie bezig.
     clearTimeout(timer);
+    throw e;
   }
 }
 
@@ -585,7 +593,7 @@ Deno.serve(async (req: Request) => {
     const age = Date.now() - new Date(cached.fetched_at).getTime();
     const ttl = cached.error ? ERROR_TTL_MS : CACHE_TTL_MS;
     if (age < ttl) {
-      if (cached.error) return json({ preview: null, cached: true, error: cached.error });
+      if (cached.error) return json({ preview: null, cached: true, error: "Geen voorbeeld beschikbaar." });
       const { url_hash: _h, error: _e, fetched_at: _f, ...preview } = cached;
       return json({ preview, cached: true });
     }
@@ -599,7 +607,10 @@ Deno.serve(async (req: Request) => {
       .upsert({ url_hash: hash, ...preview, error: null, fetched_at: new Date().toISOString() });
     return json({ preview, cached: false });
   } catch (e) {
-    const message = (e as Error)?.message ?? "Onbekende fout";
+    // De echte fout blijft in de logs: teruggeven verklapte welke poorten
+    // en hosts antwoorden (een scanner via onze servers).
+    console.warn("unfurl", (e as Error)?.message);
+    const message = "Geen voorbeeld beschikbaar.";
     // Negative caching, zodat een dode link niet elke keer 8s kost.
     await admin
       .from("link_previews")

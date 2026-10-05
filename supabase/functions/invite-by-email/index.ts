@@ -67,13 +67,18 @@ Deno.serve(async (req: Request) => {
     // Hoeveel je mag uitnodigen (veiligheidscontrole okt 2026): zonder rem
     // kon één account onbeperkt mails laten versturen vanaf ons domein — en
     // dat raakt de mailreputatie en de limiet waarmee ook echte
-    // aanmeldingen en wachtwoordherstel moeten werken.
-    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const [{ count: today }, { count: open }] = await Promise.all([
-      admin.from("pending_invites").select("id", { count: "exact", head: true }).eq("inviter_user_id", user.id).gt("created_at", dayAgo),
-      admin.from("pending_invites").select("id", { count: "exact", head: true }).eq("inviter_user_id", user.id),
-    ]);
-    if ((today ?? 0) >= 10 || (open ?? 0) >= 50) {
+    // aanmeldingen en wachtwoordherstel moeten werken. Tellen en vastleggen
+    // gebeurt in één stap in de database (0092), ook voor herhaalde mails.
+    const { data: claim, error: claimErr } = await admin.rpc("claim_invite_send", {
+      p_inviter: user.id,
+      p_email: cleanEmail,
+    });
+    if (claimErr) {
+      console.error("claim_invite_send", claimErr.message);
+      return json({ error: "De uitnodiging kon niet verstuurd worden." }, 500);
+    }
+    if (claim === "repeat") return json({ ok: true });
+    if (claim !== "ok") {
       return json({ error: "Je hebt vandaag al genoeg mensen uitgenodigd. Probeer het morgen opnieuw." }, 429);
     }
 

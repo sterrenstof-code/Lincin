@@ -51,6 +51,27 @@ interface WebPushSubscription {
   keys: { p256dh: string; auth: string };
 }
 
+/**
+ * Pushdiensten van de browsers. Een abonnement kiest iedereen zelf, dus
+ * zonder deze lijst liet send-push onze servers naar elke https-host posten.
+ */
+const PUSH_HOSTS = [
+  /^fcm\.googleapis\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/,
+  /^web\.push\.apple\.com$/,
+  /\.push\.apple\.com$/,
+  /\.notify\.windows\.com$/,
+];
+
+function isKnownPushEndpoint(endpoint: string): boolean {
+  try {
+    const u = new URL(endpoint);
+    return u.protocol === "https:" && u.port === "" && PUSH_HOSTS.some((re) => re.test(u.hostname));
+  } catch {
+    return false;
+  }
+}
+
 /** Onderscheid web push subscriptions van Expo push tokens. */
 function isWebPushSubscription(token: string): boolean {
   try {
@@ -80,6 +101,9 @@ async function sendWebPush(
     return;
   }
   const subscription: WebPushSubscription = JSON.parse(subscriptionJson);
+  if (!isKnownPushEndpoint(subscription.endpoint)) {
+    throw Object.assign(new Error("onbekende pushdienst"), { statusCode: 410 });
+  }
   const payload = JSON.stringify({ title, body, data });
   await webpush.sendNotification(subscription, payload);
 }
@@ -602,7 +626,9 @@ Deno.serve(async (req: Request) => {
         return code ? `${code} ${body0.slice(0, 120)}`.trim() : r.reason?.message ?? "error";
       });
       if (dead.length) {
-        await admin.from("user_devices").delete().in("push_token", dead);
+        // Eén voor één: .in() zet aanhalingstekens rond waarden met komma's
+        // maar ontsnapt die in de JSON zelf niet, dus dat filter faalde.
+        await Promise.all(dead.map((t) => admin.from("user_devices").delete().eq("push_token", t)));
         results.pruned = dead.length;
       }
     }
