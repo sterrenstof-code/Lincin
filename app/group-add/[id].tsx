@@ -13,7 +13,8 @@ import {
   listChatMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships, type FriendshipWithProfile } from "@/lib/api/friends";
-import { rekeyMessagesForNewMember } from "@/lib/api/rekey";
+import { forgetChatRecipients } from "@/lib/api/messages";
+import { shareMyMessagesWithMembers } from "@/lib/api/rekey";
 import { color, friendColor, hueFor, useScheme, useThemeSpec } from "@/lib/design/theme";
 import { sans, serif } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
@@ -87,11 +88,10 @@ export default function GroupAddMembersScreen() {
       await qc.invalidateQueries({ queryKey: ["chat-members", chatId] });
       await qc.invalidateQueries({ queryKey: ["chats", myUserId] });
 
-      // Re-keying: voeg enveloppen toe aan bestaande berichten voor elk nieuw lid.
-      // Fire-and-forget — nooit blokkeren op de navigatie.
-      for (const userId of selected) {
-        rekeyMessagesForNewMember(chatId, userId, myUserId).catch(() => {});
-      }
+      // Je eigen berichten meteen ook voor de nieuwe leden. Die van de
+      // anderen volgen zodra zij de app openen (0095). Niet wachten.
+      forgetChatRecipients(chatId);
+      shareMyMessagesWithMembers(myUserId, chatId);
 
       router.back();
     } catch (e: any) {

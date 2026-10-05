@@ -1,13 +1,17 @@
 /**
- * Re-keying: voeg enveloppen toe aan bestaande berichten voor een nieuw groepslid.
+ * Je eigen berichten delen met wie ze nog mist (0095).
  *
- * Strategie:
- *  1. Prioriteitsbatch: meest recente PRIORITY_BATCH berichten direct (descending),
- *     zodat het nieuwe lid meteen de recente context kan lezen.
- *  2. Achtergrond: daarna alle oudere berichten backwards, batch voor batch.
+ * Een nieuw groepslid heeft geen kopie van wat er vóór hem gezegd werd, en
+ * een bericht dat vlak na een ledenwissel vertrok (de ledenlijst wordt een
+ * minuut onthouden) mist soms iemand. Vroeger vulde de toevoeger alles aan,
+ * ook andermans berichten — en kon zo een nieuwkomer een aangepaste versie
+ * geven onder andermans naam. Nu deelt ieder alleen zijn eigen berichten:
+ * de database geeft aan wie wat mist (`my_messages_missing_payloads`), en
+ * alleen de afzender mag een kopie toevoegen (`add_recipient_payload`).
  *
- * Fire-and-forget: fouten worden gelogd maar nooit omhoog gegooid zodat de UI
- * nooit vastloopt door een mislukte re-keying.
+ * Draait bij het opstarten (alle gesprekken), bij het openen van een
+ * gesprek, en meteen na het toevoegen van een lid. Fouten worden gelogd en
+ * nooit opgegooid: dit mag de app niet tegenhouden.
  */
 
 import { base64ToBytes } from "../crypto/base64";
@@ -15,145 +19,71 @@ import { decryptFromSender, encryptForRecipient } from "../crypto/encrypt";
 import { loadIdentity } from "../crypto/keys";
 import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
-import type { MessageRow } from "./messages";
 
-const PRIORITY_BATCH = 50;
-const BACKGROUND_BATCH = 50;
+const BATCH = 200;
+const MAX_ROUNDS = 10;
 
-/**
- * Hoofdfunctie: roep aan direct nadat een nieuw lid is toegevoegd.
- *
- * Rekeyt eerst de laatste PRIORITY_BATCH berichten (meest recent → oud),
- * dan gaat het backwards door de rest van de geschiedenis in de achtergrond.
- */
-export async function rekeyMessagesForNewMember(
-  chatId: string,
-  newUserId: string,
-  myUserId: string
-): Promise<void> {
-  try {
-    const identity = await loadIdentity();
-    if (!identity) {
-      console.warn("[rekey] Geen identity-keys beschikbaar, re-keying overgeslagen.");
-      return;
-    }
+const running = new Map<string, Promise<void>>();
 
-    const profiles = await getProfiles([newUserId]);
-    const newMemberProfile = profiles.find((p) => p.id === newUserId);
-    if (!newMemberProfile?.identity_pubkey) {
-      console.warn("[rekey] Geen publieke sleutel gevonden voor nieuw lid:", newUserId);
-      return;
-    }
-    const newMemberPubKey = base64ToBytes(newMemberProfile.identity_pubkey);
-
-    // ── Prioriteitsbatch: laatste PRIORITY_BATCH berichten (meest recent eerst) ──
-    const { data: priorityData, error: priorityErr } = await supabase
-      .from("messages")
-      .select("id, chat_id, sender_id, recipient_payloads, created_at")
-      .eq("chat_id", chatId)
-      .order("created_at", { ascending: false })
-      .limit(PRIORITY_BATCH);
-
-    if (priorityErr) {
-      console.error("[rekey] Fout bij ophalen prioriteitsbatch:", priorityErr.message);
-      return;
-    }
-
-    const priorityRows = (priorityData ?? []) as MessageRow[];
-    await rekeyBatch(priorityRows, newUserId, myUserId, newMemberPubKey, identity.secretKey);
-
-    // Geen oudere berichten? Klaar.
-    if (priorityRows.length < PRIORITY_BATCH) return;
-
-    // ── Achtergrondbatch: alles ouder dan de laatste prioriteitsbatch ──
-    const oldestCursor = priorityRows[priorityRows.length - 1].created_at;
-    // Fire-and-forget: niet awaiten zodat de UI niet blokkeert.
-    rekeyOlderBackground(chatId, newUserId, myUserId, newMemberPubKey, identity.secretKey, oldestCursor).catch(
-      (err) => console.error("[rekey] Achtergrondfout:", err?.message ?? err)
-    );
-  } catch (err: any) {
-    console.error("[rekey] Onverwachte fout:", err?.message ?? err);
-  }
+/** Deel je berichten (in één gesprek, of in alle) met leden die ze missen. */
+export function shareMyMessagesWithMembers(myUserId: string, chatId?: string): Promise<void> {
+  const key = chatId ?? "*";
+  const busy = running.get(key);
+  if (busy) return busy;
+  const job = run(myUserId, chatId)
+    .catch((err) => console.warn("[rekey]", err?.message ?? err))
+    .finally(() => running.delete(key));
+  running.set(key, job);
+  return job;
 }
 
-/** Verwerkt alle berichten ouder dan `before` in batches van BACKGROUND_BATCH. */
-async function rekeyOlderBackground(
-  chatId: string,
-  newUserId: string,
-  myUserId: string,
-  newMemberPubKey: Uint8Array,
-  mySecretKey: Uint8Array,
-  before: string
-): Promise<void> {
-  let cursor = before;
+async function run(myUserId: string, chatId?: string): Promise<void> {
+  const identity = await loadIdentity();
+  if (!identity) return;
+  const pubkeys = new Map<string, Uint8Array | null>();
 
-  while (true) {
-    const { data, error } = await supabase
-      .from("messages")
-      .select("id, chat_id, sender_id, recipient_payloads, created_at")
-      .eq("chat_id", chatId)
-      .lt("created_at", cursor)
-      .order("created_at", { ascending: false })
-      .limit(BACKGROUND_BATCH);
-
-    if (error) {
-      console.error("[rekey] Fout in achtergrondbatch:", error.message);
-      return;
-    }
-
-    const rows = (data ?? []) as MessageRow[];
-    if (rows.length === 0) break;
-
-    await rekeyBatch(rows, newUserId, myUserId, newMemberPubKey, mySecretKey);
-    cursor = rows[rows.length - 1].created_at;
-
-    if (rows.length < BACKGROUND_BATCH) break;
-  }
-
-}
-
-/**
- * Decrypt + encrypt voor nieuw lid + RPC-update voor een batch rijen.
- * Geeft het aantal succesvol verwerkte berichten terug.
- */
-async function rekeyBatch(
-  rows: MessageRow[],
-  newUserId: string,
-  myUserId: string,
-  newMemberPubKey: Uint8Array,
-  mySecretKey: Uint8Array
-): Promise<number> {
-  let count = 0;
-  for (const row of rows) {
-    // Sla over als het nieuwe lid al een envelope heeft.
-    if (row.recipient_payloads?.[newUserId]) continue;
-
-    const myPayload = row.recipient_payloads?.[myUserId];
-    const candidates = myPayload
-      ? [myPayload]
-      : Object.values(row.recipient_payloads ?? {});
-
-    let plaintext: Uint8Array | null = null;
-    for (const env of candidates) {
-      const result = decryptFromSender(env, mySecretKey);
-      if (result) { plaintext = result; break; }
-    }
-
-    if (!plaintext) continue; // Niet ontsleutelbaar, overslaan.
-
-    const newPayload = encryptForRecipient(plaintext, newMemberPubKey);
-
-    const { error } = await supabase.rpc("add_recipient_payload", {
-      p_message_id: row.id,
-      p_user_id: newUserId,
-      p_payload: newPayload,
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const { data, error } = await supabase.rpc("my_messages_missing_payloads", {
+      p_chat_id: chatId ?? null,
+      p_limit: BATCH,
     });
+    if (error) throw error;
+    const rows = (data ?? []) as { message_id: string; chat_id: string; missing: string[] }[];
+    if (rows.length === 0) return;
 
-    if (error) {
-      console.warn("[rekey] RPC mislukt voor bericht", row.id, error.message);
-    } else {
-      count++;
+    const unknown = Array.from(new Set(rows.flatMap((r) => r.missing))).filter((id) => !pubkeys.has(id));
+    if (unknown.length) {
+      const profiles = await getProfiles(unknown);
+      for (const id of unknown) {
+        const pk = profiles.find((p) => p.id === id)?.identity_pubkey;
+        pubkeys.set(id, pk ? base64ToBytes(pk) : null);
+      }
     }
+
+    const { data: msgs, error: msgErr } = await supabase
+      .from("messages")
+      .select("id, recipient_payloads")
+      .in("id", rows.map((r) => r.message_id));
+    if (msgErr) throw msgErr;
+    const byId = new Map((msgs ?? []).map((m) => [m.id, m.recipient_payloads as Record<string, unknown>]));
+
+    let added = 0;
+    for (const row of rows) {
+      const mine = byId.get(row.message_id)?.[myUserId];
+      const plaintext = mine ? decryptFromSender(mine as never, identity.secretKey) : null;
+      if (!plaintext) continue; // van een oude sleutel: niet meer te delen
+      for (const userId of row.missing) {
+        const pk = pubkeys.get(userId);
+        if (!pk) continue;
+        const { error: addErr } = await supabase.rpc("add_recipient_payload", {
+          p_message_id: row.message_id,
+          p_user_id: userId,
+          p_payload: encryptForRecipient(plaintext, pk) as never,
+        });
+        if (!addErr) added++;
+      }
+    }
+    // Niets meer te doen dat lukt (geen sleutel, oude berichten): stoppen.
+    if (added === 0 || rows.length < BATCH) return;
   }
-  return count;
 }

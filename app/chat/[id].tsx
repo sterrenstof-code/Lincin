@@ -107,6 +107,7 @@ import {
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
+import { shareMyMessagesWithMembers } from "@/lib/api/rekey";
 import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { createNotification } from "@/lib/api/notifications";
@@ -517,6 +518,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           markChatRead(id).catch(() => {}),
         ]);
         if (!cancelled && rxs) setReactions(rxs);
+        // Wie er nieuw bij kwam, krijgt hier ook jouw eerdere berichten (0095).
+        shareMyMessagesWithMembers(myUserId, id);
         qc.invalidateQueries({ queryKey: ["chats", myUserId] });
       } catch (e: any) {
         if (cancelled) return;

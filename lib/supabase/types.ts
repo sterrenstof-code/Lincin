@@ -1157,6 +1157,12 @@ export type Database = {
         };
         Returns: void;
       };
+
+      /** 0095 — jouw berichten waar een huidig lid nog geen kopie van heeft. */
+      my_messages_missing_payloads: {
+        Args: { p_chat_id?: string | null; p_limit?: number };
+        Returns: { message_id: string; chat_id: string; missing: string[] }[];
+      };
     };
 
     Enums: Record<string, never>;

@@ -7,6 +7,7 @@ import { offerAppLockOnce } from "@/lib/app-lock";
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile, type KeyStatus } from "@/lib/auth/bootstrap";
 import { listMyChats } from "@/lib/api/chats";
+import { shareMyMessagesWithMembers } from "@/lib/api/rekey";
 import { listMyFriendships } from "@/lib/api/friends";
 import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
@@ -57,6 +58,13 @@ export default function AppLayout() {
     }
     setBootstrapping(false);
   }
+
+  // Met je sleutel op zijn plaats: deel je eigen berichten met wie ze mist
+  // (nieuwe groepsleden, of een bericht vlak na een ledenwissel). 0095.
+  useEffect(() => {
+    if (!session || bootstrapping || keyStatus.state !== "ready") return;
+    shareMyMessagesWithMembers(session.user.id);
+  }, [session, bootstrapping, keyStatus.state]);
 
   // Heeft dit account de stappen na het aanmaken al gehad? (0082) Bestaande
   // accounts tellen als klaar; alleen een nieuw account ziet ze.
