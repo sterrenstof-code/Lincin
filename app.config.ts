@@ -233,6 +233,30 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      // De letters zitten in de build zelf, en staan er dus al bij de
+      // eerste weergave. Zonder dit laadde `useFonts` ze bij elke start,
+      // en bleef het scherm zolang leeg (app/_layout.tsx). De namen in
+      // lib/design/type.ts (`FONT`) zijn op iOS de PostScript-naam van het
+      // bestand en op Android de bestandsnaam — die twee moeten gelijk
+      // blijven. Een snit erbij: hier én in `FONT_FILES`.
+      "expo-font",
+      {
+        fonts: [
+          "Archivo-Regular",
+          "Archivo-Medium",
+          "Archivo-SemiBold",
+          "Archivo-Bold",
+          "Archivo-ExtraBold",
+          "Archivo-Black",
+          "InstrumentSerif-Regular",
+          "InstrumentSerif-Italic",
+          "IBMPlexMono-Regular",
+          "IBMPlexMono-Medium",
+          "IBMPlexMono-SemiBold",
+        ].map((name) => `./assets/fonts/${name}.ttf`),
+      },
+    ],
+    [
       "expo-build-properties",
       {
         android: {

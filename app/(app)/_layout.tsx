@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsRestoring, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, Tabs } from "expo-router";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -38,6 +38,7 @@ export default function AppLayout() {
   const [bootstrapping, setBootstrapping] = useState(true);
   const [keyStatus, setKeyStatus] = useState<KeyStatus>({ state: "ready" });
   const qc = useQueryClient();
+  const restoring = useIsRestoring();
 
   useEffect(() => {
     if (!session) return;
@@ -47,12 +48,16 @@ export default function AppLayout() {
 
   async function runBootstrap() {
     try {
-      setKeyStatus(
-        await bootstrapProfile({
-          userId: session!.user.id,
-          email: session!.user.email ?? "unknown@example.com",
-        })
-      );
+      const userId = session!.user.id;
+      const result = await bootstrapProfile({
+        userId,
+        email: session!.user.email ?? "unknown@example.com",
+      });
+      // Het profiel is net gelezen; `onboarded` hieronder hoeft er dan niet
+      // nóg eens om te vragen. Lukte het opstarten niet, dan doet die query
+      // het zelf, zoals vroeger.
+      qc.setQueryData(["onboarded", userId], result.onboarded);
+      setKeyStatus(result.keys);
     } catch (err) {
       console.warn("bootstrapProfile failed", err);
     }
@@ -67,7 +72,8 @@ export default function AppLayout() {
   }, [session, bootstrapping, keyStatus.state]);
 
   // Heeft dit account de stappen na het aanmaken al gehad? (0082) Bestaande
-  // accounts tellen als klaar; alleen een nieuw account ziet ze.
+  // accounts tellen als klaar; alleen een nieuw account ziet ze. Meestal
+  // gevuld door `runBootstrap`; de vraag hieronder is de terugval.
   const onboarded = useQuery({
     queryKey: ["onboarded", session?.user.id],
     queryFn: async () => {
@@ -94,10 +100,15 @@ export default function AppLayout() {
   // refetchOnWindowFocus vangt netwerk-blips op: keer terug naar de tab en
   // we trekken meteen de actuele state binnen (catch-up voor wat realtime
   // tijdens disconnect heeft gemist).
+  //
+  // Deze drie tellers hebben je sleutel niet nodig (de chatlijst is
+  // metadata; de voorvertoning ontsleutelt pas op het scherm zelf, zie
+  // lib/chat-preview.ts). Ze wachten dus niet op `bootstrapping` maar
+  // lopen gelijk op met het opstarten: één wachttijd minder vóór de tabs.
   const chats = useQuery({
     queryKey: ["chats", session?.user.id ?? "anon"],
     queryFn: () => listMyChats(session!.user.id),
-    enabled: !!session && !bootstrapping,
+    enabled: !!session,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -109,7 +120,7 @@ export default function AppLayout() {
   const unreadNotifications = useQuery({
     queryKey: ["notifications-unread", session?.user.id ?? "anon"],
     queryFn: () => countUnreadNotifications(session!.user.id),
-    enabled: !!session && !bootstrapping,
+    enabled: !!session,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -124,7 +135,7 @@ export default function AppLayout() {
   const friendships = useQuery({
     queryKey: ["friendships", session?.user.id ?? "anon"],
     queryFn: () => listMyFriendships(session!.user.id),
-    enabled: !!session && !bootstrapping,
+    enabled: !!session,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
@@ -274,7 +285,10 @@ export default function AppLayout() {
   // Nieuw account: eerst de stappen na het aanmaken (foto, uitnodigen).
   if (onboarded.data === false) return <Redirect href="/onboarding" />;
 
-  if (bootstrapping || onboarded.isLoading) {
+  // Ook wachten tot de bewaarde cache terug is (lib/query-cache.ts): dat is
+  // lokaal en bijna altijd al klaar, maar een tabblad dat ervóór tekent
+  // ziet geen gegevens en geen laden, en toont dan "nog niets".
+  if (bootstrapping || onboarded.isLoading || restoring) {
     return (
       <View className="flex-1 items-center justify-center bg-desk">
         <ActivityIndicator color={desk.ink} />

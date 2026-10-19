@@ -1,7 +1,8 @@
 import "../global.css";
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, useIsRestoring } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
@@ -24,19 +25,7 @@ import { useFonts } from "expo-font";
 import { AppLock } from "@/components/AppLock";
 import { LightboxHost } from "@/components/lincin/Lightbox";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      // Refetch op window-focus is uit-by-default omdat het op native
-      // overkill is, maar we zetten het AAN voor de chats-query specifiek
-      // via useQuery-options. Hier blijft de default uit zodat andere
-      // queries (posts, events) niet onnodig refetchen.
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+import { dropPersistedCache, forgetQueryCache, persistOptions, queryClient, setCacheOwner } from "@/lib/query-cache";
 
 /**
  * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
@@ -89,9 +78,12 @@ export default function RootLayout() {
   const spec = useThemeSpec();
   /**
    * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
-   * (`app/+html.tsx`) en is dit meteen klaar; op native laden ze hier, en
-   * tot die tijd staat er niets — een halve tel systeemletter die daarna
-   * verspringt is lelijker dan een halve tel leeg blad.
+   * (`app/+html.tsx`) en is dit meteen klaar. Op native zitten ze in de
+   * build (de `expo-font`-plugin in app.config.ts): `useFonts` ziet ze dan
+   * al bij de eerste weergave en geeft meteen `true`, er wordt niets
+   * geladen. Alleen waar ze niet ingebouwd zijn (Expo Go, een oude
+   * dev-build) laden ze hier, en staat er tot die tijd niets — een halve tel
+   * systeemletter die daarna verspringt is lelijker dan een halve tel leeg blad.
    */
   const [fontsReady, fontsError] = useFonts(Platform.OS === "web" ? {} : FONT_FILES);
 
@@ -114,12 +106,16 @@ export default function RootLayout() {
   if (Platform.OS !== "web" && !fontsReady && !fontsError) return null;
 
   return (
-    // Op native staat de kleur van een prop als échte waarde in de boom (zie
-    // lib/design/type.ts), dus een wissel moet hertekenen. De `key` doet dat.
-    // Op web zit de kleur in een CSS-variabele en hoeft er niets te gebeuren —
-    // vandaar dat de key daar constant blijft.
+    // Het laatst geziene overzicht staat meteen op het scherm; vers komt op
+    // de achtergrond. Wat wel en niet bewaard wordt: lib/query-cache.ts.
+    // Staat búíten de `key` hieronder: een themawissel mag de cache niet
+    // opnieuw van schijf laten halen.
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+    {/* Op native staat de kleur van een prop als échte waarde in de boom (zie
+        lib/design/type.ts), dus een wissel moet hertekenen. De `key` doet dat.
+        Op web zit de kleur in een CSS-variabele en hoeft er niets te gebeuren —
+        vandaar dat de key daar constant blijft. */}
     <ErrorBoundary key={Platform.OS === "web" ? "app" : scheme}>
-    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LincinThemeProvider>
         <ThemeProvider value={spec.dark ? DarkTheme : DefaultTheme}>
@@ -150,8 +146,8 @@ export default function RootLayout() {
         </ThemeProvider>
         </LincinThemeProvider>
       </AuthProvider>
-    </QueryClientProvider>
     </ErrorBoundary>
+    </PersistQueryClientProvider>
   );
 }
 
@@ -174,15 +170,26 @@ export default function RootLayout() {
  */
 function RootStack() {
   const { session, loading } = useAuth();
-  // Uitgelogd: niets van het vorige account in het geheugen laten staan.
+  const restoring = useIsRestoring();
+  // Uitgelogd: niets van het vorige account in het geheugen of op schijf
+  // laten staan. Start de app zonder sessie (verlopen, of elders
+  // uitgelogd), dan gaat alleen de kopie op schijf weg: het geheugen leegmaken
+  // zou de query's van een open publieke pagina (e/[code]) onder haar
+  // vandaan trekken.
   const hadSession = useRef(false);
+  const userId = session?.user.id ?? null;
   useEffect(() => {
-    if (session) hadSession.current = true;
-    else if (hadSession.current) {
+    if (loading || restoring) return;
+    if (userId) {
+      hadSession.current = true;
+      setCacheOwner(userId);
+    } else if (hadSession.current) {
       hadSession.current = false;
-      queryClient.clear();
+      forgetQueryCache();
+    } else {
+      dropPersistedCache();
     }
-  }, [session]);
+  }, [userId, loading, restoring]);
   const router = useRouter();
 
   useEffect(() => {

@@ -46,30 +46,56 @@ export async function bootstrapProfile(args: {
   userId: string;
   email: string;
   preferredUsername?: string;
-}): Promise<KeyStatus> {
-  const { data: existing, error: selErr } = await supabase
-    .from("profiles")
-    .select("id, username, identity_pubkey")
-    .eq("id", args.userId)
-    .maybeSingle();
-  if (selErr) throw selErr;
-
-  let legacyPrivkey: string | null = null;
-  let wrapped: string | null = null;
-  if (existing) {
-    const { data: row } = await supabase
+}): Promise<BootstrapResult> {
+  // Vier onafhankelijke lezingen tegelijk: twee rondes naar de server en
+  // twee uit de sleutelopslag van het toestel. Na elkaar waren dat drie
+  // wachttijden vóór het eerste scherm; nu is het de traagste van de vier.
+  // `private_keys` vragen we ook als er (nog) geen profiel is: dan komt er
+  // niets terug, en dat kost minder dan erop wachten.
+  const [
+    { data: existing, error: selErr },
+    { data: row },
+    loaded,
+    owner,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, username, identity_pubkey, onboarded_at")
+      .eq("id", args.userId)
+      .maybeSingle(),
+    supabase
       .from("private_keys")
       .select("privkey, wrapped")
       .eq("user_id", args.userId)
-      .maybeSingle();
-    legacyPrivkey = row?.privkey ?? null;
-    wrapped = row?.wrapped ?? null;
-  }
+      .maybeSingle(),
+    loadIdentity(),
+    getIdentityOwner(),
+  ]);
+  if (selErr) throw selErr;
 
+  const legacyPrivkey: string | null = existing ? row?.privkey ?? null : null;
+  const wrapped: string | null = existing ? row?.wrapped ?? null : null;
+  // Meegelezen met het profiel, zodat de app er geen aparte vraag voor
+  // hoeft te stellen (0082). Een nieuw account heeft de stappen nog niet gehad.
+  const onboarded = existing ? existing.onboarded_at !== null : false;
+  const keys = await settleKeys(args, existing, legacyPrivkey, wrapped, loaded, owner);
+  return { keys, onboarded };
+}
+
+/** Wat het opstarten oplevert: de stand van je sleutel, en of je de stappen na het aanmaken al had. */
+export type BootstrapResult = { keys: KeyStatus; onboarded: boolean };
+
+async function settleKeys(
+  args: { userId: string; email: string; preferredUsername?: string },
+  existing: { identity_pubkey: string | null } | null,
+  legacyPrivkey: string | null,
+  wrapped: string | null,
+  loaded: Awaited<ReturnType<typeof loadIdentity>>,
+  owner: string | null,
+): Promise<KeyStatus> {
   // Lokale sleutels: alleen als ze van dit account zijn (of van vóór de
   // eigenaarsregel én ze passen bij wat de server van dit account kent).
-  let local = await loadIdentity();
-  const owner = await getIdentityOwner();
+  let local = loaded;
   if (local && owner && owner !== args.userId) {
     await clearIdentity();
     local = null;

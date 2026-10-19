@@ -18,9 +18,10 @@ import { color, subscribeScheme, subscribeTheme, themeSpec, type LincinTheme } f
  * HOE DE LETTERS BINNENKOMEN
  * ---------------------------------------------------------------
  * `assets/fonts/` bevat statische snitten (van Google Fonts, per as-punt
- * uitgeschreven, dus zonder variabele as). Native laadt ze met expo-font
- * in `app/_layout.tsx`, onder de naam van het bestand. Web haalt Archivo,
- * Instrument Serif en IBM Plex Mono bij Google zelf (sneller, gecachet)
+ * uitgeschreven, dus zonder variabele as). Native krijgt ze ingebouwd
+ * (de `expo-font`-plugin in app.config.ts), onder de naam van het bestand;
+ * dat is op iOS ook de PostScript-naam erin, dus die twee moeten gelijk
+ * blijven. Web leest dezelfde bestanden via `@font-face` in app/+html.tsx
  * (de smalle Archivo van kleur ging met dat thema weg).
  *
  * Daarom staan de gewichten hier als losse *snitten* en niet als
@@ -47,7 +48,7 @@ export const FONT = {
   monoSemi: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-SemiBold",
 } as const;
 
-/** De snitten die `app/_layout.tsx` op native laadt; sleutel = familienaam. */
+/** De snitten: ingebouwd op native (app.config.ts), `@font-face` op web (app/+html.tsx); sleutel = familienaam. */
 export const FONT_FILES = {
   "Archivo-Regular": require("../../assets/fonts/Archivo-Regular.ttf"),
   "Archivo-Medium": require("../../assets/fonts/Archivo-Medium.ttf"),

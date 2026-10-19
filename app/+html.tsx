@@ -10,7 +10,50 @@
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
+import { Asset } from "expo-asset";
+
 import { propVarCss, themeVarCss } from "@/lib/design/theme";
+import { FONT_FILES } from "@/lib/design/type";
+
+type FontKey = keyof typeof FONT_FILES;
+
+/**
+ * Welke snit bij welke familie, welk gewicht en welke stand hoort. Op web
+ * vraagt `sans(700)` om `'Archivo'` met gewicht 700 (lib/design/type.ts);
+ * deze tabel zegt de browser welk bestand dat is.
+ */
+const FACES: [family: string, weight: number, style: "normal" | "italic", key: FontKey][] = [
+  ["Archivo", 400, "normal", "Archivo-Regular"],
+  ["Archivo", 500, "normal", "Archivo-Medium"],
+  ["Archivo", 600, "normal", "Archivo-SemiBold"],
+  ["Archivo", 700, "normal", "Archivo-Bold"],
+  ["Archivo", 800, "normal", "Archivo-ExtraBold"],
+  ["Archivo", 900, "normal", "Archivo-Black"],
+  ["Instrument Serif", 400, "normal", "InstrumentSerif-Regular"],
+  ["Instrument Serif", 400, "italic", "InstrumentSerif-Italic"],
+  ["IBM Plex Mono", 400, "normal", "IBMPlexMono-Regular"],
+  ["IBM Plex Mono", 500, "normal", "IBMPlexMono-Medium"],
+  ["IBM Plex Mono", 600, "normal", "IBMPlexMono-SemiBold"],
+];
+
+/** De meestgebruikte: lopende tekst, vet, en de meta-letter. */
+const PRELOAD_FONTS: FontKey[] = ["Archivo-Regular", "Archivo-Bold", "IBMPlexMono-Medium"];
+
+/**
+ * Het adres van een snit in de export: `/assets/…/<naam>.<hash>.ttf`. De
+ * hash volgt de inhoud, dus de adressen liggen vast bij het bouwen en het
+ * bestand mag eeuwig in de cache (vercel.json, `/assets/`).
+ */
+function fontUrl(key: FontKey): string {
+  return Asset.fromModule(FONT_FILES[key]).uri;
+}
+
+function fontFaceCss(): string {
+  return FACES.map(
+    ([family, weight, style, key]) =>
+      `@font-face{font-family:'${family}';font-style:${style};font-weight:${weight};font-display:swap;src:url('${fontUrl(key)}') format('truetype');}`
+  ).join("\n");
+}
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -103,17 +146,17 @@ addEventListener('pointerdown',function(){r.classList.remove('kbd');},true);})()
         {/* ---------------------------------------------------------------
             De drie letters van v2 (zie lib/design/type.ts).
 
-            Archivo, Instrument Serif en IBM Plex Mono komen bij Google
-            vandaan: snel, gecachet, en met alle gewichten die de oude
-            schalen nog vragen. De smalle Archivo (font-stretch) hoorde
-            bij kleur en ging met dat thema weg.
+            Van onze eigen server, uit dezelfde bestanden als native. Ze
+            kwamen bij Google vandaan, maar dat stylesheet hield de eerste
+            weergave tegen tot er een tweede en een derde domein bereikt
+            was. Nu tekent de pagina meteen in de systeemletter en wisselt
+            hij zodra een snit binnen is (`font-display: swap`). De drie
+            snitten die het vaakst staan worden al vooraf gehaald.
             --------------------------------------------------------------- */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-        />
+        {PRELOAD_FONTS.map((key) => (
+          <link key={key} rel="preload" as="font" type="font/ttf" href={fontUrl(key)} crossOrigin="anonymous" />
+        ))}
+        <style dangerouslySetInnerHTML={{ __html: fontFaceCss() }} />
 
         {/* ---------------------------------------------------------------
             De paginaovergangen (View Transitions API).
