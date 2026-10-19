@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, Field, IconBtn, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { useAuth } from "@/lib/auth/provider";
 import { createPoll } from "@/lib/api/polls";
-import { createActivityEvent } from "@/lib/api/activity-events";
 import { sendMessage } from "@/lib/api/messages";
 import { friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
@@ -89,7 +88,6 @@ export default function PollComposeScreen() {
         });
         await qc.invalidateQueries({ queryKey: ["messages", chatId] });
       } else {
-        await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
         await qc.invalidateQueries({ queryKey: ["unified-feed", myUserId] });
       }
 

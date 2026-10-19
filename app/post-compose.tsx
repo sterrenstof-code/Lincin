@@ -8,7 +8,6 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { LincinScreen, TopRow } from "@/components/lincin/Chrome";
 import { BORDER, Box, Btn, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import { SafeImage } from "@/components/SafeImage";
-import { createActivityEvent } from "@/lib/api/activity-events";
 import { MAX_PHOTOS, POLL_MAX, POLL_MIN } from "@/lib/lincin/compose";
 import { chatTitle, listMyChats } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -262,7 +261,7 @@ export function useCompose() {
     try {
       if (kind === "poll") {
         // De vraag is de titel; lege keuzes tellen niet mee.
-        const poll = await createPoll({
+        await createPoll({
           userId: myUserId,
           question: title.trim(),
           options: filledOptions,
@@ -271,7 +270,6 @@ export function useCompose() {
           allowProposals: pollProposals,
           swatch,
         });
-        await createActivityEvent({ actorId: myUserId, kind: "post_created", postId: poll.id });
         await AsyncStorage.removeItem(draftKey).catch(() => {});
         setPublished(true);
         await invalidatePostCaches(qc);

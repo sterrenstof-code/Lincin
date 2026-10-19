@@ -1,7 +1,6 @@
 import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
 import type { Profile } from "./profiles";
-import { createActivityEvent } from "./activity-events";
 
 export type Friendship = {
   id: string;
@@ -40,8 +39,7 @@ export async function acceptFriendRequest(
     .update({ status: "accepted", accepted_at: new Date().toISOString() })
     .eq("id", friendshipId);
   if (error) throw error;
-  // Activiteitsmoment — fire-and-forget
-  createActivityEvent({ actorId: myUserId, kind: "friend_accepted", friendId: requesterId }).catch(() => {});
+  // Het activiteitsmoment (friend_accepted) schrijft een trigger (0097).
 }
 
 /** Decline (delete) a friend request, or unfriend. */

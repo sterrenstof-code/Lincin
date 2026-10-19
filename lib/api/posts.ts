@@ -5,7 +5,7 @@ import { getProfile, getProfiles, type Profile } from "./profiles";
 import { countEntityComments } from "./entity-comments";
 import { listFeedPolls, type PollWithDetails } from "./polls";
 import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
-import { createActivityEvent, listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
+import { listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
 import { listMySharedLists, type SharedListWithDetails } from "./shared-lists";
 import type { LinkPreview } from "./unfurl";
 
@@ -386,16 +386,13 @@ export async function createFind(args: {
    * meldingen blijven ook dan komen, want die hangen aan het eigenaarschap
    * en niet aan deze tabel.
    *
-   * Fire-and-forget, net als het activiteitsmoment eronder: een vondst die
-   * geplaatst is mag niet alsnog stukgaan op een knopstand.
+   * Fire-and-forget: een vondst die geplaatst is mag niet alsnog stukgaan
+   * op een knopstand. (Het activiteitsmoment schrijft een trigger, 0097.)
    */
   supabase
     .from("post_follows")
     .insert({ post_id: postId, user_id: args.userId })
     .then(undefined, () => {});
-
-  // Activiteitsmoment registreren — fire-and-forget
-  createActivityEvent({ actorId: args.userId, kind: "post_created", postId: (data as any).id }).catch(() => {});
   return normalizeRow(data);
 }
 

@@ -22,25 +22,8 @@ export type ActivityEventWithActor = ActivityEventRow & {
   friend_profile: Profile | null;
 };
 
-export async function createActivityEvent(args: {
-  actorId: string;
-  kind: ActivityKind;
-  postId?: string;
-  eventId?: string;
-  friendId?: string;
-}): Promise<void> {
-  await supabase.from("activity_events").upsert(
-    {
-      actor_id: args.actorId,
-      kind: args.kind,
-      post_id: args.postId ?? null,
-      event_id: args.eventId ?? null,
-      friend_id: args.friendId ?? null,
-    },
-    { ignoreDuplicates: true }
-  );
-  // Fire-and-forget — niet fatal als het mislukt
-}
+// Activiteitsmomenten schrijft de database zelf (triggers, 0097): de app
+// mag er niet meer rechtstreeks in schrijven.
 
 export async function listFeedActivityEvents(
   limit = 40

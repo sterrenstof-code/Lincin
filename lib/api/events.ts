@@ -4,7 +4,6 @@ import { supabase } from "../supabase/client";
 import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
-import { createActivityEvent } from "./activity-events";
 import { uniqueTopic } from "@/lib/supabase/channel";
 
 export type EventRevealMode = "during" | "after" | "delayed";
@@ -245,8 +244,7 @@ export async function createEvent(args: {
     }
   }
 
-  // Activiteitsmoment — fire-and-forget
-  createActivityEvent({ actorId: args.hostUserId, kind: "event_created", eventId: data.id }).catch(() => {});
+  // Het activiteitsmoment (event_created) schrijft een trigger (0097).
 
   return { ...(data as EventRow), cover_image_path: coverPath ?? data.cover_image_path };
 }
@@ -334,18 +332,9 @@ export async function joinEventByCode(joinCode: string): Promise<JoinEventResult
     eventId: result.event_id,
     status: result.status ?? "joined",
   };
-  // Een activiteitsmoment hoort bij het écht meedoen, niet bij het vragen.
-  if (out.status === "joined") {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        createActivityEvent({
-          actorId: user.id,
-          kind: "event_joined",
-          eventId: out.eventId,
-        }).catch(() => {});
-      }
-    });
-  }
+  // Het activiteitsmoment (event_joined) hoort bij het écht meedoen, niet
+  // bij het vragen: de trigger op event_members (0097) schrijft het zodra
+  // je als gast binnen bent — ook na goedkeuring door de host.
   return out;
 }
 
