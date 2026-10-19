@@ -45,7 +45,10 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Toetsenbordstand: Tab zet hem aan, een klik of tik weer uit.
             global.css toont daarmee ook in tekstvelden de rode focusring,
             die de velden inline uitzetten (voor wie klikt is de cursor
-            genoeg). */}
+            genoeg).
+            CSP: de SHA-256 van dit script staat vast in vercel.json
+            (script-src). Verandert er ook maar één teken, herbereken hem:
+            `npx expo export -p web && npm run csp:check`. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var r=document.documentElement;
@@ -53,6 +56,9 @@ addEventListener('keydown',function(e){if(e.key==='Tab')r.classList.add('kbd');}
 addEventListener('pointerdown',function(){r.classList.remove('kbd');},true);})();`,
           }}
         />
+        {/* CSP: ook van dit script staat de SHA-256 vast in vercel.json
+            (script-src); bij elke wijziging herberekenen met
+            `npm run csp:check` na een web-export. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{

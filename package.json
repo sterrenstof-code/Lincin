@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test:crypto": "node scripts/test-crypto.mjs"
+    "test:crypto": "node scripts/test-crypto.mjs",
+    "csp:check": "node scripts/csp-hashes.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

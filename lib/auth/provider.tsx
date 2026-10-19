@@ -145,6 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       Linking.getInitialURL().then(onUrl);
       const linkSub = Linking.addEventListener("url", (e) => void onUrl(e.url));
       offLink = () => linkSub.remove();
+    } else if (typeof window !== "undefined" && /[?#&]token_hash=/.test(window.location.href)) {
+      // Web: een `?code=` wisselt de client zelf in, maar een link van een
+      // mail die de server zelf stuurt (uitnodiging) draagt een `token_hash`
+      // naar /auth-callback. Daarna de hash uit de adresbalk halen: hij is
+      // eenmalig, maar hoort niet in de geschiedenis.
+      handleAuthLink(window.location.href).then((r) => {
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+        if (r === "recovery" && mounted) setRecovering(true);
+      });
     }
 
     return () => {
