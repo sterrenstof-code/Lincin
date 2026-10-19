@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
 import type { ChatWithMembers } from "@/lib/api/chats";
-import { fetchMessages, type DecryptedMessage } from "@/lib/api/messages";
+import { fetchLatestMessagesPerChat, type DecryptedMessage } from "@/lib/api/messages";
 
 /**
  * De laatste regel van elk gesprek, zodat de chatlijst iets te zeggen heeft.
@@ -98,19 +98,40 @@ export function shortenForPreview(text: string): string {
   return oneLine.length > 120 ? `${oneLine.slice(0, 119)}…` : oneLine;
 }
 
-export async function rememberChatPreview(chatId: string, preview: ChatPreview) {
-  const store = { ...(await load()) };
+/** Zet één regel in `store`, tenzij wat er staat nieuwer is. Muteert `store`. */
+function put(store: Store, chatId: string, preview: ChatPreview) {
   const existing = store[chatId];
   // Niet terugschrijven met iets ouders: de lijst en het gesprek schrijven
   // allebei, en ze komen niet altijd in volgorde binnen.
-  if (existing && existing.at > preview.at) return;
+  if (existing && existing.at > preview.at) return false;
   store[chatId] = preview;
+  return true;
+}
 
+function trim(store: Store) {
   const ids = Object.keys(store);
   if (ids.length > MAX) {
     const oldestFirst = ids.sort((a, b) => (store[a].at < store[b].at ? -1 : 1));
     for (const id of oldestFirst.slice(0, ids.length - MAX)) delete store[id];
   }
+}
+
+export async function rememberChatPreview(chatId: string, preview: ChatPreview) {
+  await rememberChatPreviews([[chatId, preview]]);
+}
+
+/**
+ * Meerdere regels tegelijk: één keer wegschrijven en één keer de lijst
+ * laten hertekenen. Per regel apart betekende bij tien gesprekken tien
+ * schrijfacties naar de opslag en tien keer de hele lijst opnieuw tekenen.
+ */
+export async function rememberChatPreviews(entries: readonly (readonly [string, ChatPreview])[]) {
+  if (entries.length === 0) return;
+  const store = { ...(await load()) };
+  let changed = false;
+  for (const [chatId, preview] of entries) changed = put(store, chatId, preview) || changed;
+  if (!changed) return;
+  trim(store);
   await persist(store);
 }
 
@@ -153,24 +174,43 @@ const checked = new Map<string, string>();
  */
 async function catchUp(chats: ChatWithMembers[], myUserId: string) {
   const store = await load();
+  const stale: ChatWithMembers[] = [];
   for (const chat of chats) {
     const lastAt = chat.last_message_at;
     if (!lastAt || checked.get(chat.id) === lastAt) continue;
     const have = store[chat.id];
     if (have && Date.parse(have.at) >= Date.parse(lastAt)) continue;
     checked.set(chat.id, lastAt);
-    try {
-      const msgs = await fetchMessages(chat.id, myUserId, 5);
+    stale.push(chat);
+  }
+  if (stale.length === 0) return;
+  // Eén vraag voor alle gesprekken die achterlopen, in plaats van één per
+  // gesprek na elkaar (0099). Daarna één keer wegschrijven.
+  try {
+    const byChat = await fetchLatestMessagesPerChat(
+      stale.map((c) => c.id),
+      myUserId,
+      5
+    );
+    const entries: [string, ChatPreview][] = [];
+    for (const chat of stale) {
+      const msgs = byChat.get(chat.id) ?? [];
+      // Nieuwste eerst zoeken naar iets dat een regel oplevert; een bericht
+      // dat niet ontsleutelt (geen envelop voor mij) slaan we over. Levert
+      // niets iets op, dan blijft de terugval: het aantal ongelezen.
       for (let i = msgs.length - 1; i >= 0; i--) {
         const pv = previewFor(msgs[i], chat, myUserId);
         if (pv) {
-          await rememberChatPreview(chat.id, pv);
+          entries.push([chat.id, pv]);
           break;
         }
       }
-    } catch {
-      // Lukt het niet, dan blijft de oude regel staan; volgende keer opnieuw.
-      checked.delete(chat.id);
+    }
+    await rememberChatPreviews(entries);
+  } catch {
+    // Lukt het niet, dan blijft de oude regel staan; volgende keer opnieuw.
+    for (const chat of stale) {
+      if (checked.get(chat.id) === chat.last_message_at) checked.delete(chat.id);
     }
   }
 }

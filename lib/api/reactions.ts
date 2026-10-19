@@ -80,20 +80,33 @@ export function groupReactions(
 }
 
 /**
- * Subscribe to reaction inserts/deletes for a list of message IDs.
+ * Subscribe to reaction inserts/deletes in chats I can see.
+ *
+ * `message_reactions` heeft geen `chat_id`, dus filteren op het gesprek kan
+ * de server niet; en een filter op bericht-ids (`message_id=in.(…)`) zou
+ * bij elk nieuw bericht een nieuw abonnement vragen. Daarom geven we het
+ * bericht-id door en laat de aanroeper alles negeren wat niet in beeld
+ * staat — eerder haalde élke reactie, in welk gesprek ook, de reacties van
+ * het open gesprek opnieuw op. Bij een DELETE draagt de oude rij onder RLS
+ * alleen de primaire sleutel, en daar zit `message_id` in.
  *
  * Eigen kanaalnaam per abonnee — zie `lib/supabase/channel.ts`.
  */
 export function subscribeToReactions(
   chatId: string,
-  onChange: () => void
+  onChange: (messageId: string | null) => void
 ): RealtimeChannel {
   return supabase
     .channel(uniqueTopic(`reactions:${chatId}`))
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "message_reactions" },
-      () => onChange()
+      (payload) => {
+        const row = (payload.new && Object.keys(payload.new).length ? payload.new : payload.old) as
+          | { message_id?: string }
+          | undefined;
+        onChange(row?.message_id ?? null);
+      }
     )
     .subscribe();
 }

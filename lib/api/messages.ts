@@ -162,6 +162,47 @@ export async function fetchMessages(
 }
 
 /**
+ * De laatste `perChat` berichten van meerdere gesprekken in één vraag
+ * (`latest_messages_per_chat`, 0099), per gesprek oudste eerst — dezelfde
+ * vorm als `fetchMessages(chatId, me, perChat)`.
+ *
+ * Voor de voorvertoningen in de chatlijst: die vroegen dit per gesprek, één
+ * voor één, op. De functie draait als de vrager, dus RLS op `messages`
+ * bepaalt wat er terugkomt; een gesprek waar je niet in zit blijft leeg.
+ * Ontsleutelen gaat via `decryptRows` en dus via dezelfde cache.
+ */
+export async function fetchLatestMessagesPerChat(
+  chatIds: string[],
+  myUserId: string,
+  perChat = 5
+): Promise<Map<string, DecryptedMessage[]>> {
+  const out = new Map<string, DecryptedMessage[]>();
+  if (chatIds.length === 0) return out;
+  const { data, error } = await supabase
+    .rpc("latest_messages_per_chat", { p_chat_ids: chatIds, p_n: perChat })
+    .abortSignal(timeoutSignal());
+  if (error) {
+    // Een database zonder 0099: per gesprek, zoals vroeger — maar naast
+    // elkaar in plaats van na elkaar.
+    if (error.code === "PGRST202" || error.code === "42883") {
+      const lists = await Promise.all(chatIds.map((id) => fetchMessages(id, myUserId, perChat)));
+      chatIds.forEach((id, i) => out.set(id, lists[i]));
+      return out;
+    }
+    throw error;
+  }
+  const rows = ((data ?? []) as MessageRow[])
+    .slice()
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
+  for (const m of await decryptRows(rows, myUserId)) {
+    const list = out.get(m.chat_id);
+    if (list) list.push(m);
+    else out.set(m.chat_id, [m]);
+  }
+  return out;
+}
+
+/**
  * Wat er sinds `after` in een gesprek bijkwam, oudste eerst.
  *
  * Voor het bijwerken na een onderbreking. Het live-kanaal geeft alleen door
@@ -402,12 +443,13 @@ export async function sendMessage(args: {
 
 /**
  * Globale subscription op alle nieuwe messages waar de huidige user toegang
- * toe heeft (RLS filtert vanzelf). Wordt op het (app)-layout level gebruikt
- * om de chatlijst en bottom-bar badge meteen mee te updaten, ongeacht in
+ * toe heeft (RLS filtert vanzelf; een filter op lidmaatschap kent
+ * postgres_changes niet). Houdt de chatlijst en de badges bij, ongeacht in
  * welke tab je staat.
  *
- * Eigen kanaalnaam per abonnee: het (app)-layout en een open gesprek
- * abonneren allebei, en een gedeelde naam gooit dan. Zie
+ * Roep dit niet rechtstreeks aan maar via `watchMyChatList`
+ * (lib/api/chats.ts): die houdt er precies één open, hoeveel schermen er
+ * ook om vragen. De unieke kanaalnaam blijft als vangnet — zie
  * `lib/supabase/channel.ts`.
  */
 export function subscribeToAllMyMessages(

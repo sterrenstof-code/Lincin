@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addEntityComment,
@@ -141,6 +141,15 @@ export function useComments({
   );
 
   // ---- live ----
+  // Eén abonnement per bijdrage. Het hing aan `comments.data` en `ids`, dus
+  // elke nieuwe of gewiste reactie — en elk hartje dat de lijst ververste —
+  // brak het kanaal af en zette het opnieuw op: een rondje naar de server,
+  // en wat er in dat gat binnenkwam zag je niet. De handlers lezen de
+  // actuele lijst nu uit een ref.
+  const commentIdsRef = useRef<string[]>([]);
+  commentIdsRef.current = (comments.data ?? []).map((c) => c.id);
+  const visibleIdsRef = useRef<string[]>(ids);
+  visibleIdsRef.current = ids;
   useEffect(() => {
     if (!entityId) return;
     const refetchList = () => qc.invalidateQueries({ queryKey: ["entity-comments", entityType, entityId] });
@@ -152,17 +161,17 @@ export function useComments({
       // Een verwijderde rij draagt onder RLS alleen zijn id: kijk zelf of hij van ons is.
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "entity_comments" }, (p) => {
         const id = (p.old as { id?: string })?.id;
-        if (id && (comments.data ?? []).some((c) => c.id === id)) refetchList();
+        if (id && commentIdsRef.current.includes(id)) refetchList();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "comment_reactions" }, (p) => {
         const row = (p.new && Object.keys(p.new).length ? p.new : p.old) as { comment_id?: string };
-        if (row?.comment_id && ids.includes(row.comment_id)) refetchLikes();
+        if (row?.comment_id && visibleIdsRef.current.includes(row.comment_id)) refetchLikes();
       })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [entityType, entityId, qc, comments.data, ids]);
+  }, [entityType, entityId, qc]);
 
   // ---- volgorde en bladzijden ----
   const prefs = usePrefs(myUserId);

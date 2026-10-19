@@ -1,9 +1,11 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { QueryClient } from "@tanstack/react-query";
 
 import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
-import { forgetChatRecipients } from "./messages";
+import { forgetChatRecipients, subscribeToAllMyMessages, type MessageRow } from "./messages";
 import type { Profile } from "./profiles";
+import { shareMyMessagesWithMembers } from "./rekey";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { timeoutSignal } from "@/lib/supabase/timeout";
 
@@ -79,8 +81,70 @@ export async function markChatUnread(chatId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** List all chats I'm a member of, with their members and unread counts. */
+/**
+ * Verborgen chats wegfilteren — tenzij er sindsdien een nieuw bericht
+ * binnenkwam, dan komt de chat vanzelf terug (archive-stijl).
+ */
+function visibleAfterHide(lastMessageAt: string | null, hiddenAt: string | null | undefined): boolean {
+  if (!hiddenAt) return true;
+  if (!lastMessageAt) return false;
+  return new Date(lastMessageAt).getTime() > new Date(hiddenAt).getTime();
+}
+
+/** Bestaat de functie (nog) niet op de server? Dan de oude weg. */
+function isMissingFunction(error: { code?: string } | null): boolean {
+  return error?.code === "PGRST202" || error?.code === "42883";
+}
+
+type ChatListRow = ChatRow & {
+  hidden_at: string | null;
+  unread_count: number | null;
+  members: Profile[] | null;
+};
+
+/**
+ * List all chats I'm a member of, with their members and unread counts.
+ *
+ * Eén vraag (`my_chat_list`, 0099) in plaats van vijf in drie golven na
+ * elkaar (gesprekken → leden + ongelezen + hidden_at → profielen). De
+ * lijst wordt bij elke terugkeer naar de app opgehaald, en op een trage
+ * verbinding was elke golf de volle wachttijd. Volgorde, verborgen chats en
+ * ongelezen-tellers zijn dezelfde als voorheen; zie de migratie.
+ */
 export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> {
+  const { data, error } = await supabase
+    .rpc("my_chat_list")
+    .abortSignal(timeoutSignal());
+  if (error) {
+    // Een app die vóór de migratie uitrolt moet de lijst nog steeds tonen.
+    if (isMissingFunction(error)) return listMyChatsLegacy(myUserId);
+    throw error;
+  }
+  const rows = (data ?? []) as unknown as ChatListRow[];
+  const out: ChatWithMembers[] = [];
+  const allMembers: Profile[] = [];
+  for (const r of rows) {
+    if (!visibleAfterHide(r.last_message_at, r.hidden_at)) continue;
+    const members = r.members ?? [];
+    for (const m of members) allMembers.push(m);
+    out.push({
+      id: r.id,
+      type: r.type,
+      name: r.name,
+      avatar_url: r.avatar_url,
+      created_by: r.created_by,
+      created_at: r.created_at,
+      last_message_at: r.last_message_at,
+      members,
+      unread_count: r.unread_count ?? 0,
+    });
+  }
+  rememberHues(allMembers);
+  return out;
+}
+
+/** De oude weg, alleen voor een database zonder `my_chat_list` (vóór 0099). */
+async function listMyChatsLegacy(myUserId: string): Promise<ChatWithMembers[]> {
   // RLS filters chats to those I'm a member of.
   // Sorteren op last_message_at (van trigger) zodat actieve chats bovenaan
   // staan — Telegram-style. nullsFirst:false zet lege chats onderaan.
@@ -151,15 +215,7 @@ export async function listMyChats(myUserId: string): Promise<ChatWithMembers[]> 
   );
 
   return chatRows
-    .filter((c) => {
-      // Verborgen chats wegfilteren — tenzij er sindsdien een nieuw bericht
-      // binnenkwam, dan komt de chat vanzelf terug (archive-stijl).
-      const hiddenAt = hiddenByChat.get(c.id);
-      if (!hiddenAt) return true;
-      const lastAt = c.last_message_at;
-      if (!lastAt) return false;
-      return new Date(lastAt).getTime() > new Date(hiddenAt).getTime();
-    })
+    .filter((c) => visibleAfterHide(c.last_message_at, hiddenByChat.get(c.id)))
     .map((c) => ({
       ...c,
       members: membersByChat.get(c.id) ?? [],
@@ -359,4 +415,183 @@ export function subscribeToChatMemberUpdates(
       }
     )
     .subscribe();
+}
+
+
+// ---------- de chatlijst live houden zonder hem steeds opnieuw op te halen ----------
+
+function chatsKey(myUserId: string) {
+  return ["chats", myUserId] as const;
+}
+
+/**
+ * Welke gesprekken nu open staan (met teller: een stack kan hetzelfde
+ * gesprek twee keer gemount hebben). Een bericht in een open gesprek telt
+ * niet als ongelezen — dat scherm markeert het meteen als gelezen.
+ */
+const openChats = new Map<string, number>();
+
+/** Meld een gesprek als open; geeft de functie terug die het weer sluit. */
+export function markChatOpen(chatId: string): () => void {
+  openChats.set(chatId, (openChats.get(chatId) ?? 0) + 1);
+  let closed = false;
+  return () => {
+    if (closed) return;
+    closed = true;
+    const n = (openChats.get(chatId) ?? 1) - 1;
+    if (n <= 0) openChats.delete(chatId);
+    else openChats.set(chatId, n);
+  };
+}
+
+/** Nieuwste eerst, lege gesprekken onderaan — dezelfde volgorde als de server. */
+function byLastMessage(a: ChatWithMembers, b: ChatWithMembers): number {
+  const x = a.last_message_at;
+  const y = b.last_message_at;
+  if (x === y) return 0;
+  if (!x) return 1;
+  if (!y) return -1;
+  return Date.parse(y) - Date.parse(x);
+}
+
+/**
+ * Een binnenkomend bericht in de gecachte chatlijst verwerken.
+ *
+ * Elk bericht in welk gesprek dan ook haalde vroeger de hele lijst opnieuw
+ * op — bij iedereen die de app open had, voor één getal en één tijdstip
+ * die we hier al weten. Nu passen we de rij zelf aan: `last_message_at`
+ * naar dit bericht, het gesprek naar boven, en +1 ongelezen tenzij het van
+ * mij is (de server telt eigen berichten nooit mee) of het gesprek open
+ * staat (dat scherm markeert hem meteen gelezen).
+ *
+ * Loopt er al een ophaalronde, dan wachten we die af en passen het daarna
+ * toe: hij kan van vóór dit bericht zijn en zou onze aanpassing anders
+ * overschrijven. (Hem afbreken met een invalidate zou een open gesprek dat
+ * net op die lijst wacht voor zijn ongelezen-scheidslijn met lege handen
+ * laten staan.) Wás het bericht er al in, dan houdt de tijdcontrole
+ * hieronder het bij één keer tellen.
+ *
+ * Wél opnieuw ophalen als we de rij niet hebben: een nieuw gesprek, of een
+ * verborgen gesprek dat door dit bericht terugkomt.
+ */
+export function applyIncomingMessage(
+  qc: QueryClient,
+  myUserId: string,
+  row: Pick<MessageRow, "chat_id" | "sender_id" | "created_at">,
+  afterFetch = false
+): void {
+  const key = chatsKey(myUserId);
+  const inFlight = qc.getQueryCache().find<ChatWithMembers[]>({ queryKey: key, exact: true })?.promise;
+  if (inFlight && !afterFetch) {
+    // Een tik later: de query zet zijn data pas ná het afronden van deze
+    // promise in de cache.
+    void inFlight.then(
+      () => void setTimeout(() => applyIncomingMessage(qc, myUserId, row, true), 0),
+      () => void qc.invalidateQueries({ queryKey: key })
+    );
+    return;
+  }
+  const list = qc.getQueryData<ChatWithMembers[]>(key);
+  const idx = list ? list.findIndex((c) => c.id === row.chat_id) : -1;
+  if (!list || idx < 0) {
+    void qc.invalidateQueries({ queryKey: key });
+    return;
+  }
+  const chat = list[idx];
+  // Al verwerkt: de lijst werd ná dit bericht opgehaald (de trigger uit
+  // 0022 zet last_message_at op precies dit tijdstip). Niet dubbel tellen.
+  if (chat.last_message_at && Date.parse(chat.last_message_at) >= Date.parse(row.created_at)) {
+    return;
+  }
+  const countsAsUnread = row.sender_id !== myUserId && !openChats.has(row.chat_id);
+  const next = list.slice();
+  next[idx] = {
+    ...chat,
+    last_message_at: row.created_at,
+    unread_count: countsAsUnread ? (chat.unread_count ?? 0) + 1 : chat.unread_count,
+  };
+  // Array.prototype.sort is stabiel: gelijke rijen houden hun plek.
+  next.sort(byLastMessage);
+  qc.setQueryData(key, next);
+}
+
+/**
+ * Na `markChatRead`: de teller van dat gesprek op nul in de cache, in
+ * plaats van de hele lijst opnieuw op te halen. De server zet
+ * last_read_at op "nu", dus nul is precies wat een verse lijst zou geven.
+ */
+export function clearUnreadInCache(qc: QueryClient, myUserId: string, chatId: string): void {
+  qc.setQueryData<ChatWithMembers[]>(chatsKey(myUserId), (list) => {
+    if (!list) return list;
+    const idx = list.findIndex((c) => c.id === chatId);
+    if (idx < 0 || (list[idx].unread_count ?? 0) === 0) return list;
+    const next = list.slice();
+    next[idx] = { ...list[idx], unread_count: 0 };
+    return next;
+  });
+}
+
+/**
+ * Eén globaal berichtenkanaal, hoeveel schermen er ook om vragen.
+ *
+ * Het (app)-layout en een open gesprek abonneerden allebei op álle
+ * berichten (zonder filter; RLS bepaalt wat er langskomt): elk bericht
+ * kwam dus twee keer binnen en haalde twee keer de lijst op. Het gesprek
+ * kan het niet zomaar aan het layout overlaten — open je een gesprek via
+ * een link of herlaad je de pagina erop, dan is het (app)-layout niet
+ * gemount. Daarom telt dit hoeveel er om vragen en houdt het precies één
+ * kanaal open zolang er minstens één is.
+ */
+let watch: { userId: string; refs: number; stop: () => void } | null = null;
+
+export function watchMyChatList(qc: QueryClient, myUserId: string): () => void {
+  if (watch && watch.userId !== myUserId) {
+    watch.stop();
+    watch = null;
+  }
+  if (!watch) {
+    // Na een onderbroken verbinding is wat er intussen binnenkwam nooit
+    // live langsgekomen; de lijst dan wél opnieuw ophalen.
+    let subscribedOnce = false;
+    const channel = subscribeToAllMyMessages(
+      myUserId,
+      (row) => applyIncomingMessage(qc, myUserId, row),
+      (status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (subscribedOnce) void qc.invalidateQueries({ queryKey: chatsKey(myUserId) });
+        subscribedOnce = true;
+      }
+    );
+    watch = { userId: myUserId, refs: 0, stop: () => void supabase.removeChannel(channel) };
+  }
+  const w = watch;
+  w.refs++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    w.refs--;
+    if (w.refs <= 0 && watch === w) {
+      w.stop();
+      watch = null;
+    }
+  };
+}
+
+/**
+ * `shareMyMessagesWithMembers` (0095) hooguit één keer per sessie: bij het
+ * opstarten voor alle gesprekken, en per gesprek bij het eerste openen.
+ *
+ * Hij liep bij elke start én bij elk openen van een gesprek, en elke ronde
+ * is minstens één RPC die de berichten van dat gesprek doorzoekt — meestal
+ * om niets te vinden. Wie een lid toevoegt roept de onbegrensde versie
+ * direct aan (app/group-add), dus daar verandert niets.
+ */
+const sharedThisSession = new Set<string>();
+
+export function shareMyMessagesOnce(myUserId: string, chatId?: string): void {
+  const key = `${myUserId}:${chatId ?? "*"}`;
+  if (sharedThisSession.has(key)) return;
+  sharedThisSession.add(key);
+  void shareMyMessagesWithMembers(myUserId, chatId);
 }

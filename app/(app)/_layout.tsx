@@ -6,10 +6,8 @@ import { ActivityIndicator, View } from "react-native";
 import { offerAppLockOnce } from "@/lib/app-lock";
 import { useAuth } from "@/lib/auth/provider";
 import { bootstrapProfile, type KeyStatus } from "@/lib/auth/bootstrap";
-import { listMyChats } from "@/lib/api/chats";
-import { shareMyMessagesWithMembers } from "@/lib/api/rekey";
+import { listMyChats, shareMyMessagesOnce, watchMyChatList } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
-import { subscribeToAllMyMessages } from "@/lib/api/messages";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
 import { touchLastSeen } from "@/lib/api/profiles";
 import { addNotificationTapListener, registerPushToken } from "@/lib/push";
@@ -66,9 +64,10 @@ export default function AppLayout() {
 
   // Met je sleutel op zijn plaats: deel je eigen berichten met wie ze mist
   // (nieuwe groepsleden, of een bericht vlak na een ledenwissel). 0095.
+  // Eén keer per sessie: zie `shareMyMessagesOnce`.
   useEffect(() => {
     if (!session || bootstrapping || keyStatus.state !== "ready") return;
-    shareMyMessagesWithMembers(session.user.id);
+    shareMyMessagesOnce(session.user.id);
   }, [session, bootstrapping, keyStatus.state]);
 
   // Heeft dit account de stappen na het aanmaken al gehad? (0082) Bestaande
@@ -96,10 +95,15 @@ export default function AppLayout() {
   // teller op de Vrienden-pagina zelf.
   //
   // We hoeven niet meer aggressief te pollen want we hebben een globale
-  // realtime subscription die de query invalideert bij elk inkomend bericht.
+  // realtime subscription die de lijst bij elk inkomend bericht bijwerkt.
   // refetchOnWindowFocus vangt netwerk-blips op: keer terug naar de tab en
   // we trekken meteen de actuele state binnen (catch-up voor wat realtime
   // tijdens disconnect heeft gemist).
+  //
+  // Wat realtime níet ziet — gelezen op een ander toestel, toegevoegd aan
+  // een groep zonder berichten, een andere naam — haalt de lijst op bij
+  // terugkeer naar de app, en als vangnet eens per vijf minuten. Elke
+  // minuut was dat de volle lijst, de hele dag, voor wie de app open liet.
   //
   // Deze drie tellers hebben je sleutel niet nodig (de chatlijst is
   // metadata; de voorvertoning ontsleutelt pas op het scherm zelf, zie
@@ -109,7 +113,7 @@ export default function AppLayout() {
     queryKey: ["chats", session?.user.id ?? "anon"],
     queryFn: () => listMyChats(session!.user.id),
     enabled: !!session,
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
   });
   const totalUnread = (chats.data ?? []).reduce(
@@ -145,29 +149,13 @@ export default function AppLayout() {
   ).length;
 
   // Globale realtime: zodra er ergens in een van mijn chats een nieuw
-  // bericht valt, invalideren we de chatlijst zodat de bottom-bar badge,
-  // de chats-screen, én eventuele "laatst bericht" previews direct
-  // updaten. Telegram-snel — geen 30s poll-wait meer.
+  // bericht valt, werken we de gecachte chatlijst bij (tijdstip, volgorde,
+  // ongelezen) zodat de badge, de chats-screen én de "laatst bericht"
+  // previews direct meegaan — zonder de hele lijst opnieuw op te halen.
+  // Eén kanaal, gedeeld met een open gesprek: zie `watchMyChatList`.
   useEffect(() => {
     if (!session || bootstrapping) return;
-    const myId = session.user.id;
-    // Na een onderbroken verbinding is wat er intussen binnenkwam nooit
-    // live langsgekomen; de lijst dan opnieuw ophalen.
-    let subscribedOnce = false;
-    const channel = subscribeToAllMyMessages(
-      myId,
-      () => {
-        qc.invalidateQueries({ queryKey: ["chats", myId] });
-      },
-      (status) => {
-        if (status !== "SUBSCRIBED") return;
-        if (subscribedOnce) qc.invalidateQueries({ queryKey: ["chats", myId] });
-        subscribedOnce = true;
-      }
-    );
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return watchMyChatList(qc, session.user.id);
   }, [session, bootstrapping, qc]);
 
   // Realtime: nieuwe notificaties invalideren de badge teller direct

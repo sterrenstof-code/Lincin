@@ -56,12 +56,16 @@ import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useToast } from "@/lib/toast";
 import {
   chatTitle,
+  clearUnreadInCache,
   fetchMemberLastRead,
   listMyChats,
+  markChatOpen,
   markChatRead,
   chatAvatarUrl,
   otherMember,
+  shareMyMessagesOnce,
   subscribeToChatMemberUpdates,
+  watchMyChatList,
   type ChatWithMembers,
 } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -76,7 +80,6 @@ import {
   fetchMessagesSince,
   getChatRecipients,
   sendMessage,
-  subscribeToAllMyMessages,
   subscribeToChatMessages,
   uploadEncryptedAttachment,
   type AttachmentInfo,
@@ -107,7 +110,6 @@ import {
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
-import { shareMyMessagesWithMembers } from "@/lib/api/rekey";
 import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { createNotification } from "@/lib/api/notifications";
@@ -477,7 +479,17 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         // keer heen en weer naar de server (gesprekken, leden, ongelezen,
         // profielen) en de draad bleef grijs tot ook die binnen waren.
         const msgsP = withRetry(() => fetchMessages(id, myUserId));
-        const chatsP = listMyChats(myUserId).catch(() => cachedChats ?? []);
+        // Via de cache: dezelfde vraag als de `allChats`-query hierboven
+        // die bij het openen ook vertrekt, dus die twee worden er één. Wel
+        // altijd vers (staleTime 0): het ongelezen-aantal van vóór het
+        // gelezen-merk hieronder bepaalt de scheidslijn.
+        const chatsP = qc
+          .fetchQuery({
+            queryKey: ["chats", myUserId],
+            queryFn: () => listMyChats(myUserId),
+            staleTime: 0,
+          })
+          .catch(() => cachedChats ?? []);
         const msgs = await msgsP;
         if (cancelled) return;
         // Wat ik zelf net verstuurde en nog onderweg is, blijft staan.
@@ -518,9 +530,12 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           markChatRead(id).catch(() => {}),
         ]);
         if (!cancelled && rxs) setReactions(rxs);
-        // Wie er nieuw bij kwam, krijgt hier ook jouw eerdere berichten (0095).
-        shareMyMessagesWithMembers(myUserId, id);
-        qc.invalidateQueries({ queryKey: ["chats", myUserId] });
+        // Wie er nieuw bij kwam, krijgt hier ook jouw eerdere berichten
+        // (0095) — één keer per gesprek per sessie.
+        shareMyMessagesOnce(myUserId, id);
+        // Gelezen: alleen de teller van dit gesprek op nul. De lijst is net
+        // vers opgehaald, opnieuw ophalen leverde verder niets nieuws op.
+        clearUnreadInCache(qc, myUserId, id);
       } catch (e: any) {
         if (cancelled) return;
         // Staat de draad van de vorige keer er al, dan liever die laten
@@ -561,8 +576,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         if (cancelled || fresh.length === 0) return;
         setMessages((prev) => fresh.reduce(mergeIncoming, prev));
         if (fresh.some((m) => m.sender_id !== myUserId)) {
-          markChatRead(id).catch(() => {});
-          qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
+          markChatRead(id)
+            .then(() => clearUnreadInCache(qc, myUserId, id))
+            .catch(() => {});
         }
       } catch {
         // Volgende herverbinding of terugkeer probeert het opnieuw.
@@ -577,15 +593,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       myUserId,
       (msg) => {
         setMessages((prev) => mergeIncoming(prev, msg));
-        // Markeer gelezen + markeer de chats-query als stale.
-        // refetchType:"none" voorkomt een onmiddellijke refetch die het keyboard
-        // wegduwt via een re-render hoger in de boom.
-        (async () => {
-          try {
-            await markChatRead(id);
-          } catch {}
-          qc.invalidateQueries({ queryKey: ["chats", myUserId], refetchType: "none" });
-        })();
+        // Markeer gelezen. De chatlijst telt een bericht in een open gesprek
+        // niet als ongelezen (zie `applyIncomingMessage`), dus hier valt in
+        // de cache hoogstens een oude teller op nul te zetten — geen
+        // refetch, die het keyboard wegduwt via een re-render hoger in de
+        // boom.
+        markChatRead(id)
+          .then(() => clearUnreadInCache(qc, myUserId, id))
+          .catch(() => {});
       },
       (status) => {
         if (status !== "SUBSCRIBED") return;
@@ -608,11 +623,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       window.addEventListener("online", onOnline);
     }
 
-    const rChannel = subscribeToReactions(id, async () => {
+    const rChannel = subscribeToReactions(id, async (messageId) => {
       // Uit de ref en niet uit `messages`: zie messagesRef hierboven voor
       // waarom deze handler anders altijd op nul berichten uitkwam.
       const msgIds = (messagesRef.current ?? []).map((m) => m.id);
       if (msgIds.length === 0) return;
+      // Een reactie in een ander gesprek (of op een bericht dat hier niet in
+      // beeld staat) verandert niets aan wat je ziet.
+      if (messageId && !msgIds.includes(messageId)) return;
       const rxs = await listReactionsForMessages(msgIds);
       setReactions(rxs);
     });
@@ -629,14 +647,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       });
     });
 
-    // Globale listener voor messages in ANDERE chats — zodat de
-    // back-button-badge live updatet als er ergens een nieuw bericht
-    // binnenkomt terwijl ik hier zit. De (app)-layout draait soms niet
-    // mee als deze stack-screen actief is, dus we abonneren hier ook.
-    const globalChannel = subscribeToAllMyMessages(myUserId, (row) => {
-      if (row.chat_id === id) return; // eigen chat: al gecoverd
-      qc.invalidateQueries({ queryKey: ["chats", myUserId] });
-    });
+    // Berichten in ANDERE chats — zodat de back-button-badge live updatet
+    // als er ergens een nieuw bericht binnenkomt terwijl ik hier zit. Het
+    // (app)-layout draait niet mee als je hier via een link binnenkwam, dus
+    // vragen we hier ook om de lijst bij te houden; `watchMyChatList` zorgt
+    // dat het bij één kanaal blijft. `markChatOpen` houdt berichten in dít
+    // gesprek buiten de ongelezen-teller.
+    const stopWatch = watchMyChatList(qc, myUserId);
+    const closeChat = markChatOpen(id);
 
     return () => {
       cancelled = true;
@@ -648,7 +666,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       supabase.removeChannel(channel);
       supabase.removeChannel(rChannel);
       supabase.removeChannel(readChannel);
-      supabase.removeChannel(globalChannel);
+      stopWatch();
+      closeChat();
     };
     // `reloadKey` hoort erbij: opnieuw proberen betekent ook opnieuw
     // abonneren — een kanaal dat opgezet werd terwijl het laden faalde

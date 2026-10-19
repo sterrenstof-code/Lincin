@@ -1142,6 +1142,34 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Array<{ chat_id: string; unread_count: number }>;
       };
+      /** 0099 — de chatlijst in één vraag: chats, leden, ongelezen, verborgen. */
+      my_chat_list: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          type: "direct" | "group";
+          name: string | null;
+          avatar_url: string | null;
+          created_by: string;
+          created_at: string;
+          last_message_at: string | null;
+          hidden_at: string | null;
+          unread_count: number;
+          members: unknown;
+        }>;
+      };
+      /** 0099 — de laatste n berichten per gesprek, voor de voorbeelden in de lijst. */
+      latest_messages_per_chat: {
+        Args: { p_chat_ids: string[]; p_n?: number };
+        Returns: Array<{
+          id: string;
+          chat_id: string;
+          sender_id: string;
+          recipient_payloads: Database["public"]["Tables"]["messages"]["Row"]["recipient_payloads"];
+          created_at: string;
+          edited_at: string | null;
+        }>;
+      };
       add_chat_member: {
         Args: { p_chat_id: string; p_user_id: string };
         Returns: void;
