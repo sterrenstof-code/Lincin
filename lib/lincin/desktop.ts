@@ -41,9 +41,15 @@ export function openThread(chatId: string) {
 }
 
 /**
- * Welk gesprek Gesprekken toont als er niets gekozen is: het laatste
- * ongelezen, anders het laatste. De lijst is nieuwste-eerst gesorteerd.
+ * Welk gesprek Gesprekken toont als er niets gekozen is: het laatste, maar
+ * alleen als er niets ongelezen is. De lijst is nieuwste-eerst gesorteerd.
+ *
+ * Vroeger opende het juist het laatste ongelezen — en openen is lezen: je
+ * kwam naar Gesprekken om te zien wat er nieuw was, en het was al weg voor
+ * je het zag. Is er iets ongelezen, dan opent er niets en kies je zelf.
  */
 export function pickThread(chatId: string | null, sorted: { id: string; unread_count?: number | null }[]): string | null {
-  return chatId ?? sorted.find((c) => (c.unread_count ?? 0) > 0)?.id ?? sorted[0]?.id ?? null;
+  if (chatId) return chatId;
+  if (sorted.some((c) => (c.unread_count ?? 0) > 0)) return null;
+  return sorted[0]?.id ?? null;
 }

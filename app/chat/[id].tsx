@@ -20,7 +20,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
-  AppState,
   Clipboard,
   FlatList,
   InteractionManager,
@@ -69,6 +68,7 @@ import {
   watchMyChatList,
   type ChatWithMembers,
 } from "@/lib/api/chats";
+import { isAttentive, subscribeAttention } from "@/lib/attention";
 import { listMyFriendships } from "@/lib/api/friends";
 import {
   buildAttachmentInfo,
@@ -476,6 +476,28 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     let cancelled = false;
 
     /**
+     * Gelezen alleen als je kijkt (zie lib/attention.ts).
+     *
+     * Elk bericht dat binnenkwam werd hier meteen als gelezen gemarkeerd,
+     * ook in een tab op de achtergrond: geen teller, geen `(1)` in de
+     * tabtitel, het loste zichzelf op. Nu onthouden we zonder aandacht
+     * alleen dát er gelezen moet worden, en doen dat één keer zodra je
+     * terug bent.
+     */
+    let pendingRead = false;
+    const flushRead = () => {
+      if (cancelled || !pendingRead || !isAttentive()) return;
+      pendingRead = false;
+      markChatRead(id)
+        .then(() => clearUnreadInCache(qc, myUserId, id))
+        .catch(() => {});
+    };
+    const readIfAttentive = () => {
+      pendingRead = true;
+      flushRead();
+    };
+
+    /**
      * Het eerste laden van een gesprek — en wat er gebeurde als dat faalde.
      *
      * Deze IIFE had geen `catch`. Viel `fetchMessages` om — een netwerk dat
@@ -553,11 +575,15 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         // Naast elkaar. De reacties en het gelezen-merk weten niets van
         // elkaar, en na elkaar wachten kostte een extra heen-en-weer
         // voordat het gesprek zijn emoji's had.
+        // Zonder aandacht (geopend in een tab op de achtergrond) wacht het
+        // gelezen-merk tot je kijkt; zie `flushRead`.
+        const readNow = isAttentive();
+        if (!readNow) pendingRead = true;
         const [rxs] = await Promise.all([
           listReactionsForMessages(msgs.map((m) => m.id)).catch(() => null),
           // Een mislukt gelezen-merk mag het gesprek niet tegenhouden: dan
           // klopt hoogstens de teller in de balk even niet.
-          markChatRead(id).catch(() => {}),
+          readNow ? markChatRead(id).catch(() => {}) : null,
         ]);
         if (!cancelled && rxs) setReactions(rxs);
         // Wie er nieuw bij kwam, krijgt hier ook jouw eerdere berichten
@@ -565,7 +591,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
         shareMyMessagesOnce(myUserId, id);
         // Gelezen: alleen de teller van dit gesprek op nul. De lijst is net
         // vers opgehaald, opnieuw ophalen leverde verder niets nieuws op.
-        clearUnreadInCache(qc, myUserId, id);
+        if (readNow) clearUnreadInCache(qc, myUserId, id);
       } catch (e: any) {
         if (cancelled) return;
         // Staat de draad van de vorige keer er al, dan liever die laten
@@ -605,11 +631,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           : await fetchMessages(id, myUserId);
         if (cancelled || fresh.length === 0) return;
         setMessages((prev) => fresh.reduce(mergeIncoming, prev));
-        if (fresh.some((m) => m.sender_id !== myUserId)) {
-          markChatRead(id)
-            .then(() => clearUnreadInCache(qc, myUserId, id))
-            .catch(() => {});
-        }
+        if (fresh.some((m) => m.sender_id !== myUserId)) readIfAttentive();
       } catch {
         // Volgende herverbinding of terugkeer probeert het opnieuw.
       } finally {
@@ -623,14 +645,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       myUserId,
       (msg) => {
         setMessages((prev) => mergeIncoming(prev, msg));
-        // Markeer gelezen. De chatlijst telt een bericht in een open gesprek
-        // niet als ongelezen (zie `applyIncomingMessage`), dus hier valt in
-        // de cache hoogstens een oude teller op nul te zetten — geen
-        // refetch, die het keyboard wegduwt via een re-render hoger in de
-        // boom.
-        markChatRead(id)
-          .then(() => clearUnreadInCache(qc, myUserId, id))
-          .catch(() => {});
+        // Markeer gelezen, als je kijkt. De chatlijst telt een bericht in
+        // een open gesprek dan niet als ongelezen (zie
+        // `applyIncomingMessage`), dus hier valt in de cache hoogstens een
+        // oude teller op nul te zetten — geen refetch, die het keyboard
+        // wegduwt via een re-render hoger in de boom. Kijk je niet, dan telt
+        // de lijst hem wél en zet `flushRead` hem bij terugkeer op nul.
+        readIfAttentive();
       },
       (status) => {
         if (status !== "SUBSCRIBED") return;
@@ -639,17 +660,15 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       }
     );
 
-    const appStateSub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void catchUp();
+    // Terug naar de app (native actief, web zichtbaar én focus): één pad.
+    // Eerst ophalen wat er gemist is — dat markeert zelf gelezen als er
+    // iets nieuws bij zat — en daarna wat er nog openstond. `flushRead`
+    // doet niets meer als `catchUp` het al deed, dus één gelezen-merk.
+    const stopAttention = subscribeAttention((attentive) => {
+      if (attentive) void catchUp().then(flushRead);
     });
-    const onVisible = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        void catchUp();
-      }
-    };
     const onOnline = () => void catchUp();
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      document.addEventListener("visibilitychange", onVisible);
       window.addEventListener("online", onOnline);
     }
 
@@ -682,15 +701,14 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     // (app)-layout draait niet mee als je hier via een link binnenkwam, dus
     // vragen we hier ook om de lijst bij te houden; `watchMyChatList` zorgt
     // dat het bij één kanaal blijft. `markChatOpen` houdt berichten in dít
-    // gesprek buiten de ongelezen-teller.
+    // gesprek buiten de ongelezen-teller — zolang je kijkt.
     const stopWatch = watchMyChatList(qc, myUserId);
     const closeChat = markChatOpen(id);
 
     return () => {
       cancelled = true;
-      appStateSub.remove();
+      stopAttention();
       if (Platform.OS === "web" && typeof window !== "undefined") {
-        document.removeEventListener("visibilitychange", onVisible);
         window.removeEventListener("online", onOnline);
       }
       supabase.removeChannel(channel);

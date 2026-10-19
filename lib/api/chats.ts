@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { QueryClient } from "@tanstack/react-query";
 
+import { isAttentive } from "../attention";
 import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
 import { forgetChatRecipients, subscribeToAllMyMessages, type MessageRow } from "./messages";
@@ -427,7 +428,9 @@ function chatsKey(myUserId: string) {
 /**
  * Welke gesprekken nu open staan (met teller: een stack kan hetzelfde
  * gesprek twee keer gemount hebben). Een bericht in een open gesprek telt
- * niet als ongelezen — dat scherm markeert het meteen als gelezen.
+ * niet als ongelezen — dat scherm markeert het meteen als gelezen. Maar
+ * alleen als je ook kijkt (`isAttentive`, zie `applyIncomingMessage`):
+ * open in een tab op de achtergrond is niet gezien.
  */
 const openChats = new Map<string, number>();
 
@@ -462,7 +465,9 @@ function byLastMessage(a: ChatWithMembers, b: ChatWithMembers): number {
  * die we hier al weten. Nu passen we de rij zelf aan: `last_message_at`
  * naar dit bericht, het gesprek naar boven, en +1 ongelezen tenzij het van
  * mij is (de server telt eigen berichten nooit mee) of het gesprek open
- * staat (dat scherm markeert hem meteen gelezen).
+ * staat terwijl je kijkt (dat scherm markeert hem dan meteen gelezen).
+ * Open maar zonder aandacht telt wél: dan wacht dat scherm met lezen tot
+ * je terug bent, en zonder deze +1 zag je nergens dat er iets was.
  *
  * Loopt er al een ophaalronde, dan wachten we die af en passen het daarna
  * toe: hij kan van vóór dit bericht zijn en zou onze aanpassing anders
@@ -503,7 +508,7 @@ export function applyIncomingMessage(
   if (chat.last_message_at && Date.parse(chat.last_message_at) >= Date.parse(row.created_at)) {
     return;
   }
-  const countsAsUnread = row.sender_id !== myUserId && !openChats.has(row.chat_id);
+  const countsAsUnread = row.sender_id !== myUserId && !(openChats.has(row.chat_id) && isAttentive());
   const next = list.slice();
   next[idx] = {
     ...chat,
@@ -520,8 +525,19 @@ export function applyIncomingMessage(
  * plaats van de hele lijst opnieuw op te halen. De server zet
  * last_read_at op "nu", dus nul is precies wat een verse lijst zou geven.
  */
-export function clearUnreadInCache(qc: QueryClient, myUserId: string, chatId: string): void {
-  qc.setQueryData<ChatWithMembers[]>(chatsKey(myUserId), (list) => {
+export function clearUnreadInCache(qc: QueryClient, myUserId: string, chatId: string, afterFetch = false): void {
+  const key = chatsKey(myUserId);
+  // Loopt er een ophaalronde (terug naar de tab = `refetchOnWindowFocus`),
+  // dan kan die van vóór het gelezen-merk zijn en de oude teller
+  // terugzetten. Na afloop nog eens op nul — anders bleef er een `1` staan
+  // in een gesprek dat je net las.
+  const query = afterFetch ? undefined : qc.getQueryCache().find({ queryKey: key, exact: true });
+  const inFlight = query?.state.fetchStatus === "fetching" ? query.promise : undefined;
+  if (inFlight) {
+    const again = () => void setTimeout(() => clearUnreadInCache(qc, myUserId, chatId, true), 0);
+    void inFlight.then(again, again);
+  }
+  qc.setQueryData<ChatWithMembers[]>(key, (list) => {
     if (!list) return list;
     const idx = list.findIndex((c) => c.id === chatId);
     if (idx < 0 || (list[idx].unread_count ?? 0) === 0) return list;

@@ -23,8 +23,8 @@ import { DesktopShell, PageHead } from "./Shell";
  * daaronder de draad zelf — dezelfde als op de telefoon, versleuteling en
  * al — met de invoer onderaan.
  *
- * `/chats` kiest zelf (het laatste ongelezen, anders het laatste);
- * `/chat/[id]` toont dat gesprek. Een andere rij kiezen verandert de URL.
+ * `/chats` kiest zelf het laatste gesprek, maar niet als er iets ongelezen
+ * is (zie `pickThread`); `/chat/[id]` toont dat gesprek. Een andere rij kiezen verandert de URL.
  */
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
@@ -38,7 +38,7 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
   const spec = useThemeSpec();
   const { myUserId, list, chats } = useSortedChats();
   /**
-   * Zonder id kiest `/chats` één keer een gesprek (het laatste ongelezen) en
+   * Zonder id kiest `/chats` één keer een gesprek (zie `pickThread`) en
    * houdt dat vast. Opnieuw kiezen bij elke wijziging in de lijst sprong
    * naar een gesprek dat je net als ongelezen markeerde — en openen is lezen,
    * dus het markeren werd meteen weer ongedaan gemaakt.
@@ -67,7 +67,7 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
       </View>
     </>
   ) : chats.isLoading ? null : (
-    <EmptyThread />
+    <EmptyThread hasChats={list.length > 0} />
   );
 
   return (
@@ -93,11 +93,12 @@ export function DesktopChats({ chatId }: { chatId?: string | null }) {
   );
 }
 
-function EmptyThread() {
+/** Geen gesprek open: er zijn er nog geen, of er is iets ongelezen om zelf te kiezen. */
+function EmptyThread({ hasChats }: { hasChats: boolean }) {
   const t = useT();
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{t.noFriendsYet}</Text>
+      <Text style={[mono(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: color("ink", "inkDim") }]}>{hasChats ? t.pickChat : t.noFriendsYet}</Text>
     </View>
   );
 }
