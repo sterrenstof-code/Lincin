@@ -16,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
@@ -33,6 +33,7 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type ListRenderItemInfo,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -72,7 +73,6 @@ import { listMyFriendships } from "@/lib/api/friends";
 import {
   buildAttachmentInfo,
   deleteMessage,
-  downloadEncryptedAttachment,
   editMessage,
   fetchEarlierMessages,
   fetchMessages,
@@ -101,12 +101,10 @@ import {
 import { subscribeToTyping, TYPING_EXPIRY_MS } from "@/lib/api/typing";
 import { useDraft } from "@/lib/lincin/drafts";
 import { supabase } from "@/lib/supabase/client";
-import { base64ToBytes } from "@/lib/crypto/base64";
+import { useAttachmentUri, useAttachmentUris } from "@/lib/attachment-cache";
 import {
   attachmentTypeFor,
-  bytesToDisplayUri,
   downloadBlobUri,
-  decryptFileBytes,
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
@@ -131,6 +129,7 @@ import { Carousel } from "@/components/lincin/Carousel";
 import { openLightbox } from "@/components/lincin/Lightbox";
 import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
 import { useImageRatio } from "@/lib/lincin/ratio";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * De leesmaat van een gesprek.
@@ -249,6 +248,37 @@ function mergeIncoming(
     return next;
   }
   return [...prev, msg];
+}
+
+/**
+ * Een gekozen foto of video klaarzetten voor de bijlage.
+ *
+ * Een foto gaat eerst door `prepareImageForUpload`: een telefoonfoto van
+ * 6000 pixels ging hier ongewijzigd door de versleuteling en de bucket in,
+ * terwijl het gesprek hem nooit groter toont dan een scherm. Verkleinen
+ * moet vóór het versleutelen — daarna zijn het bytes waar niemand meer in
+ * kan kijken. Het type komt van wat er ná het verkleinen achter de URI
+ * zit (HEIC kan JPEG worden), en de bestandsnaam volgt dat, zodat wie de
+ * bijlage bewaart geen `.heic` krijgt met een JPEG erin. Een video gaat er
+ * onaangeroerd door, net als in `prepareImageForUpload` zelf.
+ */
+async function preparePickedAsset(
+  asset: ImagePicker.ImagePickerAsset
+): Promise<{ uri: string; mimeType: string; filename?: string }> {
+  const filename = asset.fileName ?? undefined;
+  if (asset.type === "video") {
+    return { uri: asset.uri, mimeType: asset.mimeType ?? "video/mp4", filename };
+  }
+  const prepared = await prepareImageForUpload(asset.uri, {
+    mimeType: asset.mimeType,
+    width: asset.width,
+    height: asset.height,
+  });
+  const mimeType = prepared.mimeType ?? asset.mimeType ?? "image/jpeg";
+  const ext = mimeType === "image/png" ? "png" : mimeType === "image/jpeg" ? "jpg" : null;
+  const renamed =
+    filename && prepared.uri !== asset.uri && ext ? filename.replace(/\.[^.]+$/, "") + "." + ext : filename;
+  return { uri: prepared.uri, mimeType, filename: renamed };
 }
 
 /** Eén keer opnieuw proberen, na een korte pauze: een haperend netwerk herstelt vaak vanzelf. */
@@ -1176,11 +1206,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       selectionLimit: 10,
     });
     if (result.canceled || !result.assets?.length) return;
-    setPendingImages(result.assets.map((asset) => ({
-      uri: asset.uri,
-      mimeType: asset.mimeType ?? (asset.type === "video" ? "video/mp4" : "image/jpeg"),
-      filename: asset.fileName ?? undefined,
-    })));
+    setPendingImages(await Promise.all(result.assets.map(preparePickedAsset)));
     setPendingCaption("");
     setSelectedPendingIdx(0);
   }
@@ -1225,7 +1251,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     if (status !== "granted") return;
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85 });
     if (result.canceled || !result.assets?.length) return;
-    setPendingImages(result.assets.map((asset) => ({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg", filename: asset.fileName ?? undefined })));
+    setPendingImages(await Promise.all(result.assets.map(preparePickedAsset)));
     setPendingCaption("");
     setSelectedPendingIdx(0);
   }
@@ -1333,7 +1359,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
    * het gesprek langer duurt, wat precies de verkeerde kant op is.
    *
    * Nu één doorloop over de reacties zodra die veranderen, en per rij een
-   * opzoeking. Wat er niet in zit levert `EMPTY_REACTIONS` — dezelfde lege
+   * opzoeking (in `renderItem`). Wat er niet in zit levert `EMPTY_REACTIONS` — dezelfde lege
    * array, zodat een bericht zonder reacties niet alsnog elke render een
    * nieuwe prop krijgt.
    */
@@ -1350,10 +1376,6 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
     return out;
   }, [reactions, myUserId]);
-
-  function reactionsForMessage(messageId: string): GroupedReaction[] {
-    return reactionsByMessage.get(messageId) ?? EMPTY_REACTIONS;
-  }
 
   /**
    * De draad omgekeerd, één keer per wijziging.
@@ -1441,6 +1463,166 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     : ({ ...AUX_BUTTON, borderWidth: BORDER, borderRightWidth: 0, borderColor: magBar ? color("ink", "postRule") : line() } as const);
   /** De laatste knop sluit de rij af met een rand — behalve in de pil. */
   const auxEnd = pill ? aux : { ...aux, borderRightWidth: BORDER };
+
+  /**
+   * Wat een rij in de draad kan doen, met een vaste identiteit.
+   *
+   * De rijen zijn `memo` (zie `ThreadRow`), en een memo helpt alleen als de
+   * props van de vorige render dezelfde zijn. Elke handeling hier gebruikt
+   * state van dit onderdeel (`messages`, `chat`, …), dus een gewone
+   * `useCallback` zou bij elke wijziging een nieuwe functie geven — en
+   * dan weer elke bubbel hertekenen. De ref houdt de verse versie; het
+   * object eronder blijft hetzelfde zolang het scherm open is.
+   */
+  const rowActionsRef = useRef<RowActions | null>(null);
+  rowActionsRef.current = {
+    retry: (messageId) => retryFailedMessage(messageId),
+    toggleSelect: (messageId) => setSelectedMsgId((prev) => (prev === messageId ? null : messageId)),
+    toggleReaction: (messageId, emoji) => {
+      onToggleReaction(messageId, emoji);
+      setSelectedMsgId(null);
+    },
+    reply: (info) => {
+      setReplyTo(info);
+      setTimeout(() => inputRef.current?.focus(), 50);
+      setSelectedMsgId(null);
+    },
+    copy: (text) => {
+      Clipboard.setString(text);
+      setSelectedMsgId(null);
+    },
+    edit: (messageId, text) => {
+      setEditingMessage({ id: messageId, text });
+      setSelectedMsgId(null);
+    },
+    remove: (messageId) => {
+      onDeleteMessage(messageId);
+      setSelectedMsgId(null);
+    },
+    quotePress: (messageId) => {
+      const msgs = messages ?? [];
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx !== -1) {
+        // data is reversed, dus de inverted index = msgs.length - 1 - idx
+        const invertedIdx = msgs.length - 1 - idx;
+        listRef.current?.scrollToIndex({ index: invertedIdx, animated: true, viewPosition: 0.5 });
+      }
+    },
+    reactionDetail: (emoji, userIds) => {
+      const members = chat?.members ?? [];
+      const names = userIds.map((uid) => {
+        if (uid === myUserId) return "Jij";
+        const m = members.find((x) => x.id === uid);
+        return m?.display_name ?? m?.username ?? "Onbekend";
+      });
+      setReactionDetail({ emoji, names });
+    },
+    joinCall: (chatId) => {
+      if (typeof window !== "undefined" && window.document) {
+        setCallOpen(true);
+      } else {
+        openJitsiCall(chatId).catch(() => {});
+      }
+    },
+  };
+  const rowActions = useMemo<RowActions>(
+    () => ({
+      retry: (a) => rowActionsRef.current!.retry(a),
+      toggleSelect: (a) => rowActionsRef.current!.toggleSelect(a),
+      toggleReaction: (a, b) => rowActionsRef.current!.toggleReaction(a, b),
+      reply: (a) => rowActionsRef.current!.reply(a),
+      copy: (a) => rowActionsRef.current!.copy(a),
+      edit: (a, b) => rowActionsRef.current!.edit(a, b),
+      remove: (a) => rowActionsRef.current!.remove(a),
+      quotePress: (a) => rowActionsRef.current!.quotePress(a),
+      reactionDetail: (a, b) => rowActionsRef.current!.reactionDetail(a, b),
+      joinCall: (a) => rowActionsRef.current!.joinCall(a),
+    }),
+    []
+  );
+
+  /**
+   * Eén rij van de draad, als `useCallback` in plaats van een closure in de
+   * JSX.
+   *
+   * Dit onderdeel rendert bij elke toetsaanslag (`draft`), bij elke
+   * hoogtewijziging van de invoer, bij "… typt", elke seconde tijdens een
+   * spraakopname, en bij scrollen (`showScrollDown`). De closure was dan
+   * elke keer nieuw, en elke zichtbare bubbel tekende opnieuw — met zijn
+   * gesture, zijn reacties en zijn bijlage. Nu rekent `renderItem` alleen
+   * de kleine dingen uit (groepering, naam, status) en geeft die als
+   * eenvoudige waarden aan `ThreadRow`, die `memo` is: een rij tekent pas
+   * opnieuw als er voor díe rij iets veranderde.
+   */
+  const partnerAccent = partner.fill;
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<DecryptedMessage>) => {
+      // data is reversed: index 0 = nieuwste bericht
+      // "prev" (ouder) = index+1, "next" (nieuwer) = index-1
+      const reversed = messages ?? [];
+      const prev = index < reversed.length - 1 ? reversed[reversed.length - 2 - index] : null;
+      const next = index > 0 ? reversed[reversed.length - index] : null;
+      const isMine = item.sender_id === myUserId;
+      // Een "run" is een opeenvolgende reeks berichten van dezelfde
+      // afzender. We tonen de naam alleen op de eerste bubble van
+      // de run en de avatar alleen op de laatste — net als Telegram.
+      // Gesprek Voorbeeld: dezelfde afzender binnen twee minuten (en
+      // op dezelfde dag) is één groep. De avatar staat bij het laatste
+      // bericht van de groep, de tijd ná de groep.
+      const together = (a?: DecryptedMessage | null, b?: DecryptedMessage | null) =>
+        !!a && !!b && a.sender_id === b.sender_id &&
+        new Date(a.created_at).toDateString() === new Date(b.created_at).toDateString() &&
+        Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < 2 * 60_000;
+      // Datum-scheiding: toon wanneer dit bericht van een andere dag is dan het vorige (oudere)
+      const showDateSep =
+        !prev ||
+        new Date(item.created_at).toDateString() !==
+          new Date(prev.created_at).toDateString();
+      const senderProfile = chat?.members.find((m) => m.id === item.sender_id);
+      const isMyLast = item.id === myLastId;
+      return (
+        <ThreadRow
+          item={item}
+          isMine={isMine}
+          isGroup={chat?.type === "group"}
+          groupWithNext={together(item, next)}
+          showSenderGap={!together(prev, item)}
+          showDateSep={showDateSep}
+          unreadCount={unreadMark?.id === item.id ? unreadMark.count : null}
+          senderName={senderProfile?.display_name ?? senderProfile?.username ?? "Onbekend"}
+          senderAvatarUrl={senderProfile?.avatar_url ?? null}
+          optimistic={item.id.startsWith("optimistic-")}
+          failed={failedMessages.has(item.id)}
+          read={!!readThroughAt && isMine && item.created_at <= readThroughAt}
+          isMyLast={isMyLast}
+          myLastStatus={isMyLast ? myLastStatus : null}
+          reactions={reactionsByMessage.get(item.id) ?? EMPTY_REACTIONS}
+          selected={selectedMsgId === item.id}
+          accent={partnerAccent}
+          // Desktop (desktop-*-pages): in modern de bubbel van een ander als
+          // wit tegelvlak. Op de telefoon (en in magazine) het blad.
+          tileFill={embedded && !isMine && spec.id === "modern"}
+          actions={rowActions}
+        />
+      );
+    },
+    [
+      messages,
+      myUserId,
+      chat,
+      myLastId,
+      myLastStatus,
+      unreadMark,
+      failedMessages,
+      readThroughAt,
+      reactionsByMessage,
+      selectedMsgId,
+      partnerAccent,
+      embedded,
+      spec.id,
+      rowActions,
+    ]
+  );
 
   const onPressHeaderTitle = useCallback(() => {
     if (!chat || !myUserId) return;
@@ -1805,7 +1987,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                 }, 300);
               }}
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-              removeClippedSubviews={Platform.OS !== "web"}
+              /**
+               * Alleen op iOS. Deze lijst is `inverted`, en op Android draait
+               * RN dat om met een spiegeling (scaleY: -1); samen met
+               * `removeClippedSubviews` laat dat bekende lege vlakken achter
+               * waar rijen hadden moeten staan. Op web doet het niets.
+               */
+              removeClippedSubviews={Platform.OS === "ios"}
               maxToRenderPerBatch={15}
               windowSize={8}
               initialNumToRender={20}
@@ -1847,280 +2035,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                   )}
                 </>
               }
-              renderItem={({ item, index }) => {
-                // data is reversed: index 0 = nieuwste bericht
-                // "prev" (ouder) = index+1, "next" (nieuwer) = index-1
-                const reversed = messages ?? [];
-                const prev = index < reversed.length - 1 ? reversed[reversed.length - 2 - index] : null;
-                const next = index > 0 ? reversed[reversed.length - index] : null;
-                const isMine = item.sender_id === myUserId;
-                const isGroup = chat?.type === "group";
-                // Een "run" is een opeenvolgende reeks berichten van dezelfde
-                // afzender. We tonen de naam alleen op de eerste bubble van
-                // de run en de avatar alleen op de laatste — net als Telegram.
-                // Gesprek Voorbeeld: dezelfde afzender binnen twee minuten (en
-                // op dezelfde dag) is één groep. De avatar staat bij het laatste
-                // bericht van de groep, de tijd ná de groep.
-                const together = (a?: DecryptedMessage | null, b?: DecryptedMessage | null) =>
-                  !!a && !!b && a.sender_id === b.sender_id &&
-                  new Date(a.created_at).toDateString() === new Date(b.created_at).toDateString() &&
-                  Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < 2 * 60_000;
-                const groupWithNext = together(item, next);
-                const showSenderGap = !together(prev, item);
-
-                // Datum-scheiding: toon wanneer dit bericht van een andere dag is dan het vorige (oudere)
-                const showDateSep =
-                  !prev ||
-                  new Date(item.created_at).toDateString() !==
-                    new Date(prev.created_at).toDateString();
-                const showSenderHeader =
-                  isGroup && !isMine && showSenderGap;
-                const showAvatar = !isMine && !groupWithNext;
-                const senderProfile = chat?.members.find(
-                  (m) => m.id === item.sender_id
-                );
-                const senderName =
-                  senderProfile?.display_name ??
-                  senderProfile?.username ??
-                  "Onbekend";
-                const senderAvatarUrl = senderProfile?.avatar_url ?? null;
-                const isPending = item.id.startsWith("optimistic-");
-                const isFailed = failedMessages.has(item.id);
-                /**
-                 * De dagscheiding: een lijn met een woord erin.
-                 *
-                 * Dit was een zwevend vlakje midden op de pagina — het enige
-                 * element in het gesprek dat nergens aan vastzat. Een
-                 * scheiding is een lijn (DESIGN.md §4), en het woord staat
-                 * erin zoals een rubriek in zijn band.
-                 */
-                const unreadSep =
-                  unreadMark?.id === item.id ? (
-                    <View
-                      accessibilityRole="header"
-                      className="flex-row items-center"
-                      style={{ marginVertical: space.lg, gap: space.md }}
-                    >
-                      <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
-                      <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: color("red") }}>
-                        <Text style={[sans(800), { fontSize: 12, lineHeight: 15, letterSpacing: 0.4, color: creamOnDark.DEFAULT }]}>
-                          {unreadMark.count} {(unreadMark.count === 1 ? t2.newMsg : t2.newMsgs).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
-                    </View>
-                  ) : null;
-                const dateSepOnly = showDateSep ? (
-                  <View
-                    className="flex-row items-center"
-                    style={{ marginVertical: space.lg, gap: space.md }}
-                  >
-                    <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
-                    <Text style={[feedType.kicker, { color: feed.inkDim }]}>
-                      {formatChatDate(item.created_at).toUpperCase()}
-                    </Text>
-                    <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
-                  </View>
-                ) : null;
-                const dateSep =
-                  dateSepOnly || unreadSep ? (
-                    <>
-                      {dateSepOnly}
-                      {unreadSep}
-                    </>
-                  ) : null;
-
-                // Systeemmelding — gecentreerde pill.
-                if (item.content?.system) {
-                  return (
-                    <View>
-                      {dateSep}
-                      {/* Een systeemmelding is een terzijde, geen bericht:
-                          geen vlak eromheen, alleen kleine tekst midden op
-                          de pagina. */}
-                      <View
-                        className="flex-row items-center justify-center"
-                        style={{ marginVertical: space.md, gap: 6 }}
-                      >
-                        <Ionicons name="camera-outline" color={feed.inkDim} size={12} />
-                        <Text style={[feedType.label, { color: feed.inkDim }]}>
-                          {item.content.system.actorName} heeft de groepsfoto gewijzigd
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                }
-
-                // Call-plan bericht — inline kaart met tijdsloten.
-                if (item.content?.call_plan_id) {
-                  return (
-                    <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
-                      {dateSep}
-                      <ChatCallPlanCard
-                        callPlanId={item.content.call_plan_id}
-                        senderName={senderName}
-                        isMine={isMine}
-                      />
-                    </View>
-                  );
-                }
-
-                // Poll bericht — inline stemkaart.
-                if (item.content?.poll_id) {
-                  return (
-                    <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
-                      {dateSep}
-                      <ChatPollCard
-                        pollId={item.content.poll_id}
-                        senderName={senderName}
-                        isMine={isMine}
-                      />
-                    </View>
-                  );
-                }
-
-                // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
-                if (item.content?.call?.started) {
-                  return (
-                    <View style={{ marginTop: 8 }}>
-                      <CallNotificationCard
-                        msg={item}
-                        isMine={isMine}
-                        senderName={senderName}
-                        onJoin={() => {
-                          if (typeof window !== "undefined" && window.document) {
-                            setCallOpen(true);
-                          } else {
-                            openJitsiCall(item.chat_id).catch(() => {});
-                          }
-                        }}
-                      />
-                    </View>
-                  );
-                }
-
-                return (
-                  <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
-                    {dateSep}
-                    <MessageBubble
-                      msg={item}
-                      accent={partner.fill}
-                      // Desktop (desktop-*-pages): in modern de bubbel van een ander als
-                      // wit tegelvlak. Op de telefoon (en in magazine) het blad.
-                      fill={
-                        !embedded || isMine
-                          ? undefined
-                          : spec.id === "modern"
-                            ? { fill: color("tile"), ink: color("ink") }
-                            : undefined
-                      }
-                      isMine={isMine}
-                      isGroup={!!isGroup}
-                      showSenderHeader={showSenderHeader}
-                      showAvatar={showAvatar}
-                      senderAvatarUrl={senderAvatarUrl}
-                      senderName={senderName}
-                      pending={isPending && !isFailed}
-                      failed={isFailed}
-                      read={!!readThroughAt && isMine && item.created_at <= readThroughAt}
-                      footer={
-                        item.id === myLastId
-                          ? { time: groupWithNext ? null : hhmm(item.created_at), status: myLastStatus }
-                          : groupWithNext
-                            ? null
-                            : { time: hhmm(item.created_at), status: null }
-                      }
-                      onRetry={() => retryFailedMessage(item.id)}
-                      reactions={reactionsForMessage(item.id)}
-                      onLongPress={() => {
-                        if (isPending || isFailed) return;
-                        // Long-press = toon inline actie-toolbar (reply, reactie, kopieer, verwijder)
-                        if (Platform.OS !== "web") {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                        }
-                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
-                      }}
-
-                      selected={selectedMsgId === item.id}
-                      onSelect={!isPending && !isFailed ? () => {
-                        setSelectedMsgId((prev) => prev === item.id ? null : item.id);
-                      } : undefined}
-                      onToggleReaction={(emoji) => {
-                        if (!isPending && !isFailed) {
-                          onToggleReaction(item.id, emoji);
-                          setSelectedMsgId(null);
-                        }
-                      }}
-                      onReply={!isPending && !isFailed ? () => {
-                        const name = isMine ? "Jij" : (senderName ?? "Onbekend");
-                        const preview = item.content?.text
-                          ? item.content.text.slice(0, 80)
-                          : item.content?.attachment
-                            ? `[${item.content.attachment.type}]`
-                            : "…";
-                        setReplyTo({ messageId: item.id, senderName: name, previewText: preview });
-                        setTimeout(() => inputRef.current?.focus(), 50);
-                        setSelectedMsgId(null);
-                      } : undefined}
-                      onCopy={item.content?.text ? () => {
-                        Clipboard.setString(item.content!.text!);
-                        setSelectedMsgId(null);
-                      } : undefined}
-                      /**
-                       * Bewerken was volledig gebouwd en nergens bereikbaar.
-                       *
-                       * `editMessage` in lib/api, `onConfirmEdit` hier, de
-                       * `EditBar` in de balk, "· bewerkt" achter de tijd, en
-                       * een `ReactionPickerModal` met een potloodregel erin —
-                       * alles compleet. Alleen werd die modal met geen
-                       * mogelijkheid geopend: `setReactionPicker` werd op zes
-                       * plekken aangeroepen en zes keer met `null`, en
-                       * `onMenuPress` stond hardgecodeerd op `undefined`.
-                       *
-                       * Wat er wél opengaat bij een tik is de inline balk
-                       * hieronder, en die had antwoorden, twee emoji's,
-                       * kopiëren en verwijderen — geen bewerken. Nu wel, op
-                       * dezelfde voorwaarde als de dode modal hem stelde:
-                       * je eigen bericht, en er moet tekst in zitten (een
-                       * foto valt niet te herschrijven).
-                       */
-                      onEdit={
-                        isMine && !isPending && !isFailed && !!item.content?.text
-                          ? () => {
-                              setEditingMessage({
-                                id: item.id,
-                                text: item.content!.text!,
-                              });
-                              setSelectedMsgId(null);
-                            }
-                          : undefined
-                      }
-                      onDelete={isMine && !isPending && !isFailed ? () => {
-                        onDeleteMessage(item.id);
-                        setSelectedMsgId(null);
-                      } : undefined}
-                      onReplyQuotePress={(messageId) => {
-                        const msgs = messages ?? [];
-                        const idx = msgs.findIndex((m) => m.id === messageId);
-                        if (idx !== -1) {
-                          // data is reversed, dus de inverted index = msgs.length - 1 - idx
-                          const invertedIdx = msgs.length - 1 - idx;
-                          listRef.current?.scrollToIndex({ index: invertedIdx, animated: true, viewPosition: 0.5 });
-                        }
-                      }}
-                      onReactionLongPress={(emoji, userIds) => {
-                        const members = chat?.members ?? [];
-                        const names = userIds.map((uid) => {
-                          if (uid === myUserId) return "Jij";
-                          const m = members.find((x) => x.id === uid);
-                          return m?.display_name ?? m?.username ?? "Onbekend";
-                        });
-                        setReactionDetail({ emoji, names });
-                      }}
-                    />
-                  </View>
-                );
-              }}
+              renderItem={renderItem}
               ListEmptyComponent={
                 <View className="py-16 items-center">
                   <View className="bg-paper-soft p-6 max-w-[280px]">
@@ -2997,7 +2912,297 @@ function SwipeWrap({
 }
 
 
-function MessageBubble({
+/** Wat een rij in de draad kan doen; zie `rowActions` in ChatDetail. */
+type RowActions = {
+  retry: (messageId: string) => void;
+  toggleSelect: (messageId: string) => void;
+  toggleReaction: (messageId: string, emoji: string) => void;
+  reply: (info: ReplyInfo) => void;
+  copy: (text: string) => void;
+  edit: (messageId: string, text: string) => void;
+  remove: (messageId: string) => void;
+  quotePress: (messageId: string) => void;
+  reactionDetail: (emoji: string, userIds: string[]) => void;
+  joinCall: (chatId: string) => void;
+};
+
+/**
+ * Eén rij van de draad: de scheidingen erboven en het bericht zelf.
+ *
+ * `memo`, met alleen eenvoudige waarden en vaste functies als props — zie
+ * `renderItem` in ChatDetail voor waarom. Het bericht zelf (`item`) houdt
+ * zijn identiteit zolang het niet verandert: `mergeIncoming` en de
+ * `.map`s die één bericht bijwerken laten de andere rijen staan.
+ *
+ * Het thema, de kleurkeuzes en de taal komen hier via hun eigen haken
+ * binnen. Die hertekenden de rij eerst omdat de hele draad hertekende; nu
+ * de rij dat niet meer doet, moet ze zelf luisteren — `color()` en `feed`
+ * lezen op native de stand van het moment.
+ */
+const ThreadRow = memo(function ThreadRow({
+  item,
+  isMine,
+  isGroup,
+  groupWithNext,
+  showSenderGap,
+  showDateSep,
+  unreadCount,
+  senderName,
+  senderAvatarUrl,
+  optimistic,
+  failed,
+  read,
+  isMyLast,
+  myLastStatus,
+  reactions,
+  selected,
+  accent,
+  tileFill,
+  actions,
+}: {
+  item: DecryptedMessage;
+  isMine: boolean;
+  isGroup: boolean;
+  groupWithNext: boolean;
+  showSenderGap: boolean;
+  showDateSep: boolean;
+  /** Het aantal nieuwe berichten, alleen op de rij waar de scheidslijn staat. */
+  unreadCount: number | null;
+  senderName: string;
+  senderAvatarUrl: string | null;
+  /** Nog onderweg (`optimistic-…`). */
+  optimistic: boolean;
+  failed: boolean;
+  read: boolean;
+  isMyLast: boolean;
+  myLastStatus: BubbleStatus | null;
+  reactions: GroupedReaction[];
+  selected: boolean;
+  accent: string;
+  tileFill: boolean;
+  actions: RowActions;
+}) {
+  const t2 = useT();
+  const spec = useThemeSpec();
+  useHueChoices();
+  const showSenderHeader = isGroup && !isMine && showSenderGap;
+  const showAvatar = !isMine && !groupWithNext;
+  const live = !optimistic && !failed;
+
+  // Vaste objecten en functies voor de bubbel, zodat ook die `memo` blijft
+  // als alleen de scheiding erboven verandert.
+  const fill = useMemo(
+    () => (tileFill ? { fill: color("tile"), ink: color("ink") } : undefined),
+    // spec: color() leest het thema van het moment, dus bij een wissel opnieuw.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileFill, spec.id, spec.dark]
+  );
+  const footer = useMemo(
+    () =>
+      isMyLast
+        ? { time: groupWithNext ? null : hhmm(item.created_at), status: myLastStatus }
+        : groupWithNext
+          ? null
+          : { time: hhmm(item.created_at), status: null },
+    [isMyLast, groupWithNext, item.created_at, myLastStatus]
+  );
+  const handlers = useMemo(() => {
+    const text = item.content?.text;
+    return {
+      onRetry: () => actions.retry(item.id),
+      onLongPress: () => {
+        if (!live) return;
+        // Long-press = toon inline actie-toolbar (reply, reactie, kopieer, verwijder)
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        }
+        actions.toggleSelect(item.id);
+      },
+      onSelect: live ? () => actions.toggleSelect(item.id) : undefined,
+      onToggleReaction: (emoji: string) => {
+        if (live) actions.toggleReaction(item.id, emoji);
+      },
+      onReply: live
+        ? () => {
+            const name = isMine ? "Jij" : (senderName ?? "Onbekend");
+            const preview = item.content?.text
+              ? item.content.text.slice(0, 80)
+              : item.content?.attachment
+                ? `[${item.content.attachment.type}]`
+                : "…";
+            actions.reply({ messageId: item.id, senderName: name, previewText: preview });
+          }
+        : undefined,
+      onCopy: text ? () => actions.copy(text) : undefined,
+      /**
+       * Bewerken was volledig gebouwd en nergens bereikbaar.
+       *
+       * `editMessage` in lib/api, `onConfirmEdit` hier, de
+       * `EditBar` in de balk, "· bewerkt" achter de tijd, en
+       * een `ReactionPickerModal` met een potloodregel erin —
+       * alles compleet. Alleen werd die modal met geen
+       * mogelijkheid geopend: `setReactionPicker` werd op zes
+       * plekken aangeroepen en zes keer met `null`, en
+       * `onMenuPress` stond hardgecodeerd op `undefined`.
+       *
+       * Wat er wél opengaat bij een tik is de inline balk
+       * hieronder, en die had antwoorden, twee emoji's,
+       * kopiëren en verwijderen — geen bewerken. Nu wel, op
+       * dezelfde voorwaarde als de dode modal hem stelde:
+       * je eigen bericht, en er moet tekst in zitten (een
+       * foto valt niet te herschrijven).
+       */
+      onEdit: isMine && live && !!text ? () => actions.edit(item.id, text) : undefined,
+      onDelete: isMine && live ? () => actions.remove(item.id) : undefined,
+    };
+  }, [item, isMine, live, senderName, actions]);
+
+  /**
+   * De dagscheiding: een lijn met een woord erin.
+   *
+   * Dit was een zwevend vlakje midden op de pagina — het enige
+   * element in het gesprek dat nergens aan vastzat. Een
+   * scheiding is een lijn (DESIGN.md §4), en het woord staat
+   * erin zoals een rubriek in zijn band.
+   */
+  const unreadSep =
+    unreadCount !== null ? (
+      <View
+        accessibilityRole="header"
+        className="flex-row items-center"
+        style={{ marginVertical: space.lg, gap: space.md }}
+      >
+        <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
+        <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: color("red") }}>
+          <Text style={[sans(800), { fontSize: 12, lineHeight: 15, letterSpacing: 0.4, color: creamOnDark.DEFAULT }]}>
+            {unreadCount} {(unreadCount === 1 ? t2.newMsg : t2.newMsgs).toUpperCase()}
+          </Text>
+        </View>
+        <View style={{ flex: 1, height: 2, backgroundColor: color("red") }} />
+      </View>
+    ) : null;
+  const dateSepOnly = showDateSep ? (
+    <View
+      className="flex-row items-center"
+      style={{ marginVertical: space.lg, gap: space.md }}
+    >
+      <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
+      <Text style={[feedType.kicker, { color: feed.inkDim }]}>
+        {formatChatDate(item.created_at).toUpperCase()}
+      </Text>
+      <View style={{ flex: 1, height: FEED_BORDER, backgroundColor: rule.soft }} />
+    </View>
+  ) : null;
+  const dateSep =
+    dateSepOnly || unreadSep ? (
+      <>
+        {dateSepOnly}
+        {unreadSep}
+      </>
+    ) : null;
+
+  // Systeemmelding — gecentreerde pill.
+  if (item.content?.system) {
+    return (
+      <View>
+        {dateSep}
+        {/* Een systeemmelding is een terzijde, geen bericht:
+            geen vlak eromheen, alleen kleine tekst midden op
+            de pagina. */}
+        <View
+          className="flex-row items-center justify-center"
+          style={{ marginVertical: space.md, gap: 6 }}
+        >
+          <Ionicons name="camera-outline" color={feed.inkDim} size={12} />
+          <Text style={[feedType.label, { color: feed.inkDim }]}>
+            {item.content.system.actorName} heeft de groepsfoto gewijzigd
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Call-plan bericht — inline kaart met tijdsloten.
+  if (item.content?.call_plan_id) {
+    return (
+      <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+        {dateSep}
+        <ChatCallPlanCard
+          callPlanId={item.content.call_plan_id}
+          senderName={senderName}
+          isMine={isMine}
+        />
+      </View>
+    );
+  }
+
+  // Poll bericht — inline stemkaart.
+  if (item.content?.poll_id) {
+    return (
+      <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+        {dateSep}
+        <ChatPollCard
+          pollId={item.content.poll_id}
+          senderName={senderName}
+          isMine={isMine}
+        />
+      </View>
+    );
+  }
+
+  // Call-notificatie — gecentreerde kaart met "Deelnemen"-knop.
+  if (item.content?.call?.started) {
+    return (
+      <View style={{ marginTop: 8 }}>
+        <CallNotificationCard
+          msg={item}
+          isMine={isMine}
+          senderName={senderName}
+          onJoin={() => actions.joinCall(item.chat_id)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: showSenderGap ? 8 : 0 }}>
+      {dateSep}
+      <MessageBubble
+        msg={item}
+        accent={accent}
+        fill={fill}
+        isMine={isMine}
+        isGroup={isGroup}
+        showSenderHeader={showSenderHeader}
+        showAvatar={showAvatar}
+        senderAvatarUrl={senderAvatarUrl}
+        senderName={senderName}
+        pending={optimistic && !failed}
+        failed={failed}
+        read={read}
+        footer={footer}
+        onRetry={handlers.onRetry}
+        reactions={reactions}
+        onLongPress={handlers.onLongPress}
+        selected={selected}
+        onSelect={handlers.onSelect}
+        onToggleReaction={handlers.onToggleReaction}
+        onReply={handlers.onReply}
+        onCopy={handlers.onCopy}
+        onEdit={handlers.onEdit}
+        onDelete={handlers.onDelete}
+        onReplyQuotePress={actions.quotePress}
+        onReactionLongPress={actions.reactionDetail}
+      />
+    </View>
+  );
+});
+
+/**
+ * `memo`: zie `ThreadRow`. Alles wat hier binnenkomt is een eenvoudige
+ * waarde, een vast object uit een `useMemo`, of een vaste functie.
+ */
+const MessageBubble = memo(function MessageBubble({
   msg,
   isMine,
   isGroup,
@@ -3564,7 +3769,7 @@ function MessageBubble({
       ) : null}
     </View>
   );
-}
+});
 
 /**
  * De leesbreedte van een bericht.
@@ -4054,24 +4259,8 @@ function FullscreenVideo({ uri, width, height }: { uri: string; width: number; h
 
 /** Een album: elke foto ontsleuteld, samen in een carrousel; een tik opent de lichtbak. */
 function AlbumView({ album }: { album: AttachmentInfo[] }) {
-  const [uris, setUris] = useState<(string | null)[]>(() => album.map(() => null));
-  useEffect(() => {
-    let cancelled = false;
-    album.forEach(async (a, i) => {
-      try {
-        const cipher = await downloadEncryptedAttachment(a.path);
-        const plain = decryptFileBytes(cipher, base64ToBytes(a.key_b64), base64ToBytes(a.nonce_b64));
-        if (!plain) return;
-        const display = await bytesToDisplayUri(plain, a.mime_type, `att-${a.path.split("/").pop()}`);
-        if (!cancelled) setUris((prev) => prev.map((u, k) => (k === i ? display : u)));
-      } catch {
-        // Eén foto die niet laadt houdt de rest niet tegen.
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [album]);
+  // Uit dezelfde cache als de losse foto's: zie lib/attachment-cache.ts.
+  const uris = useAttachmentUris(album);
   return (
     <View style={{ width: 260, overflow: "hidden" }}>
       <Carousel
@@ -4095,34 +4284,12 @@ function AttachmentView({
   attachment: AttachmentInfo;
   isMine: boolean;
 }) {
-  const [uri, setUri] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const cipher = await downloadEncryptedAttachment(attachment.path);
-        const plain = decryptFileBytes(
-          cipher,
-          base64ToBytes(attachment.key_b64),
-          base64ToBytes(attachment.nonce_b64)
-        );
-        if (!plain) throw new Error("Decryptie faalde");
-        const filename = `att-${attachment.path.split("/").pop()}`;
-        const display = await bytesToDisplayUri(plain, attachment.mime_type, filename);
-        if (!cancelled) setUri(display);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Kon bijlage niet laden");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [attachment.path, attachment.key_b64, attachment.nonce_b64, attachment.mime_type]);
+  // Eén keer ophalen en ontsleutelen per sessie, niet bij elke mount: een
+  // rij die terugscrolt kreeg anders opnieuw een download, een
+  // ontsleuteling en (op web) een blob-URL die nooit werd vrijgegeven.
+  // Zie lib/attachment-cache.ts.
+  const { uri, error } = useAttachmentUri(attachment);
+  const loading = !uri && !error;
 
   if (error) {
     return (

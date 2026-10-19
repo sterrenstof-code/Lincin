@@ -40,13 +40,6 @@
  * deze code op een binary van vóór de module zou bij een import bovenaan
  * het bestand al crashen zodra het scherm laadt; zo uploadt hij gewoon
  * het origineel, zoals voorheen.
- *
- * TODO — kiezers die dit (nog) niet gebruiken, omdat hun bestanden
- * buiten deze wijziging vielen:
- *   - app/chat/[id].tsx: `pickImage` (launchImageLibraryAsync) en
- *     `takePhoto` (launchCameraAsync) — de bijlagen in een gesprek. Die
- *     worden versleuteld (`uploadEncryptedAttachment`); verklein vóór het
- *     versleutelen, en geef het nieuwe mimeType mee.
  */
 
 export type PreparedImage = {

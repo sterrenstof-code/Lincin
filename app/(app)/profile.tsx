@@ -134,7 +134,7 @@ function MiniBody({ post, fill, ink }: { post: PostWithAuthor; fill: string; ink
   return (
       <View style={{ flex: 1, backgroundColor: color("paper2") }}>
         {post.image_url ? (
-          <SafeImage uri={post.image_url} cacheKey={post.image_path ?? undefined} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          <SafeImage uri={post.image_url} cacheKey={post.image_cache_key} style={{ width: "100%", height: "100%" }} contentFit="cover" />
         ) : card.media.kind === "tekst" && card.media.text ? (
           // Een tekstbijdrage toont de tekst zelf, niet het woord "tekst".
           <View style={{ flex: 1, padding: 10, justifyContent: "center" }}>

@@ -168,10 +168,12 @@ function photo(p: PostWithAuthor, video = false): CardMedia {
   return {
     kind: "foto",
     uri: p.image_url,
-    cacheKey: p.image_path ?? undefined,
+    // Pad plús maat (zie `image_cache_key`): het kale pad deelde één
+    // cacheplek tussen de tegel van de feed en de plaat van de bijdrage.
+    cacheKey: p.image_cache_key,
     video,
     uris: album ? p.album_urls! : [p.image_url],
-    cacheKeys: album ? p.album_urls!.map((_, i) => p.album_paths?.[i]) : [p.image_path ?? undefined],
+    cacheKeys: album ? p.album_urls!.map((_, i) => p.album_cache_keys?.[i]) : [p.image_cache_key],
   };
 }
 

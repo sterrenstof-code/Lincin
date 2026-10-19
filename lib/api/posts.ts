@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client";
-import { IMG, signedImageUrl, signedImageUrls } from "../media";
+import { IMG, signedImageUrl, signedImageUrls, sizedCacheKey } from "../media";
 import { uriToBytes } from "../crypto/file";
 import { getProfile, getProfiles, type Profile } from "./profiles";
 import { countEntityComments } from "./entity-comments";
@@ -112,6 +112,17 @@ export type PostWithAuthor = PostRow & {
    * downloaden. Bij een album van tien foto's is dat tien keer.
    */
   album_paths?: string[];
+  /**
+   * De cachesleutels bij `image_url` en `album_urls`: pad plús maat.
+   *
+   * Het pad alleen was niet genoeg — de feed vraagt een tegel, de
+   * bijdrage een plaat, en onder één sleutel kreeg de een het beeld van de
+   * ander (zie `sizedCacheKey` in lib/media.ts). Ze worden gezet waar de
+   * URL ondertekend wordt, met dezelfde maat; ontbreken ze, dan valt
+   * `SafeImage` terug op de URL zelf.
+   */
+  image_cache_key?: string;
+  album_cache_keys?: string[];
   /** Hoeveel emoji er onder deze vondst staan. */
   reaction_count: number;
   /** Hoe vaak deze vondst omhoog geduwd is. */
@@ -143,6 +154,14 @@ const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MONTH_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const POSTS_BUCKET = "posts";
+
+/**
+ * De maat van een vondst in een lijst (feed, profiel, herinnering) en op
+ * zijn eigen pagina. Eén constante per plek, zodat de ondertekening en de
+ * cachesleutel nooit uit de pas lopen.
+ */
+const LIST_IMG = IMG.tile;
+const DETAIL_IMG = IMG.hero;
 
 /**
  * Eén bron van waarheid voor de kolomlijst — anders vergeet je er altijd één.
@@ -405,7 +424,7 @@ async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   // tegel van 300 px was de reden dat de feed traag laadde. `signedImageUrls`
   // onthoudt de URL ook, zodat dezelfde foto bij een tabwissel niet opnieuw
   // gedownload wordt — zie lib/media.ts.
-  return signedImageUrls(POSTS_BUCKET, rows.map((r) => r.image_path), IMG.tile);
+  return signedImageUrls(POSTS_BUCKET, rows.map((r) => r.image_path), LIST_IMG);
 }
 
 /**
@@ -448,7 +467,7 @@ async function attachAlbums(
     .order("position", { ascending: true });
   if (!data || data.length === 0) return out;
 
-  const urls = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.tile);
+  const urls = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), LIST_IMG);
   for (const row of data) {
     const url = urls.get(row.image_path);
     if (!url) continue;
@@ -479,7 +498,7 @@ async function getAlbumUrls(
     .eq("post_id", postId)
     .order("position", { ascending: true });
   if (!data || data.length === 0) return { urls: [], paths: [] };
-  const signed = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), IMG.hero);
+  const signed = await signedImageUrls(POSTS_BUCKET, data.map((r) => r.image_path), DETAIL_IMG);
   const urls: string[] = [];
   const paths: string[] = [];
   for (const row of data) {
@@ -615,10 +634,12 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
     ...r,
     author: byId.get(r.user_id) ?? null,
     image_url: r.image_path ? urlByPath.get(r.image_path) ?? null : null,
+    image_cache_key: sizedCacheKey(r.image_path, LIST_IMG),
     video_url: r.video_path ? videoByPath.get(r.video_path) ?? null : null,
     comment_count: commentCounts.get(r.id)?.total ?? 0,
     album_urls: albums.get(r.id)?.urls,
     album_paths: albums.get(r.id)?.paths,
+    album_cache_keys: albums.get(r.id)?.paths.map((path) => sizedCacheKey(path, LIST_IMG)!),
     reaction_count: signalCounts.get(r.id)?.reactions ?? 0,
     boost_count: signalCounts.get(r.id)?.boosts ?? 0,
     interaction_count: weigh(
@@ -679,7 +700,7 @@ export async function getPost(id: string): Promise<PostWithAuthor | null> {
   const row = normalizeRow(data);
   const [author, imageUrl, album, count] = await Promise.all([
     getProfile(row.user_id),
-    signedImageUrl(POSTS_BUCKET, row.image_path, IMG.hero),
+    signedImageUrl(POSTS_BUCKET, row.image_path, DETAIL_IMG),
     getAlbumUrls(id),
     countEntityComments("post", id).catch(() => 0),
   ]);
@@ -687,6 +708,7 @@ export async function getPost(id: string): Promise<PostWithAuthor | null> {
     ...row,
     author,
     image_url: imageUrl,
+    image_cache_key: sizedCacheKey(row.image_path, DETAIL_IMG),
     video_url: null,
     comment_count: count,
     reaction_count: 0,
@@ -694,7 +716,13 @@ export async function getPost(id: string): Promise<PostWithAuthor | null> {
     interaction_count: 0,
     recent_interaction_count: 0,
     month_interaction_count: 0,
-    ...(album.urls.length > 0 ? { album_urls: album.urls, album_paths: album.paths } : null),
+    ...(album.urls.length > 0
+      ? {
+          album_urls: album.urls,
+          album_paths: album.paths,
+          album_cache_keys: album.paths.map((path) => sizedCacheKey(path, DETAIL_IMG)!),
+        }
+      : null),
   };
 }
 
@@ -755,7 +783,10 @@ export async function updatePost(
 }
 
 /** Een foto bij het bewerken: één die er al stond (pad), of een nieuw gekozen (uri). */
-export type EditPhoto = { path: string; uri: string } | { path: null; uri: string };
+export type EditPhoto = ({ path: string; uri: string } | { path: null; uri: string }) & {
+  /** Zie `image_cache_key`: pad plús maat, want de URL kan een tegel of een plaat zijn. */
+  cacheKey?: string;
+};
 
 /**
  * De foto's van je eigen bijdrage vervangen door `photos`, in die volgorde.
@@ -901,6 +932,7 @@ export async function listUnifiedFeed(myUserId: string, limit = 60): Promise<Fee
       ...memPost,
       author,
       image_url: memPost.image_path ? urlByPath.get(memPost.image_path) ?? null : null,
+      image_cache_key: sizedCacheKey(memPost.image_path, LIST_IMG),
       video_url: null,
       comment_count: 0,
       reaction_count: 0,

@@ -26,6 +26,7 @@ import { AppLock } from "@/components/AppLock";
 import { LightboxHost } from "@/components/lincin/Lightbox";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 import { dropPersistedCache, forgetQueryCache, persistOptions, queryClient, setCacheOwner } from "@/lib/query-cache";
+import { clearAttachmentCache } from "@/lib/attachment-cache";
 
 /**
  * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
@@ -186,6 +187,8 @@ function RootStack() {
     } else if (hadSession.current) {
       hadSession.current = false;
       forgetQueryCache();
+      // Ontsleutelde chatbijlagen van dit account horen er ook niet meer.
+      clearAttachmentCache();
     } else {
       dropPersistedCache();
     }

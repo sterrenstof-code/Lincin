@@ -93,7 +93,7 @@ export function EditPost({ post, onDone }: { post: PostWithAuthor; onDone: () =>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {photos.map((photo, i) => (
               <View key={photo.path ?? photo.uri} style={{ width: 104, borderWidth: BORDER, borderColor: line() }}>
-                <SafeImage uri={photo.uri} cacheKey={photo.path ?? undefined} style={{ width: "100%", height: 104 }} contentFit="cover" />
+                <SafeImage uri={photo.uri} cacheKey={photo.cacheKey} style={{ width: "100%", height: 104 }} contentFit="cover" />
                 {i === 0 ? (
                   <Text style={[small, { position: "absolute", top: 4, left: 4, fontSize: 9, backgroundColor: color("paper"), paddingHorizontal: 4 }]}>OMSLAG</Text>
                 ) : null}
@@ -206,9 +206,11 @@ function PhotoBtn({ label, hint, onPress, disabled, style }: { label: string; hi
 
 function initialPhotos(post: PostWithAuthor): EditPhoto[] {
   if (post.album_paths?.length && post.album_urls?.length === post.album_paths.length) {
-    return post.album_paths.map((path, i) => ({ path, uri: post.album_urls![i] }));
+    return post.album_paths.map((path, i) => ({ path, uri: post.album_urls![i], cacheKey: post.album_cache_keys?.[i] }));
   }
-  return post.image_path && post.image_url ? [{ path: post.image_path, uri: post.image_url }] : [];
+  return post.image_path && post.image_url
+    ? [{ path: post.image_path, uri: post.image_url, cacheKey: post.image_cache_key }]
+    : [];
 }
 
 function samePhotos(a: EditPhoto[], b: EditPhoto[]): boolean {

@@ -122,6 +122,20 @@ export function stableCacheKey(url: string | null | undefined, size?: ImageSize)
   return size ? `${base}|${sizeKey(size)}` : base;
 }
 
+/**
+ * Sleutel voor de schijfcache van een privébeeld: het pad plús de maat.
+ *
+ * Het kale pad was de sleutel, en dezelfde foto wordt in twee maten
+ * gevraagd: de feed tekent een tegel (`IMG.tile`), de bijdrage zelf een
+ * plaat (`IMG.hero`). expo-image gaf dan wat het eerst binnenkwam aan
+ * allebei — een tegel van 900 opgeblazen op de detailpagina, of de plaat
+ * van 1600 in elke tegel van de feed. Wie de URL ondertekent, kent de maat
+ * en maakt dus ook de sleutel; zie `lib/api/posts.ts`.
+ */
+export function sizedCacheKey(path: string | null | undefined, size: ImageSize): string | undefined {
+  return path ? `${path}|${sizeKey(size)}` : undefined;
+}
+
 
 /**
  * HEIC en HEIF laten we met rust. Ze mogen de bucket in (een iPhone levert
