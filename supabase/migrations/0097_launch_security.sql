@@ -1,16 +1,27 @@
 -- 0097 — laatste veiligheidsronde vóór de lancering (okt 2026).
 --
+-- De productiedatabase wijkt af van de bestanden; zie docs/DB-DRIFT.md.
+-- Kort: profile_devices (0018) bestaat er niet, de posts-bucket heeft
+-- met de hand gemaakte regels ("posts: ... own folder") naast twee oude
+-- dubbels uit 0003/0024 en zonder de vriendenregel, chats heeft een extra
+-- updateregel "Eigenaar mag chat updaten", en de groepsavatar-regels van
+-- 0029 ontbreken. Functies, rechten, triggers, indexen en buckets zijn
+-- verder gelijk. Deze migratie is geschreven tegen wat er live staat, en
+-- blijft ook werken op een database die uit 0001–0096 is opgebouwd.
+--
 -- 1. approve_event_join / decline_event_join keken `host <> auth.uid()`.
 --    Zonder sessie is auth.uid() null, en `x <> null` is null — niet waar —
 --    dus de controle liet iedereen met de publieke sleutel door. Nu wordt
 --    een ontbrekende sessie expliciet geweigerd, en een beslissing raakt
 --    alleen een verzoek dat nog openstaat. Daarna: alle RPC's die de app
 --    aanroept, alleen nog voor wie ingelogd is.
--- 2. Beelden in de posts-bucket: de oude leesregel "friends can read each
---    other's posts" (0024) bestond nog — 0091 verwijderde een naam die nooit
---    bestaan had. En een bijdrage, albumfoto of reactie mocht naar een
---    bestand in andermans map verwijzen; via de leesregel van 0091 kreeg je
---    dan een ondertekende link naar dat bestand. Nu alleen je eigen map.
+-- 2. Beelden in de posts-bucket: in de bestanden bestond de oude leesregel
+--    "friends can read each other's posts" (0024) nog — live niet meer. Live
+--    staan wel twee dubbels van de eigen-mapregels; die gaan weg, en de
+--    eigen-mapregels krijgen overal dezelfde naam. En een bijdrage,
+--    albumfoto of reactie mocht naar een bestand in andermans map
+--    verwijzen; via de leesregel van 0091 kreeg je dan een ondertekende link
+--    naar dat bestand. Nu alleen je eigen map.
 -- 3. notification_insert_ok was aan te roepen voor elk paar mensen: een
 --    orakel voor "wie is bevriend met wie". Nu enkel met jezelf als actor.
 -- 4. Schrijfrechten die verder gingen dan de app:
@@ -18,12 +29,15 @@
 --    b. poll_votes rechtstreeks wissen (vote_poll_option regelt intrekken);
 --    c. activity_events op eigen naam met een verwijzing naar wat dan ook —
 --       de app schrijft ze niet meer zelf, triggers doen het;
---    d. chats: elke kolom (ook call_room, created_by, type) was bij te werken;
+--    d. chats: elke kolom (ook call_room, created_by, type) was bij te werken,
+--       en live mocht de "eigenaar" van een één-op-één-chat dat ook;
 --    e. notifications: idem, ook user_id — nu alleen `read`.
--- 5. profile_devices: iedereen las ieders toestelnamen en laatst-gezien.
---    Nu alleen wat nodig is om te versleutelen.
+-- 5. profile_devices: bestaat live niet. Alleen waar hij wel bestaat
+--    (een database uit de bestanden) wordt hij nog afgeschermd.
 -- 6. Indexen op verwijzingen en filters die nog zonder zaten.
--- 7. De publieke sleutel (anon) leest of schrijft geen enkele tabel meer.
+-- 7. De publieke sleutel (anon) leest of schrijft geen enkele tabel meer,
+--    ook geen tabel die later nog bijkomt.
+-- 8. Wat alleen live afwijkt en niet in een SQL-regel past.
 
 -- ---------------------------------------------------------------
 -- 1. Beslissen over verzoeken, en RPC's alleen voor wie ingelogd is
@@ -103,7 +117,10 @@ grant execute on function public.decline_event_join(uuid, uuid) to authenticated
 -- nieuwe functies standaard ook aan anon; elk van deze heeft een eigen
 -- `grant ... to authenticated` en blijft daarmee werken voor wie ingelogd is.
 -- (add_recipient_payload, match_contacts, my_messages_missing_payloads en
--- redeem_friend_code waren al dicht voor anon.)
+-- redeem_friend_code waren al dicht voor anon.) Elke handtekening hieronder
+-- is nagekeken tegen wat live bestaat. De hulpfuncties die RLS-regels
+-- aanroepen (is_chat_member, can_see_poll, ...) blijven uitvoerbaar: ze
+-- kijken naar auth.uid() en geven zonder sessie niets prijs.
 revoke execute on function public.add_chat_member(uuid, uuid) from public, anon;
 revoke execute on function public.create_group_chat(text, uuid[]) from public, anon;
 revoke execute on function public.get_or_create_direct_chat(uuid) from public, anon;
@@ -125,14 +142,48 @@ revoke execute on function public.touch_reading_state(timestamptz) from public, 
 -- 2. Beelden in de posts-bucket: alleen je eigen map
 -- ---------------------------------------------------------------
 
--- De echte naam van de oude leesregel op de map van je lincs (0024).
+-- De echte naam van de oude leesregel op de map van je lincs (0024). Live
+-- bestaat hij al niet meer; dit blijft als vangnet voor een database die
+-- uit de bestanden is opgebouwd.
 drop policy if exists "friends can read each other's posts" on storage.objects;
+
+-- Live zijn de eigen-mapregels met de hand gemaakt ("posts: ... own
+-- folder"); de bestanden (0003/0024) noemen ze "users ...". Live staan
+-- beide reeksen naast elkaar, behalve de uploadregel. Eén naam overal:
+-- de live namen blijven, de oude gaan weg. Dezelfde voorwaarde, dus geen
+-- verschil in wat mag — alleen geen dubbels meer.
+drop policy if exists "users upload to their own folder" on storage.objects;
+drop policy if exists "users read their own files" on storage.objects;
+drop policy if exists "users delete their own files" on storage.objects;
+
+drop policy if exists "posts: select own folder" on storage.objects;
+create policy "posts: select own folder"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'posts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "posts: insert own folder" on storage.objects;
+create policy "posts: insert own folder"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'posts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "posts: delete own folder" on storage.objects;
+create policy "posts: delete own folder"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'posts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- "posts: select visible media" (0091) staat live precies zoals bedoeld en
+-- blijft ongemoeid.
 
 -- De app uploadt altijd naar `<user_id>/...` (lib/api/posts.ts,
 -- lib/api/entity-comments.ts), en de uploadregel van 0024 dwingt dat af.
 -- Een rij mag dus ook alleen naar een bestand in de map van zijn eigenaar
 -- wijzen. Bestaande rijen worden niet meteen getoetst (`not valid`); de
 -- validatie daarna slaagt of meldt alleen dat er oude rijen afwijken.
+-- (Live, okt 2026: 0 van 33 beelden in posts, 0 van 23 albumfoto's en
+-- 0 van 2 reactiebeelden wijzen buiten de eigen map.)
 alter table public.posts drop constraint if exists posts_media_own_folder;
 alter table public.posts add constraint posts_media_own_folder check (
   (image_path is null or split_part(image_path, '/', 1) = user_id::text)
@@ -317,6 +368,13 @@ create trigger event_members_activity_joined
 -- d. Een groep bijwerken: de app zet alleen de naam en de groepsfoto
 --    (lib/api/chats.ts). last_message_at loopt via een security
 --    definer-trigger (0022), call_room via 0096.
+--    Live staat naast "owner can update group chat" nog een met de hand
+--    gemaakte regel "Eigenaar mag chat updaten": voor iedere rol, zonder
+--    `with check` en zonder `type = 'group'`. Ook één-op-één-chats hebben
+--    live een 'owner' (de maker), dus die mocht zijn directe chat bijwerken
+--    en er zelfs een groep van maken. De regel gaat weg; de groepsregel
+--    blijft en dekt alles wat de app doet.
+drop policy if exists "Eigenaar mag chat updaten" on public.chats;
 revoke update on public.chats from authenticated, anon;
 grant update (name, avatar_url) on public.chats to authenticated;
 
@@ -329,12 +387,24 @@ grant update (read) on public.notifications to authenticated;
 -- ---------------------------------------------------------------
 -- 5. Toestellen: alleen de sleutel is van iedereen
 -- ---------------------------------------------------------------
--- Om voor iemand te versleutelen heb je zijn toestellen en hun publieke
+-- profile_devices (0018) bestaat live niet: 0018 staat als uitgevoerd
+-- geboekt, maar de tabel is er nooit gekomen of is met de hand weggehaald.
+-- De app gebruikt hem niet (alleen nog in de gegenereerde types). De
+-- tabel voor toestellen live is user_devices (0010, push-tokens), en die
+-- is al alleen voor de eigenaar ("users manage their own devices",
+-- auth.uid() = user_id) — daar is niets te doen.
+--
+-- Waar profile_devices wél bestaat (een database uit de bestanden): om
+-- voor iemand te versleutelen heb je zijn toestellen en hun publieke
 -- sleutel nodig — niet de naam die hij ze gaf of wanneer hij er laatst op
--- zat. De app leest deze tabel vandaag niet; de leesregel blijft `true`,
--- maar alleen deze drie kolommen zijn nog leesbaar.
-revoke select on public.profile_devices from authenticated, anon;
-grant select (user_id, device_id, identity_pubkey) on public.profile_devices to authenticated;
+-- zat. Alleen deze drie kolommen blijven leesbaar.
+do $$
+begin
+  if to_regclass('public.profile_devices') is not null then
+    revoke select on public.profile_devices from authenticated, anon;
+    grant select (user_id, device_id, identity_pubkey) on public.profile_devices to authenticated;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------
 -- 6. Indexen
@@ -383,4 +453,31 @@ create index if not exists content_reports_reporter_idx on public.content_report
 -- en /c/[code] onthouden de code en wachten op een sessie, /add/[username]
 -- stuurt door, en (auth)/* praat alleen met supabase.auth. Elke rij in
 -- public was voor anon al afgeschermd door RLS; nu ook de rechten zelf.
+-- (Live had anon nog rechten op 47 van de 50 tabellen en views in public.)
 revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+
+-- Supabase geeft elke nieuwe tabel standaard weer aan anon. Voor tabellen
+-- die postgres (wij, via migraties) nog aanmaakt, niet meer. Functies
+-- blijven via PUBLIC uitvoerbaar — een nieuwe RPC heeft dus nog altijd
+-- een eigen `revoke ... from public, anon` nodig.
+alter default privileges in schema public revoke all on tables from anon;
+alter default privileges in schema public revoke all on sequences from anon;
+
+-- ---------------------------------------------------------------
+-- 8. Alleen live, buiten deze migratie
+-- ---------------------------------------------------------------
+-- Wat live minder veilig stond dan de bestanden bedoelen, zit hierboven:
+-- de extra updateregel op chats (4d) en de dubbele posts-regels (2).
+-- Functies (security definer, search_path), functierechten, tabel- en
+-- kolomrechten, triggers en buckets zijn live gelijk aan de bestanden;
+-- messages laat live inderdaad alleen recipient_payloads en edited_at
+-- bijwerken (0092). Twee dingen blijven bewust buiten deze migratie:
+-- - De groepsavatar-regels van 0029 bestaan live niet (de uuid = text-
+--   vergelijking kon nooit slagen). De app uploadt groepsfoto's naar de
+--   eigen map (lib/api/chats.ts), dus ze zijn niet nodig; ze nu toevoegen
+--   zou alleen meer toelaten.
+-- - De drie push-webhooks (on-message-insert, on-friendship-insert,
+--   on-notification-insert) zijn in het dashboard gemaakt en dragen hun
+--   geheime sleutel in de triggerdefinitie. Niet via SQL aanpassen; wel
+--   roteren als die sleutel ooit gedeeld is.
