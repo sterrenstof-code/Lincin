@@ -231,6 +231,8 @@ export type Database = {
           joined_at: string;
           last_read_at: string | null;
           hidden_at: string | null;
+          // Alleen via mark_chat_delivered (0100); bewust niet in Insert/Update.
+          last_delivered_at: string | null;
         };
         Insert: {
           chat_id: string;
@@ -1132,6 +1134,10 @@ export type Database = {
       };
       mark_chat_read: {
         Args: { p_chat_id: string };
+        Returns: void;
+      };
+      mark_chat_delivered: {
+        Args: { p_chat_id: string; p_at: string };
         Returns: void;
       };
       mark_chat_unread: {

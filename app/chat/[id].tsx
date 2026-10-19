@@ -61,6 +61,7 @@ import {
   listMyChats,
   markChatOpen,
   markChatRead,
+  markMessagesDelivered,
   chatAvatarUrl,
   otherMember,
   shareMyMessagesOnce,
@@ -365,6 +366,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   const inputRef = useRef<TextInput>(null);
   // Read receipts: last_read_at per user_id van andere chat-leden.
   const [otherMembersLastRead, setOtherMembersLastRead] = useState<Map<string, string>>(new Map());
+  // En tot waar de berichten bij hen aankwamen ("aangekomen", 0100).
+  const [otherMembersLastDelivered, setOtherMembersLastDelivered] = useState<Map<string, string>>(new Map());
   const [mentionList, setMentionList] = useState<
     { display: string; username: string; avatarUrl?: string | null }[] | null
   >(null);
@@ -544,6 +547,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           .catch(() => cachedChats ?? []);
         const msgs = await msgsP;
         if (cancelled) return;
+        // Wat ik ophaal is bij mij aangekomen — ook zonder aandacht.
+        markMessagesDelivered(msgs, myUserId);
         // Wat ik zelf net verstuurde en nog onderweg is, blijft staan.
         setMessages((prev) => [
           ...msgs,
@@ -630,6 +635,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
           ? await fetchMessagesSince(id, myUserId, last.created_at)
           : await fetchMessages(id, myUserId);
         if (cancelled || fresh.length === 0) return;
+        markMessagesDelivered(fresh, myUserId);
         setMessages((prev) => fresh.reduce(mergeIncoming, prev));
         if (fresh.some((m) => m.sender_id !== myUserId)) readIfAttentive();
       } catch {
@@ -644,6 +650,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       id,
       myUserId,
       (msg) => {
+        // Het globale kanaal (`watchMyChatList`) meldt dit ook al; de
+        // dubbele melding valt weg in `markChatDelivered`.
+        markMessagesDelivered([msg], myUserId);
         setMessages((prev) => mergeIncoming(prev, msg));
         // Markeer gelezen, als je kijkt. De chatlijst telt een bericht in
         // een open gesprek dan niet als ongelezen (zie
@@ -686,14 +695,31 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
 
     // Read receipts: initieel laden + realtime updates
     fetchMemberLastRead(id)
-      .then((map) => { if (!cancelled) setOtherMembersLastRead(map); })
+      .then(({ read, delivered }) => {
+        if (cancelled) return;
+        setOtherMembersLastRead(read);
+        setOtherMembersLastDelivered(delivered);
+      })
       .catch(() => {});
-    const readChannel = subscribeToChatMemberUpdates(id, (userId, lastReadAt) => {
-      setOtherMembersLastRead((prev) => {
+    // Alleen een echte wijziging zet de state: elke rij-update (ook een
+    // `hidden_at`) komt hier langs, en een nieuwe Map zou de hele draad
+    // opnieuw laten renderen.
+    const setIfChanged = (
+      set: React.Dispatch<React.SetStateAction<Map<string, string>>>,
+      userId: string,
+      at: string | null
+    ) => {
+      if (!at) return;
+      set((prev) => {
+        if (prev.get(userId) === at) return prev;
         const next = new Map(prev);
-        next.set(userId, lastReadAt);
+        next.set(userId, at);
         return next;
       });
+    };
+    const readChannel = subscribeToChatMemberUpdates(id, (userId, at) => {
+      setIfChanged(setOtherMembersLastRead, userId, at.read);
+      setIfChanged(setOtherMembersLastDelivered, userId, at.delivered);
     });
 
     // Berichten in ANDERE chats — zodat de back-button-badge live updatet
@@ -837,8 +863,9 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   }, [messages, myUserId, chat, otherMembersLastRead]);
   /**
    * De status staat alleen onder je eigen laatste bericht (HANDOFF): eerst
-   * "verzenden…", dan "verzonden", en "gezien 22:48" met de kleurstip van
-   * wie het las. Mislukt: rood "niet verzonden · opnieuw".
+   * "verzenden…", dan "verzonden", dan "aangekomen" zodra het bij de ander
+   * binnen is (de stap uit Telegram, op verzoek), en "gezien 22:48" met de
+   * kleurstip van wie het las. Mislukt: rood "niet verzonden · opnieuw".
    */
   const myLastId = useMemo(() => {
     if (!messages) return null;
@@ -852,10 +879,13 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     if (failedMessages.has(m.id)) return { kind: "failed" };
     if (m.id.startsWith("optimistic-")) return { kind: "sending" };
     if (readReceiptMessageId === m.id) {
-      // Wie het als laatste las, en wanneer.
+      // Wie het als laatste las, en wanneer. De kaart bevat ook je eigen
+      // rij (fetchMemberLastRead haalt alle leden op): die overslaan, anders
+      // stond er je eigen leestijd en kleurstip onder je eigen bericht.
       let reader: string | null = null;
       let at: string | null = null;
       for (const [uid, when] of otherMembersLastRead) {
+        if (uid === myUserId) continue;
         if (when && (!at || when > at)) {
           at = when;
           reader = uid;
@@ -863,8 +893,20 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
       }
       return { kind: "seen", at: at ? hhmm(at) : undefined, dot: reader ? friendColor(hueFor(reader), statusScheme).fill : undefined };
     }
+    // Aangekomen: dezelfde maat als "gezien" hierboven — bij alle andere
+    // leden binnen, niet "bij 2 van de 5".
+    const otherIds = chat?.members.filter((x) => x.id !== myUserId).map((x) => x.id) ?? [];
+    if (
+      otherIds.length > 0 &&
+      otherIds.every((uid) => {
+        const when = otherMembersLastDelivered.get(uid);
+        return !!when && new Date(when) >= new Date(m.created_at);
+      })
+    ) {
+      return { kind: "delivered" };
+    }
     return { kind: "sent" };
-  }, [messages, myLastId, failedMessages, readReceiptMessageId, otherMembersLastRead, statusScheme]);
+  }, [messages, myLastId, failedMessages, readReceiptMessageId, otherMembersLastRead, otherMembersLastDelivered, chat, myUserId, statusScheme]);
   /** Tot waar alles van mij gelezen is: ✓✓ op alles tot en met dat bericht. */
   const readThroughAt = useMemo(
     () => (readReceiptMessageId ? messages?.find((m) => m.id === readReceiptMessageId)?.created_at ?? null : null),
@@ -3281,6 +3323,7 @@ const MessageBubble = memo(function MessageBubble({
   selected?: boolean;
   onSelect?: () => void;
 }) {
+  const t2 = useT();
   // Wie er reageerde, in woorden: "❤️ Jij en Noor" onder de chips, en de
   // namen bij hover (web). Een telling alleen zegt niet wie.
   const who = useReactionWho(reactions);
@@ -3764,7 +3807,7 @@ const MessageBubble = memo(function MessageBubble({
 
 
       {/* Gesprek Voorbeeld: de tijd ná de groep, en onder je eigen laatste
-          bericht de status — "verzenden…", "verzonden", "gezien 22:48" met
+          bericht de status — "verzenden…", "verzonden", "aangekomen", "gezien 22:48" met
           de kleurstip van wie het las; mislukt in rood, met opnieuw. */}
       {footer && (footer.time || footer.status) ? (
         <View style={{ alignSelf: isMine ? "flex-end" : "flex-start", marginLeft: showAvatarSlot ? 44 : 0, marginTop: 4, gap: 2, alignItems: isMine ? "flex-end" : "flex-start" }}>
@@ -3776,7 +3819,7 @@ const MessageBubble = memo(function MessageBubble({
           ) : footer.status ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Text style={[sans(500), { fontSize: 10, lineHeight: 13, letterSpacing: 1, textTransform: "uppercase", color: feed.inkDim }]}>
-                {footer.status.kind === "sending" ? "verzenden…" : footer.status.kind === "sent" ? "verzonden" : `gezien${footer.status.at ? ` ${footer.status.at}` : ""}`}
+                {footer.status.kind === "sending" ? t2.msgSending : footer.status.kind === "sent" ? t2.msgSent : footer.status.kind === "delivered" ? t2.msgDelivered : `${t2.msgSeen}${footer.status.at ? ` ${footer.status.at}` : ""}`}
               </Text>
               {footer.status.kind === "seen" && footer.status.dot ? (
                 <View accessibilityLabel="gelezen" style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: footer.status.dot }} />
@@ -3804,6 +3847,7 @@ const BUBBLE_MAX_W = 560;
 type BubbleStatus =
   | { kind: "sending" }
   | { kind: "sent" }
+  | { kind: "delivered" }
   | { kind: "seen"; at?: string; dot?: string }
   | { kind: "failed" };
 

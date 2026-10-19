@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
-import type { ChatWithMembers } from "@/lib/api/chats";
+import { markMessagesDelivered, type ChatWithMembers } from "@/lib/api/chats";
 import { fetchLatestMessagesPerChat, type DecryptedMessage } from "@/lib/api/messages";
 
 /**
@@ -192,6 +192,9 @@ async function catchUp(chats: ChatWithMembers[], myUserId: string) {
       myUserId,
       5
     );
+    // Wat hier binnenkomt is bij mij aangekomen (0100), ook als het gesprek
+    // zelf nog niet open is geweest.
+    markMessagesDelivered([...byChat.values()].flat(), myUserId);
     const entries: [string, ChatPreview][] = [];
     for (const chat of stale) {
       const msgs = byChat.get(chat.id) ?? [];

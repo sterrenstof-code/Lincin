@@ -373,32 +373,38 @@ export async function removeChatMember(
 }
 
 /**
- * Haal de `last_read_at` timestamp op voor elk lid van een chat.
- * Wordt gebruikt voor read receipts (✓✓ Gelezen).
+ * Haal per lid van een chat op tot waar hij las (`last_read_at`) en tot
+ * waar de berichten bij hem aankwamen (`last_delivered_at`, 0100).
+ * Wordt gebruikt voor de status onder je laatste bericht: "aangekomen",
+ * "gezien".
  */
 export async function fetchMemberLastRead(
   chatId: string
-): Promise<Map<string, string>> {
+): Promise<{ read: Map<string, string>; delivered: Map<string, string> }> {
   const { data, error } = await supabase
     .from("chat_members")
-    .select("user_id, last_read_at")
+    .select("user_id, last_read_at, last_delivered_at")
     .eq("chat_id", chatId);
   if (error) throw error;
-  const map = new Map<string, string>();
-  for (const r of (data ?? []) as Array<{ user_id: string; last_read_at: string | null }>) {
-    if (r.last_read_at) map.set(r.user_id, r.last_read_at);
+  const read = new Map<string, string>();
+  const delivered = new Map<string, string>();
+  for (const r of data ?? []) {
+    if (r.last_read_at) read.set(r.user_id, r.last_read_at);
+    if (r.last_delivered_at) delivered.set(r.user_id, r.last_delivered_at);
   }
-  return map;
+  return { read, delivered };
 }
 
 /**
  * Realtime subscription op `chat_members` updates voor een specifieke chat.
- * Vuurt af wanneer iemand de chat leest (last_read_at verandert).
- * Gebruik dit voor live read receipts.
+ * Vuurt af wanneer iemand de chat leest of een bericht binnenkrijgt
+ * (last_read_at / last_delivered_at verandert). Werkt pas sinds 0100:
+ * daarvoor stond chat_members niet in de realtime-publicatie en kwam hier
+ * nooit iets langs.
  */
 export function subscribeToChatMemberUpdates(
   chatId: string,
-  onChange: (userId: string, lastReadAt: string) => void
+  onChange: (userId: string, at: { read: string | null; delivered: string | null }) => void
 ): RealtimeChannel {
   return supabase
     .channel(uniqueTopic(`chat-members-read:${chatId}`))
@@ -411,11 +417,82 @@ export function subscribeToChatMemberUpdates(
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
-        const row = payload.new as { user_id: string; last_read_at: string | null };
-        if (row.last_read_at) onChange(row.user_id, row.last_read_at);
+        const row = payload.new as {
+          user_id: string;
+          last_read_at: string | null;
+          last_delivered_at?: string | null;
+        };
+        onChange(row.user_id, { read: row.last_read_at, delivered: row.last_delivered_at ?? null });
       }
     )
     .subscribe();
+}
+
+/**
+ * "Aangekomen" (0100): meld de server tot waar berichten van anderen in dit
+ * gesprek bij mij binnen zijn. Los van aandacht — een tab op de achtergrond
+ * heeft het bericht wél ontvangen, alleen nog niet gezien.
+ *
+ * Elk bericht dat binnenkomt passeert meerdere wegen (het globale kanaal,
+ * het kanaal van een open gesprek, catch-up, de voorvertoningen), dus per
+ * gesprek onthouden we het nieuwste tijdstip dat al gemeld is of in de rij
+ * staat en slaan alles over wat niet nieuwer is. Een golf berichten (een
+ * herverbinding, tien chats tegelijk bijwerken) wordt met een korte timer
+ * één aanroep per gesprek. Vuur-en-vergeet: een mislukte melding vergeten
+ * we, zodat het volgende bericht het opnieuw probeert; de server zet het
+ * watermerk toch nooit terug.
+ */
+const deliveredSent = new Map<string, string>();
+const deliveredQueued = new Map<string, string>();
+let deliveredTimer: ReturnType<typeof setTimeout> | null = null;
+
+function notNewer(prev: string | undefined, at: string): boolean {
+  if (!prev) return false;
+  // Date.parse kapt microseconden af; gelijk op de milliseconde maar een
+  // andere string mag dus nog door — dat kost hoogstens één aanroep.
+  return prev === at || Date.parse(prev) > Date.parse(at);
+}
+
+function flushDelivered(): void {
+  deliveredTimer = null;
+  const batch = [...deliveredQueued];
+  deliveredQueued.clear();
+  for (const [chatId, at] of batch) {
+    deliveredSent.set(chatId, at);
+    void supabase
+      .rpc("mark_chat_delivered", { p_chat_id: chatId, p_at: at })
+      .then(
+        ({ error }) => {
+          if (error && deliveredSent.get(chatId) === at) deliveredSent.delete(chatId);
+        },
+        () => {
+          if (deliveredSent.get(chatId) === at) deliveredSent.delete(chatId);
+        }
+      );
+  }
+}
+
+export function markChatDelivered(chatId: string, at: string): void {
+  if (notNewer(deliveredQueued.get(chatId) ?? deliveredSent.get(chatId), at)) return;
+  deliveredQueued.set(chatId, at);
+  if (!deliveredTimer) deliveredTimer = setTimeout(flushDelivered, 300);
+}
+
+/**
+ * Per gesprek het nieuwste bericht van een ander uit `rows` als aangekomen
+ * melden. Mijn eigen berichten tellen niet: die "komen" niet bij mij aan.
+ */
+export function markMessagesDelivered(
+  rows: Iterable<Pick<MessageRow, "chat_id" | "sender_id" | "created_at">>,
+  myUserId: string
+): void {
+  const latest = new Map<string, string>();
+  for (const r of rows) {
+    if (r.sender_id === myUserId) continue;
+    const prev = latest.get(r.chat_id);
+    if (!prev || Date.parse(r.created_at) > Date.parse(prev)) latest.set(r.chat_id, r.created_at);
+  }
+  for (const [chatId, at] of latest) markChatDelivered(chatId, at);
 }
 
 
@@ -571,7 +648,12 @@ export function watchMyChatList(qc: QueryClient, myUserId: string): () => void {
     let subscribedOnce = false;
     const channel = subscribeToAllMyMessages(
       myUserId,
-      (row) => applyIncomingMessage(qc, myUserId, row),
+      (row) => {
+        // Wat de draaiende app bereikt is aangekomen, welk scherm er ook
+        // open staat en of je nu kijkt of niet.
+        markMessagesDelivered([row], myUserId);
+        applyIncomingMessage(qc, myUserId, row);
+      },
       (status) => {
         if (status !== "SUBSCRIBED") return;
         if (subscribedOnce) void qc.invalidateQueries({ queryKey: chatsKey(myUserId) });
