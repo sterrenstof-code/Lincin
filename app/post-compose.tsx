@@ -27,6 +27,7 @@ import { DesktopCompose } from "@/components/lincin/desktop/DesktopCompose";
 import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { useIsDesktop } from "@/lib/lincin/desktop";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * Nieuwe bijdrage (README §10).
@@ -196,7 +197,13 @@ export function useCompose() {
       selectionLimit: room,
       orderedSelection: true,
     });
-    const picked = result.canceled ? [] : (result.assets ?? []).map((a) => a.uri).filter(Boolean);
+    // Verkleind meteen bij het kiezen: wat in het vak staat is wat de
+    // bucket in gaat, en zes originelen van 10 MB uploaden duurt op 4G minuten.
+    const assets = result.canceled ? [] : (result.assets ?? []).filter((a) => !!a.uri);
+    const prepared = await Promise.all(
+      assets.map((a) => prepareImageForUpload(a.uri, { mimeType: a.mimeType, width: a.width, height: a.height })),
+    );
+    const picked = prepared.map((p) => p.uri);
     if (picked.length) {
       // De soort blijft wat hij was: de fotobalk staat bij elke soort.
       setImageUris((u) => [...u, ...picked].slice(0, MAX_PHOTOS));

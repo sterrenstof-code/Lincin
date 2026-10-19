@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, useRouter } from "expo-router";
+import { useCallback, useMemo } from "react";
 
 import { NotificationsModern } from "@/components/lincin/modern/NotificationsModern";
 import { NotificationsMagazine } from "@/components/lincin/magazine/Pages";
@@ -47,15 +48,20 @@ function NotificationsPhone() {
     queryFn: () => listNotifications(myUserId),
     refetchOnWindowFocus: true,
   });
-  const data = notes.data ?? [];
+  const data = useMemo(() => notes.data ?? [], [notes.data]);
   const unread = data.filter((n) => !n.read).length;
 
-  function bump() {
+  const bump = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["notifications", myUserId] });
     qc.invalidateQueries({ queryKey: ["notifications-unread", myUserId] });
-  }
+  }, [qc, myUserId]);
 
-  async function open(item: NotificationWithDetails) {
+  /**
+   * Stabiel (useCallback), net als de rijen hieronder: de lijst is
+   * gevirtualiseerd en de rijen zijn `memo`. Met een nieuwe `onPress` bij
+   * elke render tekende elke rij toch weer opnieuw.
+   */
+  const open = useCallback(async (item: NotificationWithDetails) => {
     if (!item.read) {
       qc.setQueryData<NotificationWithDetails[]>(["notifications", myUserId], (old) =>
         (old ?? []).map((n) => (n.id === item.id ? { ...n, read: true } : n)),
@@ -64,7 +70,7 @@ function NotificationsPhone() {
     }
     const to = destinationFor(item);
     if (to) router.push(to as never);
-  }
+  }, [qc, myUserId, bump, router]);
 
   /**
    * Alles gelezen, optimistisch: de lijst en de teller (tabbalk, ◉) gaan
@@ -89,7 +95,7 @@ function NotificationsPhone() {
     bump();
   }
 
-  const noteRows = data.map((n, i) => ({
+  const noteRows = useMemo(() => data.map((n, i) => ({
     key: n.id,
     actorId: n.actor_id,
     avatarUrl: n.type === "bug_resolved" ? null : n.actor?.avatar_url ?? null,
@@ -100,7 +106,10 @@ function NotificationsPhone() {
     no: String(data.length - i).padStart(2, "0"),
     unread: !n.read,
     onPress: () => open(n),
-  }));
+    // `dataUpdatedAt` erbij: bij een refetch zonder wijziging houdt React
+    // Query dezelfde `data`, maar "5 min" moet dan wel "20 min" worden.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  })), [data, t, lang, open, notes.dataUpdatedAt]);
 
   if (spec.layout === "spread") {
     return (

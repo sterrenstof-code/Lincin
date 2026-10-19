@@ -1,4 +1,4 @@
-import { Fragment, useId, useMemo } from "react";
+import { memo, useCallback, useId, useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
@@ -13,7 +13,7 @@ import { useLang, type Dict, type Lang } from "@/lib/i18n";
 
 import { EmptyFeed } from "../feed/EmptyFeed";
 import { useFeed } from "../feed/useFeed";
-import { Bento, Counter, SEAM, Tile, TileMeta, TileTitle, TitleTile } from "./Bento";
+import { BentoList, Counter, SEAM, Tile, TileMeta, TileTitle, TitleTile } from "./Bento";
 import { KindPreview } from "./KindPreview";
 
 /**
@@ -48,188 +48,238 @@ export function FeedModern() {
 
   const hero = f.heroPost;
   const rest = useMemo(() => byTime.filter((p) => p.id !== hero?.id), [byTime, hero]);
-  const tiles = rest.slice(0, TILE_COUNT);
-  const rows = rest.slice(TILE_COUNT);
 
   const heroHue = hero ? friendColor(hero.swatch ?? hueFor(hero.authorId), scheme) : null;
   // Het blad haast in de kleur van wie bovenaan staat.
   const tint = heroHue?.fill ?? null;
 
+  /**
+   * De bijdragen als banden voor `BentoList`: één hele tegel, of twee
+   * halve naast elkaar. Precies de regels die het wrap-rooster zelf zou
+   * leggen (zie `BentoList`), maar nu vooraf, zodat de lijst alleen tekent
+   * wat in beeld komt.
+   */
+  const { sections, fresh, empty, timeGroups, isOpen } = f;
+  const bands = useMemo<Band[]>(() => {
+    const out: Band[] = [];
+    if (view === "editie") {
+      out.push(...pairs("tile", rest.slice(0, TILE_COUNT)));
+      for (const p of rest.slice(TILE_COUNT)) out.push({ type: "row", key: `row:${p.id}`, post: p });
+    } else if (view === "friends" && !empty) {
+      const block = (list: FriendGroup[], isNew: boolean) => {
+        for (const g of list) {
+          const open = isOpen(g.key);
+          out.push({ type: "friend", key: `friend:${g.key}`, g, isNew, open });
+          if (open) out.push(...pairs(`friend:${g.key}`, g.posts));
+        }
+      };
+      if (sections.neu.length) {
+        out.push({ type: "section", key: "sec:new", label: t.secNew, meta: `${sections.neu.length} ${t.friends}`, isNew: true, markAll: !!fresh });
+        block(sections.neu, true);
+      }
+      if (sections.old.length) {
+        out.push({ type: "section", key: "sec:seen", label: t.secSeen, meta: `${sections.old.length} ${t.friends}` });
+        block(sections.old, false);
+      }
+    } else if (view === "time" && !empty) {
+      for (const g of timeGroups) {
+        out.push({ type: "section", key: `sec:${g.key}`, label: g.label, meta: g.range });
+        out.push(...pairs(`time:${g.key}`, g.posts));
+      }
+    }
+    return out;
+  }, [view, rest, empty, sections, fresh, timeGroups, isOpen, t]);
+
+  const { openPost, toggleOpen, markAllRead, freshIn } = f;
+  // Stabiel zolang er niets verandert dat een band raakt: dan slaat de
+  // lijst de rijen die al stonden over (ze zijn `memo`).
+  const renderBand = useCallback(
+    (b: Band) => {
+      switch (b.type) {
+        case "tile":
+          return (
+            <>
+              {b.posts.map((p) => (
+                <PostTile key={p.id} post={p} onOpen={openPost} scheme={scheme} lang={lang} t={t} />
+              ))}
+            </>
+          );
+        case "row":
+          return <PostRow post={b.post} onOpen={openPost} scheme={scheme} lang={lang} t={t} />;
+        case "section":
+          return (
+            <SectionTile
+              label={b.label}
+              meta={b.meta}
+              isNew={b.isNew}
+              action={b.markAll ? t.markAllRead : undefined}
+              onAction={b.markAll ? markAllRead : undefined}
+            />
+          );
+        case "friend":
+          return <FriendRow g={b.g} isNew={b.isNew} open={b.open} fresh={freshIn(b.g).length} onToggle={toggleOpen} t={t} />;
+      }
+    },
+    [openPost, toggleOpen, markAllRead, freshIn, scheme, lang, t],
+  );
+
   return (
     <LincinScreen tab="feed" tint={tint} counter={t.tabFeed} header="none">
-      <Bento>
-        <TitleTile
-          size={34}
-          title={
-            <View style={{ gap: 26 }}>
-              <Text
-                style={{
-                  ...mono(500),
-                  fontSize: 10,
-                  lineHeight: 13,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  color: color("ink"),
-                }}
-              >
-                Lincin
-              </Text>
-              <Text
-                style={{
-                  ...sans(400),
-                  fontSize: 34,
-                  lineHeight: 35,
-                  letterSpacing: -1.19, // -.035em
-                  color: color("ink"),
-                }}
-              >
-                {t.feedA} {t.feedB}
-              </Text>
-            </View>
-          }
-          align="flex-end"
-        >
-          {/* Prototype: bovenaan de tijd van de NIEUWSTE bijdrage (`modClock`),
-              eronder de telling (`modKicker`). Er stond de wandklok, en die
-              zegt niets over de feed. */}
-          <Counter>
-            {byTime[0] ? timeLabel(byTime[0].createdAt, t, lang) : ""}
-            {"\n"}
-            {byTime.length} {t.posts} · {groups.length} {t.friends}
-          </Counter>
-        </TitleTile>
-
-        {/* De vriendenchips, en rechts meldingen en een nieuwe bijdrage. */}
-        <FriendChips f={f} />
-
-        {hero && view === "editie" ? <Hero post={hero} onPress={() => f.openPost(hero)} scheme={scheme} lang={lang} t={t} /> : null}
-
-        {/* Editie · Per vriend · Op tijd: de weergave die aan staat in inkt,
-            de andere gedimd met een pijl. Tot okt 2026 veranderde deze
-            schakelaar alleen zijn eigen label. */}
-        <Tile span={2} pad={0} style={{ height: 52, paddingHorizontal: 20, justifyContent: "center" }}>
-          <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            {(
-              [
-                { v: "editie", label: t.editie },
-                { v: "friends", label: t.perFriend },
-                { v: "time", label: t.byTime },
-              ] as const
-            ).map((o) => {
-              const on = view === o.v;
-              return (
-                <Pressable
-                  key={o.v}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => f.changeView(o.v)}
-                  style={{ paddingVertical: 14, marginVertical: -14 }}
-                >
-                  <Text style={{ ...mono(500), fontSize: 9.5, lineHeight: 13, letterSpacing: 1.52, textTransform: "uppercase", color: on ? color("ink") : color("ink", "inkDim") }}>
-                    {on ? o.label : `${o.label} →`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Tile>
-
-        {feed.isLoading ? (
-          <Tile span={2}>
-            <TileMeta>{t.loading}</TileMeta>
-          </Tile>
-        ) : null}
-
-        {f.empty ? (
-          <Tile span={2} pad={0}>
-            <EmptyFeed />
-          </Tile>
-        ) : null}
-
-        {view === "editie" ? (
+      <BentoList
+        data={bands}
+        renderItem={renderBand}
+        keyExtractor={bandKey}
+        footer={!f.empty ? <EndTile onPress={f.compose} endLine={t.endLine} endTitle={t.endTitle} /> : null}
+        header={
           <>
-            {tiles.map((p) => (
-              <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
-            ))}
-            {rows.map((p) => (
-              <PostRow key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
-            ))}
+            <TitleTile
+              size={34}
+              title={
+                <View style={{ gap: 26 }}>
+                  <Text
+                    style={{
+                      ...mono(500),
+                      fontSize: 10,
+                      lineHeight: 13,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      color: color("ink"),
+                    }}
+                  >
+                    Lincin
+                  </Text>
+                  <Text
+                    style={{
+                      ...sans(400),
+                      fontSize: 34,
+                      lineHeight: 35,
+                      letterSpacing: -1.19, // -.035em
+                      color: color("ink"),
+                    }}
+                  >
+                    {t.feedA} {t.feedB}
+                  </Text>
+                </View>
+              }
+              align="flex-end"
+            >
+              {/* Prototype: bovenaan de tijd van de NIEUWSTE bijdrage (`modClock`),
+                  eronder de telling (`modKicker`). Er stond de wandklok, en die
+                  zegt niets over de feed. */}
+              <Counter>
+                {byTime[0] ? timeLabel(byTime[0].createdAt, t, lang) : ""}
+                {"\n"}
+                {byTime.length} {t.posts} · {groups.length} {t.friends}
+              </Counter>
+            </TitleTile>
+
+            {/* De vriendenchips, en rechts meldingen en een nieuwe bijdrage. */}
+            <FriendChips f={f} />
+
+            {hero && view === "editie" ? <Hero post={hero} onPress={() => f.openPost(hero)} scheme={scheme} lang={lang} t={t} /> : null}
+
+            {/* Editie · Per vriend · Op tijd: de weergave die aan staat in inkt,
+                de andere gedimd met een pijl. Tot okt 2026 veranderde deze
+                schakelaar alleen zijn eigen label. */}
+            <Tile span={2} pad={0} style={{ height: 52, paddingHorizontal: 20, justifyContent: "center" }}>
+              <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                {(
+                  [
+                    { v: "editie", label: t.editie },
+                    { v: "friends", label: t.perFriend },
+                    { v: "time", label: t.byTime },
+                  ] as const
+                ).map((o) => {
+                  const on = view === o.v;
+                  return (
+                    <Pressable
+                      key={o.v}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: on }}
+                      onPress={() => f.changeView(o.v)}
+                      style={{ paddingVertical: 14, marginVertical: -14 }}
+                    >
+                      <Text style={{ ...mono(500), fontSize: 9.5, lineHeight: 13, letterSpacing: 1.52, textTransform: "uppercase", color: on ? color("ink") : color("ink", "inkDim") }}>
+                        {on ? o.label : `${o.label} →`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Tile>
+
+            {feed.isLoading ? (
+              <Tile span={2}>
+                <TileMeta>{t.loading}</TileMeta>
+              </Tile>
+            ) : null}
+
+            {f.empty ? (
+              <Tile span={2} pad={0}>
+                <EmptyFeed />
+              </Tile>
+            ) : null}
           </>
-        ) : null}
-
-        {view === "friends" && !f.empty ? <ByFriend f={f} /> : null}
-
-        {view === "time" && !f.empty
-          ? f.timeGroups.map((g) => (
-              <Fragment key={g.key}>
-                <SectionTile label={g.label} meta={g.range} />
-                {g.posts.map((p) => (
-                  <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />
-                ))}
-              </Fragment>
-            ))
-          : null}
-
-        {!f.empty ? <EndTile onPress={f.compose} endLine={t.endLine} endTitle={t.endTitle} /> : null}
-      </Bento>
+        }
+      />
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </LincinScreen>
   );
 }
 
 /**
+ * Eén band van de feed: een hele tegel, of één of twee halve.
+ *
  * Per vriend (desktop-modern-home, mobiel): Nieuw en Gezien, elke vriend
  * een rij getint in zijn kleur — 22% als er iets nieuw is, anders 10%,
  * gemengd over de tegel. Standaard ingeklapt; een tik klapt open en toont
- * zijn bijdragen als tegels.
+ * zijn bijdragen als tegels (`friend`, gevolgd door `tile`-banden).
  */
-function ByFriend({ f }: { f: ReturnType<typeof useFeed> }) {
-  const { t, sections } = f;
-  const scheme = useScheme();
-  const lang = useLang();
-  const block = (list: FriendGroup[], isNew: boolean) =>
-    list.map((g) => {
-      const open = f.isOpen(g.key);
-      return (
-        <Fragment key={g.key}>
-          <FriendRow f={f} g={g} isNew={isNew} open={open} />
-          {open
-            ? g.posts.map((p) => <PostTile key={p.id} post={p} onPress={() => f.openPost(p)} scheme={scheme} lang={lang} t={t} />)
-            : null}
-        </Fragment>
-      );
-    });
-  return (
-    <>
-      {sections.neu.length ? (
-        <>
-          <SectionTile label={t.secNew} meta={`${sections.neu.length} ${t.friends}`} isNew action={f.fresh ? t.markAllRead : undefined} onAction={f.markAllRead} />
-          {block(sections.neu, true)}
-        </>
-      ) : null}
-      {sections.old.length ? (
-        <>
-          <SectionTile label={t.secSeen} meta={`${sections.old.length} ${t.friends}`} />
-          {block(sections.old, false)}
-        </>
-      ) : null}
-    </>
-  );
+type Band =
+  | { type: "tile"; key: string; posts: CardPost[] }
+  | { type: "row"; key: string; post: CardPost }
+  | { type: "section"; key: string; label: string; meta?: string; isNew?: boolean; markAll?: boolean }
+  | { type: "friend"; key: string; g: FriendGroup; isNew: boolean; open: boolean };
+
+const bandKey = (b: Band) => b.key;
+
+/** Halve tegels twee aan twee; een oneven laatste staat alleen en groeit tot de volle breedte. */
+function pairs(prefix: string, posts: CardPost[]): Band[] {
+  const out: Band[] = [];
+  for (let i = 0; i < posts.length; i += 2) {
+    const two = posts.slice(i, i + 2);
+    out.push({ type: "tile", key: `${prefix}:${two[0].id}`, posts: two });
+  }
+  return out;
 }
 
-function FriendRow({ f, g, isNew, open }: { f: ReturnType<typeof useFeed>; g: FriendGroup; isNew: boolean; open: boolean }) {
-  const { t } = f;
+const FriendRow = memo(function FriendRow({
+  g,
+  isNew,
+  open,
+  fresh,
+  onToggle,
+  t,
+}: {
+  g: FriendGroup;
+  isNew: boolean;
+  open: boolean;
+  fresh: number;
+  onToggle: (key: string) => void;
+  t: Dict;
+}) {
   const scheme = useScheme();
   const lang = useLang();
+  // `memo` slaat hertekenen over; een nieuwe vriendkleur moet er wél door.
+  useHueChoices();
   const fc = friendColor(g.hue, scheme);
-  const fresh = f.freshIn(g).length;
   const n = g.posts.length;
   const status = [isNew ? `${fresh} ${t.new}` : null, `${n} ${n === 1 ? t.post1 : t.posts}`, timeLabel(g.latest, t, lang)].filter(Boolean).join(" · ");
   return (
     <Tile
       span={2}
       pad={0}
-      onPress={() => f.toggleOpen(g.key)}
+      onPress={() => onToggle(g.key)}
       accessibilityLabel={`${g.name}, ${open ? t.closeAll : t.openAll}`}
       style={{
         minHeight: 68,
@@ -259,7 +309,7 @@ function FriendRow({ f, g, isNew, open }: { f: ReturnType<typeof useFeed>; g: Fr
       </View>
     </Tile>
   );
-}
+});
 
 /** Een kop van 52 over de volle breedte: een stip (rood als er iets nieuw is), het label, rechts een handeling. */
 function SectionTile({ label, meta, isNew = false, action, onAction }: { label: string; meta?: string; isNew?: boolean; action?: string; onAction?: () => void }) {
@@ -492,24 +542,26 @@ function Hero({
 }
 
 /** Eén tegel: beeld van 128 px boven, meta en titel eronder. */
-function PostTile({
+const PostTile = memo(function PostTile({
   post,
-  onPress,
+  onOpen,
   scheme,
   lang,
   t,
 }: {
   post: CardPost;
-  onPress: () => void;
+  /** Stabiel (`useFeed().openPost`), zodat `memo` iets overslaat. */
+  onOpen: (post: CardPost) => void;
   scheme: ReturnType<typeof useScheme>;
   lang: Lang;
   t: Dict;
 }) {
+  useHueChoices();
   return (
     <Tile
       span={1}
       pad={0}
-      onPress={onPress}
+      onPress={() => onOpen(post)}
       accessibilityLabel={post.title}
       style={{ minHeight: 196 }}
     >
@@ -524,28 +576,30 @@ function PostTile({
       </View>
     </Tile>
   );
-}
+});
 
 /** Een rij over de volle breedte, voor wat na de tegels komt. */
-function PostRow({
+const PostRow = memo(function PostRow({
   post,
-  onPress,
+  onOpen,
   scheme,
   lang,
   t,
 }: {
   post: CardPost;
-  onPress: () => void;
+  onOpen: (post: CardPost) => void;
   scheme: ReturnType<typeof useScheme>;
   lang: Lang;
   t: Dict;
 }) {
+  // De kleur hangt af van `hueFor`; zonder dit bleef een `memo`-rij in de oude.
+  useHueChoices();
   const fc = friendColor(post.swatch ?? hueFor(post.authorId), scheme);
   return (
     <Tile
       span={2}
       pad={14}
-      onPress={onPress}
+      onPress={() => onOpen(post)}
       accessibilityLabel={post.title}
       style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
     >
@@ -571,7 +625,7 @@ function PostRow({
       <Text style={{ flexShrink: 0, fontSize: 15, color: color("ink", "inkDim"), paddingHorizontal: 6 }}>→</Text>
     </Tile>
   );
-}
+});
 
 /** De eindkaart: een inktvlak met de oproep om zelf iets te maken. */
 function EndTile({ onPress, endLine, endTitle }: { onPress: () => void; endLine: string; endTitle: string }) {

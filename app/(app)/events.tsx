@@ -73,56 +73,73 @@ function EventsMobile() {
     return m;
   }, [rsvp.rsvps]);
 
-  const now = Date.now();
-  const active = data.filter((e) => e.is_active);
-  const upcoming = data
-    .filter((e) => !e.is_active && new Date(e.starts_at).getTime() > now)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const past = data
-    .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
-    .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
-
-  const tile = (e: EventWithMeta, live: boolean, isPast: boolean) =>
-    tileData(e, {
-      t,
-      lang,
-      router,
-      live,
-      past: isPast,
-      host: e.is_host ? t.me : nameOf(e.host_user_id),
-      going: (byEvent.get(e.id) ?? []).filter((r) => r.status === "yes").map((r) => nameOf(r.user_id)),
-      mine: rsvp.mine(e.id),
-      onAnswer: (s) => rsvp.answer(e.id, s),
-    });
+  /**
+   * De tegels, gememoiseerd: de lijst is gevirtualiseerd en de tegels zijn
+   * `memo`, en dat helpt alleen als een tegel (met zijn `onOpen` en
+   * `onAnswer`) hetzelfde object blijft zolang er niets aan veranderde.
+   * `dataUpdatedAt` erbij: na een refetch moet "voorbij" opnieuw tellen,
+   * ook als React Query dezelfde `data` teruggeeft.
+   */
+  const { mine: rsvpMine, answer: rsvpAnswer } = rsvp;
+  const { active, upcoming, tiles, pastTiles } = useMemo(() => {
+    const now = Date.now();
+    const active = data.filter((e) => e.is_active);
+    const upcoming = data
+      .filter((e) => !e.is_active && new Date(e.starts_at).getTime() > now)
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    const past = data
+      .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
+      .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+    const tile = (e: EventWithMeta, live: boolean, isPast: boolean) =>
+      tileData(e, {
+        t,
+        lang,
+        router,
+        live,
+        past: isPast,
+        host: e.is_host ? t.me : nameOf(e.host_user_id),
+        going: (byEvent.get(e.id) ?? []).filter((r) => r.status === "yes").map((r) => nameOf(r.user_id)),
+        mine: rsvpMine(e.id),
+        onAnswer: (s) => rsvpAnswer(e.id, s),
+      });
+    return {
+      active,
+      upcoming,
+      tiles: [...active, ...upcoming].map((e) => tile(e, e.is_active, false)),
+      pastTiles: past.map((e) => tile(e, false, true)),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, t, lang, router, nameOf, byEvent, rsvpMine, rsvpAnswer, events.dataUpdatedAt]);
+  const planNew = useCallback(() => router.push("/event-create"), [router]);
   const waiting = data.reduce((n, e) => n + (e.is_host ? e.pending_requests_count : 0), 0);
   const state = events.isLoading ? t.loading : events.isError ? t.failed : null;
 
   if (spec.layout === "spread") {
     return (
       <EventsMagazine
-        events={[...active, ...upcoming].map((e) => tile(e, e.is_active, false))}
-        past={past.map((e) => tile(e, false, true))}
+        events={tiles}
+        past={pastTiles}
         planned={upcoming.length + active.length}
         waiting={waiting}
         scheme={scheme}
         t={t}
         state={state}
-        onPlanNew={() => router.push("/event-create")}
+        onPlanNew={planNew}
       />
     );
   }
 
   return (
     <EventsModern
-      events={[...active, ...upcoming].map((e) => tile(e, e.is_active, false))}
-      past={past.map((e) => tile(e, false, true))}
+      events={tiles}
+      past={pastTiles}
       planned={upcoming.length + active.length}
       liveCount={active.length}
       waiting={waiting}
       scheme={scheme}
       t={t}
       state={state}
-      onPlanNew={() => router.push("/event-create")}
+      onPlanNew={planNew}
     />
   );
 }

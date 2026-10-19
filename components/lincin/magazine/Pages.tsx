@@ -1,4 +1,16 @@
-import { Platform, Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { memo, useCallback, useMemo, type ReactElement, type ReactNode } from "react";
+import {
+  FlatList,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type ListRenderItemInfo,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import type { RsvpStatus } from "@/lib/api/event-rsvps";
@@ -30,6 +42,42 @@ function Page({ children }: { children: React.ReactNode }) {
     <ScrollView style={[{ flex: 1 }, vfade()]} showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
+  );
+}
+
+/**
+ * `Page`, maar gevirtualiseerd: voor een pagina waarvan de lijst blijft
+ * groeien (events, meldingen). De kop staat in `header`, en elk item
+ * tekent zichzelf met zijn eigen marges — er is geen omhulsel meer
+ * waar ze in staan (zie de pagina's hieronder).
+ */
+function PageList<T>({
+  data,
+  renderItem,
+  keyExtractor,
+  header,
+}: {
+  data: readonly T[];
+  /** Stabiel houden (useCallback); de rijen zelf zijn `memo`. */
+  renderItem: (info: ListRenderItemInfo<T>) => ReactElement | null;
+  keyExtractor: (item: T) => string;
+  header: ReactNode;
+}) {
+  return (
+    <FlatList
+      style={[{ flex: 1 }, vfade()]}
+      showsVerticalScrollIndicator={false}
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      ListHeaderComponent={<>{header}</>}
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      windowSize={7}
+      // Alleen native: op web doet hij niets nuttigs en kan hij bij snel
+      // scrollen inhoud laten wegvallen.
+      removeClippedSubviews={Platform.OS !== "web"}
+    />
   );
 }
 
@@ -158,40 +206,69 @@ export function EventsMagazine({
   state?: string | null;
   onPlanNew: () => void;
 }) {
+  /**
+   * De komende events, de knop "plan iets nieuws" en de voorbije events,
+   * als één gevirtualiseerde reeks: voorbije events blijven zich
+   * opstapelen. `index` telt per reeks opnieuw vanaf nul, zoals de twee
+   * `map`s ervoor — hij bepaalt de hoogte en de kant van de rail.
+   */
+  const items = useMemo<EventItem[]>(
+    () => [
+      ...events.map((e, i): EventItem => ({ type: "event", key: e.key, e, index: i })),
+      { type: "plan", key: "plan" },
+      ...past.map((e, i): EventItem => ({ type: "event", key: `past:${e.key}`, e, index: i })),
+    ],
+    [events, past],
+  );
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<EventItem>) =>
+      item.type === "event" ? <EventSpread e={item.e} index={item.index} scheme={scheme} t={t} /> : <PlanNew label={t.planNew} onPress={onPlanNew} />,
+    [scheme, t, onPlanNew],
+  );
   return (
     <LincinScreen tab="events" counter={t.tabEvents}>
-      <Page>
-        <MagazineHead
-          kicker={`${t.edition} · ${t.eventsA}`}
-          title={`${t.eventsA}\n${t.eventsB}`}
-          sub={`${planned} ${t.planned}${waiting ? ` · ${waiting} ${t.waitsForYou}` : ""}`}
-        />
-        {state ? <Note>{state}</Note> : null}
-        {events.map((e, i) => (
-          <EventSpread key={e.key} e={e} index={i} scheme={scheme} t={t} />
-        ))}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t.planNew}
-          onPress={onPlanNew}
-          style={({ pressed }) => ({
-            marginHorizontal: 6,
-            marginBottom: 6,
-            paddingVertical: 30,
-            paddingHorizontal: 20,
-            minHeight: 44,
-            backgroundColor: color("paper2"),
-            alignItems: "center",
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ ...serif(true), fontSize: 19, lineHeight: 24, color: color("ink", "inkDim") }}>{t.planNew}</Text>
-        </Pressable>
-        {past.map((e, i) => (
-          <EventSpread key={e.key} e={e} index={i} scheme={scheme} t={t} />
-        ))}
-      </Page>
+      <PageList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={eventItemKey}
+        header={
+          <>
+            <MagazineHead
+              kicker={`${t.edition} · ${t.eventsA}`}
+              title={`${t.eventsA}\n${t.eventsB}`}
+              sub={`${planned} ${t.planned}${waiting ? ` · ${waiting} ${t.waitsForYou}` : ""}`}
+            />
+            {state ? <Note>{state}</Note> : null}
+          </>
+        }
+      />
     </LincinScreen>
+  );
+}
+
+type EventItem = { type: "event"; key: string; e: EventSpreadData; index: number } | { type: "plan"; key: string };
+const eventItemKey = (it: EventItem) => it.key;
+
+/** De knop tussen komend en voorbij: een vlak in de tweede papiertint. */
+function PlanNew({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        marginHorizontal: 6,
+        marginBottom: 6,
+        paddingVertical: 30,
+        paddingHorizontal: 20,
+        minHeight: 44,
+        backgroundColor: color("paper2"),
+        alignItems: "center",
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Text style={{ ...serif(true), fontSize: 19, lineHeight: 24, color: color("ink", "inkDim") }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -204,7 +281,7 @@ export function EventsMagazine({
  * vlak — en nog een tik wist hem. Het mobiele prototype zet geen knoppen
  * op de spread; de keuze hoort wél bij elk event (HANDOFF: RSVP onthouden).
  */
-export function EventSpread({
+export const EventSpread = memo(function EventSpread({
   e,
   index,
   scheme,
@@ -276,7 +353,7 @@ export function EventSpread({
       </View>
     </Spread>
   );
-}
+});
 
 function RsvpSquare({
   s,
@@ -363,42 +440,64 @@ export function NotificationsMagazine({
 }) {
   const ink = color("ink");
   const dim = color("ink", "inkDim");
+  /**
+   * De rijen stonden in één doos met de bovenlijn en de marges. Die doos
+   * is weg (de lijst is gevirtualiseerd); elke rij draagt nu de zijmarge,
+   * de eerste ook de bovenmarge en de lijn, de laatste de ondermarge.
+   */
+  const last = rows.length - 1;
+  const renderRow = useCallback(
+    ({ item, index }: ListRenderItemInfo<NoteSpreadData>) => (
+      <View
+        style={{
+          marginHorizontal: 24,
+          ...(index === 0 ? { marginTop: 4, borderTopWidth: OMSLAG.rule, borderTopColor: ink } : null),
+          ...(index === last ? { marginBottom: 24 } : null),
+        }}
+      >
+        <NoteRow n={item} scheme={scheme} />
+      </View>
+    ),
+    [scheme, ink, last],
+  );
   return (
     <LincinScreen tab="you" counter={t.notifications} back="/profile">
-      <Page>
-        {/* De kop van MagazineHead, maar met de actie rechts op de regel
-            van de teller — zoals de Meldingen-kolom op desktop. */}
-        <View style={{ paddingTop: 14, paddingHorizontal: 24, paddingBottom: 20, gap: 8 }}>
-          <Label size={8.5} weight={500} ls={0.2} color={dim}>
-            {`${t.edition} · ${t.notifications}`}
-          </Label>
-          <Black size={50} f={0.84} ls={-0.055}>
-            {t.notifications}
-          </Black>
-          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-            <Text style={{ ...serif(true), fontSize: 17, lineHeight: 23, color: dim }}>{`${unread} ${t.new}`}</Text>
-            {unread > 0 && onMarkAll ? (
-              <LabelLink size={10} onPress={onMarkAll}>
-                {t.markAllRead}
-              </LabelLink>
-            ) : null}
-          </View>
-        </View>
-        {state ? <Note>{state}</Note> : null}
-        {rows.length ? (
-          <View style={{ marginTop: 4, marginHorizontal: 24, borderTopWidth: OMSLAG.rule, borderTopColor: ink, marginBottom: 24 }}>
-            {rows.map((n) => (
-              <NoteRow key={n.key} n={n} scheme={scheme} />
-            ))}
-          </View>
-        ) : null}
-      </Page>
+      <PageList
+        data={rows}
+        renderItem={renderRow}
+        keyExtractor={noteKey}
+        header={
+          <>
+            {/* De kop van MagazineHead, maar met de actie rechts op de regel
+                van de teller — zoals de Meldingen-kolom op desktop. */}
+            <View style={{ paddingTop: 14, paddingHorizontal: 24, paddingBottom: 20, gap: 8 }}>
+              <Label size={8.5} weight={500} ls={0.2} color={dim}>
+                {`${t.edition} · ${t.notifications}`}
+              </Label>
+              <Black size={50} f={0.84} ls={-0.055}>
+                {t.notifications}
+              </Black>
+              <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                <Text style={{ ...serif(true), fontSize: 17, lineHeight: 23, color: dim }}>{`${unread} ${t.new}`}</Text>
+                {unread > 0 && onMarkAll ? (
+                  <LabelLink size={10} onPress={onMarkAll}>
+                    {t.markAllRead}
+                  </LabelLink>
+                ) : null}
+              </View>
+            </View>
+            {state ? <Note>{state}</Note> : null}
+          </>
+        }
+      />
     </LincinScreen>
   );
 }
 
-/** Eén melding: rug · initiaal · naam en tijd · de zin · rode stip. */
-function NoteRow({ n, scheme }: { n: NoteSpreadData; scheme: Scheme }) {
+const noteKey = (n: NoteSpreadData) => n.key;
+
+/** Eén melding: rug · initiaal · naam en tijd · de zin · rode stip. `memo`: zie notifications.tsx. */
+const NoteRow = memo(function NoteRow({ n, scheme }: { n: NoteSpreadData; scheme: Scheme }) {
   const fc = friendColor(hueFor(n.actorId), scheme);
   const dim = color("ink", "inkDim");
   // Een melding zonder afzender (bug_resolved) krijgt het teken van de omslag.
@@ -459,7 +558,7 @@ function NoteRow({ n, scheme }: { n: NoteSpreadData; scheme: Scheme }) {
       </View>
     </Pressable>
   );
-}
+});
 
 // ---------------------------------------------------------------
 // JIJ

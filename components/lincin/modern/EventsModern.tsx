@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
@@ -6,7 +7,7 @@ import { mono, sans } from "@/lib/design/type";
 import type { RsvpStatus } from "@/lib/api/event-rsvps";
 import type { Dict } from "@/lib/i18n";
 
-import { Bento, Counter, DashRule, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
+import { BentoList, Counter, DashRule, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
 
 /**
  * Events in modern (prototype `EVENTS · MODERN`).
@@ -64,42 +65,71 @@ export function EventsModern({
   state?: string | null;
   onPlanNew: () => void;
 }) {
+  /**
+   * Alles onder de titeltegel als één reeks banden: de komende events, de
+   * gestippelde "plan iets nieuws", het kopje "voorbij" en de voorbije events. Voorbije events
+   * blijven zich opstapelen, dus dit is een `BentoList`; elke band is één
+   * tegel over twee kolommen.
+   */
+  const bands = useMemo<EventBand[]>(
+    () => [
+      ...events.map((e): EventBand => ({ type: "event", key: e.key, e })),
+      { type: "plan", key: "plan" },
+      ...(past.length ? [{ type: "pastHead", key: "past" } as EventBand] : []),
+      // Een voorbij event kan niet ook nog komend zijn; toch een eigen
+      // voorvoegsel, zodat twee sleutels nooit kunnen botsen.
+      ...past.map((e): EventBand => ({ type: "event", key: `past:${e.key}`, e })),
+    ],
+    [events, past],
+  );
+  const renderBand = useCallback(
+    (b: EventBand) =>
+      b.type === "event" ? (
+        <EventTile e={b.e} scheme={scheme} t={t} />
+      ) : b.type === "plan" ? (
+        <DashedTile label={`${t.planNew} →`} onPress={onPlanNew} />
+      ) : (
+        <Tile span={2} pad={0} style={{ backgroundColor: "transparent", paddingTop: 10, paddingHorizontal: 20 }}>
+          <TileMeta>{t.eventPast}</TileMeta>
+        </Tile>
+      ),
+    [scheme, t, onPlanNew],
+  );
   return (
     <LincinScreen tab="events" counter={t.tabEvents}>
-      <Bento>
-        <TitleTile
-          title={`${t.eventsA} ${t.eventsB}`}
-          meta={
-            <Counter>
-              {planned} {t.planned}
-              {waiting > 0 ? `\n${waiting} ${t.waitsForYou}` : ""}
-              {liveCount > 0 ? `\n${liveCount} ${t.nowLive}` : ""}
-            </Counter>
-          }
-        />
-        {state ? (
-          <Tile span={2}>
-            <TileMeta>{state}</TileMeta>
-          </Tile>
-        ) : null}
-        {events.map((e) => (
-          <EventTile key={e.key} e={e} scheme={scheme} t={t} />
-        ))}
-        <DashedTile label={`${t.planNew} →`} onPress={onPlanNew} />
-        {past.length ? (
-          <Tile span={2} pad={0} style={{ backgroundColor: "transparent", paddingTop: 10, paddingHorizontal: 20 }}>
-            <TileMeta>{t.eventPast}</TileMeta>
-          </Tile>
-        ) : null}
-        {past.map((e) => (
-          <EventTile key={e.key} e={e} scheme={scheme} t={t} />
-        ))}
-      </Bento>
+      <BentoList
+        data={bands}
+        renderItem={renderBand}
+        keyExtractor={eventBandKey}
+        header={
+          <>
+            <TitleTile
+              title={`${t.eventsA} ${t.eventsB}`}
+              meta={
+                <Counter>
+                  {planned} {t.planned}
+                  {waiting > 0 ? `\n${waiting} ${t.waitsForYou}` : ""}
+                  {liveCount > 0 ? `\n${liveCount} ${t.nowLive}` : ""}
+                </Counter>
+              }
+            />
+            {state ? (
+              <Tile span={2}>
+                <TileMeta>{state}</TileMeta>
+              </Tile>
+            ) : null}
+          </>
+        }
+      />
     </LincinScreen>
   );
 }
 
-function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict }) {
+type EventBand = { type: "event"; key: string; e: EventTileData } | { type: "plan"; key: string } | { type: "pastHead"; key: string };
+const eventBandKey = (b: EventBand) => b.key;
+
+/** `memo`: een antwoord op één event hoeft de rest niet opnieuw te tekenen (zie events.tsx). */
+const EventTile = memo(function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict }) {
   const fc = friendColor(hueFor(e.hostId), scheme);
   return (
     <Tile span={2} onPress={e.onOpen} accessibilityLabel={e.title} style={{ gap: 16, opacity: e.past ? 0.6 : 1 }}>
@@ -175,7 +205,7 @@ function EventTile({ e, scheme, t }: { e: EventTileData; scheme: Scheme; t: Dict
       </View>
     </Tile>
   );
-}
+});
 
 function Pill({ label, tone, fg }: { label: string; tone: string; fg: string }) {
   return (

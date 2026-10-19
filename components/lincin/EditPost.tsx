@@ -12,6 +12,7 @@ import { MAX_PHOTOS } from "@/lib/lincin/compose";
 import { invalidatePostCaches } from "@/lib/post-cache";
 
 import { BORDER, Btn, Mono } from "./ui";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * Je eigen bijdrage bewerken: de foto's, de titel en de tekst.
@@ -47,7 +48,13 @@ export function EditPost({ post, onDone }: { post: PostWithAuthor; onDone: () =>
       selectionLimit: room,
       orderedSelection: true,
     });
-    const picked = result.canceled ? [] : (result.assets ?? []).map((a) => a.uri).filter(Boolean);
+    // Verkleind meteen bij het kiezen: wat in het vak staat is wat de
+    // bucket in gaat, en zes originelen van 10 MB uploaden duurt op 4G minuten.
+    const assets = result.canceled ? [] : (result.assets ?? []).filter((a) => !!a.uri);
+    const prepared = await Promise.all(
+      assets.map((a) => prepareImageForUpload(a.uri, { mimeType: a.mimeType, width: a.width, height: a.height })),
+    );
+    const picked = prepared.map((p) => p.uri);
     if (picked.length) setPhotos((p) => [...p, ...picked.map((uri) => ({ path: null, uri }))].slice(0, MAX_PHOTOS));
   }
 

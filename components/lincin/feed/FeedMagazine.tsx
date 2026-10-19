@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { memo, useCallback, useMemo } from "react";
+import { FlatList, Platform, Pressable, Text, View, type ListRenderItemInfo } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LincinScreen, useUnread, vfade } from "@/components/lincin/Chrome";
@@ -9,6 +9,8 @@ import { SafeImage } from "@/components/SafeImage";
 import { OMSLAG, friendColor, useHueChoices } from "@/lib/design/theme";
 import { sans } from "@/lib/design/type";
 import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
+import type { Dict, Lang } from "@/lib/i18n";
+import type { Hue } from "@/lib/design/theme";
 
 import { useEdition, type Tile } from "../desktop/DesktopFeed";
 import { Black, Label, LabelLink, NewTag, RedButton, RoundGlyph, SEAM, SPINE, Scrim, Ser, Wordmark, useOmslag } from "../magazine/Omslag";
@@ -51,55 +53,278 @@ export function FeedMagazine() {
   const cover = view === "editie" && !!hero && !feed.isLoading && !noFriends;
   const heroFill = hero ? friendColor(hero.hue, o.scheme).fill : null;
 
-  const sticky: number[] = [];
-  const children: ReactNode[] = [];
-
-  if (feed.isLoading || noFriends) {
-    // Leeg (prototype `magEmpty`): geen kopregel, maar de editie en het
-    // grote woordmerk bovenaan — de omslag zonder foto.
-    children.push(
-      <View key="top" style={{ paddingTop: 8, paddingHorizontal: PAD, paddingBottom: 16, gap: 8 }}>
-        <Label size={8.5} weight={500} ls={0.2} color={o.dim}>
-          {t.edition}
-          {f.edition ? ` · № ${f.edition}` : ""}
-        </Label>
-        <Wordmark size={108} />
-      </View>,
-    );
-    children.push(
-      feed.isLoading ? (
-        <Label key="loading" size={9} weight={500} ls={0.2} color={o.dim} style={{ textAlign: "center", paddingVertical: 30 }}>
-          {t.loading}
-        </Label>
-      ) : (
-        <EmptyFeed key="empty" />
-      ),
-    );
-  } else {
-    if (cover) {
-      children.push(<Cover key="cover" f={f} hero={hero!} />);
-      children.push(<CoverCaption key="caption" f={f} hero={hero!} />);
-    } else {
-      children.push(<ViewHead key="head" f={f} />);
+  /**
+   * De pagina als één platte reeks items, voor een `FlatList`.
+   *
+   * Dit was een ScrollView met álles erin: zestig spreads, elk met een
+   * foto, gemount en gedecodeerd bij het openen — ook wat drie schermen
+   * lager stond. Een `FlatList` tekent alleen wat (bijna) in beeld is.
+   *
+   * Daarvoor moest de geneste opbouw plat. De omhulsels die wegvielen
+   * waren kale `View`s, met twee uitzonderingen die hun maat nu per item
+   * meegeven: de spreads stonden in een doos met `paddingTop: SEAM` (nu
+   * op de eerste spread), en de inhoudsopgave in een doos met marge en een
+   * onderlijn (nu marge op elke rij, `marginTop` op de eerste, de lijn
+   * onder de laatste). React Native kent geen samenvallende marges, dus
+   * het resultaat staat op dezelfde pixel.
+   *
+   * De schakelbalk blijft kleven: `stickyHeaderIndices` werkt op een
+   * FlatList net als op een ScrollView, en de lijst houdt een kleefkop
+   * altijd getekend, ook als hij buiten het venster valt.
+   */
+  const { alsoNew, rest } = ed;
+  const { sections, timeGroups, groups, seen, isOpen, freshIn, isMine } = f;
+  const loading = feed.isLoading;
+  const items = useMemo<Item[]>(() => {
+    const out: Item[] = [];
+    if (loading || noFriends) {
+      // Leeg (prototype `magEmpty`): geen kopregel, maar de editie en het
+      // grote woordmerk bovenaan — de omslag zonder foto.
+      out.push({ type: "top", key: "top" });
+      out.push(loading ? { type: "loading", key: "loading" } : { type: "empty", key: "empty" });
+      return out;
     }
-    sticky.push(children.length);
-    children.push(<Views key="views" f={f} />);
-    if (view === "editie") children.push(<Edition key="body" f={f} alsoNew={ed.alsoNew} rest={ed.rest} />);
-    else if (view === "friends") children.push(<ByFriend key="body" f={f} />);
-    else children.push(<ByTime key="body" f={f} />);
-    children.push(<End key="end" f={f} />);
-  }
+    if (cover) {
+      out.push({ type: "cover", key: "cover" });
+      out.push({ type: "caption", key: "caption" });
+    } else {
+      out.push({ type: "head", key: "head" });
+    }
+    out.push({ type: "views", key: "views" });
+    if (view === "editie") {
+      if (alsoNew.length) {
+        out.push({ type: "block", key: "b:new", block: { kind: "alsoNew", count: alsoNew.length } });
+        pushSpreads(out, "new", alsoNew);
+      }
+      if (rest.length) {
+        out.push({ type: "block", key: "b:rest", block: { kind: "contents", count: rest.length, top: alsoNew.length ? 34 : SEAM } });
+        pushIndex(out, "rest", rest, true);
+      }
+    } else if (view === "friends") {
+      const all = [...sections.neu, ...sections.old];
+      const two = (n: number) => String(n).padStart(2, "0");
+      all.forEach((g, gi) => {
+        const isNew = gi < sections.neu.length;
+        const first = gi === 0 || gi === sections.neu.length;
+        if (first) out.push({ type: "groupHead", key: `gh:${isNew ? "new" : "seen"}`, isNew, top: isNew || !sections.neu.length ? 18 : 34 });
+        const open = isOpen(g.key);
+        out.push({
+          type: "block",
+          key: `b:${g.key}`,
+          block: { kind: "friend", g, isNew, open, fresh: freshIn(g).length, kicker: `${two(gi + 1)} / ${two(all.length)}` },
+        });
+        if (open) {
+          const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: p.swatch ?? g.hue, isNew: !seen.has(p.id) }));
+          pushSpreads(out, `f:${g.key}`, tiles);
+        } else {
+          pushIndex(out, `f:${g.key}`, g.posts, false);
+        }
+      });
+    } else {
+      const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
+      timeGroups.forEach((tg, i) => {
+        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !seen.has(p.id) }));
+        const n = tiles.filter((p) => p.isNew).length;
+        out.push({ type: "block", key: `b:${tg.key}`, block: { kind: "time", label: tg.label, range: tg.range, count: tg.posts.length, newCount: n, top: i ? 34 : SEAM } });
+        pushSpreads(out, `t:${tg.key}`, tiles);
+      });
+    }
+    out.push({ type: "end", key: "end" });
+    return out;
+  }, [loading, noFriends, cover, view, alsoNew, rest, sections, timeGroups, groups, seen, isOpen, freshIn]);
+  const sticky = useMemo(() => {
+    const i = items.findIndex((it) => it.type === "views");
+    return i >= 0 ? [i] : [];
+  }, [items]);
+
+  // Wie bij de inhoudsopgave een stip in zijn kleur krijgt (`withName`).
+  const hueOf = useMemo(() => new Map(groups.map((g) => [g.key, g.hue])), [groups]);
+  const { lang, openPost, privateAbout, numberOf, markAllRead } = f;
+
+  /**
+   * Het item tekenen. Hangt bewust aan `f`, en `f` is elke render nieuw:
+   * de cover, de koppen en het bijschrift tonen reacties, tellers en de
+   * weergave, en moeten dus meetekenen — net als in de ScrollView. Wat
+   * telt is wát er meetekent: alleen de items in het venster, en daarvan
+   * slaan de spreads en de rijen van de opgave (`memo`, alleen stabiele
+   * props) zichzelf over. Dat zijn de zware, met een foto.
+   */
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<Item>) => {
+      switch (item.type) {
+        case "top":
+          return (
+            <View style={{ paddingTop: 8, paddingHorizontal: PAD, paddingBottom: 16, gap: 8 }}>
+              <Label size={8.5} weight={500} ls={0.2} color={o.dim}>
+                {t.edition}
+                {f.edition ? ` · № ${f.edition}` : ""}
+              </Label>
+              <Wordmark size={108} />
+            </View>
+          );
+        case "loading":
+          return (
+            <Label size={9} weight={500} ls={0.2} color={o.dim} style={{ textAlign: "center", paddingVertical: 30 }}>
+              {t.loading}
+            </Label>
+          );
+        case "empty":
+          return <EmptyFeed />;
+        case "cover":
+          return <Cover f={f} hero={hero!} />;
+        case "caption":
+          return <CoverCaption f={f} hero={hero!} />;
+        case "head":
+          return <ViewHead f={f} />;
+        case "views":
+          return <Views f={f} />;
+        case "block":
+          return <Block f={f} b={item.block} />;
+        case "groupHead":
+          return (
+            <View style={{ marginTop: item.top, marginHorizontal: PAD, marginBottom: 2, flexDirection: "row", alignItems: "center" }}>
+              <Label size={11} ls={0.08} color={item.isNew ? o.red : o.ink} style={{ flex: 1 }}>
+                {item.isNew ? t.secNew : t.secSeen}
+              </Label>
+              {item.isNew ? (
+                <LabelLink size={9} onPress={markAllRead}>
+                  {t.markAllRead}
+                </LabelLink>
+              ) : null}
+            </View>
+          );
+        case "spread":
+          return (
+            <SpreadRow
+              p={item.p}
+              index={item.index}
+              first={item.first}
+              number={numberOf(item.p.id)}
+              mine={isMine(item.p.authorId)}
+              onOpen={openPost}
+              onPrivate={privateAbout}
+              t={t}
+              lang={lang}
+            />
+          );
+        case "index":
+          return (
+            <IndexRow
+              p={item.p}
+              number={numberOf(item.p.id)}
+              hue={item.withName ? (item.p.swatch ?? hueOf.get(item.p.authorId) ?? "orange") : null}
+              first={item.first}
+              last={item.last}
+              onOpen={openPost}
+              t={t}
+              lang={lang}
+            />
+          );
+        case "indexEmpty":
+          return <View style={{ marginHorizontal: PAD - 6, marginTop: SEAM, borderBottomWidth: OMSLAG.rule, borderBottomColor: o.ink }} />;
+        case "spacer":
+          return <View style={{ paddingTop: SEAM }} />;
+        case "end":
+          return <End f={f} />;
+      }
+    },
+    [f, o, t, lang, hero, hueOf, numberOf, isMine, openPost, privateAbout, markAllRead],
+  );
 
   return (
     // `tint` kleurt het blad niet (magazine tint niet), maar geeft de
     // rugstrook onderaan de kleur van de vriend op de cover.
     <LincinScreen tab="feed" header={cover || noFriends ? "none" : "default"} bleed={cover} tint={cover ? heroFill : null}>
-      <ScrollView style={[{ flex: 1 }, cover ? null : vfade()]} stickyHeaderIndices={sticky} showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
+      <FlatList
+        style={[{ flex: 1 }, cover ? null : vfade()]}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={itemKey}
+        stickyHeaderIndices={sticky}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        // Alleen native: op web doet hij niets nuttigs en kan hij bij snel
+        // scrollen inhoud laten wegvallen.
+        removeClippedSubviews={Platform.OS !== "web"}
+      />
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </LincinScreen>
   );
+}
+
+// ---------------------------------------------------------------
+// De items van de lijst
+// ---------------------------------------------------------------
+
+type BlockSpec =
+  | { kind: "alsoNew"; count: number }
+  | { kind: "contents"; count: number; top: number }
+  | { kind: "friend"; g: FriendGroup; isNew: boolean; open: boolean; fresh: number; kicker: string }
+  | { kind: "time"; label: string; range: string; count: number; newCount: number; top: number };
+
+type Item =
+  | { type: "top" | "loading" | "empty" | "cover" | "caption" | "head" | "views" | "end" | "indexEmpty" | "spacer"; key: string }
+  | { type: "block"; key: string; block: BlockSpec }
+  | { type: "groupHead"; key: string; isNew: boolean; top: number }
+  | { type: "spread"; key: string; p: Tile; index: number; first: boolean }
+  | { type: "index"; key: string; p: CardPost; first: boolean; last: boolean; withName: boolean };
+
+const itemKey = (it: Item) => it.key;
+
+/** Spreads onder elkaar; de eerste draagt de `paddingTop: SEAM` van het oude omhulsel. */
+function pushSpreads(out: Item[], prefix: string, posts: Tile[]) {
+  if (!posts.length) {
+    out.push({ type: "spacer", key: `${prefix}:spacer` });
+    return;
+  }
+  posts.forEach((p, i) => out.push({ type: "spread", key: `${prefix}:s:${p.id}`, p, index: i, first: i === 0 }));
+}
+
+/** De inhoudsopgave als losse rijen; zie `IndexRow` voor de marges van het oude omhulsel. */
+function pushIndex(out: Item[], prefix: string, posts: CardPost[], withName: boolean) {
+  if (!posts.length) {
+    out.push({ type: "indexEmpty", key: `${prefix}:empty` });
+    return;
+  }
+  posts.forEach((p, i) => out.push({ type: "index", key: `${prefix}:i:${p.id}`, p, first: i === 0, last: i === posts.length - 1, withName }));
+}
+
+/** De blokkop van een item, met wat erbij hoort per soort. */
+function Block({ f, b }: { f: Feed; b: BlockSpec }) {
+  const { t } = f;
+  const o = useOmslag();
+  switch (b.kind) {
+    case "alsoNew":
+      return (
+        <BlockHead
+          f={f}
+          fill={o.red}
+          kicker={`${t.secNew} · ${b.count} ${b.count === 1 ? t.post1 : t.posts}`}
+          kickRed
+          name={t.alsoNew}
+          nameSize={44}
+          act={{ label: t.markAllRead, onPress: f.markAllRead }}
+        />
+      );
+    case "contents":
+      return <BlockHead f={f} top={b.top} fill={o.ink} kicker={`${cap(t.alreadySeen)} · ${b.count} ${b.count === 1 ? t.post1 : t.posts}`} name={t.omContents} nameSize={44} />;
+    case "friend":
+      return <FriendBlockHead f={f} g={b.g} isNew={b.isNew} open={b.open} fresh={b.fresh} kicker={b.kicker} />;
+    case "time":
+      return (
+        <BlockHead
+          f={f}
+          top={b.top}
+          fill={o.ink}
+          kicker={`${b.range} · ${b.count} ${b.count === 1 ? t.post1 : t.posts}${b.newCount ? ` · ${b.newCount} ${t.new}` : ""}`}
+          kickRed={b.newCount > 0}
+          name={b.label}
+          nameSize={44}
+        />
+      );
+  }
 }
 
 // ---------------------------------------------------------------
@@ -283,39 +508,6 @@ function Views({ f }: { f: Feed }) {
 }
 
 // ---------------------------------------------------------------
-// Editie: ook nieuw, en de inhoud
-// ---------------------------------------------------------------
-
-function Edition({ f, alsoNew, rest }: { f: Feed; alsoNew: Tile[]; rest: Tile[] }) {
-  const { t } = f;
-  const o = useOmslag();
-  return (
-    <View>
-      {alsoNew.length ? (
-        <>
-          <BlockHead
-            f={f}
-            fill={o.red}
-            kicker={`${t.secNew} · ${alsoNew.length} ${alsoNew.length === 1 ? t.post1 : t.posts}`}
-            kickRed
-            name={t.alsoNew}
-            nameSize={44}
-            act={{ label: t.markAllRead, onPress: f.markAllRead }}
-          />
-          <Spreads f={f} posts={alsoNew} />
-        </>
-      ) : null}
-      {rest.length ? (
-        <>
-          <BlockHead f={f} top={alsoNew.length ? 34 : SEAM} fill={o.ink} kicker={`${cap(t.alreadySeen)} · ${rest.length} ${rest.length === 1 ? t.post1 : t.posts}`} name={t.omContents} nameSize={44} />
-          <Index f={f} posts={rest} />
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------
 // Blokkop, spreads en index — dezelfde vorm als desktop, op telefoonmaat
 // ---------------------------------------------------------------
 
@@ -396,196 +588,178 @@ function BlockHead({
   );
 }
 
-function Spreads({ f, posts }: { f: Feed; posts: Tile[] }) {
-  const { t, lang } = f;
+/**
+ * Eén spread. `memo`, met alleen stabiele props: bij het openklappen van
+ * een vriend of een nieuwe reactie hoeven de spreads die al stonden niet
+ * opnieuw getekend.
+ */
+const SpreadRow = memo(function SpreadRow({
+  p,
+  index,
+  first,
+  number,
+  mine,
+  onOpen,
+  onPrivate,
+  t,
+  lang,
+}: {
+  p: Tile;
+  index: number;
+  /** De eerste van een reeks: de `paddingTop: SEAM` van het oude omhulsel. */
+  first: boolean;
+  number: string;
+  mine: boolean;
+  onOpen: (p: CardPost) => void;
+  onPrivate: (g: { authorId: string; name: string }, p?: CardPost) => void;
+  t: Dict;
+  lang: Lang;
+}) {
   const o = useOmslag();
+  const fc = friendColor(p.hue, o.scheme);
   return (
-    <View style={{ paddingTop: SEAM }}>
-      {posts.map((p, i) => {
-        const fc = friendColor(p.hue, o.scheme);
-        return (
-          // Bewust géén `accessibilityRole="button"`: op web wordt dat een
-          // <button>, en daar mag de knop "Bericht" niet in.
-          <Spread
-            key={p.id}
-            index={i}
-            page="feed"
-            fill={fc.fill}
-            ink={fc.ink}
-            rail={`№ ${f.numberOf(p.id)} · ${p.authorName} · ${timeLabel(p.createdAt, t, lang)}`}
-            onPress={() => f.openPost(p)}
-            accessibilityLabel={p.title}
-            media={<KindPreview post={p} scheme={o.scheme} variant="papier" />}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              {p.isNew ? <NewTag label={t.new} size={8} /> : null}
-              <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
-            </View>
-            <SpreadTitle ink={fc.ink}>{p.untitled ? p.caption || p.kind : p.title}</SpreadTitle>
-            <View style={{ gap: 10 }}>
-              {p.caption && !p.untitled ? (
-                <SpreadCaption ink={fc.ink} numberOfLines={2}>
-                  {p.caption}
-                </SpreadCaption>
-              ) : null}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.comment} ${p.commentCount}`}
-                  onPress={() => f.openPost(p)}
-                  style={{ paddingVertical: 13, marginVertical: -13 }}
-                >
-                  <SpreadKicker ink={fc.ink}>
-                    {t.comment}
-                    {p.commentCount ? ` · ${p.commentCount}` : ""}
-                  </SpreadKicker>
-                </Pressable>
-                {f.isMine(p.authorId) ? null : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t.privateMsg}
-                    onPress={() => f.privateAbout({ authorId: p.authorId, name: p.authorName }, p)}
-                    style={{ paddingVertical: 13, marginVertical: -13 }}
-                  >
-                    <SpreadKicker ink={fc.ink}>{t.privateShort}</SpreadKicker>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          </Spread>
-        );
-      })}
-    </View>
-  );
-}
-
-/** Wat je al zag, en een ingeklapte vriend: rode nummers en titels, tussen lijnen van 2. */
-function Index({ f, posts, withName = true }: { f: Feed; posts: CardPost[]; withName?: boolean }) {
-  const { t, lang } = f;
-  const o = useOmslag();
-  const hueOf = new Map(f.groups.map((g) => [g.key, g.hue]));
-  return (
-    <View style={{ marginHorizontal: PAD - 6, marginTop: SEAM, borderBottomWidth: OMSLAG.rule, borderBottomColor: o.ink }}>
-      {posts.map((p) => (
-        <Pressable
-          key={p.id}
-          accessibilityRole="link"
-          accessibilityLabel={p.title}
-          onPress={() => f.openPost(p)}
-          style={({ pressed }) => ({ flexDirection: "row", alignItems: "baseline", gap: 14, paddingTop: 12, paddingBottom: 11, borderTopWidth: OMSLAG.rule, borderTopColor: o.ink, opacity: pressed ? 0.7 : 1 })}
-        >
-          <Black size={30} f={0.8} ls={-0.04} style={{ width: 48 }}>
-            {f.numberOf(p.id)}
-          </Black>
-          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              {withName ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: friendColor(p.swatch ?? hueOf.get(p.authorId) ?? "orange", o.scheme).fill }} /> : null}
-              <Label size={9} ls={0.08} style={{ flexShrink: 1 }}>
-                {withName ? `${p.authorName} · ` : ""}
-                {p.kind} · {timeLabel(p.createdAt, t, lang)}
-              </Label>
-            </View>
-            <Ser size={22} italic f={1.05} numberOfLines={2}>
-              {p.untitled ? p.caption || p.kind : p.title}
-            </Ser>
+    <View style={first ? { paddingTop: SEAM } : null}>
+      {/* Bewust géén `accessibilityRole="button"`: op web wordt dat een
+          <button>, en daar mag de knop "Bericht" niet in. */}
+      <Spread
+        index={index}
+        page="feed"
+        fill={fc.fill}
+        ink={fc.ink}
+        rail={`№ ${number} · ${p.authorName} · ${timeLabel(p.createdAt, t, lang)}`}
+        onPress={() => onOpen(p)}
+        accessibilityLabel={p.title}
+        media={<KindPreview post={p} scheme={o.scheme} variant="papier" />}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {p.isNew ? <NewTag label={t.new} size={8} /> : null}
+          <SpreadKicker ink={fc.ink}>{p.kind}</SpreadKicker>
+        </View>
+        <SpreadTitle ink={fc.ink}>{p.untitled ? p.caption || p.kind : p.title}</SpreadTitle>
+        <View style={{ gap: 10 }}>
+          {p.caption && !p.untitled ? (
+            <SpreadCaption ink={fc.ink} numberOfLines={2}>
+              {p.caption}
+            </SpreadCaption>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${t.comment} ${p.commentCount}`}
+              onPress={() => onOpen(p)}
+              style={{ paddingVertical: 13, marginVertical: -13 }}
+            >
+              <SpreadKicker ink={fc.ink}>
+                {t.comment}
+                {p.commentCount ? ` · ${p.commentCount}` : ""}
+              </SpreadKicker>
+            </Pressable>
+            {mine ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.privateMsg}
+                onPress={() => onPrivate({ authorId: p.authorId, name: p.authorName }, p)}
+                style={{ paddingVertical: 13, marginVertical: -13 }}
+              >
+                <SpreadKicker ink={fc.ink}>{t.privateShort}</SpreadKicker>
+              </Pressable>
+            )}
           </View>
-        </Pressable>
-      ))}
+        </View>
+      </Spread>
     </View>
   );
-}
+});
+
+/**
+ * Eén rij van de inhoudsopgave (wat je al zag, en een ingeklapte vriend):
+ * rode nummers en titels, tussen lijnen van 2.
+ *
+ * Het omhulsel van de hele opgave (marge, `marginTop: SEAM`, de onderlijn)
+ * staat nu per rij: marge op elke rij, de bovenmarge op de eerste en de
+ * onderlijn onder de laatste. `hue` is `null` zonder naam (een ingeklapte
+ * vriend: daar staat de naam al in de kop).
+ */
+const IndexRow = memo(function IndexRow({
+  p,
+  number,
+  hue,
+  first,
+  last,
+  onOpen,
+  t,
+  lang,
+}: {
+  p: CardPost;
+  number: string;
+  hue: Hue | null;
+  first: boolean;
+  last: boolean;
+  onOpen: (p: CardPost) => void;
+  t: Dict;
+  lang: Lang;
+}) {
+  const o = useOmslag();
+  const withName = hue !== null;
+  return (
+    <View
+      style={{
+        marginHorizontal: PAD - 6,
+        ...(first ? { marginTop: SEAM } : null),
+        ...(last ? { borderBottomWidth: OMSLAG.rule, borderBottomColor: o.ink } : null),
+      }}
+    >
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={p.title}
+        onPress={() => onOpen(p)}
+        style={({ pressed }) => ({ flexDirection: "row", alignItems: "baseline", gap: 14, paddingTop: 12, paddingBottom: 11, borderTopWidth: OMSLAG.rule, borderTopColor: o.ink, opacity: pressed ? 0.7 : 1 })}
+      >
+        <Black size={30} f={0.8} ls={-0.04} style={{ width: 48 }}>
+          {number}
+        </Black>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {withName ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: friendColor(hue, o.scheme).fill }} /> : null}
+            <Label size={9} ls={0.08} style={{ flexShrink: 1 }}>
+              {withName ? `${p.authorName} · ` : ""}
+              {p.kind} · {timeLabel(p.createdAt, t, lang)}
+            </Label>
+          </View>
+          <Ser size={22} italic f={1.05} numberOfLines={2}>
+            {p.untitled ? p.caption || p.kind : p.title}
+          </Ser>
+        </View>
+      </Pressable>
+    </View>
+  );
+});
 
 // ---------------------------------------------------------------
 // Per vriend en op tijd
 // ---------------------------------------------------------------
 
-function ByFriend({ f }: { f: Feed }) {
-  const { t } = f;
-  const o = useOmslag();
-  const { neu, old } = f.sections;
-  const all = [...neu, ...old];
-  const two = (n: number) => String(n).padStart(2, "0");
-  return (
-    <View>
-      {all.map((g, gi) => {
-        const isNew = gi < neu.length;
-        const first = gi === 0 || gi === neu.length;
-        return (
-          <View key={g.key}>
-            {first ? (
-              <View style={{ marginTop: isNew || !neu.length ? 18 : 34, marginHorizontal: PAD, marginBottom: 2, flexDirection: "row", alignItems: "center" }}>
-                <Label size={11} ls={0.08} color={isNew ? o.red : o.ink} style={{ flex: 1 }}>
-                  {isNew ? t.secNew : t.secSeen}
-                </Label>
-                {isNew ? (
-                  <LabelLink size={9} onPress={f.markAllRead}>
-                    {t.markAllRead}
-                  </LabelLink>
-                ) : null}
-              </View>
-            ) : null}
-            <FriendBlock f={f} g={g} isNew={isNew} kicker={`${two(gi + 1)} / ${two(all.length)}`} />
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function FriendBlock({ f, g, isNew, kicker }: { f: Feed; g: FriendGroup; isNew: boolean; kicker: string }) {
+/** De kop van één vriend in Per vriend; zijn spreads of opgave volgen als losse items. */
+function FriendBlockHead({ f, g, isNew, open, fresh, kicker }: { f: Feed; g: FriendGroup; isNew: boolean; open: boolean; fresh: number; kicker: string }) {
   const { t } = f;
   const o = useOmslag();
   const fc = friendColor(g.hue, o.scheme);
-  const open = f.isOpen(g.key);
-  const fresh = f.freshIn(g).length;
   const n = g.posts.length;
   const canPrivate = !g.isGroup && !f.isMine(g.authorId);
-  const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: p.swatch ?? g.hue, isNew: !f.seen.has(p.id) }));
   return (
-    <>
-      <BlockHead
-        f={f}
-        fill={fc.fill}
-        bg={isNew ? o.tint(fc.fill) : "transparent"}
-        kicker={`${kicker} · ${isNew ? `${fresh} ${t.new}` : t.read} · ${n} ${n === 1 ? t.post1 : t.posts}`}
-        kickRed={isNew}
-        name={g.name}
-        nameSize={isNew ? 40 : 30}
-        onName={() => f.openProfile(g)}
-        sub={g.bio || (g.isGroup ? t.group : undefined)}
-        act={canPrivate && isNew ? { label: `${t.omPrivateTo} ${g.name}`, onPress: () => f.privateAbout(g) } : undefined}
-        toggle={{ open, onPress: () => f.toggleOpen(g.key) }}
-      />
-      {open ? <Spreads f={f} posts={tiles} /> : <Index f={f} posts={g.posts} withName={false} />}
-    </>
-  );
-}
-
-function ByTime({ f }: { f: Feed }) {
-  const { t } = f;
-  const o = useOmslag();
-  const hueOf = new Map(f.groups.map((g) => [g.key, g.hue]));
-  return (
-    <View>
-      {f.timeGroups.map((tg, i) => {
-        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !f.seen.has(p.id) }));
-        const n = tiles.filter((p) => p.isNew).length;
-        return (
-          <View key={tg.key}>
-            <BlockHead
-              f={f}
-              top={i ? 34 : SEAM}
-              fill={o.ink}
-              kicker={`${tg.range} · ${tg.posts.length} ${tg.posts.length === 1 ? t.post1 : t.posts}${n ? ` · ${n} ${t.new}` : ""}`}
-              kickRed={n > 0}
-              name={tg.label}
-              nameSize={44}
-            />
-            <Spreads f={f} posts={tiles} />
-          </View>
-        );
-      })}
-    </View>
+    <BlockHead
+      f={f}
+      fill={fc.fill}
+      bg={isNew ? o.tint(fc.fill) : "transparent"}
+      kicker={`${kicker} · ${isNew ? `${fresh} ${t.new}` : t.read} · ${n} ${n === 1 ? t.post1 : t.posts}`}
+      kickRed={isNew}
+      name={g.name}
+      nameSize={isNew ? 40 : 30}
+      onName={() => f.openProfile(g)}
+      sub={g.bio || (g.isGroup ? t.group : undefined)}
+      act={canPrivate && isNew ? { label: `${t.omPrivateTo} ${g.name}`, onPress: () => f.privateAbout(g) } : undefined}
+      toggle={{ open, onPress: () => f.toggleOpen(g.key) }}
+    />
   );
 }
 

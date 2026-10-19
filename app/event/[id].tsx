@@ -58,6 +58,7 @@ import { supabase } from "@/lib/supabase/client";
 import { usePageTitle } from "@/lib/page-title";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { hhmm } from "@/lib/lincin/model";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 const LOCALE: Record<Lang, string> = { nl: "nl-BE", en: "en-GB", de: "de-DE" };
 
@@ -308,11 +309,18 @@ export default function EventDetailScreen() {
     let failed = 0;
     for (const [i, asset] of result.assets.entries()) {
       try {
+        // Foto's verkleind vóór de upload; een video gaat er onaangeroerd
+        // door (lib/image-prep.ts laat hem ook zelf met rust).
+        const prepared =
+          asset.type === "video"
+            ? null
+            : await prepareImageForUpload(asset.uri, { mimeType: asset.mimeType, width: asset.width, height: asset.height });
         await contributeToEvent({
           eventId,
           userId: myUserId,
-          imageUri: asset.uri,
+          imageUri: prepared?.uri ?? asset.uri,
           mimeType:
+            prepared?.mimeType ??
             asset.mimeType ??
             (asset.type === "video" ? "video/mp4" : "image/jpeg"),
         });

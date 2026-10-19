@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
+import { IMG, stableCacheKey } from "@/lib/media";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useState, type ReactNode } from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
@@ -625,7 +626,18 @@ function ContributionTile({
           onPress={onOpen}
           style={[{ width: "100%", height: "100%" }, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
         >
-          <Image source={{ uri: c.image_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} />
+          {/* De tegel krijgt al de verkleinde variant (`IMG.tile`, lib/api/events.ts).
+              Een sleutel zonder token houdt hem in de schijfcache over een
+              nieuwe ondertekening heen; `recyclingKey` laat een hergebruikte
+              cel niet even de vorige foto tonen. */}
+          <Image
+            source={{ uri: c.image_url, cacheKey: stableCacheKey(c.image_url, IMG.tile) }}
+            cachePolicy="disk"
+            recyclingKey={c.id}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={150}
+          />
         </Pressable>
       ) : (
         <View style={{ flex: 1, padding: 14, justifyContent: "center", backgroundColor: "transparent" }}>

@@ -24,6 +24,7 @@ import { getProfile } from "@/lib/api/profiles";
 import { uriToBytes } from "@/lib/crypto/file";
 import { color, hueFor, RASTER, useThemeSpec } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * Groep info, in de vorm van het thema (components/lincin/SubPage).
@@ -86,8 +87,10 @@ export default function GroupInfoScreen() {
     const asset = result.assets[0];
     setAvatarUploading(true);
     try {
-      const bytes = await uriToBytes(asset.uri);
-      const url = await uploadGroupAvatar(chatId, myUserId, bytes, asset.mimeType ?? "image/jpeg");
+      // Een groepsfoto is een avatar: 1024 aan de langste kant is ruim (lib/image-prep.ts).
+      const prepared = await prepareImageForUpload(asset.uri, { maxDim: 1024, mimeType: asset.mimeType, width: asset.width, height: asset.height });
+      const bytes = await uriToBytes(prepared.uri);
+      const url = await uploadGroupAvatar(chatId, myUserId, bytes, prepared.mimeType ?? "image/jpeg");
       setLocalAvatarUrl(url);
       await qc.invalidateQueries({ queryKey: ["chat-row", chatId] });
       await qc.invalidateQueries({ queryKey: ["chats"] });

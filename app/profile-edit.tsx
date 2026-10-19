@@ -25,6 +25,7 @@ import { sans, serif } from "@/lib/design/type";
 import { humanizeError } from "@/lib/errors";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * Je profiel bewerken, in de vorm van het thema (components/lincin/SubPage).
@@ -139,8 +140,11 @@ export default function ProfileEditScreen() {
     try {
       let newAvatarUrl: string | null | undefined = undefined;
       if (pendingAvatar) {
-        const bytes = await uriToBytes(pendingAvatar.uri);
-        newAvatarUrl = await uploadAvatar(myUserId, bytes, pendingAvatar.mimeType);
+        // Een avatar staat nooit groter dan een paar honderd punten; 1024 is
+        // ruim voor retina en scheelt megabytes ten opzichte van het origineel.
+        const prepared = await prepareImageForUpload(pendingAvatar.uri, { maxDim: 1024, mimeType: pendingAvatar.mimeType });
+        const bytes = await uriToBytes(prepared.uri);
+        newAvatarUrl = await uploadAvatar(myUserId, bytes, prepared.mimeType ?? pendingAvatar.mimeType);
       }
       await updateMyProfile(myUserId, {
         username: username.toLowerCase(),

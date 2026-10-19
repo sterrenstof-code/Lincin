@@ -1,4 +1,16 @@
-import { Pressable, ScrollView, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { useCallback, type ReactElement, type ReactNode } from "react";
+import {
+  FlatList,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type ListRenderItemInfo,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 
 import { color, RASTER } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
@@ -37,7 +49,7 @@ export const SEAM = RASTER.seam;
  * Onderaan blijft `NAV_CLEARANCE` vrij: de zwevende pil van modern ligt
  * over de scroller heen.
  */
-export function Bento({ children }: { children: React.ReactNode }) {
+export function Bento({ children }: { children: ReactNode }) {
   return (
     <ScrollView
       style={[{ flex: 1 }, vfade()]}
@@ -55,6 +67,77 @@ export function Bento({ children }: { children: React.ReactNode }) {
     </ScrollView>
   );
 }
+
+/**
+ * Het rooster als gevirtualiseerde lijst, voor een pagina met een lijst
+ * die blijft groeien (feed, meldingen, events).
+ *
+ * `Bento` zet álle tegels in één wrap-container. Prima voor tien tegels,
+ * maar de feed heeft er zestig, elk met een foto: die werden allemaal
+ * tegelijk gemount en gedecodeerd, ook de vijftig die je nog niet zag.
+ * Een `FlatList` tekent alleen wat (bijna) in beeld staat.
+ *
+ * Hoe hij er pixel voor pixel hetzelfde uit blijft zien: een wrap-rooster
+ * is niets anders dan een stapel rijen. Een tegel van twee kolommen staat
+ * op 100% en dus altijd alleen; halve tegels vullen twee aan twee een rij,
+ * en een losse halve tegel groeit (`flexGrow`) tot de volle breedte. De
+ * pagina geeft daarom per item een BAND — één hele tegel, of twee halve —
+ * en elke band is zelf weer dezelfde wrap-container met dezelfde naad.
+ * De naad tússen de banden is een `marginTop` van `SEAM`, precies wat de
+ * `gap` van het oude rooster tussen twee regels zette.
+ *
+ * Kop en voet (titeltegel, eindkaart) zijn óók banden, zodat ze in de
+ * maat van het rooster blijven staan.
+ */
+export function BentoList<T>({
+  data,
+  renderItem,
+  keyExtractor,
+  header,
+  footer,
+}: {
+  data: readonly T[];
+  /** Eén band: één tegel over twee kolommen, of één of twee halve. Stabiel houden (useCallback). */
+  renderItem: (item: T) => ReactElement | null;
+  keyExtractor: (item: T) => string;
+  /** Wat vóór de lijst staat. Laat weg (of `null`) als er niets is. */
+  header?: ReactNode;
+  /** Wat na de lijst staat. `null` als er niets is — een lege band zou een naad te veel geven. */
+  footer?: ReactNode;
+}) {
+  const hasHeader = header != null && header !== false;
+  const renderCell = useCallback(
+    ({ item, index }: ListRenderItemInfo<T>) => (
+      <View style={index > 0 || hasHeader ? BAND_NEXT : BAND}>{renderItem(item)}</View>
+    ),
+    [renderItem, hasHeader],
+  );
+  const hasFooter = footer != null && footer !== false;
+  return (
+    <FlatList
+      style={[{ flex: 1 }, vfade()]}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: SEAM, paddingBottom: NAV_CLEARANCE }}
+      data={data}
+      renderItem={renderCell}
+      keyExtractor={keyExtractor}
+      ListHeaderComponent={hasHeader ? <View style={BAND}>{header}</View> : null}
+      ListFooterComponent={hasFooter ? <View style={data.length || hasHeader ? BAND_NEXT : BAND}>{footer}</View> : null}
+      // Eén scherm vol en een beetje: een band is 76 tot 300 hoog.
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      windowSize={7}
+      // Op native scheelt het geheugen en teken-tijd; op web doet de prop
+      // niets nuttigs en kan hij inhoud laten verdwijnen bij snel scrollen.
+      removeClippedSubviews={Platform.OS !== "web"}
+    />
+  );
+}
+
+/** Eén band van het rooster: dezelfde wrap-container als `Bento`, zonder buitenmarge. */
+const BAND: ViewStyle = { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: SEAM };
+/** Een band onder een andere: de naad ertussen. */
+const BAND_NEXT: ViewStyle = { ...BAND, marginTop: SEAM };
 
 /**
  * Eén tegel. `span` is 1 (een halve kolom) of 2 (de volle breedte).

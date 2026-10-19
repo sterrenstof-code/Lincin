@@ -27,6 +27,7 @@ import { sans, serif } from "@/lib/design/type";
 import { usePageTitle } from "@/lib/page-title";
 import { buildFriendCodeUrl, copyToClipboard, shareText } from "@/lib/share";
 import { supabase } from "@/lib/supabase/client";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * De stappen na het aanmaken van een account (Login Voorbeeld 1c–1d):
@@ -74,8 +75,10 @@ function PhotoStep({ userId, onNext }: { userId: string; onNext: () => void }) {
     setPreview(asset.uri);
     setBusy(true);
     try {
-      const bytes = await uriToBytes(asset.uri);
-      const url = await uploadAvatar(userId, bytes, asset.mimeType ?? "image/jpeg");
+      // Een avatar: 1024 aan de langste kant is ruim voor retina (zie lib/image-prep.ts).
+      const prepared = await prepareImageForUpload(asset.uri, { maxDim: 1024, mimeType: asset.mimeType, width: asset.width, height: asset.height });
+      const bytes = await uriToBytes(prepared.uri);
+      const url = await uploadAvatar(userId, bytes, prepared.mimeType ?? "image/jpeg");
       await updateMyProfile(userId, { avatar_url: url });
       await qc.invalidateQueries({ queryKey: ["profile", userId] });
     } catch (e: any) {

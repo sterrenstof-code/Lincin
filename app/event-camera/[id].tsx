@@ -20,6 +20,7 @@ import { contributeToEvent } from "@/lib/api/events";
 import { color, ON_DARK, ON_LIGHT, useThemeSpec, type LincinTheme } from "@/lib/design/theme";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * Full-screen camera. Tap shutter → preview verschijnt met Plaats /
@@ -42,7 +43,7 @@ export default function EventCameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>("back");
   const [flash, setFlash] = useState<"off" | "on">("off");
-  const [preview, setPreview] = useState<{ uri: string; mimeType?: string } | null>(null);
+  const [preview, setPreview] = useState<{ uri: string; mimeType?: string; width?: number; height?: number } | null>(null);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export default function EventCameraScreen() {
         skipProcessing: false,
       });
       if (!photo?.uri) return;
-      setPreview({ uri: photo.uri });
+      setPreview({ uri: photo.uri, width: photo.width, height: photo.height });
     } catch (e: any) {
       setError(e?.message ?? "Kon geen foto maken.");
     }
@@ -70,11 +71,14 @@ export default function EventCameraScreen() {
     setSending(true);
     setError(null);
     try {
+      // De camera levert de volle sensor (12 MP en meer); verkleind vóór de
+      // upload, pas bij versturen, zodat de voorvertoning meteen staat.
+      const prepared = await prepareImageForUpload(preview.uri, { mimeType: preview.mimeType, width: preview.width, height: preview.height });
       await contributeToEvent({
         eventId,
         userId: myUserId,
-        imageUri: preview.uri,
-        mimeType: preview.mimeType ?? "image/jpeg",
+        imageUri: prepared.uri,
+        mimeType: prepared.mimeType ?? preview.mimeType ?? "image/jpeg",
       });
       await qc.invalidateQueries({ queryKey: ["event-contributions", eventId] });
       await qc.invalidateQueries({ queryKey: ["event", eventId] });

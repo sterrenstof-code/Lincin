@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n";
 import { EmojiPicker } from "./EmojiPicker";
 import { MentionSuggestions, useMentionSuggest } from "./MentionSuggest";
 import { BORDER, Btn, GUTTER, Mono } from "./ui";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 /**
  * De balk onderaan een bladzijde en een gesprek (README §02, §05):
@@ -433,8 +434,13 @@ export function ReactBox({
       allowsEditing: false,
       selectionLimit: 1,
     });
-    const uri = result.canceled ? null : result.assets?.[0]?.uri ?? null;
-    if (uri) onImage(uri);
+    const asset = result.canceled ? null : result.assets?.[0] ?? null;
+    if (!asset?.uri) return;
+    // `quality: 1` blijft: lager laat iOS een GIF omzetten naar een stilstaande
+    // JPEG. Een gewone foto verkleinen we hier zelf; een GIF laat
+    // prepareImageForUpload met rust.
+    const prepared = await prepareImageForUpload(asset.uri, { mimeType: asset.mimeType, width: asset.width, height: asset.height });
+    onImage(prepared.uri);
   }
 
   return (

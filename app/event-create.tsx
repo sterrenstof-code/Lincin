@@ -19,6 +19,7 @@ import { color, friendColor, hueFor, useScheme, useThemeSpec, type Hue } from "@
 import { sans, serif } from "@/lib/design/type";
 import { useUnsavedGuard } from "@/lib/unsaved";
 import { usePageTitle } from "@/lib/page-title";
+import { prepareImageForUpload } from "@/lib/image-prep";
 
 function plusHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 3_600_000);
@@ -145,8 +146,12 @@ export default function EventCreateScreen() {
       selectionLimit: 1,
     });
     if (result.canceled || !result.assets[0]) return;
-    setCoverUri(result.assets[0].uri);
-    setCoverMime(result.assets[0].mimeType ?? "image/jpeg");
+    // Verkleind vóór hij in het vak komt: de cover gaat zo de bucket in,
+    // en een origineel van 12 MB is daar alleen maar gewicht.
+    const a = result.assets[0];
+    const prepared = await prepareImageForUpload(a.uri, { mimeType: a.mimeType, width: a.width, height: a.height });
+    setCoverUri(prepared.uri);
+    setCoverMime(prepared.mimeType ?? "image/jpeg");
     setCoverChanged(true);
   }
 

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import { IMG, stableCacheKey } from "@/lib/media";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
@@ -181,7 +182,15 @@ function RowMagazine({ r, onOpen }: RowProps) {
       <View style={{ width: 200, overflow: "hidden", borderRightWidth: 1, borderRightColor: color("ink", "postRule") }}>
         {cover ? (
           <>
-            <Image source={{ uri: cover }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={150} />
+            {/* Al de tegelvariant (`IMG.tile` in listMyEvents); de sleutel zonder token houdt hem in de cache. */}
+            <Image
+              source={{ uri: cover, cacheKey: stableCacheKey(cover, IMG.tile) }}
+              cachePolicy="disk"
+              recyclingKey={r.e.id}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              contentFit="cover"
+              transition={150}
+            />
             <Scrim css="linear-gradient(0deg,rgba(16,16,12,.66),rgba(16,16,12,0))" style={{ left: 0, right: 0, bottom: 0, height: 72 }} />
             <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingVertical: 14, paddingHorizontal: 20 }}>
               <Label size={10} color={OMSLAG.onImage}>

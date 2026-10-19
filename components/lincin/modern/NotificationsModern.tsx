@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { Platform, Pressable, Text, View, type TextStyle } from "react-native";
 
 import { LincinScreen } from "@/components/lincin/Chrome";
@@ -5,7 +6,7 @@ import { color, friendColor, hueFor, type Scheme } from "@/lib/design/theme";
 import { mono, sans } from "@/lib/design/type";
 import type { Dict } from "@/lib/i18n";
 
-import { Bento, Counter, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
+import { BentoList, Counter, DashedTile, Tile, TileMeta, TitleTile } from "./Bento";
 
 /**
  * Meldingen in modern (prototype `MELDINGEN · MODERN`).
@@ -50,61 +51,75 @@ export function NotificationsModern({
   /** "Alles gelezen" — alleen getoond als er iets ongelezen is. */
   onMarkAll?: () => void;
 }) {
+  // Eén melding per band; stabiel zolang het thema gelijk blijft.
+  const renderRow = useCallback((n: NoteRowData) => <NoteTile n={n} scheme={scheme} />, [scheme]);
   return (
     <LincinScreen tab="you" counter={t.notifications} back="/profile">
-      <Bento>
-        <TitleTile
-          title={t.notifications}
-          meta={
-            // De teller met eronder "Alles gelezen": dezelfde mono-link als
-            // de Meldingen-kolom op desktop (desktop-modern-pages, jij).
-            <View style={{ alignItems: "flex-end", gap: 8 }}>
-              <Counter>{`${unread} ${t.new}`}</Counter>
-              {unread > 0 && onMarkAll ? (
-                <Pressable accessibilityRole="button" onPress={onMarkAll} hitSlop={12} style={Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null}>
-                  <Text style={linkStyle()}>{t.allRead}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          }
-        />
-        {state ? (
-          <Tile span={2}>
-            <TileMeta>{state}</TileMeta>
-          </Tile>
-        ) : null}
-        {rows.map((n) => {
-          const fc = friendColor(hueFor(n.actorId), scheme);
-          return (
-            <Tile
-              key={n.key}
-              span={2}
-              pad={16}
-              onPress={n.onPress}
-              accessibilityLabel={`${n.by} ${n.text}`}
-              style={{ flexDirection: "row", alignItems: "center", gap: 14, minHeight: 72 }}
-            >
-              <View style={{ flexShrink: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: fc.fill }} />
-              <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-                <Text style={{ ...sans(400), fontSize: 14, lineHeight: 19, color: color("ink") }}>
-                  {n.by ? <Text style={{ ...sans(600) }}>{n.by} </Text> : null}
-                  {n.text}
-                </Text>
-                <TileMeta>{n.when}</TileMeta>
-              </View>
-              {n.unread ? (
-                <View style={{ flexShrink: 0, width: 7, height: 7, borderRadius: 3.5, backgroundColor: color("red") }} />
-              ) : null}
-            </Tile>
-          );
-        })}
-        {!rows.length && !state && emptyLabel && onEmptyPress ? (
-          <DashedTile label={emptyLabel} onPress={onEmptyPress} />
-        ) : null}
-      </Bento>
+      <BentoList
+        data={rows}
+        renderItem={renderRow}
+        keyExtractor={noteKey}
+        footer={!rows.length && !state && emptyLabel && onEmptyPress ? <DashedTile label={emptyLabel} onPress={onEmptyPress} /> : null}
+        header={
+          <>
+            <TitleTile
+              title={t.notifications}
+              meta={
+                // De teller met eronder "Alles gelezen": dezelfde mono-link als
+                // de Meldingen-kolom op desktop (desktop-modern-pages, jij).
+                <View style={{ alignItems: "flex-end", gap: 8 }}>
+                  <Counter>{`${unread} ${t.new}`}</Counter>
+                  {unread > 0 && onMarkAll ? (
+                    <Pressable accessibilityRole="button" onPress={onMarkAll} hitSlop={12} style={Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null}>
+                      <Text style={linkStyle()}>{t.allRead}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              }
+            />
+            {state ? (
+              <Tile span={2}>
+                <TileMeta>{state}</TileMeta>
+              </Tile>
+            ) : null}
+          </>
+        }
+      />
     </LincinScreen>
   );
 }
+
+const noteKey = (n: NoteRowData) => n.key;
+
+/**
+ * Eén melding. `memo`: bij "Alles gelezen" verandert alleen de stip, en
+ * dan hoeven de veertig andere rijen niet opnieuw getekend. Dat werkt
+ * omdat `notifications.tsx` de rijen (en hun `onPress`) memoiseert.
+ */
+const NoteTile = memo(function NoteTile({ n, scheme }: { n: NoteRowData; scheme: Scheme }) {
+  const fc = friendColor(hueFor(n.actorId), scheme);
+  return (
+    <Tile
+      span={2}
+      pad={16}
+      onPress={n.onPress}
+      accessibilityLabel={`${n.by} ${n.text}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: 14, minHeight: 72 }}
+    >
+      <View style={{ flexShrink: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: fc.fill }} />
+      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        <Text style={{ ...sans(400), fontSize: 14, lineHeight: 19, color: color("ink") }}>
+          {n.by ? <Text style={{ ...sans(600) }}>{n.by} </Text> : null}
+          {n.text}
+        </Text>
+        <TileMeta>{n.when}</TileMeta>
+      </View>
+      {n.unread ? (
+        <View style={{ flexShrink: 0, width: 7, height: 7, borderRadius: 3.5, backgroundColor: color("red") }} />
+      ) : null}
+    </Tile>
+  );
+});
 
 /**
  * Mono 9px op `.16em`, kapitaal, gedempt en onderstreept — de link van het
