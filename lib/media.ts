@@ -185,6 +185,29 @@ function fresh(entry: Entry | null | undefined): string | null {
   return entry.expiresAt - REFRESH_MARGIN_MS > Date.now() ? entry.url : null;
 }
 
+function cacheKey(bucket: string, path: string, size: ImageSize): string {
+  return `${bucket}|${path}|${sizeKey(size)}`;
+}
+
+/** Een nog geldige URL uit het geheugen of van schijf, anders `null`. */
+function fromCache(key: string): string | null {
+  const cached = fresh(memory.get(key)) ?? fresh(readStored(key));
+  if (cached && !memory.has(key)) {
+    memory.set(key, { url: cached, expiresAt: Date.now() + TTL_SECONDS * 1000 });
+  }
+  return cached;
+}
+
+function remember(key: string, url: string): string {
+  const entry: Entry = { url, expiresAt: Date.now() + TTL_SECONDS * 1000 };
+  memory.set(key, entry);
+  writeStored(key, entry);
+  return url;
+}
+
+/** Zoveel paden per `createSignedUrls`-aanroep; ruim onder wat de API aankan. */
+const SIGN_BATCH = 100;
+
 /**
  * Signed URL voor één bestand, verkleind en onthouden.
  * Geeft `null` terug als het bestand niet te ondertekenen is — de
@@ -196,13 +219,10 @@ export async function signedImageUrl(
   size: ImageSize
 ): Promise<string | null> {
   if (!path) return null;
-  const key = `${bucket}|${path}|${sizeKey(size)}`;
+  const key = cacheKey(bucket, path, size);
 
-  const cached = fresh(memory.get(key)) ?? fresh(readStored(key));
-  if (cached) {
-    if (!memory.has(key)) memory.set(key, { url: cached, expiresAt: Date.now() + TTL_SECONDS * 1000 });
-    return cached;
-  }
+  const cached = fromCache(key);
+  if (cached) return cached;
 
   const running = inflight.get(key);
   if (running) return running;
@@ -214,10 +234,7 @@ export async function signedImageUrl(
         ? { transform: { width: size.width, height: size.height, resize: size.resize, quality: size.quality ?? 72 } }
         : undefined);
     if (error || !data?.signedUrl) return null;
-    const entry: Entry = { url: data.signedUrl, expiresAt: Date.now() + TTL_SECONDS * 1000 };
-    memory.set(key, entry);
-    writeStored(key, entry);
-    return entry.url;
+    return remember(key, data.signedUrl);
   })().finally(() => inflight.delete(key));
 
   inflight.set(key, task);
@@ -225,8 +242,18 @@ export async function signedImageUrl(
 }
 
 /**
- * Hetzelfde voor een lijst paden. Wat al in de cache zit kost niets; de
- * rest wordt naast elkaar opgehaald in plaats van na elkaar.
+ * Hetzelfde voor een lijst paden. Wat al in de cache zit kost niets.
+ *
+ * Bestanden die niet verkleind worden (gif, heic, …) gaan per honderd in
+ * één `createSignedUrls`. De rest kan dat niet: die batch-aanroep van
+ * Supabase Storage kent geen `transform`, en een signed URL zonder
+ * transform levert het origineel — precies de foto van 5 MB in een tegel
+ * die deze module moest voorkomen. Die blijven dus één aanroep per pad,
+ * naast elkaar, en daarna zeven dagen uit de cache.
+ *
+ * Een pad dat niet lukt valt alleen zelf weg, niet de hele lijst; net als
+ * bij `signedImageUrl` krijgt de aanroeper dan geen URL en toont hij zijn
+ * eigen plaatshouder.
  */
 export async function signedImageUrls(
   bucket: string,
@@ -235,11 +262,56 @@ export async function signedImageUrls(
 ): Promise<Map<string, string>> {
   const unique = Array.from(new Set(paths.filter((p): p is string => !!p)));
   const out = new Map<string, string>();
-  await Promise.all(
-    unique.map(async (p) => {
-      const url = await signedImageUrl(bucket, p, size);
-      if (url) out.set(p, url);
-    })
-  );
+  const waits: Promise<void>[] = [];
+  const toSign: string[] = [];
+  const collect = (p: string, task: Promise<string | null>) =>
+    waits.push(task.then((url) => { if (url) out.set(p, url); }));
+
+  for (const p of unique) {
+    if (transformable(p)) {
+      collect(p, signedImageUrl(bucket, p, size));
+      continue;
+    }
+    const key = cacheKey(bucket, p, size);
+    const cached = fromCache(key);
+    if (cached) {
+      out.set(p, cached);
+      continue;
+    }
+    const running = inflight.get(key);
+    if (running) collect(p, running);
+    else toSign.push(p);
+  }
+
+  for (let i = 0; i < toSign.length; i += SIGN_BATCH) {
+    const chunk = toSign.slice(i, i + SIGN_BATCH);
+    const batch = (async () => {
+      const signed = new Map<string, string>();
+      try {
+        const { data, error } = await supabase.storage.from(bucket).createSignedUrls(chunk, TTL_SECONDS);
+        if (error) return signed;
+        for (const row of data ?? []) {
+          // Per pad een eigen `error`: dat ene bestand valt weg, de rest niet.
+          if (row.path && row.signedUrl && !row.error) signed.set(row.path, row.signedUrl);
+        }
+      } catch {
+        // Netwerkfout: geen URL's, de aanroepers tonen hun plaatshouder.
+      }
+      return signed;
+    })();
+    for (const p of chunk) {
+      const key = cacheKey(bucket, p, size);
+      const task = batch
+        .then((signed) => {
+          const url = signed.get(p);
+          return url ? remember(key, url) : null;
+        })
+        .finally(() => inflight.delete(key));
+      inflight.set(key, task);
+      collect(p, task);
+    }
+  }
+
+  await Promise.all(waits);
   return out;
 }

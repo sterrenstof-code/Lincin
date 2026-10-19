@@ -63,39 +63,63 @@ export async function createSharedList(args: {
   return list as SharedListRow;
 }
 
+/**
+ * Lijsten met hun items en leden in één select.
+ *
+ * Dit waren drie vragen per lijst (de lijst, items, leden) plus de
+ * profielen. PostgREST neemt `list_items` en `list_members` mee via hun
+ * foreign key, en beide gaan door hun eigen policy (`can_see_list`) — er
+ * komt niets bij wat je los niet ook zag. Een lijst heeft hooguit een paar
+ * dozijn items, dus dat blijft klein. Daarna één vraag voor alle profielen.
+ */
+const LIST_SELECT =
+  "id, user_id, title, emoji, created_at, list_items(id, list_id, user_id, text, checked, checked_by, checked_at, position, created_at), list_members(user_id)";
+
+type SharedListEmbedded = SharedListRow & {
+  list_items: ListItem[] | null;
+  list_members: { user_id: string }[] | null;
+};
+
+async function withDetails(lists: SharedListEmbedded[]): Promise<SharedListWithDetails[]> {
+  if (lists.length === 0) return [];
+  const allIds = new Set<string>();
+  for (const l of lists) {
+    allIds.add(l.user_id);
+    (l.list_members ?? []).forEach((m) => allIds.add(m.user_id));
+  }
+  const profiles = await getProfiles(Array.from(allIds));
+  const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
+
+  return lists.map((list) => {
+    const items = list.list_items ?? [];
+    const memberIds = (list.list_members ?? []).map((m) => m.user_id);
+    return {
+      id: list.id,
+      user_id: list.user_id,
+      title: list.title,
+      emoji: list.emoji,
+      created_at: list.created_at,
+      author: profileMap[list.user_id] ?? null,
+      members: memberIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
+      items,
+      item_count: items.length,
+      checked_count: items.filter((i) => i.checked).length,
+    };
+  });
+}
+
 export async function getSharedListWithDetails(
   listId: string
 ): Promise<SharedListWithDetails | null> {
   const { data: list, error } = await supabase
     .from("shared_lists")
-    .select("id, user_id, title, emoji, created_at")
+    .select(LIST_SELECT)
     .eq("id", listId)
+    .order("position", { referencedTable: "list_items" })
     .single();
-  if (error) return null;
-
-  const [{ data: itemRows }, { data: memberRows }] = await Promise.all([
-    supabase
-      .from("list_items")
-      .select("id, list_id, user_id, text, checked, checked_by, checked_at, position, created_at")
-      .eq("list_id", listId)
-      .order("position"),
-    supabase.from("list_members").select("user_id").eq("list_id", listId),
-  ]);
-
-  const items = (itemRows ?? []) as ListItem[];
-  const memberIds = (memberRows ?? []).map((r: any) => r.user_id as string);
-  const allIds = Array.from(new Set([list.user_id, ...memberIds]));
-  const profiles = await getProfiles(allIds);
-  const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
-
-  return {
-    ...(list as SharedListRow),
-    author: profileMap[list.user_id] ?? null,
-    members: memberIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
-    items,
-    item_count: items.length,
-    checked_count: items.filter((i) => i.checked).length,
-  };
+  if (error || !list) return null;
+  const [details] = await withDetails([list as unknown as SharedListEmbedded]);
+  return details ?? null;
 }
 
 export async function listMySharedLists(userId: string): Promise<SharedListWithDetails[]> {
@@ -108,17 +132,13 @@ export async function listMySharedLists(userId: string): Promise<SharedListWithD
 
   const { data: lists, error } = await supabase
     .from("shared_lists")
-    .select("id, user_id, title, emoji, created_at")
+    .select(LIST_SELECT)
     .or(`user_id.eq.${userId}${memberListIds.length > 0 ? `,id.in.(${memberListIds.join(",")})` : ""}`)
     .order("created_at", { ascending: false })
+    .order("position", { referencedTable: "list_items" })
     .limit(20);
   if (error) throw error;
-  if (!lists || lists.length === 0) return [];
-
-  const results = await Promise.all(
-    (lists as SharedListRow[]).map((l) => getSharedListWithDetails(l.id))
-  );
-  return results.filter((l): l is SharedListWithDetails => l !== null);
+  return withDetails((lists ?? []) as unknown as SharedListEmbedded[]);
 }
 
 export async function addListItem(args: {

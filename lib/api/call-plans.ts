@@ -76,57 +76,89 @@ export async function createCallPlan(args: {
   return plan as CallPlanRow;
 }
 
-export async function getCallPlanWithDetails(
-  planId: string
-): Promise<CallPlanWithDetails | null> {
-  const { data: plan, error: pErr } = await supabase
-    .from("call_plans")
-    .select("id, user_id, title, description, created_at")
-    .eq("id", planId)
-    .single();
-  if (pErr) return null;
+/**
+ * Afspraken met tijdvakken, stemmen en genodigden in één select.
+ *
+ * Dit waren vier vragen per afspraak (de afspraak, tijdvakken met stemmen,
+ * genodigden, profielen). PostgREST kan de drie onderliggende tabellen
+ * meenemen via hun foreign keys, en elke ingesloten tabel gaat door zijn
+ * eigen policy — wat je los niet mocht zien, zit er ook nu niet in. Het
+ * zijn per afspraak een paar rijen, dus de select blijft klein. Daarna nog
+ * één vraag voor alle profielen samen.
+ */
+const CALL_PLAN_SELECT =
+  "id, user_id, title, description, created_at, call_plan_slots(id, call_plan_id, starts_at, ends_at, call_plan_votes(user_id, available)), call_plan_invites(user_id)";
 
-  const { data: slots, error: sErr } = await supabase
-    .from("call_plan_slots")
-    .select("id, call_plan_id, starts_at, ends_at, call_plan_votes(user_id, available)")
-    .eq("call_plan_id", planId)
-    .order("starts_at");
-  if (sErr) throw sErr;
+type CallPlanEmbedded = CallPlanRow & {
+  call_plan_slots: {
+    id: string;
+    call_plan_id: string;
+    starts_at: string;
+    ends_at: string;
+    call_plan_votes: { user_id: string; available: boolean }[] | null;
+  }[] | null;
+  call_plan_invites: { user_id: string }[] | null;
+};
 
-  const allVoterIds = new Set<string>();
-  const mappedSlots: CallPlanSlot[] = (slots ?? []).map((s: any) => {
-    const votes: { user_id: string; available: boolean }[] = s.call_plan_votes ?? [];
-    votes.forEach((v) => allVoterIds.add(v.user_id));
+async function withDetails(plans: CallPlanEmbedded[]): Promise<CallPlanWithDetails[]> {
+  if (plans.length === 0) return [];
+  const prepared = plans.map((plan) => {
+    const allVoterIds = new Set<string>();
+    const slots: CallPlanSlot[] = (plan.call_plan_slots ?? []).map((s) => {
+      const votes = s.call_plan_votes ?? [];
+      votes.forEach((v) => allVoterIds.add(v.user_id));
+      return {
+        id: s.id,
+        call_plan_id: s.call_plan_id,
+        starts_at: s.starts_at,
+        ends_at: s.ends_at,
+        yes_voters: votes.filter((v) => v.available).map((v) => v.user_id),
+        no_voters: votes.filter((v) => !v.available).map((v) => v.user_id),
+      };
+    });
     return {
-      id: s.id,
-      call_plan_id: s.call_plan_id,
-      starts_at: s.starts_at,
-      ends_at: s.ends_at,
-      yes_voters: votes.filter((v) => v.available).map((v) => v.user_id),
-      no_voters: votes.filter((v) => !v.available).map((v) => v.user_id),
+      plan,
+      slots,
+      participantIds: Array.from(allVoterIds),
+      inviteeIds: (plan.call_plan_invites ?? []).map((r) => r.user_id),
     };
   });
 
-  const participantIds = Array.from(allVoterIds);
-
-  // Fetch invitees
-  const { data: inviteRows } = await supabase
-    .from("call_plan_invites")
-    .select("user_id")
-    .eq("call_plan_id", planId);
-  const inviteeIds = (inviteRows ?? []).map((r: any) => r.user_id as string);
-
-  const allProfileIds = Array.from(new Set([plan.user_id, ...participantIds, ...inviteeIds]));
-  const allProfiles = await getProfiles(allProfileIds);
+  const allProfileIds = new Set<string>();
+  for (const p of prepared) {
+    allProfileIds.add(p.plan.user_id);
+    p.participantIds.forEach((id) => allProfileIds.add(id));
+    p.inviteeIds.forEach((id) => allProfileIds.add(id));
+  }
+  const allProfiles = await getProfiles(Array.from(allProfileIds));
   const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
 
-  return {
-    ...(plan as CallPlanRow),
+  return prepared.map(({ plan, slots, participantIds, inviteeIds }) => ({
+    id: plan.id,
+    user_id: plan.user_id,
+    title: plan.title,
+    description: plan.description,
+    created_at: plan.created_at,
     author: profileMap[plan.user_id] ?? null,
-    slots: mappedSlots,
+    slots,
     participant_profiles: participantIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
     invitee_profiles: inviteeIds.map((id) => profileMap[id]).filter(Boolean) as Profile[],
-  };
+  }));
+}
+
+export async function getCallPlanWithDetails(
+  planId: string
+): Promise<CallPlanWithDetails | null> {
+  const { data: plan, error } = await supabase
+    .from("call_plans")
+    .select(CALL_PLAN_SELECT)
+    .eq("id", planId)
+    // Tijdvakken op volgorde, zoals toen ze nog apart opgehaald werden.
+    .order("starts_at", { referencedTable: "call_plan_slots" })
+    .single();
+  if (error || !plan) return null;
+  const [details] = await withDetails([plan as unknown as CallPlanEmbedded]);
+  return details ?? null;
 }
 
 export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails[]> {
@@ -134,17 +166,13 @@ export async function listFeedCallPlans(limit = 20): Promise<CallPlanWithDetails
   // hoort in dat gesprek, niet in de feed.
   const { data: plans, error } = await supabase
     .from("call_plans")
-    .select("id, user_id, title, description, created_at")
+    .select(CALL_PLAN_SELECT)
     .is("chat_id", null)
     .order("created_at", { ascending: false })
+    .order("starts_at", { referencedTable: "call_plan_slots" })
     .limit(limit);
   if (error) throw error;
-  if (!plans || plans.length === 0) return [];
-
-  const results = await Promise.all(
-    (plans as CallPlanRow[]).map((p) => getCallPlanWithDetails(p.id))
-  );
-  return results.filter((p): p is CallPlanWithDetails => p !== null);
+  return withDetails((plans ?? []) as unknown as CallPlanEmbedded[]);
 }
 
 export async function voteCallPlanSlot(args: {

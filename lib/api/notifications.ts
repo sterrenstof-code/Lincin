@@ -102,92 +102,79 @@ export async function listNotifications(
 
   const rows = data as NotificationRow[];
 
-  // Load actor profiles
+  /**
+   * Alles hieronder hangt alleen van de meldingen zelf af, dus het gaat
+   * tegelijk. Het stond als zes golven achter elkaar (profielen, posts,
+   * reacties ×2, events, polls/calls/lijsten, miniaturen), en dan is de
+   * wachttijd de som. Nu is het die van de traagste tak — alleen de
+   * miniaturen wachten nog op de posts, want daar staan de paden in.
+   */
   const actorIds = Array.from(new Set(rows.map((r) => r.actor_id)));
-  const actors = await getProfiles(actorIds);
-  const actorMap = Object.fromEntries(actors.map((a) => [a.id, a]));
-
-  // Load post info (caption + image) for posts we reference
   const postIds = Array.from(new Set(rows.map((r) => r.post_id).filter(Boolean))) as string[];
-  let postMap: Record<
-    string,
-    { caption: string | null; image_path: string | null; source_title: string | null }
-  > = {};
-  if (postIds.length > 0) {
-    const { data: posts } = await supabase
-      .from("posts")
-      .select("id, caption, image_path, source_title")
-      .in("id", postIds);
-    for (const p of posts ?? []) {
-      postMap[p.id] = {
-        caption: p.caption,
-        image_path: p.image_path,
-        source_title: (p as any).source_title ?? null,
-      };
-    }
-  }
-
-  // Load comment bodies so emoji-only comments show in the snippet.
-  //
   // Twee tabellen: `comments` is de oude, `entity_comments` de huidige.
   // Meldingen van vóór 0048 wijzen naar de eerste, alles daarna naar de
   // tweede. Beide ophalen en in dezelfde map gooien houdt de oude rijen
-  // leesbaar zonder ze te hoeven verhuizen.
+  // leesbaar zonder ze te hoeven verhuizen. De bodies zijn er zodat een
+  // reactie van alleen emoji ook in de regel te zien is.
   const commentIds = Array.from(new Set(rows.map((r) => r.comment_id).filter(Boolean))) as string[];
   const entityCommentIds = Array.from(
     new Set(rows.map((r) => r.entity_comment_id).filter(Boolean))
   ) as string[];
-  let commentMap: Record<string, { body: string }> = {};
-  if (commentIds.length > 0) {
-    const { data: comments } = await supabase
-      .from("comments")
-      .select("id, body")
-      .in("id", commentIds);
-    for (const c of comments ?? []) {
-      commentMap[c.id] = { body: c.body };
-    }
-  }
-  if (entityCommentIds.length > 0) {
-    const { data: comments } = await supabase
-      .from("entity_comments")
-      .select("id, body")
-      .in("id", entityCommentIds);
-    for (const c of comments ?? []) {
-      commentMap[c.id] = { body: c.body };
-    }
-  }
-
-  // Load event names for event notifications
   const eventIds = Array.from(new Set(rows.map((r) => r.event_id).filter(Boolean))) as string[];
-  let eventMap: Record<string, { name: string }> = {};
-  if (eventIds.length > 0) {
-    const { data: events } = await supabase
-      .from("events")
-      .select("id, name")
-      .in("id", eventIds);
-    for (const e of events ?? []) {
-      eventMap[e.id] = { name: e.name };
-    }
-  }
-
   // Polls, calls en lijsten: de vraag of de titel, voor de zin in de melding.
   const ids = (k: "poll_id" | "call_plan_id" | "list_id") =>
     Array.from(new Set(rows.map((r) => r[k]).filter(Boolean))) as string[];
-  const [pollRes, callRes, listRes] = await Promise.all([
-    ids("poll_id").length ? supabase.from("polls").select("id, question").in("id", ids("poll_id")) : null,
-    ids("call_plan_id").length ? supabase.from("call_plans").select("id, title, chat_id").in("id", ids("call_plan_id")) : null,
-    ids("list_id").length ? supabase.from("shared_lists").select("id, title").in("id", ids("list_id")) : null,
-  ]);
+
+  const postsAndThumbs = (async () => {
+    const postMap: Record<
+      string,
+      { caption: string | null; image_path: string | null; source_title: string | null }
+    > = {};
+    if (postIds.length > 0) {
+      const { data: posts } = await supabase
+        .from("posts")
+        .select("id, caption, image_path, source_title")
+        .in("id", postIds);
+      for (const p of posts ?? []) {
+        postMap[p.id] = {
+          caption: p.caption,
+          image_path: p.image_path,
+          source_title: (p as any).source_title ?? null,
+        };
+      }
+    }
+    // Alle miniaturen in één keer, op de maat waarop ze getekend worden.
+    const thumbs = await signedImageUrls(
+      "posts",
+      Object.values(postMap).map((p) => p.image_path),
+      IMG.avatar(40)
+    );
+    return { postMap, thumbs };
+  })();
+
+  const [actors, { postMap, thumbs }, oldComments, entityComments, eventsRes, pollRes, callRes, listRes] =
+    await Promise.all([
+      getProfiles(actorIds),
+      postsAndThumbs,
+      commentIds.length > 0 ? supabase.from("comments").select("id, body").in("id", commentIds) : null,
+      entityCommentIds.length > 0
+        ? supabase.from("entity_comments").select("id, body").in("id", entityCommentIds)
+        : null,
+      eventIds.length > 0 ? supabase.from("events").select("id, name").in("id", eventIds) : null,
+      ids("poll_id").length ? supabase.from("polls").select("id, question").in("id", ids("poll_id")) : null,
+      ids("call_plan_id").length ? supabase.from("call_plans").select("id, title, chat_id").in("id", ids("call_plan_id")) : null,
+      ids("list_id").length ? supabase.from("shared_lists").select("id, title").in("id", ids("list_id")) : null,
+    ]);
+
+  const actorMap = Object.fromEntries(actors.map((a) => [a.id, a]));
+  const commentMap: Record<string, { body: string }> = {};
+  for (const c of oldComments?.data ?? []) commentMap[c.id] = { body: c.body };
+  for (const c of entityComments?.data ?? []) commentMap[c.id] = { body: c.body };
+  const eventMap: Record<string, { name: string }> = {};
+  for (const e of eventsRes?.data ?? []) eventMap[e.id] = { name: e.name };
   const pollMap = new Map((pollRes?.data ?? []).map((p) => [p.id, p.question as string]));
   const callMap = new Map((callRes?.data ?? []).map((c) => [c.id, c as { title: string | null; chat_id: string | null }]));
   const listMap = new Map((listRes?.data ?? []).map((l) => [l.id, l.title as string]));
-
-  // Alle miniaturen in één keer, op de maat waarop ze getekend worden.
-  const thumbs = await signedImageUrls(
-    "posts",
-    Object.values(postMap).map((p) => p.image_path),
-    IMG.avatar(40)
-  );
 
   return rows.map((r) => ({
     ...r,

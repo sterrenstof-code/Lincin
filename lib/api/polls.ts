@@ -95,75 +95,101 @@ export async function createPoll(args: {
 
 const POLL_COLUMNS_BASE = "id, user_id, question, ends_at, created_at";
 
-/** Leest `allow_multiple` als de kolom er is (0060), anders `false`. */
-async function selectPoll(pollId: string) {
-  const withCol = await supabase.from("polls").select(`${POLL_COLUMNS_BASE}, allow_multiple, swatch, anonymous, allow_proposals`).eq("id", pollId).single();
-  if (!withCol.error) return { data: withCol.data as unknown as PollRow, error: null };
-  const base = await supabase.from("polls").select(POLL_COLUMNS_BASE).eq("id", pollId).single();
-  return { data: base.data ? ({ ...base.data, allow_multiple: false } as PollRow) : null, error: base.error };
-}
+/** Eén rij van `feed_polls_with_details` (0098). */
+type PollDetailsRow = Required<PollRow> & {
+  options: {
+    id: string;
+    poll_id: string;
+    label: string;
+    position: number;
+    created_by: string | null;
+    votes: number;
+    /** Leeg bij een anonieme poll — dat bewaakt de functie zelf. */
+    voter_ids: string[];
+  }[];
+  my_option_ids: string[] | null;
+  voter_count: number | null;
+};
 
-export async function getPollWithDetails(
-  pollId: string,
-  myUserId: string
-): Promise<PollWithDetails | null> {
-  const { data: poll, error: pErr } = await selectPoll(pollId);
-  if (pErr || !poll) return null;
+/**
+ * Polls met keuzes, aantallen en eigen stem, voor een hele lijst tegelijk.
+ *
+ * Dit waren zes vragen per poll (de poll, keuzes, uitslag, aantal
+ * stemmers, stemmen, profielen); bij twintig polls in de feed ruim honderd
+ * keer heen en weer. Nu doet `feed_polls_with_details` (0098) de eerste
+ * vijf in één keer voor alle polls, en volgt er één vraag voor alle
+ * profielen samen. De functie is security invoker: wat RLS je niet laat
+ * zien komt er ook hier niet uit, en bij een anonieme poll geeft ze geen
+ * namen — alleen de aantallen en je eigen keuze.
+ */
+async function pollsWithDetails(pollIds: string[]): Promise<PollWithDetails[]> {
+  if (pollIds.length === 0) return [];
+  const { data, error } = await supabase.rpc("feed_polls_with_details", { p_poll_ids: pollIds });
+  if (error) throw error;
+  const rows = (data ?? []) as PollDetailsRow[];
 
-  const [optionsRes, results, voterCount] = await Promise.all([
-    supabase.from("poll_options").select("id, poll_id, label, position, created_by").eq("poll_id", pollId).order("position"),
-    // De aantallen komen van de server: bij een anonieme poll ziet de app
-    // andermans stemmen niet (0085), maar wel hoeveel het er zijn.
-    supabase.rpc("poll_results", { p_poll_id: pollId }),
-    supabase.rpc("poll_voter_count", { p_poll_id: pollId }),
-  ]);
-  if (optionsRes.error) throw optionsRes.error;
-  const options = (optionsRes.data ?? []) as { id: string; poll_id: string; label: string; position: number; created_by: string | null }[];
-  const countOf = new Map(((results.data ?? []) as { option_id: string; votes: number }[]).map((r) => [r.option_id, r.votes]));
-
-  // Wie stemde: wat de policy laat zien — alles bij een gewone poll, alleen
-  // jezelf bij een anonieme.
-  const { data: votes } = await supabase
-    .from("poll_votes")
-    .select("poll_option_id, user_id")
-    .in("poll_option_id", options.map((o) => o.id));
-  const visible = (votes ?? []) as { poll_option_id: string; user_id: string }[];
-  const myIds = visible.filter((v) => v.user_id === myUserId).map((v) => v.poll_option_id);
-
-  const anonymous = !!poll.anonymous;
-  const peopleIds = Array.from(
-    new Set([
-      poll.user_id,
-      ...(anonymous ? [] : visible.map((v) => v.user_id)),
-      ...options.map((o) => o.created_by).filter((x): x is string => !!x),
-    ]),
-  );
-  const people = await getProfiles(peopleIds);
+  const peopleIds = new Set<string>();
+  for (const poll of rows) {
+    peopleIds.add(poll.user_id);
+    for (const o of poll.options) {
+      if (o.created_by) peopleIds.add(o.created_by);
+      if (!poll.anonymous) o.voter_ids.forEach((id) => peopleIds.add(id));
+    }
+  }
+  const people = await getProfiles(Array.from(peopleIds));
   const byId = Object.fromEntries(people.map((p) => [p.id, p]));
 
-  const mappedOptions: PollOption[] = options.map((o) => ({
-    id: o.id,
-    poll_id: o.poll_id,
-    label: o.label,
-    position: o.position,
-    vote_count: countOf.get(o.id) ?? 0,
-    voters: anonymous ? [] : (visible.filter((v) => v.poll_option_id === o.id).map((v) => byId[v.user_id]).filter(Boolean) as Profile[]),
-    created_by: o.created_by,
-    proposer: o.created_by ? byId[o.created_by] ?? null : null,
-  }));
+  const byPoll = new Map(
+    rows.map((poll): [string, PollWithDetails] => {
+      const anonymous = !!poll.anonymous;
+      const options: PollOption[] = poll.options.map((o) => ({
+        id: o.id,
+        poll_id: o.poll_id,
+        label: o.label,
+        position: o.position,
+        vote_count: o.votes ?? 0,
+        voters: anonymous ? [] : (o.voter_ids.map((id) => byId[id]).filter(Boolean) as Profile[]),
+        created_by: o.created_by,
+        proposer: o.created_by ? byId[o.created_by] ?? null : null,
+      }));
+      const myIds = poll.my_option_ids ?? [];
+      return [
+        poll.id,
+        {
+          id: poll.id,
+          user_id: poll.user_id,
+          question: poll.question,
+          ends_at: poll.ends_at,
+          created_at: poll.created_at,
+          swatch: poll.swatch,
+          author: byId[poll.user_id] ?? null,
+          options,
+          allow_multiple: !!poll.allow_multiple,
+          anonymous,
+          allow_proposals: !!poll.allow_proposals,
+          my_vote_option_id: myIds[0] ?? null,
+          my_vote_option_ids: myIds,
+          total_votes: options.reduce((n, o) => n + o.vote_count, 0),
+          voter_count: poll.voter_count ?? 0,
+        },
+      ];
+    }),
+  );
+  // In de volgorde waarin erom gevraagd werd; wat je niet mag zien valt weg.
+  return pollIds.map((id) => byPoll.get(id)).filter((p): p is PollWithDetails => !!p);
+}
 
-  return {
-    ...(poll as PollRow),
-    author: byId[poll.user_id] ?? null,
-    options: mappedOptions,
-    allow_multiple: !!(poll as { allow_multiple?: boolean }).allow_multiple,
-    anonymous,
-    allow_proposals: !!poll.allow_proposals,
-    my_vote_option_id: myIds[0] ?? null,
-    my_vote_option_ids: myIds,
-    total_votes: mappedOptions.reduce((n, o) => n + o.vote_count, 0),
-    voter_count: typeof voterCount.data === "number" ? voterCount.data : 0,
-  };
+/**
+ * Eén poll, voor een gesprek of zijn eigen scherm. `myUserId` hoeft niet
+ * meer: de functie weet zelf wie er vraagt (auth.uid()). Hij blijft in de
+ * handtekening zodat de aanroepers niet hoeven te veranderen.
+ */
+export async function getPollWithDetails(
+  pollId: string,
+  _myUserId?: string
+): Promise<PollWithDetails | null> {
+  const [poll] = await pollsWithDetails([pollId]);
+  return poll ?? null;
 }
 
 /**
@@ -195,20 +221,13 @@ export async function listFeedPolls(limit = 30): Promise<PollWithDetails[]> {
   // ook niet in die van de leden zelf.
   const { data: polls, error } = await supabase
     .from("polls")
-    .select("id, user_id, question, ends_at, created_at")
+    .select("id")
     .is("chat_id", null)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   if (!polls || polls.length === 0) return [];
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const myUserId = user?.id ?? "";
-
-  const results = await Promise.all(
-    (polls as PollRow[]).map((p) => getPollWithDetails(p.id, myUserId))
-  );
-  return results.filter((p): p is PollWithDetails => p !== null);
+  return pollsWithDetails(polls.map((p) => p.id as string));
 }
 
 /**

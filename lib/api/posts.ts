@@ -400,35 +400,6 @@ export async function createFind(args: {
 // Lezen
 // -------------------------------------------------------
 
-/**
- * Telt reacties per post uit de universele `entity_comments` tabel
- * (entity_type = 'post'). Dit is dezelfde bron die CommentsSection en de
- * post-detailpagina tonen, zodat het badge-aantal klopt met wat zichtbaar is.
- */
-async function countCommentsByPost(
-  postIds: string[]
-): Promise<Map<string, { total: number; recent: number; month: number }>> {
-  const counts = new Map<string, { total: number; recent: number; month: number }>();
-  if (postIds.length === 0) return counts;
-  const { data, error } = await supabase
-    .from("entity_comments")
-    .select("entity_id, created_at")
-    .eq("entity_type", "post")
-    .in("entity_id", postIds);
-  if (error) throw error;
-  const since = Date.now() - RECENT_WINDOW_MS;
-  const monthSince = Date.now() - MONTH_WINDOW_MS;
-  for (const row of (data ?? []) as { entity_id: string; created_at: string }[]) {
-    const entry = counts.get(row.entity_id) ?? { total: 0, recent: 0, month: 0 };
-    entry.total += 1;
-    const at = new Date(row.created_at).getTime();
-    if (at >= since) entry.recent += 1;
-    if (at >= monthSince) entry.month += 1;
-    counts.set(row.entity_id, entry);
-  }
-  return counts;
-}
-
 async function attachSignedUrls(rows: PostRow[]): Promise<Map<string, string>> {
   // Tegelformaat, niet het origineel: een telefoonfoto van 5 MB in een
   // tegel van 300 px was de reden dat de feed traag laadde. `signedImageUrls`
@@ -546,35 +517,63 @@ type SignalCounts = {
   monthBoosts: number;
 };
 
-/** Emoji en duwen per vondst, allebei in één vraag voor de hele lijst. */
-async function countSignals(postIds: string[]): Promise<Map<string, SignalCounts>> {
-  const counts = new Map<string, SignalCounts>();
-  if (postIds.length === 0) return counts;
-  const since = Date.now() - RECENT_WINDOW_MS;
-  const monthSince = Date.now() - MONTH_WINDOW_MS;
+type CommentCounts = { total: number; recent: number; month: number };
 
-  const bump = (postId: string, key: "reactions" | "boosts", createdAt: string) => {
-    const entry =
-      counts.get(postId) ??
-      { reactions: 0, boosts: 0, recentReactions: 0, recentBoosts: 0, monthReactions: 0, monthBoosts: 0 };
-    entry[key] += 1;
-    const at = new Date(createdAt).getTime();
-    if (at >= since) {
-      entry[key === "reactions" ? "recentReactions" : "recentBoosts"] += 1;
-    }
-    if (at >= monthSince) {
-      entry[key === "reactions" ? "monthReactions" : "monthBoosts"] += 1;
-    }
-    counts.set(postId, entry);
-  };
+/** Eén rij van `post_counts` (0098). */
+type PostCountsRow = {
+  post_id: string;
+  reactions: number;
+  recent_reactions: number;
+  month_reactions: number;
+  boosts: number;
+  recent_boosts: number;
+  month_boosts: number;
+  comments: number;
+  recent_comments: number;
+  month_comments: number;
+};
 
-  const [reactions, boosts] = await Promise.all([
-    supabase.from("post_reactions").select("post_id, created_at").in("post_id", postIds),
-    supabase.from("post_boosts").select("post_id, created_at").in("post_id", postIds),
-  ]);
-  for (const row of reactions.data ?? []) bump(row.post_id, "reactions", row.created_at);
-  for (const row of boosts.data ?? []) bump(row.post_id, "boosts", row.created_at);
-  return counts;
+/**
+ * Emoji, duwen en reacties per vondst, in één vraag voor de hele lijst.
+ *
+ * Dit haalde eerst élke emoji-, duw- en reactierij van vijftig vondsten op
+ * (drie vragen) om ze hier te tellen. `post_counts` (0098) telt ze in de
+ * database met `group by` en stuurt alleen de getallen terug. Hij draait
+ * als security invoker, dus hij telt precies de rijen die deze selects ook
+ * zagen. De reacties komen uit `entity_comments` (entity_type = 'post'),
+ * dezelfde bron die CommentsSection en de detailpagina tonen, zodat het
+ * badge-aantal klopt met wat zichtbaar is.
+ *
+ * De vensters blijven hier gedefinieerd en gaan als grens mee.
+ */
+async function countPostSignals(
+  postIds: string[]
+): Promise<{ signals: Map<string, SignalCounts>; comments: Map<string, CommentCounts> }> {
+  const signals = new Map<string, SignalCounts>();
+  const comments = new Map<string, CommentCounts>();
+  if (postIds.length === 0) return { signals, comments };
+  const { data, error } = await supabase.rpc("post_counts", {
+    p_post_ids: postIds,
+    p_recent_since: new Date(Date.now() - RECENT_WINDOW_MS).toISOString(),
+    p_month_since: new Date(Date.now() - MONTH_WINDOW_MS).toISOString(),
+  });
+  if (error) throw error;
+  for (const row of (data ?? []) as PostCountsRow[]) {
+    signals.set(row.post_id, {
+      reactions: row.reactions,
+      boosts: row.boosts,
+      recentReactions: row.recent_reactions,
+      recentBoosts: row.recent_boosts,
+      monthReactions: row.month_reactions,
+      monthBoosts: row.month_boosts,
+    });
+    comments.set(row.post_id, {
+      total: row.comments,
+      recent: row.recent_comments,
+      month: row.month_comments,
+    });
+  }
+  return { signals, comments };
 }
 
 /** Reacties, emoji en duwen gewogen bij elkaar — zie `INTERACTION_WEIGHTS`. */
@@ -602,14 +601,13 @@ async function hydrate(rows: PostRow[]): Promise<PostWithAuthor[]> {
    *
    * Naast elkaar is de wachttijd die van de traagste.
    */
-  const [authors, urlByPath, videoByPath, albums, signalCounts, commentCounts] =
+  const [authors, urlByPath, videoByPath, albums, { signals: signalCounts, comments: commentCounts }] =
     await Promise.all([
       getProfiles(authorIds),
       attachSignedUrls(rows),
       attachSignedVideos(rows),
       attachAlbums(postIds),
-      countSignals(postIds),
-      countCommentsByPost(postIds),
+      countPostSignals(postIds),
     ]);
   const byId = new Map(authors.map((a) => [a.id, a]));
 

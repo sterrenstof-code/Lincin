@@ -1072,6 +1072,41 @@ export type Database = {
       vote_poll_option: { Args: { p_option_id: string }; Returns: string };
       propose_poll_option: { Args: { p_poll_id: string; p_label: string }; Returns: string };
       remove_poll_option: { Args: { p_option_id: string }; Returns: boolean };
+      /** 0098 — polls met keuzes, aantallen en eigen stem, voor een hele lijst. */
+      feed_polls_with_details: {
+        Args: { p_poll_ids: string[] };
+        Returns: {
+          id: string;
+          user_id: string;
+          question: string;
+          ends_at: string | null;
+          created_at: string;
+          allow_multiple: boolean;
+          swatch: string | null;
+          anonymous: boolean;
+          allow_proposals: boolean;
+          /** Per keuze: id, poll_id, label, position, created_by, votes, voter_ids. */
+          options: unknown;
+          my_option_ids: string[] | null;
+          voter_count: number | null;
+        }[];
+      };
+      /** 0098 — emoji, duwen en reacties per vondst, geteld in de database. */
+      post_counts: {
+        Args: { p_post_ids: string[]; p_recent_since: string; p_month_since: string };
+        Returns: {
+          post_id: string;
+          reactions: number;
+          recent_reactions: number;
+          month_reactions: number;
+          boosts: number;
+          recent_boosts: number;
+          month_boosts: number;
+          comments: number;
+          recent_comments: number;
+          month_comments: number;
+        }[];
+      };
       /** 0083 — "ik ben hier"; schuift alleen vooruit. */
       touch_reading_state: {
         Args: { p_at: string };
