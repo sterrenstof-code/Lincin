@@ -16,6 +16,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { shortAgo } from "@/lib/lincin/model";
 import { usePageTitle } from "@/lib/page-title";
 import { useIsDesktop } from "@/lib/lincin/desktop";
+import { useClearNotificationsOnVisit } from "@/lib/lincin/unread";
 
 /**
  * Meldingen (README §09, mobile-app.dc.html → meldingen).
@@ -48,6 +49,7 @@ function NotificationsPhone() {
     queryFn: () => listNotifications(myUserId),
     refetchOnWindowFocus: true,
   });
+  useClearNotificationsOnVisit(myUserId, notes.isSuccess && !notes.isFetching);
   const data = useMemo(() => notes.data ?? [], [notes.data]);
   const unread = data.filter((n) => !n.read).length;
 

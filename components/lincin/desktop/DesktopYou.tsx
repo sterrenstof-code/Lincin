@@ -14,6 +14,7 @@ import { OMSLAG, RASTER, color, friendColor, hueFor, pageTint, useHueChoices, us
 import { mono, sans, serif } from "@/lib/design/type";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortAgo, timeLabel, type CardPost } from "@/lib/lincin/model";
+import { useClearNotificationsOnVisit } from "@/lib/lincin/unread";
 
 import { DesktopShell } from "./Shell";
 import { Black } from "../magazine/Omslag";
@@ -50,6 +51,7 @@ export function DesktopYou() {
   const posts = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 60) });
   const friendships = useQuery({ queryKey: ["friendships", myUserId], queryFn: () => listMyFriendships(myUserId) });
   const notes = useQuery({ queryKey: ["notifications", myUserId], queryFn: () => listNotifications(myUserId), refetchOnWindowFocus: true });
+  useClearNotificationsOnVisit(myUserId, notes.isSuccess && !notes.isFetching);
   const cards = useMemo(() => (posts.data ?? []).map(fromPost), [posts.data]);
   const name = displayName(profile.data ?? { username: session!.user.email ?? "" });
   const lincs = (friendships.data ?? []).filter((f) => f.status === "accepted").length;
