@@ -312,32 +312,44 @@ export function FormRegel({ r }: { r: Veldregel }) {
   );
 }
 
+/**
+ * Stap 2: het gekozen stuk als voorwerp, en eronder het formulier. Bij een
+ * foto de foto (240 × 300) en "Kies een ander beeld"; bij een andere soort
+ * het teken van die soort.
+ */
 export function NieuwFotoView({
   kop,
   terug,
   deel,
+  deelTekst = "Deel",
   kanDelen,
-  beeld,
-  anderBeeld,
+  voorwerp,
+  hoogte = 400,
+  beeldKnop,
   regels,
+  onderaan,
 }: {
   kop: Regel[];
   terug: () => void;
   deel: () => void;
+  deelTekst?: string;
   kanDelen: boolean;
-  beeld: Beeld;
-  anderBeeld: () => void;
+  voorwerp: ReactNode;
+  hoogte?: number;
+  beeldKnop?: { tekst: string; doe: () => void };
   regels: Veldregel[];
+  onderaan?: ReactNode;
 }) {
   return (
-    <Scherm kop={<Kop links="terug" onLinks={terug} regels={kop} rechts={<Knop tekst="Deel" onPress={deel} uit={!kanDelen} style={{ marginRight: 12, paddingHorizontal: 18 }} />} />}>
-      <Band style={{ height: 400, padding: 12, alignItems: "center", justifyContent: "center", rowGap: 14 }}>
-        <Foto b={240} h={300} beeld={beeld} />
-        <Onderstreept tekst="Kies een ander beeld" onPress={anderBeeld} style={{ paddingHorizontal: 14 }} />
+    <Scherm kop={<Kop links="terug" onLinks={terug} regels={kop} rechts={<Knop tekst={deelTekst} onPress={deel} uit={!kanDelen} style={{ marginRight: 12, paddingHorizontal: 18 }} />} />}>
+      <Band style={{ height: hoogte, padding: 12, alignItems: "center", justifyContent: "center", rowGap: 14 }}>
+        {voorwerp}
+        {beeldKnop ? <Onderstreept tekst={beeldKnop.tekst} onPress={beeldKnop.doe} style={{ paddingHorizontal: 14 }} /> : null}
       </Band>
-      {regels.map((r) => (
-        <FormRegel key={r.label} r={r} />
+      {regels.map((r, i) => (
+        <FormRegel key={`${r.label}-${i}`} r={r} />
       ))}
+      {onderaan}
       <Naad />
     </Scherm>
   );
@@ -394,7 +406,7 @@ export function InstellingenView({ kop, terug, regels }: { kop: Regel[]; terug: 
           return (
             <Band key={i} hoogte={56} style={vorm}>
               {label}
-              <Text style={[tekst(15), { color: c.inkt, flex: 1 }]}>{r.waarde}</Text>
+              <Text numberOfLines={1} style={[tekst(15), { color: c.inkt, flex: 1 }]}>{r.waarde}</Text>
               <Schakelaar aan={r.aan} onWissel={r.zet} label={r.label} />
             </Band>
           );
@@ -402,7 +414,7 @@ export function InstellingenView({ kop, terug, regels }: { kop: Regel[]; terug: 
         return (
           <Band key={i} hoogte={56} onPress={r.open} label={`${r.label} ${r.waarde}`.trim()} style={vorm}>
             {label}
-            <Text style={[tekst(15), { color: c.inkt, flex: 1 }]}>{r.waarde}</Text>
+            <Text numberOfLines={1} style={[tekst(15), { color: c.inkt, flex: 1 }]}>{r.waarde}</Text>
             {r.pijl === false ? null : <Text style={[tekst(16), { color: c.inkt }]}>→</Text>}
           </Band>
         );

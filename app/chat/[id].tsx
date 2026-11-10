@@ -131,6 +131,11 @@ import { openLightbox } from "@/components/lincin/Lightbox";
 import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
 import { useImageRatio } from "@/lib/lincin/ratio";
 import { prepareImageForUpload } from "@/lib/image-prep";
+import { Kop as CatKop, Meer } from "@/components/lincin/catalogus/Kop";
+import { Naad } from "@/components/lincin/catalogus/Vak";
+import { safeBack } from "@/lib/nav";
+import { Linc } from "@/components/lincin/catalogus/Voorwerp";
+import { hueKleur, lincKleur } from "@/components/lincin/catalogus/stijl";
 
 /**
  * De leesmaat van een gesprek.
@@ -1512,6 +1517,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
    * gekaderde vakken naast elkaar.
    */
   const pill = spec.id === "modern";
+  const catalogus = spec.layout === "catalogus";
   /**
    * Magazine (de omslag): de vakjes met een haarlijn in plaats van inkt, het
    * veld alleen een lijn eronder met "Schrijf aan …" in cursief, en
@@ -1695,7 +1701,7 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
   }, [chat, myUserId, id, router]);
 
   return (
-    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full embedded={embedded} back="/(app)/chats">
+    <LincinScreen tab="chats" counter={t2.scrThread} tint={partnerFill} full embedded={embedded} back="/(app)/chats" header={catalogus ? "none" : "default"}>
       {/* De navigatie van de app staat óók boven een gesprek. Zonder deze
           balk was de chat een doodlopende straat: op desktop verbergt de
           gesprekkenlijst links de terug-knop, en dan was er geen enkele
@@ -1732,7 +1738,33 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
             de naam en de twee knoppen. Het aantal ongelezen berichten in
             ándere gesprekken stond op die cel; dat draagt nu de rode stip
             achter "Gesprekken" in de navigatie. */}
-        {spec.layout === "bento" ? (
+        {catalogus ? (
+          /* Catalogus (ontwerp 07): pijl terug, het beeld van de ander, het
+             kaartje (gesprek, sinds wanneer jullie lincs zijn, het slot) en
+             ⋯ naar het profiel of de groepsinfo. */
+          <View style={{ display: embedded ? "none" : "flex" }}>
+            <CatKop
+              links="terug"
+              onLinks={() => safeBack(router, "/(app)/chats")}
+              avatar={
+                <Linc
+                  maat={36}
+                  letterMaat={12}
+                  beeld={headerAvatarUrl}
+                  kleur={chat?.type === "group" ? hueKleur("green") : lincKleur(chat ? otherMember(chat, myUserId ?? "")?.id : null)}
+                  initiaal={(title || "?").slice(0, 1).toUpperCase()}
+                />
+              }
+              regels={[
+                { label: "Gesprek", waarde: title || "—" },
+                chat?.type === "group" ? { label: "Leden", waarde: String(chat.members.length) } : { label: "Status", waarde: headerStatus ?? "—" },
+                { label: "Slot", waarde: "versleuteld" },
+              ]}
+              rechts={<Meer onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())} />}
+            />
+            <Naad />
+          </View>
+        ) : spec.layout === "bento" ? (
           /* Modern (WIJZIGINGEN-2.2 §1): geen kader maar een tegel met de
              ronding van het raster, de naam in Archivo, en rechts twee ronde
              knoppen van 44 — bellen, en de ander zelf: zijn foto, of zijn

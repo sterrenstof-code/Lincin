@@ -325,8 +325,8 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
         terug={niets}
         deel={niets}
         kanDelen
-        beeld={BEELD.kamer}
-        anderBeeld={niets}
+        voorwerp={<Foto b={240} h={300} beeld={BEELD.kamer} />}
+        beeldKnop={{ tekst: "Kies een ander beeld", doe: niets }}
         regels={[
           { soort: "invoer", label: "Titel", waarde: "Herfst :)", plaatshouder: "Titel", zet: niets },
           { soort: "invoer", label: "Bijschrift", waarde: "", plaatshouder: "Schrijf er iets bij", zet: niets },

@@ -31,6 +31,9 @@ import { type Profile } from "@/lib/api/profiles";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useFriendsModel } from "@/lib/lincin/friends-model";
 import { usePageTitle } from "@/lib/page-title";
+import { LincsCatalogus } from "@/components/lincin/catalogus/schermen/LincsCatalogus";
+import { useThemeSpec } from "@/lib/design/theme";
+import { useState } from "react";
 
 export default function FriendsScreen() {
   usePageTitle("Vrienden");
@@ -53,11 +56,15 @@ export default function FriendsScreen() {
     onAccept,
     onDelete,
   } = useFriendsModel();
+  // Catalogus toont eerst de lincs als raster; "+" opent dit scherm om er een toe te voegen.
+  const catalogus = useThemeSpec().layout === "catalogus";
+  const [toevoegen, setToevoegen] = useState(false);
 
   // Op het brede scherm woont Lincs in de Lincin-rail, net als Jij waar het
   // onder valt. Stond hier niet: Jij → Mijn lincs wisselde je midden in een
   // handeling naar een andere navigatie, zonder weg terug naar Jij.
   if (desktop) return <DesktopFriends />;
+  if (catalogus && !toevoegen) return <LincsCatalogus lincs={accepted} toevoegen={() => setToevoegen(true)} />;
 
   return (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>

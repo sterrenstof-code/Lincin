@@ -15,7 +15,7 @@ import { createPoll } from "@/lib/api/polls";
 import { createFind, listUserPosts, type FindKind } from "@/lib/api/posts";
 import { findUrl, unfurl, type LinkPreview } from "@/lib/api/unfurl";
 import { useAuth } from "@/lib/auth/provider";
-import { color, friendColor, HUES, hueFor, useScheme, type Hue } from "@/lib/design/theme";
+import { color, friendColor, HUES, hueFor, useScheme, useThemeSpec, type Hue } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { humanizeError } from "@/lib/errors";
@@ -28,6 +28,7 @@ import { PhotoSlots } from "@/components/lincin/compose/PhotoSlots";
 import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { prepareImageForUpload } from "@/lib/image-prep";
+import { NieuwCatalogus } from "@/components/lincin/catalogus/schermen/NieuwCatalogus";
 
 /**
  * Nieuwe bijdrage (README §10).
@@ -321,7 +322,9 @@ export default function ComposeScreen() {
   const c = useCompose();
   const [panelH, setPanelH] = useState(297);
   const { t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
+  const catalogus = useThemeSpec().layout === "catalogus";
   if (desktop) return <DesktopCompose c={c} />;
+  if (catalogus) return <NieuwCatalogus c={c} />;
   return (
     <LincinScreen
       tab="feed"

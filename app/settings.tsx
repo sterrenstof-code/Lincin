@@ -11,7 +11,7 @@ import { BORDER, Body, GUTTER, Mono, Segment, line } from "@/components/lincin/u
 import { listMyFriendships } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
-import { OMSLAG, color, setPreference, themeSpec, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
+import { OMSLAG, THEMES, color, setPreference, themeSpec, usePreference, type LincinTheme, type ThemePreference } from "@/lib/design/theme";
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setAppLock, useAppLock } from "@/lib/app-lock";
 import { pushOn, setPref, setPushPref, usePrefs, type PushKind, type TogglePref } from "@/lib/lincin/prefs";
@@ -19,6 +19,9 @@ import { useIsDesktop } from "@/lib/lincin/desktop";
 import { DesktopSettings } from "@/components/lincin/desktop/DesktopSettings";
 import { usePageTitle } from "@/lib/page-title";
 import { listMySharedLists } from "@/lib/api/shared-lists";
+import Constants from "expo-constants";
+import { InstellingenView, type Instelling } from "@/components/lincin/catalogus/schermen/OverigeViews";
+import { safeBack } from "@/lib/nav";
 
 /**
  * Instellingen (README §08).
@@ -209,6 +212,54 @@ function SettingsMobile() {
       ],
     },
   ];
+
+  if (spec.layout === "catalogus") {
+    const TAAL: Record<Lang, string> = { nl: "Nederlands", en: "English", de: "Deutsch" };
+    const TALEN: Lang[] = ["nl", "en", "de"];
+    const THEMA: Record<LincinTheme, string> = { magazine: t.themeMagazine, modern: t.themeModern, catalogus: "Catalogus" };
+    const volgend = THEMES[(THEMES.indexOf(lincin.theme) + 1) % THEMES.length];
+    const regels: Instelling[] = [
+      { soort: "groep", titel: t.lookTitle },
+      { soort: "regel", label: t.theme, waarde: THEMA[lincin.theme], open: () => lincin.choose(volgend) },
+      {
+        soort: "keuze",
+        label: "Stand",
+        opties: [
+          { label: t.light, aan: theme === "light", kies: () => setPreference("light") },
+          { label: t.dark, aan: theme === "dark", kies: () => setPreference("dark") },
+          { label: "Toestel", aan: theme === "system", kies: () => setPreference("system") },
+        ],
+      },
+      { soort: "regel", label: t.language, waarde: TAAL[lang], open: () => setLang(TALEN[(TALEN.indexOf(lang) + 1) % TALEN.length]) },
+      { soort: "schakelaar", label: t.openDef, waarde: t.openDefSub, aan: prefs.openDefault, zet: toggle("openDefault") },
+      { soort: "groep", titel: t.notifTitle },
+      { soort: "schakelaar", label: t.newPosts, waarde: t.newPostsSub, aan: prefs.pushNew, zet: toggle("pushNew") },
+      ...pushRows.map((r) => ({ soort: "schakelaar" as const, label: r.label, waarde: r.sub, aan: pushOn(prefs, r.kind), zet: flipPush(r.kind) })),
+      { soort: "schakelaar", label: t.quiet, waarde: t.quietSub, aan: prefs.quiet, zet: toggle("quiet") },
+      { soort: "groep", titel: "Privé" },
+      { soort: "regel", label: "Versleuteling", waarde: "Alleen jij en je lincs", pijl: false },
+      { soort: "regel", label: "Sleutel", waarde: "Herstelcode maken", open: () => router.push("/recovery-code") },
+      { soort: "regel", label: "Toestel", waarde: "Toestel koppelen", open: () => router.push("/device-link") },
+      ...(lock.biometry?.available ? [{ soort: "schakelaar" as const, label: "Slot", waarde: lockLabel, aan: !!lock.enabled, zet: flipLock }] : []),
+      { soort: "groep", titel: t.whoTitle },
+      { soort: "regel", label: t.myLincs, waarde: lincsSub, open: () => router.push("/friends") },
+      { soort: "regel", label: t.myLists, waarde: listsSub, open: () => router.push("/lists") },
+      { soort: "groep", titel: "Account" },
+      { soort: "regel", label: "Profiel", waarde: "Profiel bewerken", open: () => router.push("/profile-edit") },
+      { soort: "regel", label: "Uitloggen", waarde: "", open: logout },
+    ];
+    return (
+      <InstellingenView
+        kop={[
+          { label: "Lincin", waarde: t.settings },
+          { label: "Versie", waarde: Constants.expoConfig?.version ?? "—" },
+          { label: "Account", waarde: session?.user.email ?? "—" },
+        ]}
+        terug={() => safeBack(router, "/profile")}
+        regels={regels}
+      />
+    );
+  }
 
   if (spec.layout === "bento") {
     return <SettingsModern groups={groups} footer={t.footerNote} t={t} />;
