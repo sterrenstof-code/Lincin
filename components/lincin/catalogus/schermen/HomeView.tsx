@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Pressable, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -88,6 +88,27 @@ export function HomeView({
   const vast = useVast();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  // Eén tik opent (na 280 ms), twee tikken is een hartje — zoals `useDoubleTap` in Media.tsx.
+  const vorige = useRef<{ id: string; t: number } | null>(null);
+  const wacht = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (wacht.current) clearTimeout(wacht.current);
+  }, []);
+  const tik = (id: string) => {
+    const nu = Date.now();
+    if (vorige.current?.id === id && nu - vorige.current.t < 280) {
+      if (wacht.current) clearTimeout(wacht.current);
+      wacht.current = null;
+      vorige.current = null;
+      doe.dubbel(id);
+      return;
+    }
+    vorige.current = { id, t: nu };
+    wacht.current = setTimeout(() => {
+      wacht.current = null;
+      doe.open(id);
+    }, 280);
+  };
   const kop = (
     <Kop
       regels={regels}
@@ -171,7 +192,7 @@ export function HomeView({
 
   const vak = (s: HomeStuk, opgetild = false, style?: object) =>
     hartjesStand ? (
-      <HartVak key={s.id} s={s} doe={doe} breed={s.breed} opgetild={opgetild} style={style} />
+      <HartVak key={s.id} s={s} doe={doe} tik={tik} breed={s.breed} opgetild={opgetild} style={style} />
     ) : (
       <Vak
         key={s.id}
@@ -181,10 +202,10 @@ export function HomeView({
         label={s.label}
         opgetild={opgetild}
         style={style}
-        onPress={() => doe.open(s.id)}
+        onPress={() => tik(s.id)}
         onLongPress={() => doe.tilOp(s.id)}
       >
-        <DubbelTik onDubbel={() => doe.dubbel(s.id)}>{s.voorwerp}</DubbelTik>
+        {s.voorwerp}
       </Vak>
     );
 
@@ -229,25 +250,8 @@ function SnelKnop({ label, onPress, children }: { label: string; onPress: () => 
   );
 }
 
-/** Dubbel tikken op het beeld is een hartje; één tik gaat door naar het vak. */
-function DubbelTik({ onDubbel, children }: { onDubbel: () => void; children: ReactNode }) {
-  let laatst = 0;
-  return (
-    <View
-      onStartShouldSetResponder={() => false}
-      onTouchEnd={() => {
-        const nu = Date.now();
-        if (nu - laatst < 300) onDubbel();
-        laatst = nu;
-      }}
-    >
-      {children}
-    </View>
-  );
-}
-
 /** Het vak in de hartjesstand (18): kaartje met hartje en reacties ernaast of eronder. */
-function HartVak({ s, doe, breed, opgetild, style }: { s: HomeStuk; doe: HomeHandelingen; breed: boolean; opgetild: boolean; style?: object }) {
+function HartVak({ s, doe, tik, breed, opgetild, style }: { s: HomeStuk; doe: HomeHandelingen; tik: (id: string) => void; breed: boolean; opgetild: boolean; style?: object }) {
   const c = useCat();
   const knoppen = (
     <>
@@ -278,11 +282,11 @@ function HartVak({ s, doe, breed, opgetild, style }: { s: HomeStuk; doe: HomeHan
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={s.label}
-        onPress={() => doe.open(s.id)}
+        onPress={() => tik(s.id)}
         onLongPress={() => doe.tilOp(s.id)}
         style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
       >
-        <DubbelTik onDubbel={() => doe.dubbel(s.id)}>{s.voorwerp}</DubbelTik>
+        {s.voorwerp}
       </Pressable>
       {breed ? (
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", columnGap: 6 }}>
