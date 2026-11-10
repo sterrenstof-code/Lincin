@@ -106,7 +106,8 @@ export const CSS = `
 .cd .naarprofiel.beeld:hover{outline:2px solid var(--k);outline-offset:1px}
 
 /* naar de pagina van de bijdrage: de titel in het paneel en de open foto */
-.cd .naarpagina{cursor:pointer}
+.cd .naarpagina,.cd .naarlink{cursor:pointer}
+.cd .naarlink:hover{text-decoration:underline;text-underline-offset:4px}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
 .cd .scrim.opfoto{cursor:zoom-in}.cd .scrim.oplink{cursor:pointer}
 

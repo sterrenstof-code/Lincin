@@ -133,7 +133,14 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
         </span>
       </div>
       <div style={{ flex: "none", padding: "18px 20px 8px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }} data-meet="paneel-titel">
-        {nav.pagina ? (
+        {p.link ? (
+          <a className="T naarpagina" style={{ fontSize: 46, minWidth: 0, overflowWrap: "anywhere" }} href={p.link.url} target="_blank" rel="noopener noreferrer" aria-label={`${p.titel}: open ${p.link.site}`} data-meet="paneel-titellink">
+            {p.titel}
+            <span aria-hidden="true" style={{ fontSize: ".6em", marginLeft: ".2em" }}>
+              ↗
+            </span>
+          </a>
+        ) : nav.pagina ? (
           <a className="T naarpagina" style={{ fontSize: 46, minWidth: 0, overflowWrap: "anywhere" }} href="#" {...klikbaar(nav.pagina)} role="link" aria-label={`${p.titel}: open de bijdrage`} data-meet="naarpagina">
             {p.titel}
           </a>

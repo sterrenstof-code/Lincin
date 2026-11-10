@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { TekstMetNamen } from "./Delen";
+import { TekstMetNamen, klikbaar } from "./Delen";
 import { Paneel } from "./Paneel";
 import type { PaneelInhoud, PaneelNav } from "./typen";
 
@@ -43,6 +43,7 @@ export function BijdragePagina({
   profiel?: (gebruiker: string) => void;
 }) {
   const nav: PaneelNav = { plaat: "", kop };
+  const link = stuk.soort === "voorwerp" ? stuk.link : undefined;
   const aantal = stuk.soort === "foto" && stuk.fotos.length > 1 ? `${stuk.fotos.length} foto's` : null;
   return (
     <div className="grid" style={{ gridTemplateColumns: "minmax(0,1fr) 440px" }} data-meet="bijdrage-pagina">
@@ -82,7 +83,13 @@ export function BijdragePagina({
             </a>
           )}
           {onder && stuk.soort !== "tekst" ? (
-            <div style={{ width: "100%", maxWidth: 640, fontSize: 17, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "break-word" }} data-meet="bijdrage-onder">
+            <div
+              className={link ? "naarlink" : undefined}
+              style={{ width: "100%", maxWidth: 640, fontSize: 17, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}
+              // Bij een link is de tekst ook de link; een @naam erin blijft naar het profiel gaan.
+              {...(link ? { ...klikbaar(() => window.open(link, "_blank", "noopener,noreferrer")), role: "link" } : {})}
+              data-meet="bijdrage-onder"
+            >
               <TekstMetNamen tekst={onder} profiel={profiel} />
             </div>
           ) : null}
