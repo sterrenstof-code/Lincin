@@ -12,6 +12,8 @@ import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/Bijdra
 import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoofd } from "../schermen/LijstViews";
 import { GroepView } from "../schermen/GroepView";
 import { EventView } from "../schermen/EventView";
+import { Blad, BladRegel, BladTekst } from "../Blad";
+import { Knop } from "../Delen";
 
 /**
  * De voorbeeldgegevens van de testpagina's: exact de inhoud van het ontwerp
@@ -600,6 +602,22 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
           }
         />
       </View>
+    ),
+  },
+  // Geen ontwerp en geen referentie: het blad van een event (gasten, toegang).
+  blad: {
+    render: () => (
+      <Blad open sluit={niets} kop="Gasten · 3">
+        <BladTekst tekst="Open: iedereen met je link of QR staat meteen in de gastenlijst." />
+        <View style={{ flexDirection: "row", columnGap: 8, paddingHorizontal: 16, paddingBottom: 16 }}>
+          <Knop tekst="Gesloten" soort="lijn" style={{ flex: 1 }} />
+          <Knop tekst="Open" style={{ flex: 1 }} />
+        </View>
+        <BladRegel label="Tom" sub="gastheer · @tom" linc={{ beeld: BEELD.katHero, initiaal: "T" }} onPress={niets} />
+        <BladRegel label="Mie" sub="@mie" linc={{ kleur: K.groen, initiaal: "M" }} onPress={niets} />
+        <BladRegel label="Sem" sub="@sem · wacht" linc={{ kleur: K.blauw, initiaal: "S" }} rechts={<View style={{ flexDirection: "row", columnGap: 6 }}><Knop tekst="Weiger" soort="lijn" style={{ paddingHorizontal: 12 }} /><Knop tekst="Toelaten" style={{ paddingHorizontal: 12 }} /></View>} />
+        <BladRegel label="Verwijder event" gevaar onPress={niets} />
+      </Blad>
     ),
   },
   // Geen ontwerp en geen referentie: alleen om de eventpagina te bekijken.

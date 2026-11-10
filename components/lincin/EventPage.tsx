@@ -14,6 +14,8 @@ import { useT } from "@/lib/i18n";
 
 import { RedButton } from "./magazine/Omslag";
 import { Spread } from "./magazine/Spread";
+import { Blad, BladRegel, BladTekst } from "@/components/lincin/catalogus/Blad";
+import { hueKleur } from "@/components/lincin/catalogus/stijl";
 
 /**
  * De bladzijde van één event, per thema (HANDOFF.md §Thema's).
@@ -690,6 +692,8 @@ export type EventMenuItem = {
   onPress: () => void;
   /** De kleur van het vlak in magazine: van de persoon, of anders per regel een andere. */
   hue?: Hue;
+  /** Een persoon: zijn foto (catalogus toont dan een linc ervoor). */
+  avatarUrl?: string | null;
 };
 
 /**
@@ -728,6 +732,23 @@ export function EventMenu({
     setTimeout(item.onPress, 60);
   };
   if (th === "magazine") return <MenuMagazine visible={visible} onClose={onClose} title={title} subtitle={subtitle} items={items} pick={pick} />;
+  if (th === "catalogus") {
+    // Catalogus: het blad van ontwerp 16; een persoon krijgt zijn linc, de rest alleen tekst.
+    return (
+      <Blad open={visible} sluit={onClose} kop={title}>
+        {subtitle ? <BladTekst tekst={subtitle} /> : null}
+        {items.map((it) => (
+          <BladRegel
+            key={it.label + (it.sub ?? "")}
+            label={it.label}
+            sub={it.sub}
+            linc={it.hue ? { beeld: it.avatarUrl, kleur: hueKleur(it.hue), initiaal: it.label.slice(0, 1).toUpperCase() } : undefined}
+            onPress={() => pick(it)}
+          />
+        ))}
+      </Blad>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "center", padding: 18 }}>

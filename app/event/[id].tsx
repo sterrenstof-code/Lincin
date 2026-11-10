@@ -27,6 +27,8 @@ import {
 } from "@/components/lincin/EventPage";
 import { EventView } from "@/components/lincin/catalogus/schermen/EventView";
 import { lincKleur } from "@/components/lincin/catalogus/stijl";
+import { Blad, BladRegel, BladTekst } from "@/components/lincin/catalogus/Blad";
+import { Knop } from "@/components/lincin/catalogus/Delen";
 import { Foto, TekstBlad } from "@/components/lincin/catalogus/Voorwerp";
 import { openLightbox } from "@/components/lincin/Lightbox";
 import { useEventRsvps } from "@/lib/api/event-rsvps";
@@ -524,6 +526,7 @@ export default function EventDetailScreen() {
           sub: [m.role === "host" ? "gastheer" : null, m.profile?.username ? `@${m.profile.username}` : null].filter(Boolean).join(" · ") || undefined,
           icon: "person-outline" as const,
           hue: hueFor(m.user_id),
+          avatarUrl: m.profile?.avatar_url,
           onPress: () => {
             const handle = m.profile?.username;
             if (handle) router.push(`/user/${handle}`);
@@ -741,6 +744,47 @@ function AccessModal({
   const ink = color("ink");
   const rule = color("ink", "postRule");
   const B = spec.border;
+  if (th === "catalogus") {
+    // Catalogus: het blad van ontwerp 16, met de keuze zoals in Instellingen (11).
+    return (
+      <Blad open={visible} sluit={onClose} kop="Toegang">
+        <BladTekst
+          tekst={
+            policy === "closed"
+              ? "Gesloten: wie je link of QR gebruikt, komt eerst bij jou langs."
+              : "Open: iedereen met je link of QR staat meteen in de gastenlijst."
+          }
+        />
+        <View accessibilityRole="radiogroup" accessibilityLabel="Toegang" style={{ flexDirection: "row", columnGap: 8, paddingHorizontal: 16, paddingBottom: 16 }}>
+          {(["closed", "open"] as const).map((p) => (
+            <Knop key={p} tekst={p === "closed" ? "Gesloten" : "Open"} soort={policy === p ? "vol" : "lijn"} onPress={policy === p ? undefined : () => onPolicy(p)} style={{ flex: 1 }} />
+          ))}
+        </View>
+        {requests.length ? (
+          requests.map((r) => {
+            const name = r.profile?.display_name ?? r.profile?.username ?? "Onbekend";
+            return (
+              <BladRegel
+                key={r.user_id}
+                label={name}
+                sub={r.profile?.username ? `@${r.profile.username} · wacht` : "wacht"}
+                linc={{ beeld: r.profile?.avatar_url, kleur: lincKleur(r.user_id), initiaal: name.slice(0, 1).toUpperCase() }}
+                rechts={
+                  <View style={{ flexDirection: "row", columnGap: 6 }}>
+                    <Knop tekst="Weiger" soort="lijn" onPress={() => onDecline(r)} style={{ paddingHorizontal: 12 }} />
+                    <Knop tekst="Toelaten" onPress={() => onApprove(r)} style={{ paddingHorizontal: 12 }} />
+                  </View>
+                }
+              />
+            );
+          })
+        ) : (
+          <BladRegel label="Geen openstaande verzoeken" />
+        )}
+        <BladRegel label="Verwijder event" gevaar onPress={onDelete} />
+      </Blad>
+    );
+  }
   const round = th === "modern";
   const label = (size: number, c: string) =>
     th === "magazine"
