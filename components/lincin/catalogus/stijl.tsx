@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { Platform, type TextStyle } from "react-native";
 
-import { CATALOGUS, useScheme, type CatalogusKleuren, type Scheme } from "@/lib/design/theme";
+import { CATALOGUS, hueFor, useScheme, type CatalogusKleuren, type Hue, type Scheme } from "@/lib/design/theme";
 import { FONT } from "@/lib/design/type";
 
 /**
@@ -30,12 +30,27 @@ export function useCat(): CatalogusKleuren {
   return CATALOGUS[useStand()];
 }
 
-/** De kleur van een linc: vast per id, uit de zeven van het ontwerp. */
+/**
+ * De kleur van een linc: zijn eigen kleur (`hueFor`, wat hij koos of wat uit
+ * zijn id volgt), in de tinten van het ontwerp. Dat zijn precies de
+ * gedempte vriendkleuren van de app in donker; zuur is het geelgroen van
+ * het ontwerp. De zevende (#34C47A) heeft geen eigen kleur in de app.
+ */
+const HUE_KLEUR: Record<Hue, string> = {
+  orange: "#C1724E",
+  green: "#8A9273",
+  blue: "#6E8A97",
+  ochre: "#C9B77F",
+  red: "#A9503F",
+  acid: "#DDEE3C",
+};
+
+export function hueKleur(hue: Hue): string {
+  return HUE_KLEUR[hue];
+}
+
 export function lincKleur(id: string | null | undefined): string {
-  if (!id) return CATALOGUS.linc[0];
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return CATALOGUS.linc[h % CATALOGUS.linc.length];
+  return HUE_KLEUR[hueFor(id)];
 }
 
 const isWeb = Platform.OS === "web";

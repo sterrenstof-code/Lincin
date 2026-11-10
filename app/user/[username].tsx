@@ -29,6 +29,12 @@ import { openPost as openPostAnywhere, openThread, useIsDesktop } from "@/lib/li
 import { usePageTitle } from "@/lib/page-title";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
+import { confirm } from "@/lib/confirm";
+import { safeBack } from "@/lib/nav";
+import { bioLine } from "@/lib/lincin/model";
+import { CardVoorwerp, datumVan, titelVan } from "@/components/lincin/catalogus/kaart";
+import { lincKleur } from "@/components/lincin/catalogus/stijl";
+import { ProfielView } from "@/components/lincin/catalogus/schermen/OverigeViews";
 
 /**
  * Het profiel van een vriend (README §03).
@@ -114,6 +120,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const name = p ? displayName(p) : username;
   const initial = name.slice(0, 1).toUpperCase();
   const mag = useThemeSpec().id === "magazine";
+  const catalogus = useThemeSpec().layout === "catalogus";
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -173,6 +180,51 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   );
   const since = relation.kind === "friend" && relation.since ? `${t.lincSince} ${shortDate(relation.since, lang)}` : null;
   const count = `${cards.length} ${cards.length === 1 ? t.post1 : t.posts}`;
+
+  if (catalogus && !embedded) {
+    return (
+      <>
+        <ProfielView
+          kop={[
+            { label: "Linc", waarde: name },
+            { label: "Sinds", waarde: relation.kind === "friend" && relation.since ? String(new Date(relation.since).getFullYear()) : "—" },
+            { label: "Bijdragen", waarde: String(cards.length) },
+          ]}
+          terug={() => safeBack(router, "/feed")}
+          meer={
+            relation.kind === "friend"
+              ? () =>
+                  confirm(`${name} verwijderen als linc?`, "Jullie zien elkaars bijdragen dan niet meer.", { affirmativeLabel: "Verwijder", destructive: true }).then(
+                    (ok) => {
+                      if (ok) void run(() => deleteFriendship(relation.friendshipId));
+                    },
+                  )
+              : undefined
+          }
+          beeld={{ beeld: p?.avatar_url, kleur: lincKleur(p?.id), initiaal: initial }}
+          naam={name}
+          bio={bioLine(p?.bio)}
+          knoppen={acts.slice(0, 2).map((a) => ({ tekst: a.label.replace(/ →$/, ""), doe: a.onPress }))}
+          stukken={cards.map((c) => ({
+            id: c.id,
+            voorwerp: <CardVoorwerp card={c} plek="profiel" />,
+            regels: [
+              { label: "Titel", waarde: titelVan(c) },
+              { label: "Soort", waarde: c.kind },
+              { label: "Datum", waarde: datumVan(c) },
+            ],
+            label: titelVan(c),
+            open: () => {
+              markSeen(c.id);
+              if (c.kind === "poll") router.push(c.href as never);
+              else openPostAnywhere(c.id);
+            },
+          }))}
+        />
+        <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
+      </>
+    );
+  }
 
   /**
    * Magazine (de omslag, mobile-app.dc.html VRIEND): een lijn, de rug van 5

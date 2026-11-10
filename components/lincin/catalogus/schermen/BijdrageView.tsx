@@ -70,7 +70,10 @@ export function BijdrageView({
   reacties,
   antwoordAan,
   invoer,
+  focus,
+  onder,
   menu,
+  meer,
   doe,
 }: {
   kop: Regel[];
@@ -88,6 +91,12 @@ export function BijdrageView({
   reacties: Reactie[];
   antwoordAan: string | null;
   invoer: string;
+  /** Verandert dit getal, dan krijgt het invoerveld de focus. */
+  focus?: number;
+  /** Het bijschrift en de tekst van de bijdrage, onder het stuk (staan niet in het ontwerp, maar horen bij de bijdrage). */
+  onder?: string;
+  /** Iets na de reacties: "meer reacties", of het bewerkformulier. */
+  meer?: ReactNode;
   menu: { kop: string; regels: MenuRegel[] } | null;
   doe: BijdrageDoe;
 }) {
@@ -128,6 +137,7 @@ export function BijdrageView({
         onWaarde={doe.tekst}
         plaatshouder={antwoordAan ? `Antwoord aan ${antwoordAan}` : "Schrijf een reactie"}
         onStuur={doe.stuur}
+        focus={focus}
       />
     </>
   );
@@ -167,6 +177,13 @@ export function BijdrageView({
           </View>
         </View>
       </Band>
+      {onder ? (
+        <Band style={{ padding: 12 }}>
+          <Text selectable style={[tekst(15, 400, 1.35), { color: c.inkt }]}>
+            {onder}
+          </Text>
+        </Band>
+      ) : null}
       {actief ? (
         <Band testID="band actierij" hoogte={52} style={{ flexDirection: "row", alignItems: "center", columnGap: 6, paddingHorizontal: 4 }}>
           {hartKnop}
@@ -202,6 +219,7 @@ export function BijdrageView({
         </Band>
       ) : null}
       {reacties.map((r) => (actief ? <ReactieActief key={r.id} r={r} doe={doe} /> : <ReactieRustig key={r.id} r={r} onPress={doe.wakker} />))}
+      {meer}
       {actief ? null : <Naad />}
     </Scherm>
   );

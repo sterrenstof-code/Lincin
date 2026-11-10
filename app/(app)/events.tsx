@@ -4,6 +4,8 @@ import { useCallback, useMemo } from "react";
 
 import { EventsModern, type EventTileData } from "@/components/lincin/modern/EventsModern";
 import { EventsMagazine } from "@/components/lincin/magazine/Pages";
+import { EventsCatalogus, ExtraRegel } from "@/components/lincin/catalogus/schermen/Lijsten";
+import { lincKleur } from "@/components/lincin/catalogus/stijl";
 import { useEventRsvps, type EventRsvp, type RsvpStatus } from "@/lib/api/event-rsvps";
 import { listMyEvents, type EventWithMeta } from "@/lib/api/events";
 import { getProfiles } from "@/lib/api/profiles";
@@ -113,6 +115,54 @@ function EventsMobile() {
   const planNew = useCallback(() => router.push("/event-create"), [router]);
   const waiting = data.reduce((n, e) => n + (e.is_host ? e.pending_requests_count : 0), 0);
   const state = events.isLoading ? t.loading : events.isError ? t.failed : null;
+
+  if (spec.layout === "catalogus") {
+    const dag = (iso: string) => new Date(iso).toLocaleDateString(LOCALE[lang], { weekday: "short" }).replace(".", "");
+    const wanneer = (e: EventWithMeta) => {
+      const zelfde = new Date(e.starts_at).toDateString() === new Date(e.ends_at).toDateString();
+      return zelfde ? `${dag(e.starts_at)} · ${hhmm(e.starts_at)}` : `${dag(e.starts_at)} tot ${dag(e.ends_at)}`;
+    };
+    const rij = (e: EventWithMeta, voorbij: boolean) => {
+      const start = new Date(e.starts_at);
+      const ja = (byEvent.get(e.id) ?? []).filter((r) => r.status === "yes").map((r) => r.user_id);
+      // Wie komt: eerst de anderen in hun kleur, jij als laatste in het grijs (ontwerp 03).
+      const anderen = ja.filter((id) => id !== myUserId);
+      const komen = [
+        ...anderen.map((id) => ({ kleur: lincKleur(id), initiaal: nameOf(id).slice(0, 1).toUpperCase(), naam: nameOf(id) })),
+        ...(ja.includes(myUserId) ? [{ kleur: null, initiaal: t.me.slice(0, 1).toUpperCase(), naam: t.me.toLowerCase() }] : []),
+      ];
+      return {
+        id: e.id,
+        dag: String(start.getDate()),
+        maand: start.toLocaleDateString(LOCALE[lang], { month: "short" }).replace(".", ""),
+        titel: e.name,
+        regels: [
+          { label: "Wanneer", waarde: wanneer(e) },
+          { label: "Waar", waarde: e.place?.trim() || "—" },
+          { label: "Van", waarde: e.is_host ? t.me : nameOf(e.host_user_id) },
+        ],
+        komen,
+        jijKomt: rsvpMine(e.id) === "yes",
+        voorbij,
+        open: () => router.push(`/event/${e.id}` as never),
+        kom: () => rsvpAnswer(e.id, "yes"),
+        komNiet: () => rsvpAnswer(e.id, null),
+      };
+    };
+    const now = Date.now();
+    const verleden = data
+      .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
+      .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+    const eerst = upcoming[0] ?? active[0];
+    return (
+      <EventsCatalogus
+        rijen={[...active.map((e) => rij(e, false)), ...upcoming.map((e) => rij(e, false)), ...verleden.map((e) => rij(e, true))]}
+        eerstvolgende={eerst ? new Date(eerst.starts_at).toLocaleDateString(LOCALE[lang], { day: "numeric", month: "short" }).replace(".", "") : ""}
+        stand={state ?? (data.length === 0 ? "Nog geen events." : null)}
+        onderaan={<ExtraRegel label="Plan een event" onPress={planNew} />}
+      />
+    );
+  }
 
   if (spec.layout === "spread") {
     return (

@@ -4,6 +4,11 @@ import { useCallback, useMemo } from "react";
 
 import { NotificationsModern } from "@/components/lincin/modern/NotificationsModern";
 import { NotificationsMagazine } from "@/components/lincin/magazine/Pages";
+import { MeldingenCatalogus } from "@/components/lincin/catalogus/schermen/Lijsten";
+import { lincKleur } from "@/components/lincin/catalogus/stijl";
+import { useTerug } from "@/components/lincin/catalogus/nav";
+import { acceptFriendRequest, deleteFriendship, listMyFriendships } from "@/lib/api/friends";
+import { useToast } from "@/lib/toast";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -50,6 +55,14 @@ function NotificationsPhone() {
     refetchOnWindowFocus: true,
   });
   useClearNotificationsOnVisit(myUserId, notes.isSuccess && !notes.isFetching);
+  // Catalogus zet een linc-verzoek als melding met de keuze erin (ontwerp 08).
+  const friendships = useQuery({
+    queryKey: ["friendships", myUserId],
+    queryFn: () => listMyFriendships(myUserId),
+    enabled: spec.layout === "catalogus",
+  });
+  const toast = useToast();
+  const terug = useTerug("/feed");
   const data = useMemo(() => notes.data ?? [], [notes.data]);
   const unread = data.filter((n) => !n.read).length;
 
@@ -112,6 +125,58 @@ function NotificationsPhone() {
     // Query dezelfde `data`, maar "5 min" moet dan wel "20 min" worden.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [data, t, lang, open, notes.dataUpdatedAt]);
+
+  if (spec.layout === "catalogus") {
+    const verzoeken = (friendships.data ?? []).filter((f) => f.status === "pending" && f.addressee_id === myUserId);
+    const kies = async (doe: () => Promise<void>) => {
+      try {
+        await doe();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t.failed);
+      }
+      qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
+    };
+    return (
+      <MeldingenCatalogus
+        rijen={[
+          ...verzoeken.map((f) => {
+            const naam = f.other.display_name ?? f.other.username ?? "Iemand";
+            return {
+              id: `verzoek:${f.id}`,
+              linc: { beeld: f.other.avatar_url, kleur: lincKleur(f.other.id), initiaal: naam.slice(0, 1).toUpperCase() },
+              naam,
+              rest: " wil je linc worden",
+              tijd: shortAgo(f.created_at, t, lang),
+              nieuw: true,
+              open: () => (f.other.username ? router.push(`/user/${f.other.username}` as never) : router.push("/friends")),
+              keuze: {
+                ja: "Accepteer",
+                nee: "Negeer",
+                doeJa: () => kies(() => acceptFriendRequest(f.id, myUserId, f.requester_id)),
+                doeNee: () => kies(() => deleteFriendship(f.id)),
+              },
+            };
+          }),
+          ...data.map((n, i) => {
+            const r = noteRows[i];
+            return {
+              id: n.id,
+              linc: { beeld: r.avatarUrl, kleur: n.actor_id ? lincKleur(n.actor_id) : null, initiaal: (r.by || "?").slice(0, 1).toUpperCase() },
+              naam: r.by,
+              rest: r.by ? ` ${r.text}` : r.text,
+              tijd: r.when,
+              nieuw: r.unread,
+              open: r.onPress,
+            };
+          }),
+        ]}
+        nieuw={unread + verzoeken.length}
+        terug={terug}
+        allesGelezen={markAll}
+        stand={notes.isLoading ? t.loading : notes.isError ? t.failed : data.length === 0 && verzoeken.length === 0 ? t.noNotes : null}
+      />
+    );
+  }
 
   if (spec.layout === "spread") {
     return (

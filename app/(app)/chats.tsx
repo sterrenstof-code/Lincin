@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
 import { ChatsMagazine } from "@/components/lincin/magazine/Pages";
+import { ExtraRegel, GesprekkenCatalogus } from "@/components/lincin/catalogus/schermen/Lijsten";
+import { hueKleur } from "@/components/lincin/catalogus/stijl";
 import { useChatReadMenu } from "@/components/lincin/ChatReadMenu";
 import { chatAvatarUrl, chatTitle, getOrCreateDirectChat, listMyChats, otherMember } from "@/lib/api/chats";
 import { listMyFriendships } from "@/lib/api/friends";
@@ -122,6 +124,29 @@ function ChatsMobile() {
       };
     }),
   ];
+
+  if (spec.layout === "catalogus") {
+    return (
+      <>
+        <GesprekkenCatalogus
+          rijen={rows.map((r) => ({
+            id: r.key,
+            naam: r.name,
+            regel: r.preview,
+            tijd: r.time || "—",
+            nieuw: r.unread,
+            linc: { beeld: r.avatarUrl, kleur: hueKleur(r.hue), initiaal: r.initial },
+            open: r.onPress,
+            lang: (r.menu as { onLongPress?: () => void } | undefined)?.onLongPress,
+          }))}
+          ongelezen={unread}
+          stand={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+          onderaan={<ExtraRegel label="Nieuwe groep" onPress={() => router.push("/group-create")} />}
+        />
+        {readMenu.sheet}
+      </>
+    );
+  }
 
   if (spec.layout === "spread") {
     return (

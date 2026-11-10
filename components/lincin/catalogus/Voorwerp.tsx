@@ -91,13 +91,15 @@ export function Linc({
 }
 
 /** Het witte blad waarop tekst, poll, link en spraak liggen: 150 × 180, 10 marge. */
-function Blad({ children, donker = false, style }: { children: ReactNode; donker?: boolean; style?: StyleProp<ViewStyle> }) {
+export type Maat = { b: number; h: number };
+
+function Blad({ children, donker = false, maat, style }: { children: ReactNode; donker?: boolean; maat?: Maat; style?: StyleProp<ViewStyle> }) {
   const c = useCat();
   return (
     <View
       testID="voorwerp"
       style={[
-        { width: 150, height: 180, backgroundColor: donker ? c.inkt : c.kaart, padding: 10, flexDirection: "column", justifyContent: "space-between" },
+        { width: maat?.b ?? 150, height: maat?.h ?? 180, backgroundColor: donker ? c.inkt : c.kaart, padding: 10, flexDirection: "column", justifyContent: "space-between" },
         style,
       ]}
     >
@@ -106,10 +108,10 @@ function Blad({ children, donker = false, style }: { children: ReactNode; donker
   );
 }
 
-export function TekstBlad({ tekst: t }: { tekst: string }) {
+export function TekstBlad({ tekst: t, maat }: { tekst: string; maat?: Maat }) {
   const c = useCat();
   return (
-    <Blad>
+    <Blad maat={maat}>
       <Text style={[titel(19, 1.15), { color: c.inkt }]} numberOfLines={7}>
         {t}
       </Text>
@@ -119,10 +121,10 @@ export function TekstBlad({ tekst: t }: { tekst: string }) {
 
 export type PollOptie = { id: string; label: string; procent: number; gekozen: boolean; tekst: string };
 
-export function PollBlad({ vraag, opties, onStem }: { vraag: string; opties: PollOptie[]; onStem?: (id: string) => void }) {
+export function PollBlad({ vraag, opties, onStem, maat }: { vraag: string; opties: PollOptie[]; onStem?: (id: string) => void; maat?: Maat }) {
   const c = useCat();
   return (
-    <Blad>
+    <Blad maat={maat}>
       <Text style={[tekst(13, 600, 1.2), { color: c.inkt }]} numberOfLines={3}>
         {vraag}
       </Text>
@@ -156,7 +158,9 @@ export function MuziekBlad({
   speelt,
   voortgang,
   onSpeel,
+  maat,
 }: {
+  maat?: Maat;
   nummer: string;
   artiest: string;
   speelt: boolean;
@@ -166,7 +170,7 @@ export function MuziekBlad({
 }) {
   const c = useCat();
   return (
-    <Blad donker>
+    <Blad donker maat={maat}>
       <View style={{ rowGap: 2 }}>
         <Text numberOfLines={2} style={[tekst(15, 600), { color: c.tekstOpInkt }]}>
           {nummer}
@@ -196,11 +200,11 @@ export function KleurVlak({ hex, b = 132, h = 168 }: { hex: string; b?: number; 
   return <View testID="voorwerp" style={{ width: b, height: h, backgroundColor: hex }} />;
 }
 
-export function LinkBlad({ beeld, titel: t }: { beeld: Beeld; titel: string }) {
+export function LinkBlad({ beeld, titel: t, maat }: { beeld: Beeld; titel: string; maat?: Maat }) {
   const c = useCat();
   const src = bron(beeld);
   return (
-    <Blad>
+    <Blad maat={maat}>
       <View testID="voorwerp" style={{ height: 84, marginTop: -10, marginHorizontal: -10, overflow: "hidden", backgroundColor: c.plaatshouder }}>
         {src ? <Image source={src} contentFit="cover" transition={0} style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }} /> : null}
       </View>
@@ -248,10 +252,10 @@ export function Golf({ hoogtes, kleur, hoogte, tussen }: { hoogtes: number[]; kl
   );
 }
 
-export function SpraakBlad({ golf, duur, speelt, onSpeel }: { golf: number[]; duur: string; speelt: boolean; onSpeel?: () => void }) {
+export function SpraakBlad({ golf, duur, speelt, onSpeel, maat }: { golf: number[]; duur: string; speelt: boolean; onSpeel?: () => void; maat?: Maat }) {
   const c = useCat();
   return (
-    <Blad>
+    <Blad maat={maat}>
       <View style={{ height: 70, flexDirection: "row" }}>
         <Golf hoogtes={golf} kleur={c.inkt} hoogte={70} />
       </View>

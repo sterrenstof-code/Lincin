@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Band, Knop, MetNaam, OnderstreeptTekst } from "../Delen";
@@ -56,7 +57,7 @@ export type GesprekRij = {
   lang?: () => void;
 };
 
-export function GesprekkenView({ hoofd, rijen }: { hoofd: Hoofd; rijen: GesprekRij[] }) {
+export function GesprekkenView({ hoofd, rijen, stand, onderaan }: { hoofd: Hoofd; rijen: GesprekRij[]; stand?: string | null; onderaan?: ReactNode }) {
   const c = useCat();
   return (
     <Scherm kop={<HoofdKop h={hoofd} />} voet={<Tabbalk actief="chats" ongelezen={hoofd.ongelezen} onKies={hoofd.tab} />}>
@@ -67,6 +68,7 @@ export function GesprekkenView({ hoofd, rijen }: { hoofd: Hoofd; rijen: GesprekR
             key={r.id}
             onPress={r.open}
             label={`${r.naam}${vet ? `, ${r.nieuw} nieuw` : ""}`}
+            onLongPress={r.lang}
             hoogte={88}
             style={{ flexDirection: "row", alignItems: "center", columnGap: 12, paddingHorizontal: 12 }}
           >
@@ -90,8 +92,19 @@ export function GesprekkenView({ hoofd, rijen }: { hoofd: Hoofd; rijen: GesprekR
           </Band>
         );
       })}
+      {stand ? <StandRegel tekst={stand} /> : null}
+      {onderaan}
       <Naad />
     </Scherm>
+  );
+}
+
+function StandRegel({ tekst: t }: { tekst: string }) {
+  const c = useCat();
+  return (
+    <Band style={{ padding: 12 }}>
+      <Text style={[tekst(15, 400, 1.35), { color: c.tekstTweede }]}>{t}</Text>
+    </Band>
   );
 }
 
@@ -107,12 +120,14 @@ export type EventRij = {
   regels: Regel[];
   komen: (LincBeeld & { naam: string })[];
   jijKomt: boolean;
+  /** Voorbij: geen antwoord meer, alleen het woord. */
+  voorbij?: boolean;
   open: () => void;
   kom: () => void;
   komNiet: () => void;
 };
 
-export function EventsView({ hoofd, rijen }: { hoofd: Hoofd; rijen: EventRij[] }) {
+export function EventsView({ hoofd, rijen, stand, onderaan }: { hoofd: Hoofd; rijen: EventRij[]; stand?: string | null; onderaan?: ReactNode }) {
   const c = useCat();
   return (
     <Scherm kop={<HoofdKop h={hoofd} />} voet={<Tabbalk actief="events" ongelezen={hoofd.ongelezen} onKies={hoofd.tab} />}>
@@ -141,7 +156,9 @@ export function EventsView({ hoofd, rijen }: { hoofd: Hoofd; rijen: EventRij[] }
                   <Linc key={i} maat={24} letterMaat={8} {...k} />
                 ))}
               </View>
-              {e.jijKomt ? (
+              {e.voorbij ? (
+                <Text style={[kaartjeTekst, { color: c.label }]}>Voorbij</Text>
+              ) : e.jijKomt ? (
                 <Pressable accessibilityRole="button" accessibilityLabel="Je komt. Tik om af te melden." onPress={e.komNiet} style={{ minHeight: 44, justifyContent: "center", marginVertical: -15 }}>
                   <OnderstreeptTekst tekst="Je komt" />
                 </Pressable>
@@ -152,6 +169,8 @@ export function EventsView({ hoofd, rijen }: { hoofd: Hoofd; rijen: EventRij[] }
           </View>
         </View>
       ))}
+      {stand ? <StandRegel tekst={stand} /> : null}
+      {onderaan}
       <Naad />
     </Scherm>
   );

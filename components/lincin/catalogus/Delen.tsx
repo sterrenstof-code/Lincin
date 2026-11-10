@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Pressable, Text, TextInput, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { kaartjeTekst, letter, NAAD, tekst, useCat } from "./stijl";
@@ -17,6 +17,7 @@ export function Band({
   hoogte,
   style,
   onPress,
+  onLongPress,
   label,
   testID = "band",
 }: {
@@ -24,6 +25,7 @@ export function Band({
   hoogte?: number;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
+  onLongPress?: () => void;
   label?: string;
   testID?: string;
 }) {
@@ -31,7 +33,7 @@ export function Band({
   const vorm: ViewStyle = { flexShrink: 0, borderTopWidth: NAAD, borderTopColor: c.naad, ...(hoogte ? { height: hoogte + NAAD } : null) };
   if (onPress) {
     return (
-      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[vorm, style]}>
+      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onLongPress={onLongPress} style={[vorm, style]}>
         {children}
       </Pressable>
     );
@@ -119,6 +121,7 @@ export function Veld({
   onStuur,
   style,
   autoFocus,
+  focus,
 }: {
   waarde: string;
   onWaarde: (v: string) => void;
@@ -126,10 +129,17 @@ export function Veld({
   onStuur?: () => void;
   style?: StyleProp<TextStyle>;
   autoFocus?: boolean;
+  /** Verandert dit getal, dan krijgt het veld de focus (Antwoord, Reageer). */
+  focus?: number;
 }) {
   const c = useCat();
+  const ref = useRef<TextInput>(null);
+  useEffect(() => {
+    if (focus) ref.current?.focus();
+  }, [focus]);
   return (
     <TextInput
+      ref={ref}
       value={waarde}
       onChangeText={onWaarde}
       placeholder={plaatshouder}
@@ -169,6 +179,7 @@ export function Invoer({
   voor,
   bezig = false,
   autoFocus,
+  focus,
 }: {
   waarde: string;
   onWaarde: (v: string) => void;
@@ -177,12 +188,13 @@ export function Invoer({
   voor?: ReactNode;
   bezig?: boolean;
   autoFocus?: boolean;
+  focus?: number;
 }) {
   const c = useCat();
   return (
     <View style={{ height: 64, flexShrink: 0, flexDirection: "row", alignItems: "center", columnGap: 8, paddingLeft: voor ? 0 : 12, paddingRight: 12, backgroundColor: c.kaart }}>
       {voor}
-      <Veld waarde={waarde} onWaarde={onWaarde} plaatshouder={plaatshouder} onStuur={onStuur} autoFocus={autoFocus} />
+      <Veld waarde={waarde} onWaarde={onWaarde} plaatshouder={plaatshouder} onStuur={onStuur} autoFocus={autoFocus} focus={focus} />
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: bezig || !waarde.trim() }}

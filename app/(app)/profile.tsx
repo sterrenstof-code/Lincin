@@ -17,6 +17,8 @@ import { displayName, fromPost } from "@/lib/lincin/model";
 import { DesktopYou } from "@/components/lincin/desktop/DesktopYou";
 import { openPost, useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
+import { JijCatalogus } from "@/components/lincin/catalogus/schermen/Lijsten";
+import { lincKleur } from "@/components/lincin/catalogus/stijl";
 
 /**
  * Jij (README §07).
@@ -83,6 +85,29 @@ function YouMobile() {
     onPress: () => openPost(post.id),
     children: <MiniBody post={post} fill={fc.fill} ink={fc.ink} />,
   }));
+
+  if (spec.layout === "catalogus") {
+    const eigen = p?.username ? `/user/${p.username}` : null;
+    return (
+      <JijCatalogus
+        beeld={{ beeld: p?.avatar_url, kleur: lincKleur(myUserId), initiaal: name.slice(0, 1).toUpperCase() }}
+        regels={[
+          { label: "Naam", waarde: name },
+          { label: "Lincs", waarde: String(lincs) },
+          { label: "Bijdragen", waarde: String(posts.data?.length ?? 0) },
+          { label: "Sinds", waarde: String(since.getFullYear()) },
+        ]}
+        themaStand={scheme === "dark" ? "Donker" : "Licht"}
+        ingangen={[
+          ...(eigen ? [{ label: "Mijn bijdragen", rechts: `${posts.data?.length ?? 0} →`, open: () => router.push(eigen as never) }] : []),
+          { label: "Mijn lincs", rechts: pendingIn > 0 ? `${pendingIn} ${t.waitsForYou} →` : `${lincs} →`, open: () => router.push("/friends") },
+          { label: "Thema en stand", rechts: "Catalogus →", open: () => router.push("/settings" as never) },
+          { label: "Instellingen", rechts: "Privé, meldingen →", open: () => router.push("/settings" as never) },
+          { label: t.myQr, rechts: "→", open: () => router.push("/qr-code") },
+        ]}
+      />
+    );
+  }
 
   if (spec.layout === "spread") {
     return (

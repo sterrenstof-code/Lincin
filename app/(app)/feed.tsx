@@ -1,4 +1,5 @@
 import { DesktopFeed } from "@/components/lincin/desktop/DesktopFeed";
+import { FeedCatalogus } from "@/components/lincin/catalogus/schermen/FeedCatalogus";
 import { FeedMagazine } from "@/components/lincin/feed/FeedMagazine";
 import { FeedModern } from "@/components/lincin/modern/FeedModern";
 import { useLincinTheme } from "@/components/lincin/ThemeProvider";
@@ -6,7 +7,7 @@ import { useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 
 /**
- * De feed (HANDOFF §Themes, implementatiehint): één scherm, twee
+ * De feed (HANDOFF §Themes, implementatiehint): één scherm, drie
  * lay-outs. Welke, bepaalt het thema van de gebruiker. Beide lezen
  * dezelfde bijdragen en vrienden (`components/lincin/feed/useFeed.ts`).
  *
@@ -20,5 +21,6 @@ export default function FeedScreen() {
   const desktop = useIsDesktop();
   if (desktop) return <DesktopFeed />;
   if (theme === "magazine") return <FeedMagazine />;
+  if (theme === "catalogus") return <FeedCatalogus />;
   return <FeedModern />;
 }

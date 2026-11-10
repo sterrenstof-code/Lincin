@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Kaartje, type Regel } from "../Kaartje";
 import { Kop, Meldingen, Plus } from "../Kop";
@@ -64,6 +65,9 @@ export function HomeView({
   hartjesStand,
   opgetild,
   scrollY = 0,
+  onScroll,
+  laden = false,
+  fout,
   doe,
 }: {
   regels: Regel[];
@@ -73,10 +77,16 @@ export function HomeView({
   hartjesStand: boolean;
   opgetild: string | null;
   scrollY?: number;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** De feed laadt nog: kop en tabbalk, geen lege staat. */
+  laden?: boolean;
+  /** De feed laadde niet: de melding op de plek van de vakken. */
+  fout?: { tekst: string; opnieuw: () => void };
   doe: HomeHandelingen;
 }) {
   const c = useCat();
   const vast = useVast();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const kop = (
     <Kop
@@ -90,6 +100,26 @@ export function HomeView({
     />
   );
   const voet = <Tabbalk actief="feed" ongelezen={ongelezen} onKies={doe.tab} />;
+
+  if (fout && stukken.length === 0) {
+    return (
+      <Scherm kop={kop} voet={voet}>
+        <View testID="band" style={{ flex: 1, borderTopWidth: NAAD, borderTopColor: c.naad, padding: 12, alignItems: "center", justifyContent: "center", rowGap: 20 }}>
+          <Text style={[tekst(15, 400, 1.35), { color: c.inkt, textAlign: "center" }]}>{fout.tekst}</Text>
+          <Pressable accessibilityRole="button" onPress={fout.opnieuw} style={{ height: 44, paddingHorizontal: 18, borderWidth: 1, borderColor: c.inkt, justifyContent: "center" }}>
+            <Text style={[kaartjeTekst, { color: c.inkt }]}>Opnieuw</Text>
+          </Pressable>
+        </View>
+      </Scherm>
+    );
+  }
+  if (laden && stukken.length === 0) {
+    return (
+      <Scherm kop={kop} voet={voet}>
+        <View style={{ flex: 1, borderTopWidth: NAAD, borderTopColor: c.naad }} />
+      </Scherm>
+    );
+  }
 
   if (stukken.length === 0) {
     return (
@@ -106,11 +136,11 @@ export function HomeView({
   }
 
   // Waar het opgetilde vak ligt, gerekend vanaf de bovenkant van het scherm.
-  const kolom = (Math.min(width, 640) - NAAD) / 2;
+  const kolom = (width - NAAD) / 2;
   let rect: { x: number; y: number; b: number; h: number } | null = null;
   const stukOp = opgetild ? stukken.find((s) => s.id === opgetild) ?? null : null;
   if (stukOp) {
-    let y = 56 + NAAD;
+    let y = (vast ? 0 : insets.top) + 56 + NAAD;
     let x = 0;
     let half = 0;
     const hoog = (s: HomeStuk) => (hartjesStand ? (s.breed ? HOOG_BREED_HART : HOOG_HART) : s.breed ? HOOG_BREED : HOOG);
@@ -184,7 +214,7 @@ export function HomeView({
     <View key={s.id} {...({ breed: s.breed } as object)} style={{ height: hartjesStand ? (s.breed ? HOOG_BREED_HART : HOOG_HART) : s.breed ? HOOG_BREED : HOOG, backgroundColor: c.vlak }} />
   );
   return (
-    <Scherm kop={kop} voet={voet} laag={laag}>
+    <Scherm kop={kop} voet={voet} laag={laag} scrollProps={onScroll ? { onScroll, scrollEventThrottle: 32 } : undefined}>
       <Raster>{stukken.map((s) => (stukOp && rect && s.id === stukOp.id ? plek(s) : vak(s)))}</Raster>
     </Scherm>
   );

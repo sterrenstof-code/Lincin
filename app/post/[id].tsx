@@ -25,6 +25,7 @@ import { displayName, fromPost, hhmm, timeLabel } from "@/lib/lincin/model";
 import { useMeasure } from "@/lib/lincin/measure";
 import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
+import { BijdrageCatalogus } from "@/components/lincin/catalogus/schermen/BijdrageCatalogus";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
@@ -52,7 +53,9 @@ const STRIP_W = 34;
 export default function PostRoute(props: { id?: string; embedded?: boolean } = {}) {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const desktop = useIsDesktop();
+  const catalogus = useThemeSpec().layout === "catalogus";
   if (desktop && !props.embedded) return <DesktopPost id={props.id ?? String(raw ?? "")} />;
+  if (catalogus && !props.embedded) return <BijdrageCatalogus id={props.id ?? String(raw ?? "")} />;
   return <PostScreen {...props} />;
 }
 
