@@ -41,6 +41,9 @@ export const FONT = {
   sansSemi: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-SemiBold",
   sansExtra: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-ExtraBold",
   sansBlack: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Black",
+  /** Archivo 300 en 200: de titels en de + van catalogus. */
+  sansLight: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-Light",
+  sansExtraLight: isWeb ? "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif" : "Archivo-ExtraLight",
   serif: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Regular",
   serifItalic: isWeb ? "'Instrument Serif', Georgia, 'Times New Roman', serif" : "InstrumentSerif-Italic",
   mono: isWeb ? "'IBM Plex Mono', Menlo, Consolas, monospace" : "IBMPlexMono-Regular",
@@ -56,6 +59,8 @@ export const FONT_FILES = {
   "Archivo-SemiBold": require("../../assets/fonts/Archivo-SemiBold.ttf"),
   "Archivo-ExtraBold": require("../../assets/fonts/Archivo-ExtraBold.ttf"),
   "Archivo-Black": require("../../assets/fonts/Archivo-Black.ttf"),
+  "Archivo-Light": require("../../assets/fonts/Archivo-Light.ttf"),
+  "Archivo-ExtraLight": require("../../assets/fonts/Archivo-ExtraLight.ttf"),
   "InstrumentSerif-Regular": require("../../assets/fonts/InstrumentSerif-Regular.ttf"),
   "InstrumentSerif-Italic": require("../../assets/fonts/InstrumentSerif-Italic.ttf"),
   "IBMPlexMono-Regular": require("../../assets/fonts/IBMPlexMono-Regular.ttf"),
@@ -64,9 +69,13 @@ export const FONT_FILES = {
 };
 
 /** Archivo op leesmaat. */
-export function sans(weight: 400 | 500 | 600 | 700 | 800 | 900 = 400): TextStyle {
+export function sans(weight: 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 = 400): TextStyle {
   const fontFamily =
-    weight === 900
+    weight === 200
+      ? FONT.sansExtraLight
+      : weight === 300
+        ? FONT.sansLight
+        : weight === 900
       ? FONT.sansBlack
       : weight === 800
         ? FONT.sansExtra

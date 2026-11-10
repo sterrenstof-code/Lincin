@@ -23,6 +23,8 @@ type FontKey = keyof typeof FONT_FILES;
  * deze tabel zegt de browser welk bestand dat is.
  */
 const FACES: [family: string, weight: number, style: "normal" | "italic", key: FontKey][] = [
+  ["Archivo", 200, "normal", "Archivo-ExtraLight"],
+  ["Archivo", 300, "normal", "Archivo-Light"],
   ["Archivo", 400, "normal", "Archivo-Regular"],
   ["Archivo", 500, "normal", "Archivo-Medium"],
   ["Archivo", 600, "normal", "Archivo-SemiBold"],

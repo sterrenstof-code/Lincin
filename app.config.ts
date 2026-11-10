@@ -248,6 +248,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           "Archivo-Bold",
           "Archivo-ExtraBold",
           "Archivo-Black",
+          "Archivo-Light",
+          "Archivo-ExtraLight",
           "InstrumentSerif-Regular",
           "InstrumentSerif-Italic",
           "IBMPlexMono-Regular",
