@@ -108,7 +108,7 @@ export const CSS = `
 /* naar de pagina van de bijdrage: de titel in het paneel en de open foto */
 .cd .naarpagina{cursor:pointer}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
-.cd .scrim.opfoto{cursor:zoom-in}
+.cd .scrim.opfoto{cursor:zoom-in}.cd .scrim.oplink{cursor:pointer}
 
 /* een tekst als artikel (de bijdragepagina) */
 .cd .artikel{width:100%;max-width:680px;padding:24px 0 40px;color:var(--k)}

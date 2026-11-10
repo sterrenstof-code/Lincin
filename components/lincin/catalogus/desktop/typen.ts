@@ -34,6 +34,8 @@ export type DStuk = {
   reacties: number;
   /** Een stuk met een eigen pagina (een poll) opent die in plaats van het paneel. */
   eigenPagina?: () => void;
+  /** Een link of een nummer: het adres. Een klik op het open stuk gaat erheen. */
+  link?: string;
 };
 
 /** De kop van elke pagina: tabbladen, meldingen, nieuw, en de editie. */
@@ -76,6 +78,8 @@ export type PaneelInhoud = {
   meer?: ReactNode;
   invoer: string;
   antwoordAan: string | null;
+  /** Een link of een nummer: het adres en de site, als regel onder de titel. */
+  link?: { url: string; site: string };
   /** Je eigen bijdrage: bewerken en verwijderen (⋯ in de kop van het paneel). */
   eigen?: {
     bewerk: () => void;

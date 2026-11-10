@@ -121,6 +121,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
   );
 
   const wand = weergave === "wand" || weergave === "blad";
+  const openLink = open ? stukken.find((s) => s.id === open)?.link : undefined;
 
   /** Ligt dit punt op de foto van het open stuk? */
   const fotoOnder = (x: number, y: number) => {
@@ -225,13 +226,15 @@ export function FeedDesktop(props: FeedDesktopProps) {
         {pagina}
         {open ? (
           <button
-            className={opFoto ? "scrim opfoto" : "scrim"}
+            className={opFoto ? (openLink ? "scrim oplink" : "scrim opfoto") : "scrim"}
             aria-label="Sluit de bijdrage"
             // De laag ligt over alles links van het paneel. Op de open foto
             // gaat een klik naar de bijdrage; ernaast sluit hij.
-            onMouseMove={(e) => setOpFoto(!!props.naarPagina && fotoOnder(e.clientX, e.clientY))}
+            // Een link of een nummer gaat naar zijn adres.
+            onMouseMove={(e) => setOpFoto((!!props.naarPagina || !!openLink) && fotoOnder(e.clientX, e.clientY))}
             onClick={(e) => {
-              if (props.naarPagina && fotoOnder(e.clientX, e.clientY)) props.naarPagina(open);
+              if (openLink && fotoOnder(e.clientX, e.clientY)) window.open(openLink, "_blank", "noopener,noreferrer");
+              else if (props.naarPagina && fotoOnder(e.clientX, e.clientY)) props.naarPagina(open);
               else sluit();
             }}
             data-meet="scrim"

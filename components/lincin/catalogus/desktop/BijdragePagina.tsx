@@ -22,7 +22,7 @@ import type { PaneelInhoud, PaneelNav } from "./typen";
 export type BijdrageStuk =
   | { soort: "foto"; fotos: string[] }
   | { soort: "tekst"; tekst: string; titel: string; regel: string }
-  | { soort: "voorwerp"; node: ReactNode; b: number; h: number };
+  | { soort: "voorwerp"; node: ReactNode; b: number; h: number; link?: string };
 
 export function BijdragePagina({
   stuk,
@@ -70,9 +70,16 @@ export function BijdragePagina({
           ) : stuk.soort === "tekst" ? (
             <Artikel stuk={stuk} inleiding={onder} profiel={profiel} />
           ) : (
-            <span style={{ width: stuk.b * 1.5, height: stuk.h * 1.5, flex: "none", position: "relative" }}>
-              <span style={{ position: "absolute", left: 0, top: 0, width: stuk.b, height: stuk.h, transform: "scale(1.5)", transformOrigin: "0 0" }}>{stuk.node}</span>
-            </span>
+            <a
+              href={stuk.link}
+              target={stuk.link ? "_blank" : undefined}
+              rel="noopener noreferrer"
+              aria-label={stuk.link ? "Open de link" : undefined}
+              style={{ width: stuk.b * 1.5, height: stuk.h * 1.5, flex: "none", position: "relative", display: "block", cursor: stuk.link ? "pointer" : "default" }}
+              data-meet="bijdrage-voorwerp"
+            >
+              <span style={{ position: "absolute", left: 0, top: 0, width: stuk.b, height: stuk.h, transform: "scale(1.5)", transformOrigin: "0 0", pointerEvents: stuk.link ? "none" : undefined }}>{stuk.node}</span>
+            </a>
           )}
           {onder && stuk.soort !== "tekst" ? (
             <div style={{ width: "100%", maxWidth: 640, fontSize: 17, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "break-word" }} data-meet="bijdrage-onder">

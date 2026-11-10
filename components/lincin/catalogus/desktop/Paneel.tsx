@@ -154,6 +154,11 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
       <div style={{ height: 48, flex: "none", display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderBottom: "2px solid var(--g)" }} data-meet="paneel-acties">
         <Acties hartjes={p.hartjes} vindIkLeuk={p.vindIkLeuk} reacties={p.aantalReacties} leuk={p.doe.leuk} reageer={() => veld.current?.focus()} />
         <span style={{ flex: 1 }} />
+        {p.link ? (
+          <a className="S link" style={{ padding: "0 8px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} href={p.link.url} target="_blank" rel="noopener noreferrer" data-meet="paneel-link">
+            {p.link.site} ↗
+          </a>
+        ) : null}
         {p.berichtAan ? (
           <a className="S link" style={{ padding: "0 8px" }} role="button" tabIndex={0} onClick={p.doe.bericht} onKeyDown={(e) => e.key === "Enter" && p.doe.bericht()}>
             Bericht aan {p.berichtAan}

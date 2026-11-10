@@ -9,6 +9,7 @@ import { setPreference, useScheme } from "@/lib/design/theme";
 import { LIKE } from "@/lib/lincin/likes";
 import { usePrefs } from "@/lib/lincin/prefs";
 import type { CardPost } from "@/lib/lincin/model";
+import { safeHttpUrl } from "@/lib/safe-url";
 
 import { CardVoorwerp, datumVan, soortVan, titelVan } from "../kaart";
 import { useCatNav } from "../nav";
@@ -200,6 +201,7 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
       reacties: c.commentCount,
       fotos: c.media.kind === "foto" ? c.media.uris.length : undefined,
       eigenPagina: c.kind === "poll" ? () => f.openPost(c) : undefined,
+      link: linkVan(c)?.url,
     };
   });
 
@@ -244,6 +246,14 @@ type Bijdrage = ReturnType<typeof useBijdrage>;
  * feed en de kolom van de bijdragepagina. `stuk` vult in zolang de bijdrage
  * laadt (in de feed is die al bekend).
  */
+/** Een link of een nummer: het adres (alleen http en https) en de site. */
+function linkVan(card: CardPost): { url: string; site: string } | undefined {
+  const m = card.media;
+  const url = safeHttpUrl(m.kind === "link" || m.kind === "muziek" ? m.url : null);
+  if (!url) return undefined;
+  return { url, site: m.kind === "link" && m.site ? m.site : new URL(url).hostname.replace(/^www\./, "") };
+}
+
 function paneelInhoud(b: Bijdrage, router: ReturnType<typeof useRouter>, stuk?: DStuk): PaneelInhoud {
   const { p, card, t } = b;
   const meer: ReactNode = !p ? (
@@ -277,6 +287,7 @@ function paneelInhoud(b: Bijdrage, router: ReturnType<typeof useRouter>, stuk?: 
     meer,
     invoer: b.draft,
     antwoordAan: b.antwoordNaam,
+    link: card ? linkVan(card) : undefined,
     // Je eigen bijdrage: bewerken in het paneel, verwijderen na bevestiging (useBijdrage).
     eigen:
       p && b.own
@@ -331,7 +342,7 @@ export function BijdragePaginaEcht({ id }: { id: string }) {
       stuk = { soort: "tekst", tekst: m.text || card.body || card.title, titel: card.title, regel: `${soortVan(card)} · ${b.naam} · ${datumVan(card)}` };
     else {
       const kleur = m.kind === "kleur";
-      stuk = { soort: "voorwerp", node: <CardVoorwerp card={card} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
+      stuk = { soort: "voorwerp", node: <CardVoorwerp card={card} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312, link: linkVan(card)?.url };
     }
   }
   // Bij een tekst staat de tekst al links; anders bijschrift en tekst onder het stuk.
