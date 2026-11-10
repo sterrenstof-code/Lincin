@@ -36,6 +36,8 @@ import { bioLine } from "@/lib/lincin/model";
 import { CardVoorwerp, datumVan, titelVan } from "@/components/lincin/catalogus/kaart";
 import { lincKleur } from "@/components/lincin/catalogus/stijl";
 import { ProfielView } from "@/components/lincin/catalogus/schermen/OverigeViews";
+import { ProfielDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 
 /**
  * Het profiel van een vriend (README §03).
@@ -134,6 +136,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const initial = name.slice(0, 1).toUpperCase();
   const mag = useThemeSpec().id === "magazine";
   const catalogus = useThemeSpec().layout === "catalogus";
+  const catalogusDesktop = useCatalogusDesktop();
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -193,6 +196,30 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   );
   const since = relation.kind === "friend" && relation.since ? `${t.lincSince} ${shortDate(relation.since, lang)}` : null;
   const count = `${cards.length} ${cards.length === 1 ? t.post1 : t.posts}`;
+
+  if (catalogus && !embedded && catalogusDesktop) {
+    // Desktop: de opbouw van Jij, met de bio en de knoppen.
+    const melding = p ? null : profile.isLoading ? t.loading : profile.isError ? "Het profiel laadde niet." : `Er is geen linc met de naam @${username}.`;
+    return (
+      <>
+        <ProfielDesktopEcht
+          naam={p ? name : `@${username}`}
+          linc={{ beeld: p?.avatar_url, kleur: lincKleur(p?.id), initiaal: initial }}
+          regels={[
+            ["Linc", p?.username ? `@${p.username}` : name],
+            ["Sinds", relation.kind === "friend" && relation.since ? String(new Date(relation.since).getFullYear()) : "—"],
+            ["Bijdragen", String(cards.length)],
+          ]}
+          bio={bioLine(p?.bio) || undefined}
+          knoppen={p ? acts.slice(0, 2).map((a) => ({ tekst: a.label.replace(/ →$/, ""), doe: a.onPress })) : profile.isError ? [{ tekst: "Opnieuw", doe: () => void profile.refetch() }] : []}
+          kaarten={cards}
+          stand={posts.isLoading ? t.loading : null}
+          melding={melding}
+        />
+        <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
+      </>
+    );
+  }
 
   if (catalogus && !embedded) {
     // Zolang het profiel er niet is: zeggen wat er aan de hand is, geen leeg profiel.

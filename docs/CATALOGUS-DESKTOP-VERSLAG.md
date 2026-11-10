@@ -174,9 +174,10 @@ Pagina's met een eigen desktopvorm, alle in het kader van de gekozen weergave:
 | Events | rijen en de maand |
 | Jij | profiel en ingangen, en al je bijdragen (§4b) |
 | Meldingen | de meldingen groot, linc-verzoeken met Accepteer en Negeer in de rij, rechts de tellers en "Alles gelezen" |
+| Het profiel van een ander | de opbouw van Jij: beeld, naam, bio, het kaartje (Linc, Sinds, Bijdragen) en de knoppen (Gesprek, Samen plannen; of Linc toevoegen, Accepteer); rechts al zijn bijdragen. Laden, niet gevonden en mislukt in hetzelfde kader |
 | Nieuwe bijdrage | één scherm in plaats van twee stappen: de soorten, het voorbeeld groot (foto's met omslag, de tekst als artikel, de poll), en de velden met voor wie, concept en Deel |
 
-Alle andere pagina's houden voorlopig de vorm van de telefoon in de kolom van 430: instellingen, het profiel van een ander, een event, een groep, lijsten, de QR-code, mijn lincs. Maar ze staan nu onder dezelfde bovenbalk als de rest (`KolomKop` in `app/_layout.tsx`), met tabbladen, Weergave, ✳ en +. Welkom, inloggen en de openbare links krijgen geen kader.
+Alle andere pagina's houden voorlopig de vorm van de telefoon in de kolom van 430: instellingen, een event, een groep, lijsten, de QR-code, mijn lincs. Maar ze staan nu onder dezelfde bovenbalk als de rest (`KolomKop` in `app/_layout.tsx`), met tabbladen, Weergave, ✳ en +. Welkom, inloggen en de openbare links krijgen geen kader.
 
 Verder in deze ronde:
 - Een titel op de wand en in het gloedraster heeft hoogstens twee regels en eindigt dan op "…". Een lang woord breekt binnen de breedte van zijn stuk.

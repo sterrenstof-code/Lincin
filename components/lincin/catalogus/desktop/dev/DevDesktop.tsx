@@ -35,7 +35,7 @@ import { EVENTS, GESPREKKEN, NAV_TEKST, REACTIES, beeld, kleurVan, stukken as vo
  * een keuze in het menu wordt bewaard, voor het gedragsscript.
  */
 
-const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" }> = {
+const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel" }> = {
   "wand-dicht": { w: "wand" },
   "wand-open": { w: "wand", open: "2" },
   "wand-dicht-donker": { w: "wand", stand: "donker" },
@@ -65,6 +65,8 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
   "meldingen-donker": { w: "blad", pagina: "meldingen", stand: "donker" },
   "nieuw-foto": { w: "wand", pagina: "nieuw-foto" },
   "nieuw-tekst": { w: "wand", pagina: "nieuw-tekst", stand: "donker" },
+  profiel: { w: "wand", pagina: "profiel" },
+  "profiel-donker": { w: "blad", pagina: "profiel", stand: "donker" },
 };
 
 export const DEV_STATEN = Object.keys(STATEN);
@@ -223,7 +225,7 @@ function DevPagina() {
     setPagina("feed");
   };
   const [stand, setStand] = useState<Stand>(s.stand ?? "licht");
-  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst">(s.pagina ?? "feed");
+  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel">(s.pagina ?? "feed");
   const [nieuw, setNieuw] = useState(() => ({
     kind: s.pagina === "nieuw-tekst" ? "tekst" : "foto",
     title: s.pagina === "nieuw-tekst" ? "De vossen maken koffie" : "",
@@ -313,6 +315,31 @@ function DevPagina() {
   }
 
   const paginaProps = { weergave, kiesWeergave: kies, stand, kiesStand: setStand, nav };
+
+  if (pagina === "profiel") {
+    const van = stukken.filter((x) => x.wie === "Mie" || x.wie === "johanna.coysman");
+    return (
+      <DesktopPagina {...paginaProps} actief={null}>
+        <JijDesktop
+          naam="Mie"
+          linc={{ beeld: beeld("prop-kat-hero.jpg"), kleur: "#8A9273", initiaal: "M" }}
+          regels={[
+            ["Linc", "@mie"],
+            ["Sinds", "2024"],
+            ["Bijdragen", String(van.length)],
+          ]}
+          bio="Fotografeert wat ze drinkt, en soms wat ze ziet."
+          knoppen={[
+            { tekst: "Gesprek", doe: () => setPagina("gesprekken") },
+            { tekst: "Samen plannen", doe: () => setPagina("events") },
+          ]}
+          ingangen={[]}
+          bijdragenLabel="Bijdragen"
+          bijdragen={van.map((x) => ({ ...x, open: () => setNaarStuk(x.id) }))}
+        />
+      </DesktopPagina>
+    );
+  }
 
   if (pagina === "meldingen") {
     const rij = (id: string, naam: string, rest: string, tijd: string, nieuw: boolean, kleur: string, verzoek = false) => ({

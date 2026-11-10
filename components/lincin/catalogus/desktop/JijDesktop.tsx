@@ -29,6 +29,9 @@ export function JijDesktop({
   ingangen,
   bijdragen,
   stand,
+  bio,
+  knoppen,
+  bijdragenLabel = "Mijn bijdragen",
 }: {
   naam: string;
   linc: { beeld?: string | null; kleur: string | null; initiaal: string };
@@ -37,6 +40,12 @@ export function JijDesktop({
   bijdragen: JijStuk[];
   /** Een tekst in plaats van de bijdragen: laden, mislukt, nog niets. */
   stand?: string | null;
+  /** Het profiel van een ander: zijn bio onder de naam. */
+  bio?: string;
+  /** Het profiel van een ander: Gesprek, Samen plannen, Linc toevoegen… De eerste gevuld. */
+  knoppen?: { tekst: string; doe: () => void }[];
+  /** De kop van de rechterkolom (standaard "Mijn bijdragen"). */
+  bijdragenLabel?: string;
 }) {
   // Hoeveel kolommen er passen (minstens 220 breed), om de laatste rij te vullen.
   const raster = useRef<HTMLDivElement>(null);
@@ -58,9 +67,19 @@ export function JijDesktop({
             <span className="T" style={{ alignSelf: "flex-start", fontSize: 38, overflowWrap: "break-word", maxWidth: "100%" }}>
               {naam}
             </span>
+            {bio ? <span style={{ alignSelf: "stretch", fontSize: 15, lineHeight: 1.45, color: "var(--two)", overflowWrap: "break-word" }}>{bio}</span> : null}
             <span style={{ alignSelf: "stretch" }}>
               <Spec rijen={regels} />
             </span>
+            {knoppen?.length ? (
+              <span style={{ alignSelf: "stretch", display: "flex", gap: 6 }}>
+                {knoppen.map((k, i) => (
+                  <button key={k.tekst} className={i === 0 ? "btn S" : "btn S ghost"} style={{ flex: 1, justifyContent: "center" }} onClick={k.doe}>
+                    {k.tekst}
+                  </button>
+                ))}
+              </span>
+            ) : null}
           </div>
           {ingangen.map((i) => (
             <a
@@ -84,7 +103,7 @@ export function JijDesktop({
         <div className="strip">
           <Spec
             rijen={[
-              ["Mijn bijdragen", bijdragen.length],
+              [bijdragenLabel, bijdragen.length],
               ["Nieuwste", bijdragen[0]?.datum ?? "—"],
             ]}
           />

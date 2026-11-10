@@ -445,6 +445,31 @@ export function EventsDesktopEcht({
   );
 }
 
+/** Bijdragen als vakken voor Jij en een profiel; een klik opent de bijdragepagina (een poll zijn eigen pagina). */
+function useMijnStukken(kaarten: CardPost[]): JijStuk[] {
+  const router = useRouter();
+  const uris = useMemo(() => kaarten.map(beeldVan).filter((u): u is string => !!u), [kaarten]);
+  const verh = useVerhoudingen(uris);
+  return kaarten.map((c, i) => {
+    const beeld = beeldVan(c);
+    const kleur = c.media.kind === "kleur";
+    const ding = beeld ? undefined : { node: <CardVoorwerp card={c} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
+    const r = beeld ? (verh.get(beeld) ?? 0.8) : 0;
+    return {
+      id: c.id,
+      nr: String(i + 1).padStart(2, "0"),
+      titel: titelVan(c),
+      soort: soortVan(c),
+      datum: datumVan(c),
+      beeld,
+      voorwerp: ding,
+      b: beeld ? 400 * r : ding!.b,
+      h: beeld ? 400 : ding!.h,
+      open: () => router.push((c.kind === "poll" ? c.href : `/post/${c.id}?pagina=1`) as never),
+    };
+  });
+}
+
 /** Jij op desktop: je profiel, de ingangen van Jij, en al je bijdragen. */
 export function JijDesktopEcht({
   naam,
@@ -463,31 +488,60 @@ export function JijDesktopEcht({
 }) {
   const k = useKader();
   const nav = useNav();
-  const router = useRouter();
-  const uris = useMemo(() => kaarten.map(beeldVan).filter((u): u is string => !!u), [kaarten]);
-  const verh = useVerhoudingen(uris);
-  const bijdragen: JijStuk[] = kaarten.map((c, i) => {
-    const beeld = beeldVan(c);
-    const kleur = c.media.kind === "kleur";
-    const ding = beeld ? undefined : { node: <CardVoorwerp card={c} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
-    const r = beeld ? (verh.get(beeld) ?? 0.8) : 0;
-    return {
-      id: c.id,
-      nr: String(i + 1).padStart(2, "0"),
-      titel: titelVan(c),
-      soort: soortVan(c),
-      datum: datumVan(c),
-      beeld,
-      voorwerp: ding,
-      b: beeld ? 400 * r : ding!.b,
-      h: beeld ? 400 : ding!.h,
-      // Een poll heeft zijn eigen pagina; de rest de bijdragepagina.
-      open: () => router.push((c.kind === "poll" ? c.href : `/post/${c.id}?pagina=1`) as never),
-    };
-  });
+  const bijdragen = useMijnStukken(kaarten);
   return (
     <DesktopPagina {...k} nav={nav} actief="you">
       <JijDesktop naam={naam} linc={linc} regels={regels} ingangen={ingangen} bijdragen={bijdragen} stand={stand} />
+    </DesktopPagina>
+  );
+}
+
+/**
+ * Het profiel van een ander op desktop (`/user/<naam>`): de opbouw van Jij,
+ * met de bio en de knoppen (Gesprek, Samen plannen, Linc toevoegen…) in
+ * plaats van de ingangen. Zonder profiel (laden, niet gevonden, mislukt)
+ * zegt de pagina dat, in hetzelfde kader.
+ */
+export function ProfielDesktopEcht({
+  naam,
+  linc,
+  regels,
+  bio,
+  knoppen,
+  kaarten,
+  stand,
+  melding,
+}: {
+  naam: string;
+  linc: { beeld?: string | null; kleur: string | null; initiaal: string };
+  regels: [string, string][];
+  bio?: string;
+  knoppen: { tekst: string; doe: () => void }[];
+  kaarten: CardPost[];
+  stand?: string | null;
+  /** Geen profiel: wat er aan de hand is. */
+  melding?: string | null;
+}) {
+  const k = useKader();
+  const nav = useNav();
+  const bijdragen = useMijnStukken(kaarten);
+  return (
+    <DesktopPagina {...k} nav={nav} actief={null}>
+      {melding ? (
+        <div style={{ flex: 1, background: "var(--g)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }} data-meet="profiel-melding">
+          <span className="T" style={{ fontSize: 44 }}>
+            {naam}
+          </span>
+          <span className="S dim">{melding}</span>
+          {knoppen.length ? (
+            <button className="btn S" onClick={knoppen[0].doe}>
+              {knoppen[0].tekst}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <JijDesktop naam={naam} linc={linc} regels={regels} ingangen={[]} bijdragen={bijdragen} stand={stand} bio={bio} knoppen={knoppen} bijdragenLabel="Bijdragen" />
+      )}
     </DesktopPagina>
   );
 }
