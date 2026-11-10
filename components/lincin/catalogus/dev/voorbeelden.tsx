@@ -11,6 +11,7 @@ import { HomeView, type HomeHandelingen, type HomeStuk } from "../schermen/HomeV
 import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/BijdrageView";
 import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoofd } from "../schermen/LijstViews";
 import { GroepView } from "../schermen/GroepView";
+import { EventView } from "../schermen/EventView";
 
 /**
  * De voorbeeldgegevens van de testpagina's: exact de inhoud van het ontwerp
@@ -599,6 +600,55 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
           }
         />
       </View>
+    ),
+  },
+  // Geen ontwerp en geen referentie: alleen om de eventpagina te bekijken.
+  event: {
+    render: () => (
+      <EventView
+        kop={[
+          { label: "Event", waarde: "Sri Lanka 2027" },
+          { label: "Wanneer", waarde: "10 jan" },
+          { label: "Status", waarde: "gepland" },
+        ]}
+        terug={niets}
+        dag="10"
+        maand="JAN"
+        titelTekst="Sri Lanka 2027"
+        regels={[
+          { label: "Wanneer", waarde: "zo — ma" },
+          { label: "Waar", waarde: "—" },
+          { label: "Van", waarde: "jij" },
+          { label: "Gasten", waarde: "3" },
+          { label: "Toegang", waarde: "open" },
+        ]}
+        omschrijving="Drie weken rondreizen, van Colombo naar de theevelden."
+        gasten={[
+          { naam: "Tom", beeld: BEELD.katHero, initiaal: "T" },
+          { naam: "Mie", kleur: K.groen, initiaal: "M" },
+          { naam: "Sem", kleur: K.blauw, initiaal: "S" },
+        ]}
+        gastenOpen={niets}
+        antwoord="yes"
+        kom={niets}
+        misschien={niets}
+        telling="1 komt"
+        voorbij={false}
+        voegToe={niets}
+        voegToeTekst="Voeg toe"
+        handelingen={[
+          { label: "Kopieer link", doe: niets },
+          { label: "Uitnodigen", doe: niets },
+          { label: "Bewerk", doe: niets },
+          { label: "Instellingen", doe: niets },
+        ]}
+        melding="Foto's en video's van een event zijn niet end-to-end versleuteld, zoals je gesprekken wel zijn."
+        bijdragen={[
+          { id: "1", voorwerp: <Foto b={132} h={168} beeld={BEELD.drank} />, regels: [{ label: "Wie", waarde: "Mie" }, { label: "Soort", waarde: "foto" }, { label: "Tijd", waarde: "14:02" }], label: "Foto" },
+          { id: "2", voorwerp: <Foto b={132} h={168} beeld={BEELD.tafel} />, regels: [{ label: "Wie", waarde: "Jij" }, { label: "Soort", waarde: "foto" }, { label: "Tijd", waarde: "15:40" }], label: "Foto" },
+          { id: "3", voorwerp: <TekstBlad tekst="Vergeet de muggenspray niet" />, regels: [{ label: "Wie", waarde: "Sem" }, { label: "Soort", waarde: "tekst" }, { label: "Tijd", waarde: "16:10" }], label: "Tekst" },
+        ]}
+      />
     ),
   },
   // Geen ontwerp en geen referentie: alleen om de groepspagina te bekijken.

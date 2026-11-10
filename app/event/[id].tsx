@@ -23,7 +23,11 @@ import {
   type EventAction,
   type EventFacts,
   type Face,
+  VideoTile,
 } from "@/components/lincin/EventPage";
+import { EventView } from "@/components/lincin/catalogus/schermen/EventView";
+import { lincKleur } from "@/components/lincin/catalogus/stijl";
+import { Foto, TekstBlad } from "@/components/lincin/catalogus/Voorwerp";
 import { openLightbox } from "@/components/lincin/Lightbox";
 import { useEventRsvps } from "@/lib/api/event-rsvps";
 import {
@@ -73,6 +77,7 @@ export default function EventDetailScreen() {
   // De grote vorm alleen op desktop: op de telefoon staat de pagina in de
   // kolom van LincinScreen, ook op een tablet.
   const desktop = useIsDesktop();
+  const catalogus = useThemeSpec().layout === "catalogus";
   const wide = desktop;
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -507,6 +512,133 @@ export default function EventDetailScreen() {
     });
   };
 
+  // De gastenlijst, het beheer en het toevoegmenu: dezelfde bladen in elk thema.
+  const lagen = (
+    <>
+      <EventMenu
+        visible={guestsOpen}
+        onClose={() => setGuestsOpen(false)}
+        title={`Gasten · ${memberList.length}`}
+        items={memberList.map((m) => ({
+          label: m.profile?.display_name ?? m.profile?.username ?? "Onbekend",
+          sub: [m.role === "host" ? "gastheer" : null, m.profile?.username ? `@${m.profile.username}` : null].filter(Boolean).join(" · ") || undefined,
+          icon: "person-outline" as const,
+          hue: hueFor(m.user_id),
+          onPress: () => {
+            const handle = m.profile?.username;
+            if (handle) router.push(`/user/${handle}`);
+          },
+        }))}
+      />
+      <AccessModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        policy={ev.join_policy}
+        onPolicy={onChangeJoinPolicy}
+        requests={joinRequests.data ?? []}
+        onApprove={onApproveRequest}
+        onDecline={onDeclineRequest}
+        onDelete={onDeleteEvent}
+      />
+      <EventMenu
+        visible={addMenuOpen}
+        onClose={() => setAddMenuOpen(false)}
+        title="Bijdrage toevoegen"
+        subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
+        items={[
+          { label: "Maak een foto met de camera", icon: "camera-outline", onPress: onOpenCamera },
+          { label: "Kies uit je foto's en video's", icon: "images-outline", onPress: () => pickFromGallery() },
+          { label: "Voeg link toe", icon: "link-outline", onPress: onOpenLinkCompose },
+        ]}
+      />
+    </>
+  );
+
+  // Catalogus: het event als voorwerp met zijn kaartje, en de bijdragen in het raster van de home.
+  if (catalogus && !desktop) {
+    const mine = rsvp.mine(eventId);
+    const voegToe = actions[actions.length - 1];
+    return (
+      <EventView
+        kop={[
+          { label: "Event", waarde: ev.name },
+          { label: "Wanneer", waarde: `${facts.day} ${facts.month}` },
+          { label: "Status", waarde: status },
+        ]}
+        terug={() => safeBack(router, "/(app)/events")}
+        cover={ev.cover_url ? { beeld: ev.cover_url, open: () => openLightbox({ uris: [ev.cover_url], author: ev.name, kind: "event", time: hhmm(ev.starts_at), title: ev.description ?? "" }) } : null}
+        dag={facts.day}
+        maand={facts.month}
+        titelTekst={ev.name}
+        regels={[
+          { label: "Wanneer", waarde: facts.when },
+          { label: "Waar", waarde: facts.place || "—" },
+          { label: "Van", waarde: facts.host },
+          { label: "Gasten", waarde: String(ev.members_count) },
+          { label: "Toegang", waarde: facts.open ? "open" : "op verzoek" },
+        ]}
+        omschrijving={facts.description}
+        gasten={memberList.map((m) => {
+          const n = m.profile?.display_name ?? m.profile?.username ?? "?";
+          return { naam: n, beeld: m.profile?.avatar_url, kleur: lincKleur(m.user_id), initiaal: n.slice(0, 1).toUpperCase() };
+        })}
+        gastenOpen={() => setGuestsOpen(true)}
+        antwoord={mine}
+        kom={() => rsvp.answer(eventId, mine === "yes" ? null : "yes")}
+        misschien={() => rsvp.answer(eventId, mine === "maybe" ? null : "maybe")}
+        telling={tally}
+        voorbij={isPast}
+        voegToe={voegToe.onPress}
+        voegToeTekst={voegToe.label}
+        voegToeUit={voegToe.disabled}
+        handelingen={actions.slice(0, -1).map((a) => ({ label: a.label, doe: a.onPress }))}
+        fout={error}
+        melding="Foto's en video's van een event zijn niet end-to-end versleuteld, zoals je gesprekken wel zijn."
+        leeg={
+          !revealed
+            ? {
+                titel: "Nog niet te zien",
+                tekst: `${
+                  ev.reveal === "after"
+                    ? "De foto's komen tevoorschijn na afloop."
+                    : ev.reveal === "delayed"
+                      ? `De foto's komen tevoorschijn ${ev.reveal_delay_hours} uur na afloop.`
+                      : "De foto's worden zichtbaar tijdens het event."
+                } Toevoegen kan nu al.`,
+              }
+            : contribs.length === 0
+              ? { titel: "Nog niets toegevoegd", tekst: "Wees de eerste: maak een foto, of kies foto's en video's uit je bibliotheek." }
+              : null
+        }
+        bijdragen={contribs.map((c) => {
+          const wie = c.user_id === myUserId ? t.me : (c.author?.display_name ?? c.author?.username ?? "Onbekend");
+          return {
+            id: c.id,
+            voorwerp:
+              c.media_type === "video" && c.image_url ? (
+                <View testID="voorwerp" style={{ width: 132, height: 168, overflow: "hidden" }}>
+                  <VideoTile uri={c.image_url} />
+                </View>
+              ) : c.image_url ? (
+                <Foto b={132} h={168} beeld={c.image_url} cacheKey={c.image_path ?? undefined} />
+              ) : (
+                <TekstBlad tekst={c.caption ?? c.link_url ?? ""} />
+              ),
+            regels: [
+              { label: "Wie", waarde: wie },
+              { label: "Soort", waarde: c.media_type === "video" ? "video" : c.image_url ? "foto" : c.link_url ? "link" : "tekst" },
+              { label: "Tijd", waarde: hhmm(c.created_at) },
+            ],
+            label: `${c.media_type === "video" ? "Video" : "Foto"} van ${wie}`,
+            open: c.media_type !== "video" && c.image_url ? () => openPhoto(c) : undefined,
+            verwijder: c.user_id === myUserId || ev.is_host ? () => onDeleteContribution(c) : undefined,
+          };
+        })}
+        lagen={lagen}
+      />
+    );
+  }
+
   const body = (
     <EventSheet wide={wide}>
       <EventHero f={facts} wide={wide} cover={cover} faces={faces} onGuests={() => setGuestsOpen(true)} />
@@ -546,45 +678,7 @@ export default function EventDetailScreen() {
         />
       )}
 
-      {/* De volledige gastenlijst. */}
-      <EventMenu
-        visible={guestsOpen}
-        onClose={() => setGuestsOpen(false)}
-        title={`Gasten · ${memberList.length}`}
-        items={memberList.map((m) => ({
-          label: m.profile?.display_name ?? m.profile?.username ?? "Onbekend",
-          sub: [m.role === "host" ? "gastheer" : null, m.profile?.username ? `@${m.profile.username}` : null].filter(Boolean).join(" · ") || undefined,
-          icon: "person-outline" as const,
-          hue: hueFor(m.user_id),
-          onPress: () => {
-            const handle = m.profile?.username;
-            if (handle) router.push(`/user/${handle}`);
-          },
-        }))}
-      />
-
-      <AccessModal
-        visible={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        policy={ev.join_policy}
-        onPolicy={onChangeJoinPolicy}
-        requests={joinRequests.data ?? []}
-        onApprove={onApproveRequest}
-        onDecline={onDeclineRequest}
-        onDelete={onDeleteEvent}
-      />
-
-      <EventMenu
-        visible={addMenuOpen}
-        onClose={() => setAddMenuOpen(false)}
-        title="Bijdrage toevoegen"
-        subtitle="Maak een foto, of kies foto's en video's uit je bibliotheek."
-        items={[
-          { label: "Maak een foto met de camera", icon: "camera-outline", onPress: onOpenCamera },
-          { label: "Kies uit je foto's en video's", icon: "images-outline", onPress: () => pickFromGallery() },
-          { label: "Voeg link toe", icon: "link-outline", onPress: onOpenLinkCompose },
-        ]}
-      />
+      {lagen}
     </EventSheet>
   );
 

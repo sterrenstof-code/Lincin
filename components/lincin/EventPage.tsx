@@ -671,7 +671,7 @@ function ContributionTile({
 }
 
 /** Een video op een tegel: stil, met de systeembediening om hem te starten. */
-function VideoTile({ uri }: { uri: string }) {
+export function VideoTile({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => {
     p.muted = true;
   });
