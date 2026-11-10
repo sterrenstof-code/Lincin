@@ -185,12 +185,14 @@ const STIL = `*,*::before,*::after{transition:none!important;animation:none!impo
 // Vergelijken
 // ---------------------------------------------------------------
 
-function vergelijkDelen(ref, eigen) {
+function vergelijkDelen(ref, eigen, { domVolgorde = false } = {}) {
   const fouten = [];
   let grootste = 0;
   // Op volgorde van plaats (boven naar onder, links naar rechts): een laag
   // die bovenop ligt staat in de DOM achteraan, maar hoort op zijn plek.
-  const opPlek = (l) => [...l].sort((p, q) => p.y - q.y || p.x - q.x);
+  // Desktop: in de volgorde van de DOM, die aan beide kanten gelijk is; een
+  // verschoven foto wisselt dan niet van plaats met zijn buur.
+  const opPlek = (l) => (domVolgorde ? [...l] : [...l].sort((p, q) => p.y - q.y || p.x - q.x));
   for (const rol of Object.keys(ref)) {
     const a = opPlek(ref[rol]);
     const b = opPlek(eigen[rol] ?? []);
@@ -548,7 +550,7 @@ async function vergelijkDesktop() {
       writeFileSync(join(ROOT, `${pad}-eigen.png`), shot);
       if (!maatFout) writeFileSync(join(ROOT, `${pad}-verschil.png`), PNG.sync.write(verschil));
 
-      const delen = vergelijkDelen(ref, eigen);
+      const delen = vergelijkDelen(ref, eigen, { domVolgorde: true });
 
       // Het kleurveld: gemiddeld verschil per kanaal, in procent van 255.
       let veld = null;

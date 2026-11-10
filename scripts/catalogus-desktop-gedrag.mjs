@@ -302,7 +302,7 @@ try {
     const dy = na.foto.cy - doel.cy;
     noteer(w, "foto in het midden van de vrije ruimte (±1 px)", Math.abs(dx) <= 1 && Math.abs(dy) <= 1, `Δ ${r1(dx)}, ${r1(dy)} px`);
     const schaal = na.foto.b / voor.basis.b;
-    noteer(w, `schaal ${r1(doel.schaal * 100) / 100} (§4)`, Math.abs(schaal - doel.schaal) < 0.005, `${schaal.toFixed(3)}`);
+    noteer(w, `schaal ${doel.schaal.toFixed(3)} (§4)`, Math.abs(schaal - doel.schaal) < 0.005, `${schaal.toFixed(3)}`);
     const p = na.paneel;
     noteer(w, "paneel 440 breed, boven- en onderrand", !!p && Math.abs(p.b - PANEEL) < 0.5 && Math.abs(p.y) < 0.5 && Math.abs(p.y + p.h - venster.h) < 0.5 && Math.abs(p.x + p.b - venster.b) < 0.5, p ? `${r1(p.x)},${r1(p.y)} ${r1(p.b)}×${r1(p.h)}` : "geen paneel");
     const over = await page.evaluate(() => {
