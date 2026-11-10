@@ -76,11 +76,13 @@ function VastPaneel({
   leuk,
   aan,
   eigen,
+  naarProfiel,
 }: {
   stuk: DStuk;
   nav: PaneelNav;
   leuk: () => void;
   aan: boolean;
+  naarProfiel: (gebruiker: string) => void;
   /** `?eigen=1`: dit stuk is van jou; verwijderen haalt het weg. `echt`: het echte bewerkformulier. */
   eigen?: { verwijder: () => void; hernoem: (t: string) => void; echt: boolean };
 }) {
@@ -150,6 +152,7 @@ function VastPaneel({
       },
       antwoord: (id) => setAntwoord(reacties.find((r) => r.id === id) ?? null),
       stopAntwoord: () => setAntwoord(null),
+      profiel: naarProfiel,
     },
   };
   return <Paneel inhoud={p} nav={nav} />;
@@ -172,6 +175,7 @@ export function DevDesktop() {
   const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij">(s.pagina ?? "feed");
   // De bijdragepagina (een klik op de open foto of de titel): hier alleen een vlak met het id.
   const [naarStuk, setNaarStuk] = useState<string | null>(null);
+  const [profielVan, setProfielVan] = useState<string | null>(null);
   const [leuk, setLeuk] = useState<Record<string, boolean>>({});
   const [gesprek, setGesprek] = useState(0);
   const [bericht, setBericht] = useState("");
@@ -192,6 +196,14 @@ export function DevDesktop() {
     meldingen: () => {},
     nieuw: () => {},
   };
+
+  if (profielVan) {
+    return (
+      <div data-meet="profielpagina" data-gebruiker={profielVan} style={{ padding: 40 }}>
+        Profiel {profielVan}
+      </div>
+    );
+  }
 
   if (naarStuk) {
     return (
@@ -218,6 +230,7 @@ export function DevDesktop() {
             nav={pn}
             aan={!!leuk[stuk.id]}
             leuk={() => tikLeuk(stuk.id)}
+            naarProfiel={setProfielVan}
             eigen={
               vanMij
                 ? {

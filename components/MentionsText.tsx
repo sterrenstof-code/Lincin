@@ -9,12 +9,13 @@ const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
 // Leestekens die vaak direct na een URL staan en er niet bij horen
 const TRAILING_PUNCT = /[.,;:!?)\]}>'"]+$/;
 
-type Part =
+export type Part =
   | { type: "text"; value: string }
   | { type: "mention"; value: string }
   | { type: "url"; value: string };
 
-function tokenize(text: string): Part[] {
+/** Tekst in stukken: gewone tekst, @namen en links. Ook gebruikt door catalogus op desktop. */
+export function tokenize(text: string): Part[] {
   const parts: Part[] = [];
   let lastIndex = 0;
 

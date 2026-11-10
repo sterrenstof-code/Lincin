@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Acties, Spec, Sq, klikbaar } from "./Delen";
+import { Acties, Spec, Sq, TekstMetNamen, klikbaar } from "./Delen";
 import type { PaneelInhoud, PaneelNav } from "./typen";
 
 /**
@@ -154,7 +154,9 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
               <Sq kleur={c.linc.kleur} initiaal={c.linc.initiaal} beeld={c.linc.beeld} maat={28} />
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, paddingBottom: 10 }}>
                 <span className="S">{c.naam}</span>
-                <span style={{ lineHeight: 1.35, overflowWrap: "anywhere" }}>{c.tekst}</span>
+                <span style={{ lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                  <TekstMetNamen tekst={c.tekst} profiel={p.doe.profiel} />
+                </span>
               </span>
             </div>
           ))

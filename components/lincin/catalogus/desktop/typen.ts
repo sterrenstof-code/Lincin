@@ -86,6 +86,8 @@ export type PaneelInhoud = {
     stuur: () => void;
     antwoord: (id: string) => void;
     stopAntwoord: () => void;
+    /** Een @naam in een reactie: naar dat profiel. */
+    profiel?: (gebruiker: string) => void;
   };
 };
 

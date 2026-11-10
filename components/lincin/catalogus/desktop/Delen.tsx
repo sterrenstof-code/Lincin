@@ -1,5 +1,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
+import { tokenize } from "@/components/MentionsText";
+import { openExternal } from "@/lib/safe-url";
+
 import type { DStuk } from "./typen";
 
 /**
@@ -128,3 +131,48 @@ export function useVenster(): { b: number; h: number } {
  * schaalt een voorwerp mee, zodat de verhoudingen blijven.
  */
 export const ONTWERP_HOOGTE = 900;
+
+/**
+ * Tekst met klikbare @namen (naar het profiel) en links, zoals `MentionsText`
+ * in de andere thema's: een naam is vet, een link onderstreept. Een klik erop
+ * gaat niet ook nog naar wat eromheen ligt (een reactie wordt dan geen antwoord).
+ */
+export function TekstMetNamen({ tekst, profiel }: { tekst: string; profiel?: (gebruiker: string) => void }) {
+  return (
+    <>
+      {tokenize(tekst).map((d, i) =>
+        d.type === "mention" && profiel ? (
+          <a
+            key={i}
+            className="naam"
+            href={`/user/${d.value}`}
+            data-gebruiker={d.value}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              profiel(d.value);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            @{d.value}
+          </a>
+        ) : d.type === "url" ? (
+          <a
+            key={i}
+            className="link"
+            href={/^https?:\/\//i.test(d.value) ? d.value : `https://${d.value}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openExternal(/^https?:\/\//i.test(d.value) ? d.value : `https://${d.value}`);
+            }}
+          >
+            {d.value}
+          </a>
+        ) : (
+          <span key={i}>{d.type === "mention" ? `@${d.value}` : d.value}</span>
+        ),
+      )}
+    </>
+  );
+}

@@ -245,6 +245,7 @@ export function KolomBijdrage({ id }: { id: string }) {
 
 /** Het paneel op echte gegevens: de inhoud van de bijdragepagina, zonder het beeld. */
 function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
+  const router = useRouter();
   const b = useBijdrage(stuk.id, { naVerwijderen: nav.sluit });
   const { p, card, t } = b;
   const meer: ReactNode = !p ? (
@@ -297,6 +298,7 @@ function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
             stuur: b.stuur,
             antwoord: b.antwoord,
             stopAntwoord: b.stopAntwoord,
+            profiel: (gebruiker) => router.push(`/user/${gebruiker}` as never),
           },
         }}
       />

@@ -84,6 +84,10 @@ export const CSS = `
 @keyframes cd-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .cd .rise{animation:cd-rise .35s ${VERLOOP_FOTO}}
 
+/* een @naam in een reactie: vet, en onderstreept onder de muis */
+.cd .naam{font-weight:600}
+.cd .naam:hover{text-decoration:underline;text-underline-offset:3px}
+
 /* naar de pagina van de bijdrage: de titel in het paneel en de open foto */
 .cd .naarpagina{cursor:pointer}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}

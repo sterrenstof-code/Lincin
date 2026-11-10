@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { MentionsText } from "@/components/MentionsText";
+
 import { Band, Invoer, Onderstreept } from "../Delen";
 import { Kaartje, type Regel } from "../Kaartje";
 import { Kop, Meer } from "../Kop";
@@ -179,9 +181,7 @@ export function BijdrageView({
       </Band>
       {onder ? (
         <Band style={{ padding: 12 }}>
-          <Text selectable style={[tekst(15, 400, 1.35), { color: c.inkt }]}>
-            {onder}
-          </Text>
+          <MentionsText text={onder} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
         </Band>
       ) : null}
       {actief ? (
@@ -242,7 +242,7 @@ function ReactieRustig({ r, onPress }: { r: Reactie; onPress: () => void }) {
       <Linc maat={36} letterMaat={12} {...r.linc} />
       <View style={{ flex: 1, minWidth: 0, rowGap: 4 }}>
         <Kopregel r={r} />
-        <Text style={[tekst(15, 400, 1.35), { color: c.inkt }]}>{r.tekst}</Text>
+        <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
       </View>
     </Band>
   );
@@ -255,7 +255,7 @@ function ReactieActief({ r, doe }: { r: Reactie; doe: BijdrageDoe }) {
       <Linc maat={32} letterMaat={11} {...r.linc} />
       <View style={{ flex: 1, minWidth: 0, rowGap: 2 }}>
         <Kopregel r={r} />
-        <Text style={[tekst(15, 400, 1.35), { color: c.inkt }]}>{r.tekst}</Text>
+        <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
         <View style={{ flexDirection: "row", alignItems: "center", columnGap: 4, marginLeft: -8 }}>
           <TelKnop label={r.vindIkLeuk ? "Vind reactie niet meer leuk" : "Vind reactie leuk"} aan={r.vindIkLeuk} onPress={() => doe.leukReactie(r.id)}>
             <Hart maat={18} kleur={c.inkt} vol={r.vindIkLeuk} vulling={c.accent} />

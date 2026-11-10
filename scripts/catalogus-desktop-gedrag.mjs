@@ -442,6 +442,24 @@ try {
       const naar = await page.evaluate(() => document.querySelector('[data-meet="bijdragepagina"]')?.getAttribute("data-id") ?? null);
       noteer(w, `klik op ${hoe}: naar de bijdragepagina`, naar === id, `stuk ${naar}`);
     }
+    // ---- een @naam in een reactie: naar dat profiel ----
+    await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht`);
+    await wacht(page);
+    await page.click(`[data-meet="stuk"][data-id="${id}"]`);
+    await page.waitForTimeout(1100);
+    await page.fill('[data-meet="paneel-invoer"] input', "dankje @mie!");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+    const naam = await page.evaluate(() => {
+      const a = document.querySelector('[data-meet="paneel-draad"] a.naam[data-gebruiker="mie"]');
+      return a ? { tekst: a.textContent, dik: getComputedStyle(a).fontWeight } : null;
+    });
+    noteer(w, "@mie in een reactie: vet en klikbaar", !!naam && naam.tekst === "@mie" && naam.dik === "600", JSON.stringify(naam));
+    await klik(page, '[data-meet="paneel-draad"] a.naam[data-gebruiker="mie"]');
+    await page.waitForTimeout(200);
+    const profiel = await page.evaluate(() => document.querySelector('[data-meet="profielpagina"]')?.getAttribute("data-gebruiker") ?? null);
+    noteer(w, "klik op @mie: naar het profiel van mie", profiel === "mie", `${profiel}`);
+
     await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht`);
     await wacht(page);
 
