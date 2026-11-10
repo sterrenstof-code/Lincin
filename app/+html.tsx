@@ -50,11 +50,25 @@ function fontUrl(key: FontKey): string {
   return Asset.fromModule(FONT_FILES[key]).uri;
 }
 
+/**
+ * Catalogus (ontwerp 3e) zet zijn letter in dezelfde Archivo, maar alleen
+ * voor het latijnse bereik dat het ontwerp laadt. Pijlen, ✳ en № vallen
+ * daarbuiten en komen zo, net als in het ontwerp, uit de systeemletter.
+ */
+const LATIJN_RANGE =
+  "U+000D, U+0020-007E, U+00A0-00FF, U+0102, U+0131, U+0152-0153, U+02BC, U+02C6, U+02DA, U+02DC, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+2009, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF";
+
 function fontFaceCss(): string {
+  const latijn = FACES.filter(([family]) => family === "Archivo").map(
+    ([, weight, style, key]) =>
+      `@font-face{font-family:'Archivo Latijn';font-style:${style};font-weight:${weight};font-display:swap;src:url('${fontUrl(key)}') format('truetype');unicode-range:${LATIJN_RANGE};}`
+  );
   return FACES.map(
     ([family, weight, style, key]) =>
       `@font-face{font-family:'${family}';font-style:${style};font-weight:${weight};font-display:swap;src:url('${fontUrl(key)}') format('truetype');}`
-  ).join("\n");
+  )
+    .concat(latijn)
+    .join("\n");
 }
 
 export default function Root({ children }: PropsWithChildren) {

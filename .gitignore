@@ -55,3 +55,6 @@ google-service-account.json
 # design-handoffs (niet in de repo)
 lincin-handoff/
 *.zip
+
+# Catalogus: uitvoer van npm run catalogus:vergelijk
+tmp/

@@ -10,7 +10,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test:crypto": "node scripts/test-crypto.mjs",
-    "csp:check": "node scripts/csp-hashes.mjs"
+    "csp:check": "node scripts/csp-hashes.mjs",
+    "catalogus:vergelijk": "node scripts/catalogus-vergelijk.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -76,6 +77,9 @@
     "babel-preset-expo": "~54.0.12",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "pixelmatch": "^8.0.0",
+    "playwright": "^1.65.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^3.4.13",
     "typescript": "~5.9.2",
     "unicode-emoji-json": "^0.9.0"
