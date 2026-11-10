@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Foto, Plaatshouder } from "../Voorwerp";
+import { Invoer } from "../Delen";
+import { Plus } from "../Kop";
+import { Foto, KleurVlak, LinkBlad, MuziekBlad, Plaatshouder, PlekKaart, PollBlad, SpraakBlad, TekstBlad } from "../Voorwerp";
+import { GesprekView, InstellingenView, NieuwFotoView, NieuwSoortView, ProfielView, SoortenView, type Soort } from "../schermen/OverigeViews";
 import { HomeView, type HomeHandelingen, type HomeStuk } from "../schermen/HomeView";
 import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/BijdrageView";
 import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoofd } from "../schermen/LijstViews";
@@ -206,7 +209,201 @@ function bijdrage(vorm: "rust" | "leuk" | "draad" | "menu") {
 
 export type Voorbeeld = { hoogte?: number; render: (stand: "light" | "dark") => ReactNode };
 
+const GOLF = [8, 16, 26, 14, 30, 20, 10, 24, 34, 18, 12, 28, 16, 8, 22, 12, 26, 14];
+const SOORTEN: Soort[] = ["foto", "tekst", "poll", "muziek", "kleur", "link", "plek", "spraak"];
+
 export const VOORBEELDEN: Record<string, Voorbeeld> = {
+  "06-profiel": {
+    render: () => (
+      <ProfielView
+        kop={[
+          { label: "Linc", waarde: "Mie" },
+          { label: "Sinds", waarde: "[jaar]" },
+          { label: "Bijdragen", waarde: "[n]" },
+        ]}
+        terug={niets}
+        meer={niets}
+        beeld={{ beeld: BEELD.katHero, initiaal: "M" }}
+        naam="Mie"
+        bio="[bio van Mie, één of twee regels]"
+        knoppen={[
+          { tekst: "Gesprek", doe: niets },
+          { tekst: "Samen plannen", doe: niets },
+        ]}
+        stukken={[
+          {
+            id: "1",
+            voorwerp: <Foto b={120} h={150} beeld={BEELD.drank} />,
+            regels: [
+              { label: "Titel", waarde: "18 okt" },
+              { label: "Soort", waarde: "foto" },
+              { label: "Datum", waarde: "18 okt" },
+            ],
+            label: "18 okt",
+            open: niets,
+          },
+          ...["2", "3", "4"].map((id) => ({
+            id,
+            voorwerp: <Plaatshouder b={120} h={150} woord="[beeld]" />,
+            regels: [
+              { label: "Titel", waarde: "[bijdrage]" },
+              { label: "Soort", waarde: "[soort]" },
+              { label: "Datum", waarde: "[datum]" },
+            ],
+            label: "[bijdrage]",
+            open: niets,
+          })),
+        ]}
+      />
+    ),
+  },
+  "07-open-gesprek": {
+    hoogte: 844,
+    render: () => (
+      <GesprekView
+        kop={[
+          { label: "Gesprek", waarde: "Noor" },
+          { label: "Lincs sinds", waarde: "[jaar]" },
+          { label: "Slot", waarde: "versleuteld" },
+        ]}
+        avatar={{ beeld: BEELD.kat, initiaal: "N" }}
+        terug={niets}
+        meer={niets}
+        berichten={[
+          { soort: "dag", id: "d", tekst: "Vandaag" },
+          { soort: "tekst", id: "1", mijn: false, tekst: "Heb je die van Mie gezien?" },
+          {
+            soort: "bijdrage",
+            id: "2",
+            mijn: false,
+            beeld: BEELD.drank,
+            regels: [
+              { label: "Bijdrage", waarde: "18 okt" },
+              { label: "Wie", waarde: "Mie" },
+              { label: "Soort", waarde: "foto" },
+            ],
+            open: niets,
+          },
+          { soort: "tekst", id: "3", mijn: true, tekst: "Ja! Zin in.", onder: "gelezen" },
+          { soort: "spraak", id: "4", mijn: false, golf: GOLF, duur: "0:41", speelt: false, speel: niets },
+          { soort: "tekst", id: "5", mijn: false, tekst: "zondag 10:00 bij de pont?", onder: "2 m" },
+        ]}
+        invoer={<Invoer waarde="" onWaarde={niets} plaatshouder="Schrijf een bericht" onStuur={niets} voor={<Plus klein label="Voeg iets toe" onPress={niets} />} />}
+      />
+    ),
+  },
+  "09-nieuwe-bijdrage-soort": {
+    hoogte: 844,
+    render: () => (
+      <NieuwSoortView
+        kop={[
+          { label: "Nieuw", waarde: "Bijdrage" },
+          { label: "Stap", waarde: "1 van 2" },
+          { label: "Kies", waarde: "een soort" },
+        ]}
+        sluit={niets}
+        soorten={SOORTEN}
+        gekozen="foto"
+        kies={niets}
+        verder={niets}
+        verderTekst="Verder met foto →"
+        beeld={BEELD.kamer}
+      />
+    ),
+  },
+  "10-nieuwe-bijdrage-foto": {
+    hoogte: 844,
+    render: () => (
+      <NieuwFotoView
+        kop={[
+          { label: "Nieuw", waarde: "foto" },
+          { label: "Stap", waarde: "2 van 2" },
+          { label: "Zichtbaar", waarde: "alle lincs" },
+        ]}
+        terug={niets}
+        deel={niets}
+        kanDelen
+        beeld={BEELD.kamer}
+        anderBeeld={niets}
+        regels={[
+          { soort: "invoer", label: "Titel", waarde: "Herfst :)", plaatshouder: "Titel", zet: niets },
+          { soort: "invoer", label: "Bijschrift", waarde: "", plaatshouder: "Schrijf er iets bij", zet: niets },
+          { soort: "keuze", label: "Voor wie", waarde: "Alle lincs", open: niets },
+          { soort: "schakelaar", label: "Reacties", waarde: "Toegestaan", aan: true, zet: niets },
+        ]}
+      />
+    ),
+  },
+  "11-instellingen": {
+    hoogte: 844,
+    render: (stand) => (
+      <InstellingenView
+        kop={[
+          { label: "Lincin", waarde: "Instellingen" },
+          { label: "Versie", waarde: "[versie]" },
+          { label: "Account", waarde: "[jouw naam]" },
+        ]}
+        terug={niets}
+        regels={[
+          { soort: "groep", titel: "Uiterlijk" },
+          { soort: "regel", label: "Thema", waarde: "Catalogus", open: niets },
+          {
+            soort: "keuze",
+            label: "Stand",
+            opties: [
+              { label: "Licht", aan: stand === "light", kies: niets },
+              { label: "Donker", aan: stand === "dark", kies: niets },
+            ],
+          },
+          { soort: "regel", label: "Taal", waarde: "Nederlands", open: niets },
+          { soort: "groep", titel: "Meldingen" },
+          { soort: "schakelaar", label: "Nieuwe bijdragen", waarde: "Van al je lincs", aan: true, zet: niets },
+          { soort: "schakelaar", label: "Reacties", waarde: "Op jouw bijdragen", aan: true, zet: niets },
+          { soort: "schakelaar", label: "Events", waarde: "Uitnodigingen", aan: false, zet: niets },
+          { soort: "groep", titel: "Privé" },
+          { soort: "regel", label: "Versleuteling", waarde: "Alleen jij en je lincs", open: niets, pijl: false },
+          { soort: "regel", label: "Sleutel", waarde: "Back-up maken", open: niets },
+          { soort: "regel", label: "Geblokkeerd", waarde: "[n]", open: niets },
+          { soort: "groep", titel: "Account" },
+          { soort: "regel", label: "Uitloggen", waarde: "", open: niets },
+        ]}
+      />
+    ),
+  },
+  "19-interactie-soorten-inhoud": {
+    render: () => (
+      <SoortenView
+        kop={[
+          { label: "Lincin", waarde: "Soorten inhoud" },
+          { label: "Aantal", waarde: "8" },
+          { label: "Toestand", waarde: "zie kaartje" },
+        ]}
+        terug={niets}
+        vakken={[
+          { key: "foto", voorwerp: <Foto b={132} h={168} beeld={BEELD.drank} />, regels: [{ label: "Soort", waarde: "foto" }, { label: "Wie", waarde: "Mie" }] },
+          { key: "tekst", voorwerp: <TekstBlad tekst="[korte tekst, een gedachte van een paar regels]" />, regels: [{ label: "Soort", waarde: "tekst" }, { label: "Lengte", waarde: "[n] tekens" }] },
+          {
+            key: "poll",
+            voorwerp: (
+              <PollBlad
+                vraag="[vraag?]"
+                opties={[
+                  { id: "1", label: "[optie 1]", procent: 62, gekozen: true, tekst: "[n]%" },
+                  { id: "2", label: "[optie 2]", procent: 38, gekozen: false, tekst: "[n]%" },
+                ]}
+              />
+            ),
+            regels: [{ label: "Soort", waarde: "poll" }, { label: "Toestand", waarde: "jij stemde" }],
+          },
+          { key: "muziek", voorwerp: <MuziekBlad nummer="[nummer]" artiest="[artiest]" speelt voortgang={0.45} />, regels: [{ label: "Soort", waarde: "muziek" }, { label: "Toestand", waarde: "speelt · [tijd]" }] },
+          { key: "kleur", voorwerp: <KleurVlak hex="#2448E0" />, regels: [{ label: "Soort", waarde: "kleur" }, { label: "Naam", waarde: "[naam van de kleur]" }] },
+          { key: "link", voorwerp: <LinkBlad beeld={BEELD.tafel} titel="[titel van de pagina]" />, regels: [{ label: "Soort", waarde: "link" }, { label: "Bron", waarde: "[domein]" }] },
+          { key: "plek", voorwerp: <PlekKaart />, regels: [{ label: "Soort", waarde: "plek" }, { label: "Waar", waarde: "[plaats]" }] },
+          { key: "spraak", voorwerp: <SpraakBlad golf={GOLF.slice(0, 14)} duur="0:41" speelt={false} />, regels: [{ label: "Soort", waarde: "spraak" }, { label: "Toestand", waarde: "nieuw" }] },
+        ]}
+      />
+    ),
+  },
   "05-bijdrage": { hoogte: 900, render: () => bijdrage("rust") },
   "14-interactie-leuk-gevonden": { hoogte: 900, render: () => bijdrage("leuk") },
   "15-interactie-draad-en-antwoord": { render: () => bijdrage("draad") },

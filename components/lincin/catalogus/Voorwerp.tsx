@@ -200,7 +200,7 @@ export function LinkBlad({ beeld, titel: t }: { beeld: Beeld; titel: string }) {
   const src = bron(beeld);
   return (
     <Blad>
-      <View style={{ height: 84, marginTop: -10, marginHorizontal: -10, overflow: "hidden", backgroundColor: c.plaatshouder }}>
+      <View testID="voorwerp" style={{ height: 84, marginTop: -10, marginHorizontal: -10, overflow: "hidden", backgroundColor: c.plaatshouder }}>
         {src ? <Image source={src} contentFit="cover" transition={0} style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }} /> : null}
       </View>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", columnGap: 6 }}>
