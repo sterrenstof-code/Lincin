@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test:crypto": "node scripts/test-crypto.mjs",
     "csp:check": "node scripts/csp-hashes.mjs",
-    "catalogus:vergelijk": "node scripts/catalogus-vergelijk.mjs"
+    "catalogus:vergelijk": "node scripts/catalogus-vergelijk.mjs",
+    "catalogus:vergelijk:desktop": "node scripts/catalogus-vergelijk.mjs --desktop"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

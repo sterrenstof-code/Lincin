@@ -17,6 +17,12 @@
  *   npm run catalogus:vergelijk                 alles
  *   npm run catalogus:vergelijk -- 01 05        alleen deze nummers
  *   npm run catalogus:vergelijk -- --stand=licht
+ *
+ * Met `--desktop` (npm run catalogus:vergelijk:desktop) de desktopstaten uit
+ * desktop/staten.json; zie `vergelijkDesktop` onderaan.
+ *
+ *   npm run catalogus:vergelijk:desktop                  alle staten
+ *   npm run catalogus:vergelijk:desktop -- wand-open     alleen deze
  */
 
 import { spawn } from "node:child_process";
@@ -253,6 +259,9 @@ function pixel(png, x, y) {
 
 // ---------------------------------------------------------------
 
+// Desktop: een eigen lus, met een eigen venster en schaal (zie onderaan).
+if (args.includes("--desktop")) process.exit(await vergelijkDesktop());
+
 const web = await startWeb();
 // De referentiebeelden zijn gemaakt met een échte schaalfactor 2. Een
 // alleen geëmuleerde (`deviceScaleFactor` van de context) rastert letters en
@@ -386,4 +395,237 @@ console.log(`\n${rijen.length - mis.length} van ${rijen.length} geslaagd.`);
 if (mis.length) {
   for (const r of mis) console.log(`\n${r.scherm} ${r.stand}:\n  ${r.fouten.slice(0, 12).join("\n  ")}`);
   process.exit(1);
+}
+
+// ---------------------------------------------------------------
+// Desktop (design_handoff_lincin_3e/desktop)
+// ---------------------------------------------------------------
+
+/**
+ * Per staat uit desktop/staten.json:
+ *   1. venster 1440 × 900, schaal 1, minder beweging, letters en beelden klaar;
+ *   2. de testpagina /dev/catalogus-desktop/<naam> tegen desktop/png/<naam>.png
+ *      (pixelmatch, drempel 0.1);
+ *   3. dezelfde staat in het prototype (index.html + hash): positie en maat van
+ *      kop of tabbladen, elk stuk, elke foto, het paneel en zijn blokken, het
+ *      menu en zijn rijen, en de kolommen van Gesprekken en Events; > 1 px meldt;
+ *   4. het kleurveld apart (alles erboven onzichtbaar): het gemiddelde
+ *      verschil per kanaal tegen het prototype, < 3 %;
+ *   5. de vlakkleuren: een punt in elk vlak tegen de kleur uit tokens.json.
+ * Uitvoer in tmp/catalogus-desktop/.
+ */
+async function vergelijkDesktop() {
+  const DH = join(HANDOFF, "desktop");
+  const UIT = join(ROOT, "tmp", "catalogus-desktop");
+  mkdirSync(UIT, { recursive: true });
+  const namen = args.filter((a) => !a.startsWith("--"));
+  const staten = JSON.parse(readFileSync(join(DH, "staten.json"), "utf8")).staten.filter((s) => !namen.length || namen.includes(s.naam));
+  const tokens = JSON.parse(readFileSync(join(HANDOFF, "tokens.json"), "utf8"));
+  const hexen = new Set(
+    [...Object.values(tokens.licht), ...Object.values(tokens.donker), "#141210", "#000000"]
+      .filter((v) => typeof v === "string" && v.startsWith("#"))
+      .map((v) => v.toUpperCase()),
+  );
+  const MAX_VELD = 3;
+
+  /** Wat er gemeten wordt, per rol: een selector in het prototype en in de eigen pagina. */
+  const ROLLEN = {
+    kop: [".top", '[data-meet="kop"]'],
+    tabbladen: [".tabs", '[data-meet="tabs"]'],
+    tab: [".tabs .tab", '[data-meet="tab"]'],
+    blad: [".sheet", '[data-meet="blad"]'],
+    bladkop: [".sheet .main > .strip", '[data-meet="bladkop"]'],
+    stuk: [".hang, .gg > a, .light .mid", '[data-meet="stuk"]'],
+    foto: [".hang .pic, .gg .pic, .light .mid .pic", '[data-meet="foto"]'],
+    vakje: [".film a", '[data-meet="vakje"]'],
+    paneel: [".drawer", '[data-meet="drawer"]'],
+    paneelblok: [".drawer .panel > *", '[data-meet="paneel"] > *'],
+    knop: [".wkbtn", '[data-meet="wkbtn"]'],
+    menu: [".menu", '[data-meet="menu"]'],
+    menurij: [".menu .rij", '[data-meet="menurij"]'],
+    kolom: ['.main > .grid[style*="340px"] > *, .main > .grid[style*="400px"] > *', '[data-meet="gesprekken"] > *, [data-meet="events"] > *'],
+    gesprek: ['.main > .grid[style*="340px"] > section > .tile', '[data-meet="gesprek"]'],
+    event: ['.main > .grid[style*="400px"] > section > .grid > div', '[data-meet="event"]'],
+  };
+
+  function meet({ rollen, eigen }) {
+    const r = (el) => {
+      const b = el.getBoundingClientRect();
+      return { x: b.x, y: b.y, b: b.width, h: b.height };
+    };
+    const out = {};
+    for (const [rol, sel] of Object.entries(rollen)) out[rol] = [...document.querySelectorAll(sel[eigen ? 1 : 0])].map(r);
+    return out;
+  }
+
+  /** De vlakken van het prototype: een punt net binnen elk, en zijn kleur. */
+  function vlakken() {
+    const sel = ".top, .wall, .strip, .panel, .tab, .table, .sheet, .menu, .tile, .film a, .rail";
+    const uit = [];
+    for (const el of document.querySelectorAll(sel)) {
+      const c = getComputedStyle(el).backgroundColor;
+      const m = c.match(/^rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)$/);
+      if (!m || (m[4] !== undefined && Number(m[4]) < 1)) continue;
+      const b = el.getBoundingClientRect();
+      if (b.width < 8 || b.height < 8) continue;
+      for (const [x, y] of [
+        [Math.round(b.x + 3), Math.round(b.y + 3)],
+        [Math.round(b.right - 4), Math.round(b.bottom - 4)],
+      ]) {
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+      // Alleen als dit vlak daar het bovenste dekkende vlak is.
+      const dekkend = document.elementsFromPoint(x, y).find((e) => {
+        const k = getComputedStyle(e).backgroundColor;
+        return k !== "rgba(0, 0, 0, 0)" && !/rgba\(.*, 0(\.\d+)?\)$/.test(k);
+      });
+      if (dekkend !== el) continue;
+      // Geen laag erboven die er een tint over legt (verbleekt, schaduw).
+      let n = el, doorzichtig = false;
+      for (; n; n = n.parentElement) if (Number(getComputedStyle(n).opacity) < 1) doorzichtig = true;
+      if (doorzichtig) continue;
+      uit.push({ x, y, kleur: [Number(m[1]), Number(m[2]), Number(m[3])], wat: el.className || el.tagName });
+      }
+    }
+    return uit;
+  }
+
+  const hex = (c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+  const VERBERG = ".cd .app, #app{visibility:hidden!important}";
+
+  const web = await startWeb();
+  const browser = await chromium.launch({ args: ["--force-device-scale-factor=1"] });
+  const rijen = [];
+  try {
+    for (const s of staten) {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
+      const page = await ctx.newPage();
+
+      // Het prototype: meten, de vlakken, en het kleurveld alleen.
+      await page.goto(pathToFileURL(join(DH, "prototype", "index.html")).href + s.hash);
+      await page.addStyleTag({ content: STIL });
+      await wachtTotKlaar(page);
+      const ref = await page.evaluate(meet, { rollen: ROLLEN, eigen: false });
+      const refVlakken = await page.evaluate(vlakken);
+      const refShot = await page.screenshot();
+      const glow = await page.evaluate(() => document.body.classList.contains("glow"));
+      let refVeld = null;
+      if (glow) {
+        await page.addStyleTag({ content: VERBERG });
+        await page.waitForTimeout(100);
+        refVeld = await page.screenshot();
+      }
+
+      // De eigen pagina.
+      await page.goto(`${BASE}/dev/catalogus-desktop/${s.naam}`, { waitUntil: "load" });
+      await page.addStyleTag({ content: STIL });
+      await page.waitForSelector('[data-testid="desktop"]', { timeout: 60_000 });
+      await wachtTotKlaar(page);
+      const eigen = await page.evaluate(meet, { rollen: ROLLEN, eigen: true });
+      const shot = await page.screenshot();
+      let eigenVeld = null;
+      if (glow) {
+        await page.addStyleTag({ content: VERBERG });
+        await page.waitForTimeout(100);
+        eigenVeld = await page.screenshot();
+      }
+      await ctx.close();
+
+      const refPng = PNG.sync.read(readFileSync(join(DH, s.png)));
+      const eigenPng = PNG.sync.read(shot);
+      const w = refPng.width;
+      const h = refPng.height;
+      const verschil = new PNG({ width: w, height: h });
+      let maatFout = null;
+      let afwijkend = w * h;
+      if (eigenPng.width !== w || eigenPng.height !== h) maatFout = `afbeelding ${eigenPng.width}×${eigenPng.height}, referentie ${w}×${h}`;
+      else afwijkend = pixelmatch(refPng.data, eigenPng.data, verschil.data, w, h, { threshold: DREMPEL, includeAA: false });
+      const procent = (afwijkend / (w * h)) * 100;
+      const refHtmlPng = PNG.sync.read(refShot);
+      const tegenHtml = maatFout ? 100 : (pixelmatch(refHtmlPng.data, eigenPng.data, null, w, h, { threshold: DREMPEL }) / (w * h)) * 100;
+      const htmlTegenPng = (pixelmatch(refPng.data, refHtmlPng.data, null, w, h, { threshold: DREMPEL }) / (w * h)) * 100;
+
+      const pad = `tmp/catalogus-desktop/${s.naam}`;
+      writeFileSync(join(ROOT, `${pad}-eigen.png`), shot);
+      if (!maatFout) writeFileSync(join(ROOT, `${pad}-verschil.png`), PNG.sync.write(verschil));
+
+      const delen = vergelijkDelen(ref, eigen);
+
+      // Het kleurveld: gemiddeld verschil per kanaal, in procent van 255.
+      let veld = null;
+      if (glow && refVeld && eigenVeld) {
+        const a = PNG.sync.read(refVeld).data;
+        const b = PNG.sync.read(eigenVeld).data;
+        const som = [0, 0, 0];
+        for (let i = 0; i < a.length; i += 4) for (let k = 0; k < 3; k++) som[k] += Math.abs(a[i + k] - b[i + k]);
+        veld = som.map((v) => Math.round((v / (a.length / 4) / 255) * 10000) / 100);
+      }
+
+      // De vlakkleuren: de kleur van het prototype, en die moet een token zijn.
+      const kleurFouten = [];
+      for (const v of refVlakken) {
+        if (!hexen.has(hex(v.kleur))) kleurFouten.push(`vlak ${v.wat} in het prototype ${hex(v.kleur)} is geen token`);
+        if (maatFout) continue;
+        // Valt er in de referentie een schaduw of zweem over, dan is het daar geen vlak.
+        const r = pixel(refPng, v.x, v.y);
+        if (r.some((c, k) => c !== v.kleur[k])) continue;
+        v.geteld = true;
+        const e = pixel(eigenPng, v.x, v.y);
+        if (e.some((c, k) => c !== v.kleur[k])) kleurFouten.push(`vlak ${v.wat} bij ${v.x},${v.y}: ${hex(v.kleur)} verwacht, eigen ${hex(e)}`);
+      }
+
+      const fouten = [
+        ...(maatFout ? [maatFout] : []),
+        ...(procent >= MAX_PROCENT ? [`${procent.toFixed(2)} % afwijkend`] : []),
+        ...delen.fouten,
+        ...(veld && veld.some((v) => v >= MAX_VELD) ? [`kleurveld ${veld.join(" / ")} % per kanaal`] : []),
+        ...kleurFouten,
+      ];
+      const rij = {
+        staat: s.naam,
+        geslaagd: fouten.length === 0,
+        procent: Math.round(procent * 1000) / 1000,
+        tegenHtml: Math.round(tegenHtml * 1000) / 1000,
+        htmlTegenPng: Math.round(htmlTegenPng * 1000) / 1000,
+        grootsteMaatafwijking: delen.grootste,
+        kleurveld: veld,
+        vlakken: refVlakken.filter((v) => v.geteld).length,
+        fouten,
+        gebieden: maatFout ? [] : gebiedenEen(verschil.data, w, h),
+        eigen: `${pad}-eigen.png`,
+        verschil: maatFout ? null : `${pad}-verschil.png`,
+      };
+      rijen.push(rij);
+      console.log(`${rij.geslaagd ? "✓" : "✗"} ${s.naam}  ${rij.procent.toFixed(3)} %  maat ${rij.grootsteMaatafwijking} px${veld ? `  veld ${veld.join("/")} %` : ""}${fouten.length ? `  — ${fouten.length} punt(en)` : ""}`);
+    }
+  } finally {
+    await browser.close();
+    if (web) {
+      try {
+        process.kill(-web.pid);
+      } catch {
+        // al weg
+      }
+    }
+  }
+
+  writeFileSync(join(UIT, "verslag.json"), JSON.stringify({ datum: new Date().toISOString(), rijen }, null, 1));
+  const tabel = [
+    "| Staat | Afwijkend (PNG) | Grootste maatafwijking | Kleurveld (R/G/B) | Geslaagd | Eigen ↔ prototype | Prototype ↔ PNG |",
+    "|---|---|---|---|---|---|---|",
+    ...rijen.map(
+      (r) =>
+        `| ${r.staat} | ${r.procent.toFixed(3)} % | ${r.grootsteMaatafwijking} px | ${r.kleurveld ? r.kleurveld.map((v) => v.toFixed(2)).join(" / ") + " %" : "—"} | ${r.geslaagd ? "ja" : "nee"} | ${r.tegenHtml.toFixed(3)} % | ${r.htmlTegenPng.toFixed(3)} % |`,
+    ),
+  ].join("\n");
+  writeFileSync(join(UIT, "tabel.md"), tabel + "\n");
+  console.log("\n" + tabel);
+  const mis = rijen.filter((r) => !r.geslaagd);
+  console.log(`\n${rijen.length - mis.length} van ${rijen.length} geslaagd.`);
+  for (const r of mis) console.log(`\n${r.staat}:\n  ${r.fouten.slice(0, 14).join("\n  ")}`);
+  return mis.length ? 1 : 0;
+}
+
+/** `gebieden` op schaal 1. */
+function gebiedenEen(diff, w, h) {
+  return gebieden(diff, w, h).map((g) => ({ ...g, x: g.x * 2, y: g.y * 2, b: g.b * 2, h: g.h * 2 }));
 }
