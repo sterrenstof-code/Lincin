@@ -182,7 +182,7 @@ export function TekstMetNamen({ tekst, profiel }: { tekst: string; profiel?: (ge
 export function AlbumTeken({ n }: { n: number }) {
   return (
     <span className="album" aria-label={`${n} foto's`} data-meet="album">
-      <svg aria-hidden="true" width={13} height={13} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth={1.4}>
+      <svg aria-hidden="true" width={9} height={9} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth={1.3}>
         <rect x="0.7" y="3.7" width="8.6" height="8.6" />
         <path d="M3.7 3.7V.7h8.6v8.6H9.3" />
       </svg>

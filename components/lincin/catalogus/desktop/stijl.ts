@@ -51,7 +51,7 @@ export const CSS = `
 .cd .pic{display:block;position:relative;flex:none;overflow:hidden;background:var(--ph)}
 .cd .pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cd .pic>.ding{position:absolute;left:0;top:0;transform-origin:0 0}
-.cd .pic>.album{position:absolute;right:8px;top:8px;z-index:1;display:flex;align-items:center;gap:5px;padding:4px 7px;background:rgba(20,18,16,.72);color:#fff;font-size:11px;font-weight:600;line-height:1;letter-spacing:.02em}
+.cd .pic>.album{position:absolute;left:6px;top:6px;z-index:1;display:flex;align-items:center;gap:3px;padding:3px 5px 3px 4px;background:rgba(20,18,16,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:rgba(255,255,255,.92);font-size:9px;font-weight:500;line-height:1;letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .cd .kleine-acties{display:flex;gap:14px}
 .cd .kleine-acties button{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;min-height:28px}
 .cd .sq{flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;color:#141210;overflow:hidden}
