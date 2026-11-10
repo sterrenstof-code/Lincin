@@ -84,7 +84,8 @@ export function Linc({
       importantForAccessibility="no-hide-descendants"
       style={[{ width: maat, height: maat, flexShrink: 0, backgroundColor: kleur ?? c.plaatshouder, alignItems: "center", justifyContent: "center" }, style]}
     >
-      <Text style={{ ...letter(700), fontSize: letterMaat, color: letterKleur ?? CATALOGUS.lincInkt }}>{initiaal}</Text>
+      {/* Op een linc-kleur altijd donker; op het grijs van de plaatshouder de inkt van de stand. */}
+      <Text style={{ ...letter(700), fontSize: letterMaat, color: letterKleur ?? (kleur ? CATALOGUS.lincInkt : c.inkt) }}>{initiaal}</Text>
     </View>
   );
 }

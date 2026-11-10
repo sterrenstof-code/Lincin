@@ -280,6 +280,9 @@ try {
       await wachtTotKlaar(page);
       const ref = await page.evaluate(meetReferentie);
       const refLetters = await letterKeuze(page);
+      // Ter vergelijking: de referentie-HTML zelf in deze browser. Wat de PNG
+      // anders heeft dan deze render, komt van de machine waarop hij gemaakt is.
+      const refShot = await page.screenshot({ fullPage: false });
 
       // De eigen pagina.
       await page.goto(`${BASE}/dev/catalogus/${naam}?stand=${stand}`, { waitUntil: "load" });
@@ -304,6 +307,13 @@ try {
         afwijkend = pixelmatch(refPng.data, eigenPng.data, verschil.data, w, h, { threshold: DREMPEL, includeAA: false });
       }
       const procent = (afwijkend / (w * h)) * 100;
+      const refHtmlPng = PNG.sync.read(refShot);
+      const tegenHtml =
+        refHtmlPng.width === eigenPng.width && refHtmlPng.height === eigenPng.height
+          ? (pixelmatch(refHtmlPng.data, eigenPng.data, null, w, h, { threshold: DREMPEL }) / (w * h)) * 100
+          : 100;
+      const htmlTegenPng =
+        refHtmlPng.width === w && refHtmlPng.height === h ? (pixelmatch(refPng.data, refHtmlPng.data, null, w, h, { threshold: DREMPEL }) / (w * h)) * 100 : 100;
       const pad = `tmp/catalogus/${naam}-${stand}`;
       writeFileSync(join(ROOT, `${pad}-eigen.png`), shot);
       if (!maatFout) writeFileSync(join(ROOT, `${pad}-verschil.png`), PNG.sync.write(verschil));
@@ -338,6 +348,8 @@ try {
         stand,
         geslaagd: fouten.length === 0,
         procent: Math.round(procent * 1000) / 1000,
+        tegenHtml: Math.round(tegenHtml * 1000) / 1000,
+        htmlTegenPng: Math.round(htmlTegenPng * 1000) / 1000,
         hoogteVerschil,
         grootsteMaatafwijking: delen.grootste,
         fouten,
@@ -362,10 +374,12 @@ try {
 
 writeFileSync(join(OUT, "verslag.json"), JSON.stringify({ datum: new Date().toISOString(), rijen }, null, 1));
 
-console.log("\n| Scherm | Stand | Afwijkend | Grootste maatafwijking | Hoogte | Geslaagd |");
-console.log("|---|---|---|---|---|---|");
+console.log("\n| Scherm | Stand | Afwijkend (PNG) | Grootste maatafwijking | Hoogte | Geslaagd | Eigen ↔ ref-HTML | Ref-HTML ↔ PNG |");
+console.log("|---|---|---|---|---|---|---|---|");
 for (const r of rijen) {
-  console.log(`| ${r.scherm} | ${r.stand} | ${r.procent.toFixed(3)} % | ${r.grootsteMaatafwijking} px | ${r.hoogteVerschil} px | ${r.geslaagd ? "ja" : "nee"} |`);
+  console.log(
+    `| ${r.scherm} | ${r.stand} | ${r.procent.toFixed(3)} % | ${r.grootsteMaatafwijking} px | ${r.hoogteVerschil} px | ${r.geslaagd ? "ja" : "nee"} | ${r.tegenHtml.toFixed(3)} % | ${r.htmlTegenPng.toFixed(3)} % |`,
+  );
 }
 const mis = rijen.filter((r) => !r.geslaagd);
 console.log(`\n${rijen.length - mis.length} van ${rijen.length} geslaagd.`);

@@ -192,7 +192,9 @@ export function BijdrageView({
                 letterMaat={11}
                 {...g}
                 testID={g.beeld ? "voorwerp" : "linc"}
-                style={i > 0 && g.beeld ? ({ marginLeft: -6, outlineWidth: 2, outlineStyle: "solid", outlineColor: c.vlak } as object) : undefined}
+                // Een foto schuift 6 over zijn voorganger, met een rand in het vlak die
+                // (zoals een CSS-outline) boven zijn buren ligt.
+                style={i > 0 && g.beeld ? ({ marginLeft: -6, zIndex: 1, outlineWidth: 2, outlineStyle: "solid", outlineColor: c.vlak } as object) : undefined}
               />
             ))}
           </View>

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CATALOGUS } from "@/lib/design/theme";
+
 import { Invoer } from "../Delen";
 import { Plus } from "../Kop";
 import { Foto, KleurVlak, LinkBlad, MuziekBlad, Plaatshouder, PlekKaart, PollBlad, SpraakBlad, TekstBlad } from "../Voorwerp";
@@ -577,7 +579,7 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
           { id: "1", naam: "Mie", nieuw: "1", linc: { beeld: BEELD.katHero, initiaal: "M" }, open: niets },
           { id: "2", naam: "johanna.coysman", nieuw: "2", linc: { kleur: K.zuur, initiaal: "J" }, open: niets },
           { id: "3", naam: "Noor", nieuw: "—", linc: { beeld: BEELD.kat, initiaal: "N" }, open: niets },
-          { id: "4", naam: "Sem", nieuw: "—", linc: { kleur: K.blauw, initiaal: "S", letterKleur: stand === "dark" ? "#EDE8DD" : "#FFFFFF" }, open: niets },
+          { id: "4", naam: "Sem", nieuw: "—", linc: { kleur: K.blauw, initiaal: "S", letterKleur: CATALOGUS[stand].tekstOpInkt }, open: niets },
           { id: "5", naam: "Lotte", nieuw: "—", linc: { beeld: BEELD.koffie, initiaal: "L" }, open: niets },
         ]}
       />
