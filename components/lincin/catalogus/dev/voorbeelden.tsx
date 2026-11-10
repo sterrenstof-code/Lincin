@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Foto, Plaatshouder } from "../Voorwerp";
 import { HomeView, type HomeHandelingen, type HomeStuk } from "../schermen/HomeView";
+import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/BijdrageView";
 import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoofd } from "../schermen/LijstViews";
 
 /**
@@ -106,9 +107,110 @@ const HOOFD = (regels: { label: string; waarde: string }[]): Hoofd => ({
 
 const K = { oranje: "#C1724E", groen: "#8A9273", blauw: "#6E8A97", oker: "#C9B77F", rood: "#A9503F", zuur: "#DDEE3C", fris: "#34C47A" };
 
+const BIJDRAGE_DOE: BijdrageDoe = {
+  terug: niets,
+  meer: niets,
+  sluitMenu: niets,
+  leuk: niets,
+  reacties: niets,
+  bericht: niets,
+  wakker: niets,
+  leukReactie: niets,
+  antwoord: niets,
+  stopAntwoord: niets,
+  tekst: niets,
+  stuur: niets,
+};
+const BIJDRAGE_KOP = [
+  { label: "Bijdrage", waarde: "18 okt" },
+  { label: "Wie", waarde: "Mie" },
+  { label: "Soort", waarde: "foto" },
+];
+const BIJDRAGE_REGELS = [
+  { label: "Wie", waarde: "Mie" },
+  { label: "Soort", waarde: "foto" },
+  { label: "Datum", waarde: "18 okt" },
+  { label: "Reacties", waarde: "2" },
+];
+const reactie = (id: string, naam: string, tekst: string, linc: Reactie["linc"], hartjes = 0, vindIkLeuk = false, antwoord = false): Reactie => ({
+  id,
+  naam,
+  tijd: "[tijd]",
+  tekst,
+  linc,
+  antwoord,
+  hartjes,
+  vindIkLeuk,
+});
+
+function bijdrage(vorm: "rust" | "leuk" | "draad" | "menu") {
+  const actief = vorm !== "rust";
+  const vraag = { kleur: null, initiaal: "?" };
+  const reacties =
+    vorm === "rust"
+      ? [reactie("1", "[naam]", "Sante he vanuit Spanje!", vraag), reactie("2", "Toysman de creator", "Sante!", { kleur: K.blauw, initiaal: "T" })]
+      : vorm === "leuk"
+        ? [reactie("1", "[naam]", "Sante he vanuit Spanje!", vraag, 1)]
+        : vorm === "draad"
+          ? [
+              reactie("1", "[naam]", "Sante he vanuit Spanje!", vraag, 2, true),
+              reactie("2", "Toysman de creator", "Sante!", { kleur: K.blauw, initiaal: "T" }, 1, false, true),
+              reactie("3", "Mie", "[antwoord van Mie]", { kleur: K.fris, initiaal: "M" }, 0, false, true),
+              reactie("4", "johanna.coysman", "[reactie]", { kleur: K.zuur, initiaal: "J" }),
+            ]
+          : [];
+  return (
+    <BijdrageView
+      kop={BIJDRAGE_KOP}
+      voorwerp={<Foto b={actief ? 270 : 290} h={actief ? 340 : 370} beeld={BEELD.drank} />}
+      titelTekst="18 okt"
+      regels={BIJDRAGE_REGELS}
+      actief={actief}
+      hartjes={vorm === "leuk" ? 3 : "[n]"}
+      vindIkLeuk={vorm === "leuk"}
+      aantalReacties={2}
+      berichtAan="Mie"
+      leukDoor={
+        vorm === "leuk"
+          ? {
+              gezichten: [
+                { kleur: K.zuur, initiaal: "J" },
+                { beeld: BEELD.kat, initiaal: "N" },
+                { kleur: null, initiaal: "jij" },
+              ],
+              zin: "Leuk gevonden door johanna.coysman, Noor en jou",
+            }
+          : null
+      }
+      reacties={reacties}
+      antwoordAan={vorm === "draad" ? "[naam]" : null}
+      invoer=""
+      menu={
+        vorm === "menu"
+          ? {
+              kop: "18 okt · Mie",
+              regels: [
+                { label: "Stuur Mie een bericht hierover", doe: niets },
+                { label: "Reageer", doe: niets },
+                { label: "Verberg deze bijdrage", doe: niets },
+                { label: "Demp Mie een week", doe: niets },
+                { label: "Meld deze bijdrage", gevaar: true, doe: niets },
+              ],
+            }
+          : null
+      }
+      doe={BIJDRAGE_DOE}
+    />
+  );
+}
+
 export type Voorbeeld = { hoogte?: number; render: (stand: "light" | "dark") => ReactNode };
 
 export const VOORBEELDEN: Record<string, Voorbeeld> = {
+  "05-bijdrage": { hoogte: 900, render: () => bijdrage("rust") },
+  "14-interactie-leuk-gevonden": { hoogte: 900, render: () => bijdrage("leuk") },
+  "15-interactie-draad-en-antwoord": { render: () => bijdrage("draad") },
+  "16-interactie-menu": { hoogte: 900, render: () => bijdrage("menu") },
   "02-gesprekken": {
     hoogte: 844,
     render: () => (

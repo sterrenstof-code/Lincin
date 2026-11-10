@@ -131,7 +131,8 @@ function meetEigen() {
   };
   const out = {};
   for (const rol of ["kop", "vak", "voorwerp", "kaartje", "actierij", "tabbalk", "band"]) {
-    out[rol] = [...root.querySelectorAll(`[data-testid="${rol}"]`)].map(r);
+    // Een testID kan meer rollen dragen ("band actierij").
+    out[rol] = [...root.querySelectorAll(`[data-testid~="${rol}"]`)].map(r);
   }
   return { delen: out, hoogte: root.getBoundingClientRect().height };
 }
