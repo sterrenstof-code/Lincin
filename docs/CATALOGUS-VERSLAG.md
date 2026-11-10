@@ -194,3 +194,4 @@ Op verzoek, na het nalopen op lincin.vercel.app:
 - Desktop: Catalogus staat ook in de desktopinstellingen. Op een breed scherm (vanaf 1024) toont de app dan de telefoonvorm in een kolom van 430 in het midden (`app/_layout.tsx`, `KOLOM` in `catalogus/stijl.tsx`). Daarvoor kijkt `useIsDesktop()` in `lib/lincin/desktop.ts` naar het thema — een wijziging in `lib/` buiten `lib/design/`, nodig voor deze vraag.
 - Het onderschrift bij Thema zegt nu ook "Catalogus"; aangevuld waar het getoond wordt, omdat `lib/i18n.ts` niet-gecommitte wijzigingen van de eigenaar heeft.
 - Event: de pagina en de bladen (gasten, toevoegen, toegang) in catalogusvorm.
+- **Instellingen (11): bewust anders dan het ontwerp.** Thema en Taal tonen al hun opties naast elkaar (Magazine/Modern/Catalogus, NL/EN/DE) in plaats van één waarde met een pijl; de opties vullen de rij, ook bij Stand. Daardoor slaagt `11-instellingen` niet meer tegen de referentie (0,8–1,9 %); 34 van 38 slagen.

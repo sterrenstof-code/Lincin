@@ -385,14 +385,15 @@ export function InstellingenView({ kop, terug, regels }: { kop: Regel[]; terug: 
           return (
             <Band key={i} hoogte={56} style={vorm}>
               {label}
-              <View accessibilityRole="radiogroup" accessibilityLabel={r.label} style={{ flexDirection: "row" }}>
+              {/* De opties vullen de rest van de rij: zo passen er drie naast een label, ook "Catalogus". */}
+              <View accessibilityRole="radiogroup" accessibilityLabel={r.label} style={{ flex: 1, minWidth: 0, flexDirection: "row" }}>
                 {r.opties.map((o) => (
                   <Pressable
                     key={o.label}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: o.aan }}
                     onPress={o.kies}
-                    style={{ height: 36, paddingHorizontal: 14, justifyContent: "center", ...(o.aan ? { backgroundColor: c.inkt } : { borderWidth: 1, borderColor: c.inkt }) }}
+                    style={{ flex: 1, minWidth: 0, height: 36, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", ...(o.aan ? { backgroundColor: c.inkt } : { borderWidth: 1, borderColor: c.inkt }) }}
                   >
                     <Text style={[kaartjeTekst, { color: o.aan ? c.tekstOpInkt : c.inkt }]}>{o.label}</Text>
                   </Pressable>

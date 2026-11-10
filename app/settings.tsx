@@ -214,13 +214,12 @@ function SettingsMobile() {
   ];
 
   if (spec.layout === "catalogus") {
-    const TAAL: Record<Lang, string> = { nl: "Nederlands", en: "English", de: "Deutsch" };
     const TALEN: Lang[] = ["nl", "en", "de"];
     const THEMA: Record<LincinTheme, string> = { magazine: t.themeMagazine, modern: t.themeModern, catalogus: "Catalogus" };
-    const volgend = THEMES[(THEMES.indexOf(lincin.theme) + 1) % THEMES.length];
+    // Thema, stand en taal tonen elk al hun opties naast elkaar, zodat je ziet waaruit je kiest.
     const regels: Instelling[] = [
       { soort: "groep", titel: t.lookTitle },
-      { soort: "regel", label: t.theme, waarde: THEMA[lincin.theme], open: () => lincin.choose(volgend) },
+      { soort: "keuze", label: t.theme, opties: THEMES.map((th) => ({ label: THEMA[th], aan: lincin.theme === th, kies: () => lincin.choose(th) })) },
       {
         soort: "keuze",
         label: "Stand",
@@ -230,7 +229,7 @@ function SettingsMobile() {
           { label: "Toestel", aan: theme === "system", kies: () => setPreference("system") },
         ],
       },
-      { soort: "regel", label: t.language, waarde: TAAL[lang], open: () => setLang(TALEN[(TALEN.indexOf(lang) + 1) % TALEN.length]) },
+      { soort: "keuze", label: t.language, opties: TALEN.map((l) => ({ label: l.toUpperCase(), aan: lang === l, kies: () => setLang(l) })) },
       { soort: "schakelaar", label: t.openDef, waarde: t.openDefSub, aan: prefs.openDefault, zet: toggle("openDefault") },
       { soort: "groep", titel: t.notifTitle },
       { soort: "schakelaar", label: t.newPosts, waarde: t.newPostsSub, aan: prefs.pushNew, zet: toggle("pushNew") },
