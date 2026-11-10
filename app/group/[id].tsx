@@ -25,6 +25,11 @@ import { uriToBytes } from "@/lib/crypto/file";
 import { color, hueFor, RASTER, useThemeSpec } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
 import { prepareImageForUpload } from "@/lib/image-prep";
+import { getLang } from "@/lib/i18n";
+import { displayName, shortDate } from "@/lib/lincin/model";
+import { safeBack } from "@/lib/nav";
+import { GroepView } from "@/components/lincin/catalogus/schermen/GroepView";
+import { hueKleur, lincKleur } from "@/components/lincin/catalogus/stijl";
 
 /**
  * Groep info, in de vorm van het thema (components/lincin/SubPage).
@@ -157,6 +162,69 @@ export default function GroupInfoScreen() {
   const th = useThemeSpec().id;
   const memberList = members.data ?? [];
   const name = chat.data?.name?.trim() || "Groep";
+
+  // Catalogus: de groep als voorwerp met haar kaartje, en alle leden als rijen.
+  if (th === "catalogus") {
+    const lang = getLang();
+    const eigenaar = memberList.find((m) => m.role === "owner");
+    const leden = memberList.length === 1 ? "1 lid" : `${memberList.length} leden`;
+    const sinds = chat.data?.created_at
+      ? new Date(chat.data.created_at).toLocaleDateString(lang === "en" ? "en-GB" : lang === "de" ? "de-DE" : "nl-NL", { month: "short", year: "numeric" })
+      : "—";
+    return (
+      <GroepView
+        kop={[
+          { label: "Groep", waarde: chat.isLoading ? "…" : name },
+          { label: "Leden", waarde: String(memberList.length) },
+          { label: "Slot", waarde: "versleuteld" },
+        ]}
+        terug={() => safeBack(router, `/chat/${chatId}`)}
+        beeld={{ beeld: groupAvatarUrl, kleur: hueKleur("green"), initiaal: name.slice(0, 1).toUpperCase() }}
+        regels={[
+          { label: "Naam", waarde: name },
+          { label: "Leden", waarde: leden },
+          { label: "Eigenaar", waarde: eigenaar ? (eigenaar.user_id === myUserId ? "jij" : displayName(eigenaar.profile)) : "—" },
+          { label: "Sinds", waarde: sinds },
+        ]}
+        beeldWijzigen={isOwner && isGroup ? onPickGroupAvatar : undefined}
+        beeldBezig={avatarUploading}
+        naamWijzigen={isOwner && isGroup ? () => setEditingName(true) : undefined}
+        naam={
+          editingName
+            ? {
+                waarde: nameDraft,
+                zet: setNameDraft,
+                bewaar: onSaveName,
+                annuleer: () => {
+                  setEditingName(false);
+                  setNameDraft(chat.data?.name ?? "");
+                  setError(null);
+                },
+                bezig: savingName,
+              }
+            : null
+        }
+        leden={memberList.map((m) => {
+          const ik = m.user_id === myUserId;
+          const n = displayName(m.profile);
+          return {
+            id: m.user_id,
+            naam: ik ? `${n} (jij)` : n,
+            gebruiker: `@${m.profile?.username ?? "?"}`,
+            rol: m.role === "owner" ? "eigenaar" : "lid",
+            sinds: shortDate(m.joined_at, lang),
+            linc: { beeld: m.profile?.avatar_url, kleur: lincKleur(m.user_id), initiaal: n.slice(0, 1).toUpperCase() },
+            open: () => m.profile?.username && router.push(`/user/${m.profile.username}`),
+            verwijder: isOwner && isGroup && !ik ? () => onRemove(m) : undefined,
+          };
+        })}
+        toevoegen={isOwner && isGroup ? () => router.push(`/group-add/${chatId}`) : undefined}
+        verlaat={onLeave}
+        fout={error}
+        laden={members.isLoading}
+      />
+    );
+  }
 
   // De groepsfoto: vierkant in magazine, afgerond in modern. De
   // eigenaar tikt erop om hem te wijzigen.

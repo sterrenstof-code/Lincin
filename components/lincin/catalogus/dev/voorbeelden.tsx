@@ -9,6 +9,7 @@ import { GesprekView, InstellingenView, NieuwFotoView, NieuwSoortView, ProfielVi
 import { HomeView, type HomeHandelingen, type HomeStuk } from "../schermen/HomeView";
 import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/BijdrageView";
 import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoofd } from "../schermen/LijstViews";
+import { GroepView } from "../schermen/GroepView";
 
 /**
  * De voorbeeldgegevens van de testpagina's: exact de inhoud van het ontwerp
@@ -582,6 +583,36 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
           { id: "4", naam: "Sem", nieuw: "—", linc: { kleur: K.blauw, initiaal: "S", letterKleur: CATALOGUS[stand].tekstOpInkt }, open: niets },
           { id: "5", naam: "Lotte", nieuw: "—", linc: { beeld: BEELD.koffie, initiaal: "L" }, open: niets },
         ]}
+      />
+    ),
+  },
+  // Geen ontwerp en geen referentie: alleen om de groepspagina te bekijken.
+  groep: {
+    render: () => (
+      <GroepView
+        kop={[
+          { label: "Groep", waarde: "Fotodump" },
+          { label: "Leden", waarde: "4" },
+          { label: "Slot", waarde: "versleuteld" },
+        ]}
+        terug={niets}
+        beeld={{ kleur: K.groen, initiaal: "F" }}
+        regels={[
+          { label: "Naam", waarde: "Fotodump" },
+          { label: "Leden", waarde: "4 leden" },
+          { label: "Eigenaar", waarde: "jij" },
+          { label: "Sinds", waarde: "sep 2026" },
+        ]}
+        beeldWijzigen={niets}
+        naamWijzigen={niets}
+        leden={[
+          { id: "1", naam: "Tom (jij)", gebruiker: "@tom", rol: "eigenaar", sinds: "2 sep", linc: { beeld: BEELD.katHero, initiaal: "T" }, open: niets },
+          { id: "2", naam: "Mie", gebruiker: "@mie", rol: "lid", sinds: "2 sep", linc: { kleur: K.zuur, initiaal: "M" }, open: niets, verwijder: niets },
+          { id: "3", naam: "johanna.coysman", gebruiker: "@johanna.coysman", rol: "lid", sinds: "4 sep", linc: { beeld: BEELD.kat, initiaal: "J" }, open: niets, verwijder: niets },
+          { id: "4", naam: "Sem", gebruiker: "@sem", rol: "lid", sinds: "18 okt", linc: { kleur: K.blauw, initiaal: "S" }, open: niets, verwijder: niets },
+        ]}
+        toevoegen={niets}
+        verlaat={niets}
       />
     ),
   },

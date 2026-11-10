@@ -1760,6 +1760,8 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
                 chat?.type === "group" ? { label: "Leden", waarde: String(chat.members.length) } : { label: "Status", waarde: headerStatus ?? "—" },
                 { label: "Slot", waarde: "versleuteld" },
               ]}
+              onMidden={onPressHeaderTitle}
+              middenLabel={chat?.type === "group" ? "Leden en details van de groep" : "Profiel"}
               rechts={<Meer onPress={() => (chat?.type === "group" ? router.push(`/group/${id}`) : onPressHeaderTitle())} />}
             />
             <Naad />

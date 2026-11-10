@@ -15,6 +15,8 @@ export function Kop({
   onLinks,
   avatar,
   rechts,
+  onMidden,
+  middenLabel,
 }: {
   regels: Regel[];
   /** `terug` (←) of `sluiten` (✕); zonder: een hoofdpagina met 12 px marge. */
@@ -23,8 +25,18 @@ export function Kop({
   /** Een beeld van 36 tussen pijl en kaartje (een open gesprek). */
   avatar?: ReactNode;
   rechts?: ReactNode;
+  /** Beeld en kaartje samen als één raakvlak (een open gesprek: naar de groep of het profiel). */
+  onMidden?: () => void;
+  middenLabel?: string;
 }) {
   const c = useCat();
+  const midden = (
+    <>
+      {avatar ? <View style={{ marginRight: 10 }}>{avatar}</View> : null}
+      <Kaartje regels={regels} />
+      <View style={{ flex: 1 }} />
+    </>
+  );
   return (
     <View testID="kop" style={{ height: 56, flexShrink: 0, flexDirection: "row", alignItems: "center", paddingLeft: links ? 0 : 12, backgroundColor: c.vlak }}>
       {links ? (
@@ -32,9 +44,18 @@ export function Kop({
           <Text style={{ ...letter(400), fontSize: 22, color: c.inkt }}>{links === "terug" ? "←" : "✕"}</Text>
         </KopKnop>
       ) : null}
-      {avatar ? <View style={{ marginRight: 10 }}>{avatar}</View> : null}
-      <Kaartje regels={regels} />
-      <View style={{ flex: 1 }} />
+      {onMidden ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={middenLabel}
+          onPress={onMidden}
+          style={{ flex: 1, minWidth: 0, height: 56, flexDirection: "row", alignItems: "center" }}
+        >
+          {midden}
+        </Pressable>
+      ) : (
+        midden
+      )}
       {rechts}
     </View>
   );
