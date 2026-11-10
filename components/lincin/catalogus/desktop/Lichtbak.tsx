@@ -80,7 +80,7 @@ export function Lichtbak({
             />
           </span>
         </div>
-        <a key={`m${p.id}`} className={rise ? "mid rise" : "mid"} aria-label="Open reacties" style={{ display: "block" }} {...klikbaar(() => openStuk(p.id))} data-meet="stuk" data-id={p.id}>
+        <a key={`m${p.id}`} className={rise ? "mid rise" : "mid"} aria-current={isOpen ? "true" : undefined} aria-label="Open reacties" style={{ display: "block" }} {...klikbaar(() => openStuk(p.id))} data-meet="stuk" data-id={p.id}>
           <Pic
             stuk={p}
             b={vh * 0.42}
