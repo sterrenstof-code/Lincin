@@ -178,36 +178,6 @@ export function FeedModern() {
 
             {hero && view === "editie" ? <Hero post={hero} onPress={() => f.openPost(hero)} scheme={scheme} lang={lang} t={t} /> : null}
 
-            {/* Editie · Per vriend · Op tijd: de weergave die aan staat in inkt,
-                de andere gedimd met een pijl. Tot okt 2026 veranderde deze
-                schakelaar alleen zijn eigen label. */}
-            <Tile span={2} pad={0} style={{ height: 52, paddingHorizontal: 20, justifyContent: "center" }}>
-              <View accessibilityRole="tablist" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                {(
-                  [
-                    { v: "editie", label: t.editie },
-                    { v: "friends", label: t.perFriend },
-                    { v: "time", label: t.byTime },
-                  ] as const
-                ).map((o) => {
-                  const on = view === o.v;
-                  return (
-                    <Pressable
-                      key={o.v}
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected: on }}
-                      onPress={() => f.changeView(o.v)}
-                      style={{ paddingVertical: 14, marginVertical: -14 }}
-                    >
-                      <Text style={{ ...mono(500), fontSize: 9.5, lineHeight: 13, letterSpacing: 1.52, textTransform: "uppercase", color: on ? color("ink") : color("ink", "inkDim") }}>
-                        {on ? o.label : `${o.label} →`}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Tile>
-
             {feed.isLoading ? (
               <Tile span={2}>
                 <TileMeta>{t.loading}</TileMeta>

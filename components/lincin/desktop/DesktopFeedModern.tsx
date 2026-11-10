@@ -12,7 +12,6 @@ import { timeLabel, type CardPost, type FriendGroup } from "@/lib/lincin/model";
 import { EmptyFeed } from "../feed/EmptyFeed";
 import type { Feed } from "../feed/useFeed";
 import type { EditionData, Tile } from "./DesktopFeed";
-import { UpToDateMark } from "@/components/lincin/UpToDateMark";
 import { DesktopShell } from "./Shell";
 
 /**
@@ -46,11 +45,9 @@ export function DesktopFeedModern({ f, ed }: { f: Feed; ed: EditionData }) {
   const blocks: ReactNode[] = [];
   if (unit && !feed.isLoading && !noFriends) {
     if (view === "editie") {
-      if (ed.rest.length) {
-        blocks.push(<Section key="s-seen" width={span(12)} label={t.secSeen} top={28} />);
-        ed.rest.slice(0, 4).forEach((p) => blocks.push(<PostTile key={p.id} f={f} p={p} hue={p.hue} width={span(3)} />));
-        ed.rest.slice(4).forEach((p) => blocks.push(<PostRow key={p.id} f={f} p={p} width={span(6)} />));
-      }
+      // Onder de omslag alles op tijd, nieuwste eerst.
+      ed.chrono.slice(0, 4).forEach((p) => blocks.push(<PostTile key={p.id} f={f} p={p} hue={p.hue} width={span(3)} />));
+      ed.chrono.slice(4).forEach((p) => blocks.push(<PostRow key={p.id} f={f} p={p} width={span(6)} />));
     } else if (view === "friends") {
       const { neu, old } = f.sections;
       if (neu.length) blocks.push(<Section key="s-new" width={span(12)} label={t.secNew} isNew action={t.allRead} onAction={f.markAllRead} />);
@@ -81,8 +78,7 @@ export function DesktopFeedModern({ f, ed }: { f: Feed; ed: EditionData }) {
               {hero ? (
                 <>
                   <View style={{ width: span(4), gap: SEAM }}>
-                    <TitleTile f={f} size={46} />
-                    <AlsoNew f={f} ed={ed} />
+                    <TitleTile f={f} size={46} fill />
                   </View>
                   <Hero f={f} p={hero} width={span(8)} />
                 </>
@@ -116,15 +112,10 @@ const tile = (): ViewStyle => ({
   ...(Platform.OS === "web" ? ({ backdropFilter: "blur(18px)" } as ViewStyle) : null),
 });
 
-function TitleTile({ f, size, width }: { f: Feed; size: number; width?: number }) {
-  const { t, view, changeView, fresh } = f;
-  const options = [
-    { value: "editie" as const, label: t.editie },
-    { value: "friends" as const, label: t.perFriend },
-    { value: "time" as const, label: t.byTime },
-  ];
+function TitleTile({ f, size, width, fill }: { f: Feed; size: number; width?: number; fill?: boolean }) {
+  const { t, fresh } = f;
   return (
-    <View style={[tile(), { width, paddingTop: 26, paddingHorizontal: 26, paddingBottom: 22, justifyContent: "space-between", gap: 28 }]}>
+    <View style={[tile(), { width, flex: fill ? 1 : undefined, paddingTop: 26, paddingHorizontal: 26, paddingBottom: 22, justifyContent: "space-between", gap: 28 }]}>
       <View style={{ gap: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={{ width: 7, height: 7, borderRadius: 4, borderWidth: 1, borderColor: fresh ? color("red") : color("ink", "inkDim"), backgroundColor: fresh ? color("red") : "transparent" }} />
@@ -134,22 +125,11 @@ function TitleTile({ f, size, width }: { f: Feed; size: number; width?: number }
           {t.feedA} {t.feedB}
         </Text>
       </View>
-      <View style={{ flexDirection: "row", padding: 4, borderRadius: 999, backgroundColor: color("paper"), alignSelf: "flex-start" }}>
-        {options.map((o) => {
-          const on = view === o.value;
-          return (
-            <Pressable
-              key={o.value}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => changeView(o.value)}
-              style={{ height: 36, paddingHorizontal: 16, borderRadius: 999, justifyContent: "center", backgroundColor: on ? color("ink") : "transparent" }}
-            >
-              <Text style={meta(9.5, on ? color("paper") : color("ink"), 1.14)}>{o.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {fresh ? (
+        <Pressable accessibilityRole="button" onPress={f.markAllRead} style={{ alignSelf: "flex-start" }}>
+          <Text style={[meta(9, color("ink", "inkDim")), { textDecorationLine: "underline" }]}>{t.allRead}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -216,28 +196,6 @@ function Hero({ f, p, width }: { f: Feed; p: Tile; width: number }) {
 const ON_PHOTO = "#F8F6F2";
 const INK_ON_CHIP = "#17170F";
 
-function AlsoNew({ f, ed }: { f: Feed; ed: EditionData }) {
-  const { t } = f;
-  return (
-    <View style={[tile(), { flex: 1, padding: 18, gap: SEAM }]}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4, paddingBottom: 8 }}>
-        <Text style={meta(9, color("ink"))}>{t.alsoNew}</Text>
-        {f.fresh ? (
-          <Pressable accessibilityRole="button" onPress={f.markAllRead}>
-            <Text style={[meta(9, color("ink", "inkDim")), { textDecorationLine: "underline" }]}>{t.allRead}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {ed.alsoNew.length ? (
-        ed.alsoNew.slice(0, 4).map((p) => <MiniRow key={p.id} f={f} p={p} size={44} radius={12} bg={color("paper")} />)
-      ) : (
-        <UpToDateMark />
-      )}
-    </View>
-  );
-}
-
-/** Een regel met een kleurvlakje en de initiaal: Ook nieuw en de rijen onder Gezien. */
 function MiniRow({ f, p, size, radius, bg, width }: { f: Feed; p: Tile; size: number; radius: number; bg: string; width?: number }) {
   const { t } = f;
   const scheme = useScheme();

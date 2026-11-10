@@ -49,7 +49,9 @@ export function useEdition(f: Feed) {
     const rest = tiles.filter((p) => !p.isNew && p !== hero && !mineNow.includes(p));
     const friends = new Set(tiles.filter((p) => !isMine(p.authorId)).map((p) => p.authorId)).size;
     const newCount = tiles.filter((p) => p.isNew).length;
-    return { hero, alsoNew, rest, friends, newCount, total: tiles.length };
+    /** Alles behalve de omslag, nieuwste eerst. */
+    const chrono = tiles.filter((p) => p !== hero);
+    return { hero, alsoNew, rest, chrono, friends, newCount, total: tiles.length };
   }, [byTime, groups, seen, isMine, heroPost]);
 }
 

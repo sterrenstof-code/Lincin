@@ -47,7 +47,9 @@ export function useFeed() {
    * Editie (de standaard), Per vriend en Op tijd. Tot de oktoberhandoff
    * kende een telefoon in kleur of modern geen Editie.
    */
-  const view: FeedView = prefs.feedView ?? "editie";
+  // Sinds nov 2026 alleen nog Editie: de omslag en dan alles op tijd. Per
+  // vriend en Op tijd zijn weg; een oude voorkeur telt niet meer.
+  const view = "editie" as FeedView;
   const changeView = useCallback((v: FeedView) => setPref(myUserId, "feedView", v), [myUserId]);
   /** De telefoonfeed (magazine) kent alleen dit: tegels of rijen, op tijd. */
   const density: FeedDensity = prefs.feedDensity;

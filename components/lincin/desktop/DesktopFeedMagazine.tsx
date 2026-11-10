@@ -72,7 +72,7 @@ export function DesktopFeedMagazine({ f, ed }: { f: Feed; ed: EditionData }) {
   else body = <ByTime f={f} />;
 
   return (
-    <DesktopShell active="feed" navExtra={<Views f={f} />} wide>
+    <DesktopShell active="feed" wide>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {view === "editie" && !feed.isLoading && !noFriends ? (
           body
@@ -86,40 +86,6 @@ export function DesktopFeedMagazine({ f, ed }: { f: Feed; ed: EditionData }) {
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
     </DesktopShell>
-  );
-}
-
-// ---------------------------------------------------------------
-// Weergaven, in de balk
-// ---------------------------------------------------------------
-
-function Views({ f }: { f: Feed }) {
-  const { t, view, changeView } = f;
-  const o = useOmslag();
-  const options = [
-    { value: "editie" as const, label: t.editie },
-    { value: "friends" as const, label: t.perFriend },
-    { value: "time" as const, label: t.byTime },
-  ];
-  return (
-    <View style={{ flexDirection: "row", gap: 24, alignSelf: "stretch" }}>
-      {options.map((v) => {
-        const on = view === v.value;
-        return (
-          <Pressable
-            key={v.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            onPress={() => changeView(v.value)}
-            style={[{ justifyContent: "center", borderTopWidth: 3, borderTopColor: "transparent", borderBottomWidth: 3, borderBottomColor: on ? o.red : "transparent" }, webPointer]}
-          >
-            <Label size={12} ls={0.08} color={on ? o.red : o.ink}>
-              {v.label}
-            </Label>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -138,44 +104,34 @@ function useEditionLine() {
 }
 
 /** Hoeveel van "Inhoud" er meteen staat, en hoeveel er per tik bij komen. */
-const INHOUD_FIRST = 4;
+const INHOUD_FIRST = 12;
 const INHOUD_STEP = 8;
 
 function Edition({ f, ed }: { f: Feed; ed: EditionData }) {
   const { t } = f;
   const o = useOmslag();
-  const seen = ed.rest;
-  // Wat je al zag staat er niet eindeloos onder: vier, en dan "Verder
-  // lezen" (desktop-magazine-home). Geen oneindig scrollen.
+  // Onder de omslag alles op tijd, nieuwste eerst; niet eindeloos, maar
+  // per tik "Verder lezen" (desktop-magazine-home). Geen oneindig scrollen.
+  const lijst = ed.chrono;
   const [shown, setShown] = useState(INHOUD_FIRST);
   const { wide } = useWide();
   return (
     <View>
       {ed.hero ? <Cover f={f} ed={ed} hero={ed.hero} /> : null}
       <Column wide={wide}>
-      {ed.alsoNew.length ? (
+      {lijst.length ? (
         <>
           <ChapterHead
             top={SEAM}
-            fill={o.red}
-            kicker={`${t.secNew} · ${ed.alsoNew.length} ${ed.alsoNew.length === 1 ? t.post1 : t.posts}`}
-            kickRed
-            name={t.alsoNew}
+            fill={o.ink}
+            kicker={`${f.fresh ? `${f.fresh} ${t.secNew.toLowerCase()} · ` : ""}${lijst.length} ${lijst.length === 1 ? t.post1 : t.posts}`}
+            name={t.omContents}
             nameSize={72}
             act={f.fresh ? { label: t.markAllRead, onPress: f.markAllRead } : undefined}
           />
-          <Spreads f={f} posts={ed.alsoNew} />
-        </>
-      ) : null}
-      {seen.length ? (
-        <>
-          <ChapterHead top={40} fill={o.ink} kicker={`${cap(t.alreadySeen)} · ${seen.length} ${seen.length === 1 ? t.post1 : t.posts}`} name={t.omContents} nameSize={72} />
-          {/* Ook wat je al zag als gekleurde spreads, zoals op de telefoon:
-              een index met nummers las als een inhoudstafel, niet als je
-              vrienden. */}
-          <Spreads f={f} posts={seen.slice(0, shown)} />
-          {seen.length > shown ? (
-            <ReadOn left={seen.length - shown} onPress={() => setShown((n) => n + INHOUD_STEP)} label={t.readOn} more={`${t.moreLeft} ${seen.length - shown} · ${t.loadMore} ↓`.trim()} />
+          <Spreads f={f} posts={lijst.slice(0, shown)} />
+          {lijst.length > shown ? (
+            <ReadOn left={lijst.length - shown} onPress={() => setShown((n) => n + INHOUD_STEP)} label={t.readOn} more={`${t.moreLeft} ${lijst.length - shown} · ${t.loadMore} ↓`.trim()} />
           ) : null}
         </>
       ) : null}
