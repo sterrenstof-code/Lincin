@@ -166,11 +166,8 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
   const [weergave, kies] = useMijnWeergave();
   const [stand, kiesStand] = useStand();
 
-  const volgorde = useMemo(() => {
-    const hero = f.heroPost;
-    const rest = f.cards.filter((c) => c.id !== hero?.id);
-    return hero ? [hero, ...rest] : rest;
-  }, [f.cards, f.heroPost]);
+  // Chronologisch: de nieuwste eerst, over alle lincs heen.
+  const volgorde = f.byTime;
   const perId = useMemo(() => new Map(volgorde.map((c) => [c.id, c])), [volgorde]);
 
   const uris = useMemo(() => volgorde.map(beeldVan).filter((u): u is string => !!u), [volgorde]);
