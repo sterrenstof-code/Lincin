@@ -100,49 +100,13 @@ function emojiOnly(text: string): boolean {
 
 type Variant = "mobile" | "desktop";
 
-/** Alleen Nieuwste / Oudste, voor wie zijn eigen kop al heeft (desktop). */
-export function SortToggle({ m }: { m: CommentsModel }) {
-  return (
-    <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingBottom: 4 }}>
-      <SortTabs m={m} />
-    </View>
-  );
-}
-
-function SortTabs({ m }: { m: CommentsModel }) {
-  const t = useT();
-  const opt = (v: "newest" | "oldest", label: string) => {
-    const on = m.sort === v;
-    return (
-      <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => m.setSort(v)} hitSlop={8} style={pointer}>
-        <Text
-          style={[
-            sans(700),
-            { fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: "uppercase", color: on ? color("ink") : color("ink", "inkDim") },
-            on ? ({ textDecorationLine: "underline", textUnderlineOffset: 3 } as TextStyle) : null,
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    );
-  };
-  return (
-    <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 14 }}>
-      {opt("newest", t.newest)}
-      {opt("oldest", t.oldest)}
-    </View>
-  );
-}
-
-export function CommentsHead({ m, count }: { m: CommentsModel; count: number }) {
+export function CommentsHead({ count }: { m: CommentsModel; count: number }) {
   const t = useT();
   return (
     <View style={{ borderTopWidth: 2, borderTopColor: color("ink"), paddingTop: 14, paddingBottom: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
       <Text style={[sans(700), { fontSize: 10, lineHeight: 14, letterSpacing: 1.4, textTransform: "uppercase", color: color("ink") }]}>
         {t.comments} · {count}
       </Text>
-      <SortTabs m={m} />
     </View>
   );
 }
@@ -177,11 +141,12 @@ export function CommentList({
   const pendingRoots = m.pendingFor(null);
   return (
     <View>
-      {m.sort === "newest" ? pendingRoots.slice().reverse().map((p) => <PendingItem key={p.tempId} p={p} m={m} variant={variant} />) : null}
       {m.roots.map((c) => (
         <Thread key={c.id} c={c} m={m} myUserId={myUserId} variant={variant} onReply={onReply} highlightId={highlightId} />
       ))}
-      {m.sort === "oldest" ? pendingRoots.map((p) => <PendingItem key={p.tempId} p={p} m={m} variant={variant} />) : null}
+      {pendingRoots.map((p) => (
+        <PendingItem key={p.tempId} p={p} m={m} variant={variant} />
+      ))}
       {m.hasMore ? (
         <Pressable accessibilityRole="button" onPress={m.loadMore} style={[{ paddingVertical: 16, alignItems: "flex-start" }, pointer]}>
           <Text style={[sans(700), { fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: "uppercase", color: color("ink") }]}>

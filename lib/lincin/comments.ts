@@ -13,7 +13,6 @@ import {
 } from "@/lib/api/entity-comments";
 import { clearMyCommentReactions, listReactionsForComments, toggleCommentReaction, type CommentReactionRow } from "@/lib/api/comment-reactions";
 import { getProfiles, type Profile } from "@/lib/api/profiles";
-import { setPref, usePrefs, type CommentSort } from "@/lib/lincin/prefs";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { supabase } from "@/lib/supabase/client";
 
@@ -173,18 +172,14 @@ export function useComments({
     };
   }, [entityType, entityId, qc]);
 
-  // ---- volgorde en bladzijden ----
-  const prefs = usePrefs(myUserId);
-  const sort: CommentSort = prefs.commentSort;
-  const setSort = useCallback((s: CommentSort) => setPref(myUserId, "commentSort", s), [myUserId]);
+  // ---- volgorde (oudste eerst, als een gesprek) en bladzijden ----
   const [limit, setLimit] = useState(PAGE);
 
   const roots = useMemo(() => {
     const list = all.filter((c) => !c.parent_id);
     list.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
-    if (sort === "newest") list.reverse();
     return list;
-  }, [all, sort]);
+  }, [all]);
 
   const replies = useMemo(() => {
     const m = new Map<string, EntityComment[]>();
@@ -338,8 +333,6 @@ export function useComments({
     repliesOf: (rootId: string) => (replies.get(rootId) ?? []).filter((c) => !gone.has(c.id)),
     pendingFor: (rootId: string | null) => pending.filter((p) => p.parentId === rootId),
     find: (id: string) => all.find((c) => c.id === id) ?? null,
-    sort,
-    setSort,
     isOpen,
     setOpen,
     likesOf,

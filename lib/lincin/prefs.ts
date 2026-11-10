@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase/client";
  *               lokale `lincin.theme` blijft de kopie voor het eerste beeld
  *   openDefault  vrienden in de feed staan standaard open (uit: ingeklapt)
  *   feedView     editie | friends | time; leeg = de standaard van het toestel
- *   commentSort  newest | oldest — de volgorde van reacties (Bijdrage Voorbeeld)
+ *   feedDensity  cards | condensed — de telefoonfeed (magazine): tegels of rijen
  *   openFriends  per vriend (of groep) je eigen keuze: open of dicht
  *   push         per soort melding aan/uit (berichten, likes, reacties,
  *               vermeldingen); ontbreekt = aan. `send-push` leest hem.
@@ -36,8 +36,8 @@ import { supabase } from "@/lib/supabase/client";
  */
 export type FeedView = "editie" | "friends" | "time";
 
-/** De volgorde van reacties onder een bijdrage (Bijdrage Voorbeeld). */
-export type CommentSort = "newest" | "oldest";
+/** De telefoonfeed: grote tegels of de korte rijen van de inhoudsopgave. */
+export type FeedDensity = "cards" | "condensed";
 
 export type Prefs = {
   tint: boolean;
@@ -46,8 +46,7 @@ export type Prefs = {
   visible: boolean;
   openDefault: boolean;
   feedView: FeedView | null;
-  /** Reacties: nieuwste eerst (de standaard) of oudste eerst. */
-  commentSort: CommentSort;
+  feedDensity: FeedDensity;
   openFriends: Record<string, boolean>;
   edition: { n: number; day: string } | null;
   /** Licht of donker (of het toestel volgen), meegenomen naar een tweede toestel. */
@@ -72,7 +71,7 @@ const DEFAULTS: Prefs = {
   visible: true,
   openDefault: false,
   feedView: null,
-  commentSort: "newest",
+  feedDensity: "cards",
   openFriends: {},
   edition: null,
   scheme: "system",
@@ -96,7 +95,7 @@ function clean(raw: unknown): Partial<Prefs> {
     if (typeof r[k] === "boolean") out[k] = r[k] as boolean;
   }
   if (r.feedView === "editie" || r.feedView === "friends" || r.feedView === "time") out.feedView = r.feedView;
-  if (r.commentSort === "newest" || r.commentSort === "oldest") out.commentSort = r.commentSort;
+  if (r.feedDensity === "cards" || r.feedDensity === "condensed") out.feedDensity = r.feedDensity;
   if (r.scheme === "system" || r.scheme === "light" || r.scheme === "dark") out.scheme = r.scheme;
   if (r.openFriends && typeof r.openFriends === "object") out.openFriends = r.openFriends as Record<string, boolean>;
   if (r.push && typeof r.push === "object") {

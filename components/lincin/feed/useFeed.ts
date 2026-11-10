@@ -11,7 +11,7 @@ import { useLang, useT, type Dict } from "@/lib/i18n";
 import { openPost as openPostAnywhere, openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { useHueChoices } from "@/lib/design/theme";
 import { groupByFriend, groupByTime, numberMap, toCardPost, type CardPost, type FriendGroup } from "@/lib/lincin/model";
-import { isFriendOpen, setFriendOpen, setFriendsOpen, setPref, usePrefs, type FeedView } from "@/lib/lincin/prefs";
+import { isFriendOpen, setFriendOpen, setFriendsOpen, setPref, usePrefs, type FeedDensity, type FeedView } from "@/lib/lincin/prefs";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { markSeen, useSeenPosts } from "@/lib/read-state";
 
@@ -49,6 +49,9 @@ export function useFeed() {
    */
   const view: FeedView = prefs.feedView ?? "editie";
   const changeView = useCallback((v: FeedView) => setPref(myUserId, "feedView", v), [myUserId]);
+  /** De telefoonfeed (magazine) kent alleen dit: tegels of rijen, op tijd. */
+  const density: FeedDensity = prefs.feedDensity;
+  const changeDensity = useCallback((d: FeedDensity) => setPref(myUserId, "feedDensity", d), [myUserId]);
 
   /**
    * Ingeklapt of open (HANDOFF 23 sep): STANDAARD STAAT ELKE VRIEND
@@ -217,6 +220,8 @@ export function useFeed() {
     router,
     view,
     changeView,
+    density,
+    changeDensity,
     feed,
     friendCount,
     cards,

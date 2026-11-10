@@ -42,7 +42,7 @@ const PAD = 24;
 
 export function FeedMagazine() {
   const f = useFeed();
-  const { t, feed, sheet, setSheet, view } = f;
+  const { t, feed, sheet, setSheet, density } = f;
   const ed = useEdition(f);
   const o = useOmslag();
   // Hertekent als je iemand een eigen kleur geeft (zie hueFor).
@@ -50,7 +50,7 @@ export function FeedMagazine() {
 
   const noFriends = f.empty && f.friendCount === 0;
   const hero = ed.hero;
-  const cover = view === "editie" && !!hero && !feed.isLoading && !noFriends;
+  const cover = !!hero && !feed.isLoading && !noFriends;
   const heroFill = hero ? friendColor(hero.hue, o.scheme).fill : null;
 
   /**
@@ -72,8 +72,7 @@ export function FeedMagazine() {
    * FlatList net als op een ScrollView, en de lijst houdt een kleefkop
    * altijd getekend, ook als hij buiten het venster valt.
    */
-  const { alsoNew, rest } = ed;
-  const { sections, timeGroups, groups, seen, isOpen, freshIn, isMine } = f;
+  const { timeGroups, groups, seen, isMine } = f;
   const loading = feed.isLoading;
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -91,47 +90,18 @@ export function FeedMagazine() {
       out.push({ type: "head", key: "head" });
     }
     out.push({ type: "views", key: "views" });
-    if (view === "editie") {
-      if (alsoNew.length) {
-        out.push({ type: "block", key: "b:new", block: { kind: "alsoNew", count: alsoNew.length } });
-        pushSpreads(out, "new", alsoNew);
-      }
-      if (rest.length) {
-        out.push({ type: "block", key: "b:rest", block: { kind: "contents", count: rest.length, top: alsoNew.length ? 34 : SEAM } });
-        pushIndex(out, "rest", rest, true);
-      }
-    } else if (view === "friends") {
-      const all = [...sections.neu, ...sections.old];
-      const two = (n: number) => String(n).padStart(2, "0");
-      all.forEach((g, gi) => {
-        const isNew = gi < sections.neu.length;
-        const first = gi === 0 || gi === sections.neu.length;
-        if (first) out.push({ type: "groupHead", key: `gh:${isNew ? "new" : "seen"}`, isNew, top: isNew || !sections.neu.length ? 18 : 34 });
-        const open = isOpen(g.key);
-        out.push({
-          type: "block",
-          key: `b:${g.key}`,
-          block: { kind: "friend", g, isNew, open, fresh: freshIn(g).length, kicker: `${two(gi + 1)} / ${two(all.length)}` },
-        });
-        if (open) {
-          const tiles: Tile[] = g.posts.map((p) => ({ ...p, hue: p.swatch ?? g.hue, isNew: !seen.has(p.id) }));
-          pushSpreads(out, `f:${g.key}`, tiles);
-        } else {
-          pushIndex(out, `f:${g.key}`, g.posts, false);
-        }
-      });
-    } else {
-      const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
-      timeGroups.forEach((tg, i) => {
-        const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !seen.has(p.id) }));
-        const n = tiles.filter((p) => p.isNew).length;
-        out.push({ type: "block", key: `b:${tg.key}`, block: { kind: "time", label: tg.label, range: tg.range, count: tg.posts.length, newCount: n, top: i ? 34 : SEAM } });
-        pushSpreads(out, `t:${tg.key}`, tiles);
-      });
-    }
+    // Telefoon: alles op tijd, nieuwste eerst — als tegels of als rijen.
+    const hueOf = new Map(groups.map((g) => [g.key, g.hue]));
+    timeGroups.forEach((tg, i) => {
+      const tiles: Tile[] = tg.posts.map((p) => ({ ...p, hue: p.swatch ?? hueOf.get(p.authorId) ?? "orange", isNew: !seen.has(p.id) }));
+      const n = tiles.filter((p) => p.isNew).length;
+      out.push({ type: "block", key: `b:${tg.key}`, block: { kind: "time", label: tg.label, range: tg.range, count: tg.posts.length, newCount: n, top: i ? 34 : SEAM } });
+      if (density === "condensed") pushIndex(out, `t:${tg.key}`, tg.posts, true);
+      else pushSpreads(out, `t:${tg.key}`, tiles);
+    });
     out.push({ type: "end", key: "end" });
     return out;
-  }, [loading, noFriends, cover, view, alsoNew, rest, sections, timeGroups, groups, seen, isOpen, freshIn]);
+  }, [loading, noFriends, cover, density, timeGroups, groups, seen]);
   const sticky = useMemo(() => {
     const i = items.findIndex((it) => it.type === "views");
     return i >= 0 ? [i] : [];
@@ -367,7 +337,7 @@ function Cover({ f, hero: h }: { f: Feed; hero: Tile }) {
           </Label>
           <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
             <CircleGlyphBtn
-              glyph="✳"
+              glyph={"\u2733\uFE0E"}
               fontSize={15}
               tone={fg}
               ringColor={fc.fill}
@@ -451,9 +421,9 @@ function CoverCaption({ f, hero: h }: { f: Feed; hero: Tile }) {
 // ---------------------------------------------------------------
 
 function ViewHead({ f }: { f: Feed }) {
-  const { t, view } = f;
+  const { t } = f;
   const o = useOmslag();
-  const [a, ...b] = (view === "friends" ? t.perFriend : view === "time" ? t.byTime : t.editie).split(" ");
+  const [a, ...b] = t.byTime.split(" ");
   return (
     <View style={{ paddingTop: 14, paddingHorizontal: PAD, paddingBottom: 20, gap: 8 }}>
       <Label size={8.5} weight={500} ls={0.2} color={o.dim}>
@@ -478,23 +448,22 @@ function ViewHead({ f }: { f: Feed }) {
 }
 
 function Views({ f }: { f: Feed }) {
-  const { t, view, changeView } = f;
+  const { t, density, changeDensity } = f;
   const o = useOmslag();
   const options = [
-    { value: "editie" as const, label: t.editie },
-    { value: "friends" as const, label: t.perFriend },
-    { value: "time" as const, label: t.byTime },
+    { value: "cards" as const, label: t.viewCards },
+    { value: "condensed" as const, label: t.viewCondensed },
   ];
   return (
     <View style={{ backgroundColor: o.paper, paddingHorizontal: PAD, flexDirection: "row", gap: 15, borderBottomWidth: OMSLAG.rule, borderBottomColor: o.ink }}>
       {options.map((v) => {
-        const on = view === v.value;
+        const on = density === v.value;
         return (
           <Pressable
             key={v.value}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            onPress={() => changeView(v.value)}
+            onPress={() => changeDensity(v.value)}
             style={{ height: 44, justifyContent: "center", borderBottomWidth: 3, borderBottomColor: on ? o.red : "transparent", marginBottom: -OMSLAG.rule }}
           >
             <Label size={12} ls={0.08} color={on ? o.red : o.ink}>

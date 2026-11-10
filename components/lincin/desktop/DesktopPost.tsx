@@ -10,7 +10,7 @@ import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { isLightboxOpen, openLightbox } from "@/components/lincin/Lightbox";
 import { Media, useDoubleTap } from "@/components/lincin/Media";
 import { MentionSuggestions } from "@/components/lincin/MentionSuggest";
-import { CommentList, SortToggle } from "@/components/lincin/post/Comments";
+import { CommentList } from "@/components/lincin/post/Comments";
 import { ActionRow, EmojiDrawer, LikedBy, LikesPanel, HeartBurst } from "@/components/lincin/post/Reactions";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
 import type { EntityComment } from "@/lib/api/entity-comments";
@@ -441,7 +441,6 @@ export function DesktopPost({ id }: { id: string }) {
         <Text style={lbl(mag ? 11 : 9, mag ? ink : dim)}>{count}</Text>
       </View>
       <View style={{ paddingHorizontal: mag ? 28 : 24, paddingTop: 12 }}>
-        <SortToggle m={m} />
         <CommentList m={m} myUserId={myUserId} variant="desktop" onReply={reply} highlightId={typeof highlight === "string" ? highlight : null} />
       </View>
       {count === 0 && !m.isLoading && m.pendingFor(null).length === 0 ? (

@@ -257,7 +257,7 @@ function NavMagazine({ active, extra }: { active: Tab; extra: ReactNode }) {
       {extra}
       <View style={{ marginLeft: extra ? 12 : 0 }}>
         <RoundGlyph
-          glyph="✳"
+          glyph={"\u2733\uFE0E"}
           size={36}
           fontSize={17}
           badge={unread.notifications > 0}

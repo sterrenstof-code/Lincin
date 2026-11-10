@@ -289,7 +289,7 @@ function HeaderMagazine({ counter, back, actions = true }: { counter?: string; b
       {actions ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <CircleGlyphBtn
-            glyph="✳"
+            glyph={"\u2733\uFE0E"}
             fontSize={15}
             badge={unread.notifications > 0}
             tone={onNotes ? color("ink") : color("ink", "inkDim")}

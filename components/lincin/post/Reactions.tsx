@@ -132,17 +132,14 @@ export function ActionRow({
           {
             width: 30,
             height: 30,
-            borderRadius: 15,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: drawerOpen ? ink : "transparent",
-            borderWidth: drawerOpen ? 0 : 1,
-            borderColor: ink,
+            opacity: drawerOpen ? 0.5 : 1,
           },
           pointer,
         ]}
       >
-        <Text style={{ fontSize: 15, lineHeight: 18, color: drawerOpen ? color("paper") : ink }}>☺</Text>
+        <Text style={{ fontSize: 20, lineHeight: 24, color: ink }}>☺</Text>
       </Pressable>
       <View style={{ flex: 1 }} />
       {right}
