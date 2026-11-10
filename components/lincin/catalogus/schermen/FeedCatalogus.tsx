@@ -13,7 +13,7 @@ import { HomeView, type HomeStuk } from "./HomeView";
 const LOCALE = { nl: "nl-NL", en: "en-GB", de: "de-DE" } as const;
 
 /** "ma 9 nov 2026" */
-function vandaag(): string {
+export function vandaag(): string {
   const d = new Date();
   const loc = LOCALE[getLang() as keyof typeof LOCALE] ?? "nl-NL";
   const dag = d.toLocaleDateString(loc, { weekday: "short" }).replace(".", "");

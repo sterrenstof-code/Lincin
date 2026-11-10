@@ -30,6 +30,8 @@ export type DStuk = {
   hartjes: number;
   vindIkLeuk: boolean;
   reacties: number;
+  /** Een stuk met een eigen pagina (een poll) opent die in plaats van het paneel. */
+  eigenPagina?: () => void;
 };
 
 /** De kop van elke pagina: tabbladen, meldingen, nieuw, en de editie. */

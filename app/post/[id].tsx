@@ -26,6 +26,8 @@ import { useMeasure } from "@/lib/lincin/measure";
 import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
 import { BijdrageCatalogus } from "@/components/lincin/catalogus/schermen/BijdrageCatalogus";
+import { FeedDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
 import { usePageTitle } from "@/lib/page-title";
@@ -54,9 +56,18 @@ export default function PostRoute(props: { id?: string; embedded?: boolean } = {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const desktop = useIsDesktop();
   const catalogus = useThemeSpec().layout === "catalogus";
+  // Catalogus op desktop: de feed in de gekozen weergave, met dit stuk open.
+  const catalogusDesktop = useCatalogusDesktop();
+  if (catalogusDesktop && !props.embedded) return <BijdrageDesktop id={props.id ?? String(raw ?? "")} />;
   if (desktop && !props.embedded) return <DesktopPost id={props.id ?? String(raw ?? "")} />;
   if (catalogus && !props.embedded) return <BijdrageCatalogus id={props.id ?? String(raw ?? "")} />;
   return <PostScreen {...props} />;
+}
+
+/** Sluiten gaat naar de feed; de wand blijft staan waar hij stond. */
+function BijdrageDesktop({ id }: { id: string }) {
+  const router = useRouter();
+  return <FeedDesktopEcht key={id} startOpen={id} naSluiten={() => router.replace("/feed" as never)} />;
 }
 
 export function PostScreen({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {

@@ -65,6 +65,11 @@ export function FeedDesktop(props: FeedDesktopProps) {
 
   const openStuk = useCallback(
     (id: string) => {
+      const s = stukken.find((x) => x.id === id);
+      if (s?.eigenPagina) {
+        s.eigenPagina();
+        return;
+      }
       if (timer.current) clearTimeout(timer.current);
       setSluitend(null);
       if (!open) setSessie((n) => n + 1);
@@ -72,7 +77,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
       setSel(id);
       setFris(false);
     },
-    [open],
+    [open, stukken],
   );
 
   const sluit = useCallback(() => {

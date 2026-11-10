@@ -16,7 +16,10 @@ import { useLang, useT } from "@/lib/i18n";
 import { useChatPreviews } from "@/lib/chat-preview";
 import { displayName, shortAgo } from "@/lib/lincin/model";
 import { DesktopChats } from "@/components/lincin/desktop/DesktopChats";
-import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
+import { openThread, pickThread, useIsDesktop } from "@/lib/lincin/desktop";
+import { GesprekkenDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
+import { ChatDetail } from "@/app/chat/[id]";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -30,14 +33,15 @@ import { useToast } from "@/lib/toast";
  * eronder met "Nog geen berichten".
  */
 
-export default function ChatsScreen() {
+/** `gekozen`: op desktop in catalogus het gesprek in het midden (app/chat/[id].tsx). */
+export default function ChatsScreen({ gekozen }: { gekozen?: string } = {}) {
   usePageTitle("Gesprekken");
   const desktop = useIsDesktop();
   if (desktop) return <DesktopChats />;
-  return <ChatsMobile />;
+  return <ChatsMobile gekozen={gekozen} />;
 }
 
-function ChatsMobile() {
+function ChatsMobile({ gekozen }: { gekozen?: string }) {
   const { session } = useAuth();
   const myUserId = session!.user.id;
   const router = useRouter();
@@ -48,6 +52,7 @@ function ChatsMobile() {
   const spec = useThemeSpec();
   const toast = useToast();
   const readMenu = useChatReadMenu();
+  const catalogusDesktop = useCatalogusDesktop();
 
   const chats = useQuery({
     queryKey: ["chats", myUserId],
@@ -124,6 +129,32 @@ function ChatsMobile() {
       };
     }),
   ];
+
+  if (spec.layout === "catalogus" && catalogusDesktop) {
+    // Zonder gekozen gesprek: het laatste, maar niet als er iets ongelezen is (`pickThread`).
+    const open = gekozen ?? pickThread(null, list);
+    return (
+      <>
+        <GesprekkenDesktopEcht
+          rijen={rows.map((r) => ({
+            id: r.key,
+            naam: r.name,
+            regel: r.preview,
+            tijd: r.time || "—",
+            nieuw: r.unread,
+            linc: { beeld: r.avatarUrl, kleur: hueKleur(r.hue), initiaal: r.initial },
+            // Op /chat/[id] wisselt een gesprek alleen de parameter; een linc zonder gesprek maakt er eerst een.
+            open: () => (gekozen && list.some((c) => c.id === r.key) ? router.setParams({ id: r.key }) : r.onPress()),
+          }))}
+          gekozen={open}
+          ongelezen={unread}
+          stand={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
+          draad={open ? <ChatDetail key={open} id={open} embedded /> : null}
+        />
+        {readMenu.sheet}
+      </>
+    );
+  }
 
   if (spec.layout === "catalogus") {
     return (

@@ -15,6 +15,8 @@ import { useLang, useT, type Lang } from "@/lib/i18n";
 import { displayName, hhmm } from "@/lib/lincin/model";
 import { DesktopEvents } from "@/components/lincin/desktop/DesktopEvents";
 import { useIsDesktop } from "@/lib/lincin/desktop";
+import { EventsDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { usePageTitle } from "@/lib/page-title";
 import { useToast } from "@/lib/toast";
 
@@ -47,6 +49,7 @@ function EventsMobile() {
   const lang = useLang();
   const scheme = useScheme();
   const spec = useThemeSpec();
+  const catalogusDesktop = useCatalogusDesktop();
 
   const events = useQuery({
     queryKey: ["events", myUserId],
@@ -154,6 +157,26 @@ function EventsMobile() {
       .filter((e) => !e.is_active && new Date(e.ends_at).getTime() <= now)
       .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
     const eerst = upcoming[0] ?? active[0];
+    if (catalogusDesktop) {
+      // Desktop (events.png): de komende rijen, en de maand met een punt per eventdag.
+      const komend = [...active, ...upcoming];
+      const jij = komend.filter((e) => rsvpMine(e.id) === "yes").length;
+      return (
+        <EventsDesktopEcht
+          rijen={[...komend.map((e) => rij(e, false)), ...verleden.map((e) => rij(e, true))].map((r) => ({
+            ...r,
+            komen: r.komen.map((k) => ({ kleur: k.kleur, initiaal: k.initiaal })),
+          }))}
+          kop={[
+            ["Gepland", `${komend.length} ${komend.length === 1 ? "event" : "events"}`],
+            ["Eerstvolgende", eerst ? `${dag(eerst.starts_at)} ${new Date(eerst.starts_at).toLocaleDateString(LOCALE[lang], { day: "numeric", month: "short" }).replace(".", "")}` : "—"],
+            ["Jij komt", `${jij} van ${komend.length}`],
+          ]}
+          dagen={komend.map((e) => ({ van: e.starts_at, tot: e.ends_at, kleur: lincKleur(e.host_user_id) }))}
+          stand={state ?? (data.length === 0 ? "Nog geen events." : null)}
+        />
+      );
+    }
     return (
       <EventsCatalogus
         rijen={[...active.map((e) => rij(e, false)), ...upcoming.map((e) => rij(e, false)), ...verleden.map((e) => rij(e, true))]}

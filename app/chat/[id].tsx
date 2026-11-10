@@ -132,6 +132,8 @@ import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
 import { useImageRatio } from "@/lib/lincin/ratio";
 import { prepareImageForUpload } from "@/lib/image-prep";
 import { Kop as CatKop, Meer } from "@/components/lincin/catalogus/Kop";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
+import ChatsScreen from "@/app/(app)/chats";
 import { Naad } from "@/components/lincin/catalogus/Vak";
 import { safeBack } from "@/lib/nav";
 import { Linc } from "@/components/lincin/catalogus/Voorwerp";
@@ -309,6 +311,9 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
 export default function ChatRoute(props: { id?: string; embedded?: boolean } = {}) {
   const params = useLocalSearchParams<{ id: string }>();
   const desktop = useIsDesktop();
+  // Catalogus op desktop: Gesprekken in het kader van de weergave, met dit gesprek gekozen.
+  const catalogusDesktop = useCatalogusDesktop();
+  if (catalogusDesktop && !props.embedded) return <ChatsScreen gekozen={props.id ?? params.id} />;
   if (desktop && !props.embedded) return <DesktopChats chatId={props.id ?? params.id} />;
   return <ChatDetail {...props} />;
 }

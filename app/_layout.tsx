@@ -3,7 +3,7 @@ import "../global.css";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { focusManager, useIsRestoring } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { Stack, useRouter } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
 import { ActivityIndicator, AppState, Platform, View, useWindowDimensions } from "react-native";
@@ -28,6 +28,7 @@ import { setupNotificationCategories, setupNotificationChannels } from "@/lib/pu
 import { dropPersistedCache, forgetQueryCache, persistOptions, queryClient, setCacheOwner } from "@/lib/query-cache";
 import { clearAttachmentCache } from "@/lib/attachment-cache";
 import { BREED_VANAF, KOLOM } from "@/components/lincin/catalogus/stijl";
+import { heeftDesktopVorm } from "@/components/lincin/catalogus/desktop/weergave";
 
 /**
  * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
@@ -79,8 +80,12 @@ export default function RootLayout() {
   const scheme = useScheme();
   const spec = useThemeSpec();
   const { width } = useWindowDimensions();
-  // Catalogus op een breed scherm: de telefoonvorm in een kolom in het midden.
-  const kolom = spec.layout === "catalogus" && width >= BREED_VANAF;
+  const pad = usePathname();
+  // Catalogus op een breed scherm: de telefoonvorm in een kolom in het midden,
+  // behalve waar catalogus een desktopvorm heeft (Feed, Gesprekken, Events, een
+  // bijdrage, een gesprek). Op native staat alles in de kolom.
+  const breed = spec.layout === "catalogus" && width >= BREED_VANAF;
+  const kolom = breed && !(Platform.OS === "web" && heeftDesktopVorm(pad));
   /**
    * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
    * (`app/+html.tsx`) en is dit meteen klaar. Op native zitten ze in de
@@ -133,9 +138,12 @@ export default function RootLayout() {
               het resetten van je toestelsleutels, de enige onomkeerbare
               handeling in deze app. Zie lib/confirm.tsx. */}
           <ConfirmProvider>
-            {kolom ? (
+            {breed ? (
+              // Dezelfde twee lagen, met of zonder kolom: wisselen tussen een
+              // pagina in de kolom en een desktoppagina begint de navigator
+              // niet opnieuw.
               <View style={{ flex: 1, backgroundColor: CATALOGUS[spec.dark ? "dark" : "light"].naad }}>
-                <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>
+                <View style={{ flex: 1, width: kolom ? KOLOM : "100%", alignSelf: "center", overflow: "hidden" }}>
                   <RootStack />
                 </View>
               </View>

@@ -67,5 +67,5 @@ export function useCatalogusDesktop(): boolean {
 
 /** De routes die op desktop een eigen vorm hebben; de rest blijft in de kolom. */
 export function heeftDesktopVorm(pad: string): boolean {
-  return /^\/(feed|chats|events)\/?$/.test(pad) || /^\/(post|chat)\/[^/]+\/?$/.test(pad);
+  return /^\/(feed|chats|events)\/?$/.test(pad) || /^\/(post|chat)\/[^/]+\/?$/.test(pad) || pad.startsWith("/dev/catalogus-desktop/");
 }
