@@ -897,6 +897,8 @@ export type HeadStep = 11 | 12 | 15 | 18 | 19 | 26 | 30 | 34 | 44 | 52;
 const HEAD_SIZE: Record<LincinTheme, Record<HeadStep, number>> = {
   magazine: { 11: 11, 12: 12, 15: 19, 18: 23, 19: 24, 26: 30, 30: 34, 34: 40, 44: 50, 52: 58 },
   modern:   { 11: 11, 12: 12, 15: 16, 18: 19, 19: 20, 26: 24, 30: 30, 34: 34, 44: 42, 52: 50 },
+  // Catalogus tekent zijn eigen schermen; wat daarbuiten een kop vraagt, krijgt de maat van modern.
+  catalogus: { 11: 11, 12: 12, 15: 16, 18: 19, 19: 20, 26: 24, 30: 30, 34: 34, 44: 42, 52: 50 },
 };
 
 /**

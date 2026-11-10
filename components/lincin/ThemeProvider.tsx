@@ -6,7 +6,7 @@ import { syncUserPrefs } from "@/lib/lincin/prefs";
 import { localThemeChoice, setTheme, setThemeFromProfile, useTheme, useThemeSpec, type LincinTheme, type ThemeSpec } from "@/lib/design/theme";
 
 /**
- * Het thema van de app: kleur, magazine of modern (2.2 §6).
+ * Het thema van de app: magazine, modern of catalogus (2.2 §6).
  *
  * De waarde zelf leeft buiten React, in `lib/design/theme.ts`, zodat
  * `color()`, `lincinType` en `BORDER` hem kunnen lezen zonder context.
@@ -52,7 +52,7 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
         // Leeg profiel (0071): nooit gekozen — tenzij je op dít toestel wél
         // koos. Dan schrijven we die keuze terug, zodat hij niet verloren gaat.
         const local = localThemeChoice();
-        if (local) setProfileTheme(userId, local).catch(() => {});
+        if (local && local !== "catalogus") setProfileTheme(userId, local).catch(() => {});
       }
     });
     return () => {
@@ -66,7 +66,8 @@ export function LincinThemeProvider({ children }: { children: ReactNode }) {
   const choose = useCallback(
     (next: LincinTheme) => {
       setTheme(next);
-      if (userId) setProfileTheme(userId, next).catch(() => {});
+      // Catalogus kent de database nog niet (zie `setProfileTheme`): alleen op dit toestel.
+      if (userId && next !== "catalogus") setProfileTheme(userId, next).catch(() => {});
     },
     [userId],
   );

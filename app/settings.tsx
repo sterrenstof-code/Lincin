@@ -124,6 +124,7 @@ function SettingsMobile() {
               options={[
                 { value: "magazine", label: t.themeMagazine },
                 { value: "modern", label: t.themeModern },
+                { value: "catalogus", label: "Catalogus" },
               ]}
               value={lincin.theme}
               onChange={lincin.choose}
@@ -229,6 +230,7 @@ function SettingsMobile() {
               options={[
                 { value: "magazine", label: t.themeMagazine },
                 { value: "modern", label: t.themeModern },
+                { value: "catalogus", label: "Catalogus" },
               ]}
               value={lincin.theme}
               onChange={lincin.choose}

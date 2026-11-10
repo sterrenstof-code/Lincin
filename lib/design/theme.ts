@@ -67,12 +67,12 @@ export type ThemePreference = "system" | "light" | "dark";
  * `"kleur"` — in het profiel of op een toestel — is daarom geen thema meer
  * en telt als "nooit gekozen": wie hem had krijgt de standaard.
  */
-export type LincinTheme = "magazine" | "modern";
+export type LincinTheme = "magazine" | "modern" | "catalogus";
 
-export const THEMES: LincinTheme[] = ["magazine", "modern"];
+export const THEMES: LincinTheme[] = ["magazine", "modern", "catalogus"];
 
 export function isLincinTheme(v: unknown): v is LincinTheme {
-  return v === "magazine" || v === "modern";
+  return v === "magazine" || v === "modern" || v === "catalogus";
 }
 
 /**
@@ -338,10 +338,11 @@ export type ThemeSpec = {
    *   `lijst`   kaders en lijsten op papier — kleur.
    *   `spread`  volvlaks kleurvlakken met een naad van 6 — magazine.
    *   `bento`   een raster van tegels van twee kolommen — modern.
+   *   `catalogus` vakken op een grijs vlak met een naad van 2 — catalogus.
    */
-  layout: "spread" | "bento";
-  /** De navigatie: het kader van kleur, de rugstrook (1d), of de zwevende pil. */
-  nav: "rugstrook" | "pil";
+  layout: "spread" | "bento" | "catalogus";
+  /** De navigatie: de rugstrook (1d), de zwevende pil, of de tabbalk van catalogus. */
+  nav: "rugstrook" | "pil" | "tabbalk";
 
   // ---- de vorm, vooral voor desktop (2.2 §9) ----
   /** De naad in een raster: 10 in kleur, 6 in magazine en modern. */
@@ -405,6 +406,28 @@ const SPEC: Record<LincinTheme, Omit<ThemeSpec, "dark">> = {
     cardBorder: 0,
     borderTone: "rule",
     listGap: 6,
+    spine: 26,
+  },
+  catalogus: {
+    id: "catalogus",
+    border: 1,
+    serifHeads: false,
+    heads: "archivo",
+    tint: false,
+    haze: false,
+    bandFilled: false,
+    stripFilled: false,
+    feedHeader: false,
+    cardTitle: 26,
+    radius: 0,
+    layout: "catalogus",
+    nav: "tabbalk",
+    gap: 2,
+    cardRadius: 0,
+    cardFill: "tile",
+    cardBorder: 0,
+    borderTone: "rule",
+    listGap: 2,
     spine: 26,
   },
 };
@@ -604,6 +627,89 @@ const MODERN_DARK: Palette = derive(DARK, {
 });
 
 /**
+ * CATALOGUS — ontwerp 3e (design_handoff_lincin_3e/tokens.json).
+ *
+ * Elk stuk ligt als voorwerp op een grijs vlak, met een naad van 2 tussen
+ * de vakken. De naad is in licht wit en in donker dónkerder dan het vlak;
+ * een kaart (bericht, paneel, invoer) is in donker juist lichter. De
+ * onderdelen in `components/lincin/catalogus/` lezen deze waarden als hex
+ * (`CATALOGUS`); het palet hieronder zet dezelfde kleuren op de gedeelde
+ * tokens, zodat een scherm dat (nog) geen catalogusvorm heeft erbij past.
+ */
+export const CATALOGUS = {
+  light: {
+    vlak: "#EDECE8",
+    naad: "#FFFFFF",
+    kaart: "#FFFFFF",
+    inkt: "#141210",
+    tekstOpInkt: "#FFFFFF",
+    label: "#77756F",
+    tekstTweede: "#5E5C57",
+    plaatshouder: "#D9D7D1",
+    balkInactief: "#C9C7C1",
+    accent: "#E0705A",
+    gevaar: "#B3432E",
+    dimlaag: "rgba(20,18,16,.45)",
+    schaduw: "rgba(20,18,16,.35)",
+    kaartLand: "#DDDBD4",
+  },
+  dark: {
+    vlak: "#1B1A18",
+    naad: "#0C0B0A",
+    kaart: "#2B2926",
+    inkt: "#EDE8DD",
+    tekstOpInkt: "#1B1A18",
+    label: "#8E8A82",
+    tekstTweede: "#A8A39A",
+    plaatshouder: "#34312D",
+    balkInactief: "#4A4742",
+    accent: "#E0705A",
+    gevaar: "#E0705A",
+    dimlaag: "rgba(0,0,0,.62)",
+    schaduw: "rgba(0,0,0,.6)",
+    kaartLand: "#2E2C29",
+  },
+  /** De kleuren van een linc, in vaste volgorde. Tekst erop is altijd #141210. */
+  linc: ["#C1724E", "#8A9273", "#6E8A97", "#C9B77F", "#A9503F", "#DDEE3C", "#34C47A"],
+  lincInkt: "#141210",
+} as const;
+
+export type CatalogusKleuren = { -readonly [K in keyof (typeof CATALOGUS)["light"]]: string };
+
+const CATALOGUS_LIGHT: Palette = {
+  ...derive(LIGHT, {
+    paper: "237 236 232", // #EDECE8 vlak
+    paper2: "217 215 209", // #D9D7D1 plaatshouder
+    ink: "20 18 16", // #141210
+    acid: "20 18 16",
+    red: "224 112 90", // #E0705A accent
+    line: "20 18 16",
+    tile: "255 255 255", // kaart
+    tint: "255 255 255",
+  }),
+  inkSoft: "94 92 87", // #5E5C57
+  inkMuted: "119 117 111", // #77756F label
+  deskSoft: "94 92 87",
+  deskMuted: "119 117 111",
+};
+const CATALOGUS_DARK: Palette = {
+  ...derive(DARK, {
+    paper: "27 26 24", // #1B1A18
+    paper2: "52 49 45", // #34312D
+    ink: "237 232 221", // #EDE8DD
+    acid: "237 232 221",
+    red: "224 112 90",
+    line: "237 232 221",
+    tile: "43 41 38", // #2B2926
+    tint: "43 41 38",
+  }),
+  inkSoft: "168 163 154", // #A8A39A
+  inkMuted: "142 138 130", // #8E8A82
+  deskSoft: "168 163 154",
+  deskMuted: "142 138 130",
+};
+
+/**
  * De doorzichtigheden per thema en stand. `postDim`/`inkDim` is de `--dim`
  * uit het prototype, `postRule`/`linePaper` de `--rule`.
  */
@@ -612,15 +718,19 @@ const MAGAZINE_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.62, inkDim: 0.
 const MAGAZINE_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.54, inkDim: 0.54, postRule: 0.14, linePaper: 0.14 };
 const MODERN_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.56, inkDim: 0.56, postRule: 0.12, linePaper: 0.12 };
 const MODERN_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.58, inkDim: 0.58, postRule: 0.14, linePaper: 0.14 };
+const CATALOGUS_LIGHT_ALPHA: Alphas = { ...LIGHT_ALPHA, postDim: 0.6, inkDim: 0.6, tileFill: 1 };
+const CATALOGUS_DARK_ALPHA: Alphas = { ...DARK_ALPHA, postDim: 0.6, inkDim: 0.6, tileFill: 1 };
 
 const THEME_PALETTE: Record<LincinTheme, Record<Scheme, Palette>> = {
   magazine: { light: MAGAZINE_LIGHT, dark: MAGAZINE_DARK },
   modern: { light: MODERN_LIGHT, dark: MODERN_DARK },
+  catalogus: { light: CATALOGUS_LIGHT, dark: CATALOGUS_DARK },
 };
 
 const THEME_ALPHA: Record<LincinTheme, Record<Scheme, Alphas>> = {
   magazine: { light: MAGAZINE_LIGHT_ALPHA, dark: MAGAZINE_DARK_ALPHA },
   modern: { light: MODERN_LIGHT_ALPHA, dark: MODERN_DARK_ALPHA },
+  catalogus: { light: CATALOGUS_LIGHT_ALPHA, dark: CATALOGUS_DARK_ALPHA },
 };
 
 /** De kleuren die gelden voor een stand én een thema. */
@@ -1099,7 +1209,7 @@ export function usePreference(): ThemePreference {
   return useSyncExternalStore(subscribe, getPreference, getPreference);
 }
 
-/** Het thema — `magazine` of `modern`. */
+/** Het thema — `magazine`, `modern` of `catalogus`. */
 export function useTheme(): LincinTheme {
   return useSyncExternalStore(subscribe, getTheme, getTheme);
 }

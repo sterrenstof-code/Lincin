@@ -113,7 +113,7 @@ addEventListener('pointerdown',function(){r.classList.remove('kbd');},true);})()
   }
   var t = localStorage.getItem('lincin-thema');
   // Kleur is vervallen (0081): een oud bewaard 'kleur' telt als geen keuze.
-  if (t !== 'magazine' && t !== 'modern') t = 'modern';
+  if (t !== 'magazine' && t !== 'modern' && t !== 'catalogus') t = 'modern';
   var r = document.documentElement;
   r.classList.toggle('dark', p === 'dark');
   r.dataset.theme = p;
@@ -121,7 +121,8 @@ addEventListener('pointerdown',function(){r.classList.remove('kbd');},true);})()
   var m = document.querySelector('meta[name="theme-color"]');
   var paper = {
     magazine: { light: '#F7F4EE', dark: '#14120E' },
-    modern:   { light: '#F4F1EB', dark: '#0C0C0D' }
+    modern:   { light: '#F4F1EB', dark: '#0C0C0D' },
+    catalogus: { light: '#EDECE8', dark: '#1B1A18' }
   };
   if (m) m.setAttribute('content', paper[t][p]);
 }catch(e){}})();`,

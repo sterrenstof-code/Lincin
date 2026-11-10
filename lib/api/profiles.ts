@@ -267,7 +267,11 @@ export async function getProfileTheme(userId: string): Promise<LincinTheme | nul
   }
 }
 
-export async function setProfileTheme(userId: string, theme: LincinTheme): Promise<void> {
+/**
+ * Catalogus staat (nog) niet in `profiles_theme_check` (0067); dat thema
+ * blijft daarom op het toestel en gaat niet naar het profiel.
+ */
+export async function setProfileTheme(userId: string, theme: Exclude<LincinTheme, "catalogus">): Promise<void> {
   const { error } = await supabase.from("profiles").update({ theme }).eq("id", userId);
   if (error) throw error;
 }
