@@ -8,7 +8,7 @@
  *      pixelmatch (drempel 0.1);
  *   3. de positie en maat van de hoofdonderdelen (kop, vak, voorwerp,
  *      kaartje, actierij, tabbalk) in de referentie-HTML en in de eigen
- *      pagina (testID), elk verschil > 1 px;
+ *      pagina (testID), en elke band met een naad erboven, elk verschil > 1 px;
  *   4. de kleur van elk vlak (een punt binnen elk vak) tegen de referentie.
  *
  * Schrijft naar tmp/catalogus/: eigen afbeelding, verschilbeeld en
@@ -90,8 +90,10 @@ function meetReferentie() {
     return { x: b.x, y: b.y, b: b.width, h: b.height };
   };
   const st = (el) => el.getAttribute("style") ?? "";
-  const out = { kop: [], vak: [], voorwerp: [], kaartje: [], actierij: [], tabbalk: [] };
+  const out = { kop: [], vak: [], voorwerp: [], kaartje: [], actierij: [], tabbalk: [], band: [] };
   out.kop.push(r(root.firstElementChild));
+  // Elke band met een naad erboven: rijen, kopjes, knoppenrijen.
+  for (const b of root.querySelectorAll('[style*="border-top:2px solid"]')) out.band.push(r(b));
   for (const nav of root.querySelectorAll("nav")) out.tabbalk.push(r(nav));
   for (const k of root.querySelectorAll('[style*="grid-template-columns:auto minmax(0,1fr)"]')) out.kaartje.push(r(k));
   const vakken = [];
@@ -128,7 +130,7 @@ function meetEigen() {
     return { x: b.x, y: b.y, b: b.width, h: b.height };
   };
   const out = {};
-  for (const rol of ["kop", "vak", "voorwerp", "kaartje", "actierij", "tabbalk"]) {
+  for (const rol of ["kop", "vak", "voorwerp", "kaartje", "actierij", "tabbalk", "band"]) {
     out[rol] = [...root.querySelectorAll(`[data-testid="${rol}"]`)].map(r);
   }
   return { delen: out, hoogte: root.getBoundingClientRect().height };

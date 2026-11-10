@@ -94,7 +94,7 @@ export function HomeView({
   if (stukken.length === 0) {
     return (
       <Scherm kop={kop} voet={voet}>
-        <View style={{ flex: 1, borderTopWidth: NAAD, borderTopColor: c.naad, padding: 12, alignItems: "center", justifyContent: "center", rowGap: 28 }}>
+        <View testID="band" style={{ flex: 1, borderTopWidth: NAAD, borderTopColor: c.naad, padding: 12, alignItems: "center", justifyContent: "center", rowGap: 28 }}>
           <View style={{ width: 200, height: 250, borderWidth: 1, borderStyle: "dashed", borderColor: c.inkt }} />
           <Text style={[titel(34, 1), { color: c.inkt, textAlign: "center" }]}>{"Nog niets nieuws\nvandaag."}</Text>
           <Pressable accessibilityRole="button" onPress={doe.nieuw} style={{ height: 48, paddingHorizontal: 20, backgroundColor: c.inkt, justifyContent: "center" }}>

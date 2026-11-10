@@ -29,7 +29,7 @@ export function DevScherm() {
     <CatalogusStand stand={s}>
       <View style={{ flex: 1, minHeight: "100%" as unknown as number, backgroundColor: CATALOGUS[s].naad, alignItems: "flex-start" }}>
         <View style={{ width: "100%" }}>
-          <VastScherm hoogte={v.hoogte}>{v.render()}</VastScherm>
+          <VastScherm hoogte={v.hoogte}>{v.render(s)}</VastScherm>
         </View>
       </View>
     </CatalogusStand>

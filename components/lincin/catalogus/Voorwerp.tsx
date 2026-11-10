@@ -75,7 +75,8 @@ export function Linc({
   testID?: string;
 }) {
   const c = useCat();
-  if (beeld) return <Foto b={maat} h={maat} beeld={beeld} style={style} testID={testID ?? "linc"} />;
+  // Een foto is een voorwerp, ook als avatar (zo telt de referentie elk beeld).
+  if (beeld) return <Foto b={maat} h={maat} beeld={beeld} style={style} testID={testID ?? "voorwerp"} />;
   return (
     <View
       testID={testID ?? "linc"}
