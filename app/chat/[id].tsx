@@ -1553,6 +1553,7 @@ export function ChatDetail({
    */
   const pill = spec.id === "modern";
   const catalogus = spec.layout === "catalogus";
+  const cat = useCat();
   /**
    * Magazine (de omslag): de vakjes met een haarlijn in plaats van inkt, het
    * veld alleen een lijn eronder met "Schrijf aan …" in cursief, en
@@ -2431,7 +2432,81 @@ export function ChatDetail({
               </View>
             )}
 
-            {magBar && !recording ? (
+            {catalogus && !recording ? (
+            /**
+             * Catalogus: de invoer van het ontwerp (ook het paneel op desktop):
+             * één veld met een rand van 1 inkt op de kaart, + en ☺ ervoor
+             * zonder eigen kader, en rechts "Stuur" in inkt zodra er iets te
+             * sturen is; leeg de microfoon voor een spraakbericht.
+             */
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: cat.kaart }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Bijlage toevoegen"
+                onPress={() => setAttachMenuOpen((v) => !v)}
+                disabled={sending}
+                style={({ pressed }) => [{ width: 44, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: attachMenuOpen ? cat.inkt : "transparent" }, pressed && AUX_PRESSED]}
+              >
+                <Text style={[catTekst(26, 300), { lineHeight: 30, color: attachMenuOpen ? cat.tekstOpInkt : cat.inkt }]}>+</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Emoji"
+                onPress={() => {
+                  setShowEmojiPicker((v) => !v);
+                  if (!showEmojiPicker) inputRef.current?.blur();
+                  else inputRef.current?.focus();
+                }}
+                style={({ pressed }) => [{ width: 44, height: 48, alignItems: "center", justifyContent: "center" }, pressed && AUX_PRESSED]}
+              >
+                <Text style={{ fontSize: 20, lineHeight: 24, color: cat.inkt }}>☺</Text>
+              </Pressable>
+              <View style={{ flex: 1, minWidth: 0, minHeight: 48, justifyContent: "center", paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: cat.inkt, backgroundColor: cat.kaart }}>
+                <TextInput
+                  ref={inputRef}
+                  value={draft}
+                  onChangeText={onDraftChange}
+                  onKeyPress={onComposerKeyPress}
+                  onFocus={() => setShowEmojiPicker(false)}
+                  onContentSizeChange={(e) => setInputH(e.nativeEvent.contentSize.height)}
+                  placeholder={sending ? "Bezig met versturen…" : `Schrijf een bericht aan ${title}`}
+                  placeholderTextColor={cat.tekstTweede}
+                  multiline
+                  numberOfLines={Platform.OS === "web" ? 1 : undefined}
+                  editable={!sending}
+                  style={{
+                    ...catTekst(15),
+                    lineHeight: 20,
+                    paddingVertical: 0,
+                    color: cat.inkt,
+                    height: Math.min(140, Math.max(20, inputH)),
+                    ...(Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as object) : null),
+                  }}
+                />
+              </View>
+              {draft.trim() || sending ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Bericht versturen"
+                  onPress={onSend}
+                  disabled={sending || !draft.trim()}
+                  style={({ pressed }) => [{ height: 48, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", backgroundColor: cat.inkt, opacity: sending ? 0.5 : 1 }, pressed && AUX_PRESSED]}
+                >
+                  <Text style={[catTekst(10, 500), { letterSpacing: 1, textTransform: "uppercase", color: cat.tekstOpInkt }]}>{sending ? "Bezig" : "Stuur"}</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Spraakbericht opnemen"
+                  onPress={startRecording}
+                  disabled={sending}
+                  style={({ pressed }) => [{ width: 48, height: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: cat.inkt }, pressed && AUX_PRESSED]}
+                >
+                  <Ionicons name="mic-outline" color={cat.inkt} size={20} />
+                </Pressable>
+              )}
+            </View>
+            ) : magBar && !recording ? (
             /**
              * De schrijfbalk van de omslag (Gesprek Voorbeeld): één balk van
              * 64 onder een lijn van 2 inkt — ☺ in een cel van 56, het veld

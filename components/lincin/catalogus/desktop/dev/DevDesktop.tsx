@@ -1,5 +1,11 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { View } from "react-native";
+
+import { CATALOGUS } from "@/lib/design/theme";
+import { VOORBEELDEN as MOBIEL } from "../../dev/voorbeelden";
+import { CatalogusStand, KOLOM } from "../../stijl";
+import { KolomKop } from "../echt";
 
 import { EditPost } from "@/components/lincin/EditPost";
 import type { PostWithAuthor } from "@/lib/api/posts";
@@ -7,6 +13,9 @@ import type { PostWithAuthor } from "@/lib/api/posts";
 import { EventsDesktop } from "../EventsDesktop";
 import { BijdragePagina } from "../BijdragePagina";
 import { JijDesktop } from "../JijDesktop";
+import { MeldingenDesktop } from "../MeldingenDesktop";
+import { NieuwDesktop } from "../NieuwDesktop";
+import type { Compose } from "@/app/post-compose";
 import { FeedDesktop } from "../FeedDesktop";
 import { Berichten, BerichtInvoer, Bubbel, GedeeldStuk, GedeeldVak, GesprekkenDesktop } from "../GesprekkenDesktop";
 import { DesktopPagina } from "../Pagina";
@@ -26,7 +35,7 @@ import { EVENTS, GESPREKKEN, NAV_TEKST, REACTIES, beeld, kleurVan, stukken as vo
  * een keuze in het menu wordt bewaard, voor het gedragsscript.
  */
 
-const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" }> = {
+const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" }> = {
   "wand-dicht": { w: "wand" },
   "wand-open": { w: "wand", open: "2" },
   "wand-dicht-donker": { w: "wand", stand: "donker" },
@@ -52,6 +61,10 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
   "bijdrage-foto": { w: "wand", open: "1", pagina: "bijdrage" },
   "bijdrage-tekst": { w: "lichtbak", pagina: "bijdrage", stand: "donker" },
   "bijdrage-blad": { w: "blad", open: "1", pagina: "bijdrage" },
+  meldingen: { w: "wand", pagina: "meldingen" },
+  "meldingen-donker": { w: "blad", pagina: "meldingen", stand: "donker" },
+  "nieuw-foto": { w: "wand", pagina: "nieuw-foto" },
+  "nieuw-tekst": { w: "wand", pagina: "nieuw-tekst", stand: "donker" },
 };
 
 export const DEV_STATEN = Object.keys(STATEN);
@@ -171,7 +184,32 @@ function VastPaneel({
   return <Paneel inhoud={p} nav={nav} />;
 }
 
+/**
+ * `kolom-<scherm>`: een pagina zonder desktopvorm zoals app/_layout.tsx hem
+ * toont: de bovenbalk van desktop, en daaronder het mobiele scherm in de kolom.
+ */
+function KolomVoorbeeld({ scherm, stand }: { scherm: string; stand: "light" | "dark" }) {
+  const v = MOBIEL[scherm];
+  return (
+    <CatalogusStand stand={stand}>
+      <View style={{ flex: 1, minHeight: "100%" as unknown as number, backgroundColor: CATALOGUS[stand].naad }}>
+        <KolomKop pad="/settings" voorbeeld />
+        <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>{v ? v.render(stand) : null}</View>
+      </View>
+    </CatalogusStand>
+  );
+}
+
 export function DevDesktop() {
+  const { staat } = useLocalSearchParams<{ staat: string }>();
+  if (staat?.startsWith("kolom-")) {
+    const [scherm, stand] = staat.slice(6).split("~");
+    return <KolomVoorbeeld scherm={scherm} stand={stand === "donker" ? "dark" : "light"} />;
+  }
+  return <DevPagina />;
+}
+
+function DevPagina() {
   const { staat, bewaar, eigen: vanMij } = useLocalSearchParams<{ staat: string; bewaar?: string; eigen?: string }>();
   const [weg, setWeg] = useState<string[]>([]);
   const [titels, setTitels] = useState<Record<string, string>>({});
@@ -185,7 +223,17 @@ export function DevDesktop() {
     setPagina("feed");
   };
   const [stand, setStand] = useState<Stand>(s.stand ?? "licht");
-  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage">(s.pagina ?? "feed");
+  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst">(s.pagina ?? "feed");
+  const [nieuw, setNieuw] = useState(() => ({
+    kind: s.pagina === "nieuw-tekst" ? "tekst" : "foto",
+    title: s.pagina === "nieuw-tekst" ? "De vossen maken koffie" : "",
+    caption: "",
+    body: s.pagina === "nieuw-tekst" ? LANGE_TEKST : "",
+    url: "",
+    audience: null as string | null,
+    imageUris: s.pagina === "nieuw-foto" ? [beeld("post-drank.jpg"), beeld("prop-koffie.jpg"), beeld("prop-kat.jpg")] : ([] as string[]),
+    pollOptions: ["", ""],
+  }));
   // De bijdragepagina (een klik op de open foto of de titel): hier alleen een vlak met het id.
   const [naarStuk, setNaarStuk] = useState<string | null>(null);
   const [profielVan, setProfielVan] = useState<string | null>(null);
@@ -265,6 +313,71 @@ export function DevDesktop() {
   }
 
   const paginaProps = { weergave, kiesWeergave: kies, stand, kiesStand: setStand, nav };
+
+  if (pagina === "meldingen") {
+    const rij = (id: string, naam: string, rest: string, tijd: string, nieuw: boolean, kleur: string, verzoek = false) => ({
+      id,
+      naam,
+      rest,
+      tijd,
+      nieuw,
+      linc: { kleur, initiaal: naam[0] },
+      open: () => {},
+      keuze: verzoek ? { ja: "Accepteer", nee: "Negeer", doeJa: () => {}, doeNee: () => {} } : undefined,
+    });
+    return (
+      <DesktopPagina {...paginaProps} actief={null}>
+        <MeldingenDesktop
+          rijen={[
+            rij("v", "Yusuf", " wil je linc worden", "1 u", true, "#A9503F", true),
+            rij("1", "Mie", " vond 18 okt leuk", "2 u", true, "#8A9273"),
+            rij("2", "Noor", " reageerde op Herfst :)", "5 u", false, "#C1724E"),
+            rij("3", "Sem", " noemde je in een reactie", "1 d", false, "#6E8A97"),
+          ]}
+          nieuw={3}
+          verzoeken={1}
+          allesGelezen={() => {}}
+        />
+      </DesktopPagina>
+    );
+  }
+
+  if (pagina === "nieuw-foto" || pagina === "nieuw-tekst") {
+    const zet = (k: string) => (v: unknown) => setNieuw((n) => ({ ...n, [k]: v }));
+    const c = {
+      ...nieuw,
+      number: "24",
+      setKind: zet("kind"),
+      setTitle: zet("title"),
+      setCaption: zet("caption"),
+      setBody: zet("body"),
+      setUrl: zet("url"),
+      setAudience: zet("audience"),
+      audiences: [
+        { id: null, label: "Al je lincs", n: 6 },
+        { id: "g1", label: "Kamp '26", n: 4 },
+      ],
+      audienceLabel: nieuw.audience ? "Kamp '26" : "Al je lincs",
+      addPhotos: () => {},
+      removePhoto: (i: number) => setNieuw((n) => ({ ...n, imageUris: n.imageUris.filter((_, j) => j !== i) })),
+      setPollOption: (i: number, v: string) => setNieuw((n) => ({ ...n, pollOptions: n.pollOptions.map((o, j) => (j === i ? v : o)) })),
+      addPollOption: () => setNieuw((n) => ({ ...n, pollOptions: [...n.pollOptions, ""] })),
+      slotImage: null,
+      error: null,
+      dirty: true,
+      kept: false,
+      keep: () => {},
+      published: false,
+      submitting: false,
+      canSubmit: true,
+      publish: () => {},
+    } as unknown as Compose;
+    return (
+      <DesktopPagina {...paginaProps} actief={null}>
+        <NieuwDesktop c={c} sluit={() => setPagina("feed")} />
+      </DesktopPagina>
+    );
+  }
 
   if (pagina === "bijdrage") {
     const tekst = s.open ? null : LANGE_TEKST;

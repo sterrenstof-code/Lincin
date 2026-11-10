@@ -162,6 +162,28 @@ Gevolg voor de vergelijkingen, met de drempels ongewijzigd:
 - Mobiel scherm 15 (draad en antwoord) slaagt niet meer: 0,73 % in licht, 0,74 % in donker. Het antwoord staat verder in en heeft de lijn.
 - `lichtbak-open` op desktop slaagt nog: het verschil valt binnen 0,5 %.
 
+## 2e. Elke pagina op desktop
+
+Pagina's met een eigen desktopvorm, alle in het kader van de gekozen weergave:
+
+| Pagina | Vorm |
+|---|---|
+| Feed | de vier weergaven |
+| Een bijdrage | het artikel of het beeld groot, en de kolom van het paneel (§2c) |
+| Gesprekken, een gesprek | lijst, draad en zijkolom; de zijkolom toont al het gedeelde beeld van het gesprek (ook uit albums), en een klik opent de lichtbak |
+| Events | rijen en de maand |
+| Jij | profiel en ingangen, en al je bijdragen (§4b) |
+| Meldingen | de meldingen groot, linc-verzoeken met Accepteer en Negeer in de rij, rechts de tellers en "Alles gelezen" |
+| Nieuwe bijdrage | één scherm in plaats van twee stappen: de soorten, het voorbeeld groot (foto's met omslag, de tekst als artikel, de poll), en de velden met voor wie, concept en Deel |
+
+Alle andere pagina's houden voorlopig de vorm van de telefoon in de kolom van 430: instellingen, het profiel van een ander, een event, een groep, lijsten, de QR-code, mijn lincs. Maar ze staan nu onder dezelfde bovenbalk als de rest (`KolomKop` in `app/_layout.tsx`), met tabbladen, Weergave, ✳ en +. Welkom, inloggen en de openbare links krijgen geen kader.
+
+Verder in deze ronde:
+- Een titel op de wand en in het gloedraster heeft hoogstens twee regels en eindigt dan op "…". Een lang woord breekt binnen de breedte van zijn stuk.
+- De hint "scroll of ← → …" staat niet meer onder de wand en in de kop van het blad.
+- Het invoerveld van een gesprek heeft in catalogus de vorm van het ontwerp: + en ☺, één veld met een rand, "Stuur" of de microfoon. Dit geldt ook op de telefoon. Op echte gegevens is het niet nagelopen.
+- `/user/<naam>` vindt een linc ook op zijn weergavenaam (@mie). Laden, niet gevonden en mislukt staan er als zodanig.
+
 ## 3. Wat niet slaagt, en waarom
 
 **`wand-open`, `wand-open-donker`, `blad-open`: de foto staat 54 px hoger dan in de PNG.**

@@ -32,7 +32,7 @@ export function Meldingen({ nav, los = false }: { nav: KaderNav; los?: boolean }
   );
 }
 
-function Kop({ actief, nav, knop, helder }: { actief: Tab; nav: KaderNav; knop: ReactNode; helder: boolean }) {
+export function Kop({ actief, nav, knop, helder }: { actief: Tab | null; nav: KaderNav; knop: ReactNode; helder: boolean }) {
   return (
     <header className={helder ? "top helder" : "top"} data-meet="kop">
       <a className="T" style={{ fontSize: 28 }} {...klikbaar(() => nav.tab("feed"))}>
@@ -62,7 +62,7 @@ function Kop({ actief, nav, knop, helder }: { actief: Tab; nav: KaderNav; knop: 
   );
 }
 
-function Tabbladen({ actief, nav, knop }: { actief: Tab; nav: KaderNav; knop: ReactNode }) {
+function Tabbladen({ actief, nav, knop }: { actief: Tab | null; nav: KaderNav; knop: ReactNode }) {
   return (
     <nav className="tabs" aria-label="Hoofdnavigatie" data-meet="tabs">
       <a
@@ -103,7 +103,7 @@ export function Kader({
   children,
 }: {
   weergave: Weergave;
-  actief: Tab;
+  actief: Tab | null;
   nav: KaderNav;
   /** De knop Weergave; bij `blad` opent zijn menu naar boven. */
   knop: (links: boolean) => ReactNode;

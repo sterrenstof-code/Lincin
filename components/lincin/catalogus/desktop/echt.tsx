@@ -21,7 +21,13 @@ import { GedeeldeBeelden } from "./GedeeldeBeelden";
 import { GesprekkenDesktop, type GesprekRij } from "./GesprekkenDesktop";
 import type { AttachmentInfo } from "@/lib/api/messages";
 import { JijDesktop, type JijIngang, type JijStuk } from "./JijDesktop";
+import { MeldingenDesktop, type MeldingDesktop } from "./MeldingenDesktop";
+import { NieuwDesktop } from "./NieuwDesktop";
+import type { Compose } from "@/app/post-compose";
 import { DesktopPagina } from "./Pagina";
+import { Kop } from "./Kader";
+import { WeergaveKnop } from "./WeergaveKnop";
+import { CSS } from "./stijl";
 import { Paneel } from "./Paneel";
 import { kiesWeergave, useWeergave } from "./weergave";
 import type { DStuk, KaderNav, PaneelInhoud, PaneelNav, Stand, Tab } from "./typen";
@@ -483,5 +489,66 @@ export function JijDesktopEcht({
     <DesktopPagina {...k} nav={nav} actief="you">
       <JijDesktop naam={naam} linc={linc} regels={regels} ingangen={ingangen} bijdragen={bijdragen} stand={stand} />
     </DesktopPagina>
+  );
+}
+
+/** Meldingen op desktop: de rijen van notifications.tsx, met de tellers ernaast. */
+export function MeldingenDesktopEcht(props: { rijen: MeldingDesktop[]; nieuw: number; verzoeken: number; allesGelezen: () => void; stand?: string | null }) {
+  const k = useKader();
+  const nav = useNav();
+  return (
+    <DesktopPagina {...k} nav={nav} actief={null}>
+      <MeldingenDesktop {...props} />
+    </DesktopPagina>
+  );
+}
+
+/** Nieuwe bijdrage op desktop: één scherm in plaats van twee stappen. Sluiten gaat terug. */
+export function NieuwDesktopEcht({ c }: { c: Compose }) {
+  const router = useRouter();
+  const k = useKader();
+  const nav = useNav();
+  const sluit = () => (router.canGoBack() ? router.back() : router.replace("/feed" as never));
+  return (
+    <DesktopPagina {...k} nav={nav} actief={null}>
+      <NieuwDesktop c={c} sluit={sluit} />
+    </DesktopPagina>
+  );
+}
+
+/** Welke tab bij een pagina zonder desktopvorm hoort. */
+function tabVan(pad: string): Tab | null {
+  if (/^\/(friends|settings|lists?|qr-code|profile-edit|device-|recovery)/.test(pad)) return "you";
+  if (/^\/(event|event-)/.test(pad)) return "events";
+  if (/^\/(group|group-|chat)/.test(pad)) return "chats";
+  return null;
+}
+
+/** Openbaar of nog niet binnen: daar geen kader. */
+const ZONDER_KADER = /^\/($|welcome|login|signup|set-password|onboarding|auth-callback|e\/|c\/|add\/|dev\/catalogus\/)/;
+
+/**
+ * De bovenbalk van catalogus op desktop boven een pagina die (nog) geen eigen
+ * desktopvorm heeft: instellingen, het profiel van een ander, een event, een
+ * groep, lijsten, de QR-code. De pagina zelf staat eronder in de kolom van de
+ * telefoon (app/_layout.tsx). Zo is elke pagina deel van dezelfde app, met
+ * dezelfde tabbladen, Weergave, meldingen en +.
+ */
+export function KolomKop({ pad, voorbeeld = false }: { pad: string; /** Testpagina: ook zonder sessie. */ voorbeeld?: boolean }) {
+  const { session } = useAuth();
+  const k = useKader();
+  const nav = useNav();
+  const [menu, setMenu] = useState(false);
+  if ((!session && !voorbeeld) || ZONDER_KADER.test(pad)) return null;
+  return (
+    <div className="cd kolomkop" data-stand={k.stand} data-meet="kolomkop">
+      <style>{CSS}</style>
+      <Kop
+        actief={tabVan(pad)}
+        nav={nav}
+        helder={false}
+        knop={<WeergaveKnop weergave={k.weergave} open={menu} zetOpen={setMenu} kies={k.kiesWeergave} stand={k.stand} kiesStand={k.kiesStand} />}
+      />
+    </div>
   );
 }

@@ -206,7 +206,6 @@ export function FeedDesktop(props: FeedDesktopProps) {
     pagina = <Gloedraster stukken={stukken} open={open} kies={openStuk} zweef={(id) => !open && setZweef(id)} />;
   }
 
-  const hint = open ? "← → naar het vorige of volgende stuk · Esc sluit" : "scroll of ← → om langs de wand te lopen · klik op een stuk";
 
   return (
     <Wortel stand={props.stand} veld={veld}>
@@ -219,18 +218,11 @@ export function FeedDesktop(props: FeedDesktopProps) {
                 ["Inhoud", nav.inhoud],
               ]}
             />
-            <span className="S dim" style={{ flex: 1, textAlign: "right" }}>
-              {open ? "← → vorige of volgende · Esc sluit" : "scroll of ← → langs de wand · klik op een stuk"}
-            </span>
+            <span style={{ flex: 1 }} />
             <Meldingen nav={nav} los />
           </div>
         ) : null}
         {pagina}
-        {weergave === "wand" && stukken.length ? (
-          <div className="S dim hint" data-meet="hint">
-            {hint}
-          </div>
-        ) : null}
         {open ? (
           <button
             className={opFoto ? "scrim opfoto" : "scrim"}

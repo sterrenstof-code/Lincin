@@ -7,6 +7,8 @@ import { NotificationsMagazine } from "@/components/lincin/magazine/Pages";
 import { MeldingenCatalogus } from "@/components/lincin/catalogus/schermen/Lijsten";
 import { lincKleur } from "@/components/lincin/catalogus/stijl";
 import { useTerug } from "@/components/lincin/catalogus/nav";
+import { MeldingenDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { acceptFriendRequest, deleteFriendship, listMyFriendships } from "@/lib/api/friends";
 import { useToast } from "@/lib/toast";
 import {
@@ -48,6 +50,7 @@ function NotificationsPhone() {
   const lang = useLang();
   const scheme = useScheme();
   const spec = useThemeSpec();
+  const catalogusDesktop = useCatalogusDesktop();
 
   const notes = useQuery({
     queryKey: ["notifications", myUserId],
@@ -136,9 +139,7 @@ function NotificationsPhone() {
       }
       qc.invalidateQueries({ queryKey: ["friendships", myUserId] });
     };
-    return (
-      <MeldingenCatalogus
-        rijen={[
+    const rijen = [
           ...verzoeken.map((f) => {
             const naam = f.other.display_name ?? f.other.username ?? "Iemand";
             return {
@@ -169,13 +170,13 @@ function NotificationsPhone() {
               open: r.onPress,
             };
           }),
-        ]}
-        nieuw={unread + verzoeken.length}
-        terug={terug}
-        allesGelezen={markAll}
-        stand={notes.isLoading ? t.loading : notes.isError ? t.failed : data.length === 0 && verzoeken.length === 0 ? t.noNotes : null}
-      />
-    );
+    ];
+    const stand = notes.isLoading ? t.loading : notes.isError ? t.failed : data.length === 0 && verzoeken.length === 0 ? t.noNotes : null;
+    // Desktop: dezelfde rijen in de opbouw van Gesprekken (components/lincin/catalogus/desktop).
+    if (catalogusDesktop) {
+      return <MeldingenDesktopEcht rijen={rijen} nieuw={unread + verzoeken.length} verzoeken={verzoeken.length} allesGelezen={markAll} stand={stand} />;
+    }
+    return <MeldingenCatalogus rijen={rijen} nieuw={unread + verzoeken.length} terug={terug} allesGelezen={markAll} stand={stand} />;
   }
 
   if (spec.layout === "spread") {

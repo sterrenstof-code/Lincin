@@ -136,7 +136,7 @@ export function Wand({
               </span>
               <span className="floor" />
               <span className="cap" style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                <span className="T" style={{ fontSize: 30 }}>
+                <span className="T titel2" lang="nl" style={{ fontSize: 30 }} title={s.titel}>
                   {s.titel}
                 </span>
                 <Spec

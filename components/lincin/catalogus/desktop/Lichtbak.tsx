@@ -61,10 +61,12 @@ export function Lichtbak({
           <span className="S">Plaat {plaat(i, stukken.length)}</span>
           <span
             className="T"
+            lang="nl"
             style={{
               fontSize: "clamp(48px,min(8vw,12.8vh),120px)",
               lineHeight: 0.82,
-              overflowWrap: "break-word",
+              overflowWrap: "anywhere",
+              hyphens: "auto",
               display: "-webkit-box",
               WebkitLineClamp: 4,
               WebkitBoxOrient: "vertical",

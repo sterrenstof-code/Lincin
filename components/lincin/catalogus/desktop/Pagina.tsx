@@ -25,7 +25,7 @@ export function DesktopPagina({
   stand: Stand;
   kiesStand: (s: Stand) => void;
   nav: KaderNav;
-  actief: Tab;
+  actief: Tab | null;
   startMenu?: boolean;
   children: ReactNode;
 }) {

@@ -29,6 +29,7 @@ import { dropPersistedCache, forgetQueryCache, persistOptions, queryClient, setC
 import { clearAttachmentCache } from "@/lib/attachment-cache";
 import { BREED_VANAF, KOLOM } from "@/components/lincin/catalogus/stijl";
 import { heeftDesktopVorm } from "@/components/lincin/catalogus/desktop/weergave";
+import { KolomKop } from "@/components/lincin/catalogus/desktop/echt";
 
 /**
  * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
@@ -143,7 +144,9 @@ export default function RootLayout() {
               // pagina in de kolom en een desktoppagina begint de navigator
               // niet opnieuw.
               <View style={{ flex: 1, backgroundColor: CATALOGUS[spec.dark ? "dark" : "light"].naad }}>
-                <View style={{ flex: 1, width: kolom ? KOLOM : "100%", alignSelf: "center", overflow: "hidden" }}>
+                {/* Boven een pagina in de kolom: de bovenbalk van desktop (web). */}
+                {kolom && Platform.OS === "web" ? <KolomKop key="kop" pad={pad} /> : null}
+                <View key="kolom" style={{ flex: 1, width: kolom ? KOLOM : "100%", alignSelf: "center", overflow: "hidden" }}>
                   <RootStack />
                 </View>
               </View>

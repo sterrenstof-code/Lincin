@@ -29,6 +29,8 @@ import { PollEditor } from "@/components/lincin/compose/PollEditor";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { prepareImageForUpload } from "@/lib/image-prep";
 import { NieuwCatalogus } from "@/components/lincin/catalogus/schermen/NieuwCatalogus";
+import { NieuwDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 
 /**
  * Nieuwe bijdrage (README §10).
@@ -323,7 +325,10 @@ export default function ComposeScreen() {
   const [panelH, setPanelH] = useState(297);
   const { t, scheme, number, kind, setKind, title, setTitle, caption, setCaption, body, setBody, url, setUrl, hue, setHue, submitting, published, error, fc, keep, canSubmit, publish, slotImage, panelW, setPanelW, green, dirty } = c;
   const catalogus = useThemeSpec().layout === "catalogus";
+  const catalogusDesktop = useCatalogusDesktop();
   if (desktop) return <DesktopCompose c={c} />;
+  // Catalogus op een breed scherm: één scherm met soort, voorbeeld en velden.
+  if (catalogusDesktop) return <NieuwDesktopEcht c={c} />;
   if (catalogus) return <NieuwCatalogus c={c} />;
   return (
     <LincinScreen

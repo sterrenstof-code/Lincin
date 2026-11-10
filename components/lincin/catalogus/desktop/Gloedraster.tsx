@@ -67,7 +67,7 @@ export function Gloedraster({
               />
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="T" style={{ fontSize: 26 }}>
+              <span className="T titel2" lang="nl" style={{ fontSize: 26 }} title={p.titel}>
                 {p.titel}
               </span>
               <Spec rijen={[["Wie", p.wie]]} />

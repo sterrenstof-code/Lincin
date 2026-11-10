@@ -30,6 +30,8 @@ export const CSS = `
 .cd[data-stand=donker]{--g:${D.vlak};--seam:${D.naad};--card:${D.kaart};--k:${D.inkt};--onk:${D.tekstOpInkt};--dim:${D.label};--two:${D.tekstTweede};--ph:${D.plaatshouder};--gevaar:${D.gevaar};--table:#000000}
 .cd{position:relative;width:100%;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--seam);color:var(--k);font-family:${FAMILIE};font-size:15px;line-height:normal;text-align:left;-webkit-font-smoothing:auto}
 .cd *,.cd *::before,.cd *::after{box-sizing:border-box}
+/* Alleen de bovenbalk, boven een pagina zonder desktopvorm (KolomKop); het menu mag eronder uitsteken. */
+.cd.kolomkop{height:auto;flex:none;overflow:visible;z-index:20}
 .cd a{color:inherit;text-decoration:none;cursor:pointer}
 .cd button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
 .cd input{font:inherit;color:inherit;margin:0;border-radius:0;outline:none}
@@ -82,6 +84,8 @@ export const CSS = `
 .cd .cm.antwoord{padding-left:68px;padding-top:4px}
 .cd .cm.antwoord::before{content:"";position:absolute;left:33px;top:0;bottom:0;width:2px;background:var(--g)}
 .cd .field{flex:1;height:44px;border:1px solid var(--k);background:var(--card);padding:0 12px}
+.cd label>.field{flex:none}
+.cd textarea.field{height:auto;min-height:96px;padding:10px 12px;line-height:1.5;resize:vertical;font:inherit;color:inherit;border-radius:0;outline:none}
 .cd .drawer{position:fixed;top:0;right:0;bottom:0;width:${PANEEL}px;z-index:40;box-shadow:-30px 0 60px rgba(20,18,16,.18);animation:cd-slide .42s ${VERLOOP_PANEEL}}
 .cd .drawer.weg{animation:none;transform:translateX(100%);transition:transform .36s ${VERLOOP_PANEEL}}
 .cd .scrim{position:fixed;left:0;top:0;bottom:0;right:${PANEEL}px;z-index:39;cursor:pointer;background:none;border:0}
@@ -136,7 +140,12 @@ export const CSS = `
 .cd .hang.terug .pic{transition:transform .7s ${VERLOOP_FOTO},box-shadow .5s}
 .cd .hang .cap,.cd .hang .floor,.cd .hang .nr{transition:opacity .35s}
 .cd .wall.has-open .hang[aria-current] .cap,.cd .wall.has-open .hang[aria-current] .floor,.cd .wall.has-open .hang[aria-current] .nr{opacity:0}
-.cd .hint{position:absolute;left:90px;bottom:20px}
+/*
+ * Een titel onder een stuk: hoogstens twee regels, dan "…". Een lang woord breekt
+ * binnen de breedte van het stuk. De opvulling boven en onder houdt letters die
+ * buiten de krappe regelhoogte steken heel, zonder de opmaak te verschuiven.
+ */
+.cd .titel2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto;padding:.12em 0;margin:-.12em 0}
 
 /* wand op blad */
 .cd .table{flex:1;min-height:0;background:var(--table);display:grid;grid-template-columns:150px minmax(0,1fr)}
