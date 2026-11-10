@@ -44,6 +44,9 @@ const STATEN = [
   "events",
   "jij",
   "jij-blad",
+  "bijdrage-foto",
+  "bijdrage-tekst",
+  "bijdrage-blad",
 ];
 const SCHAAL = { wand: [1.7, 0.74], blad: [1.7, 0.74], gloedraster: [3.2, 0.74], lichtbak: [1.5, 0.82] };
 
@@ -149,6 +152,19 @@ function controleer({ staat, schaal }) {
       const cr = R(c);
       if (cr.bottom > er.bottom + t || cr.right > er.right + t) fout.push("event: inhoud buiten de rij");
     }
+  }
+  // De bijdragepagina: foto's en tekst binnen het vlak (zijwaarts), de kolom rechts 440.
+  const stukvlak = document.querySelector('[data-meet="bijdrage-stuk"]');
+  if (stukvlak) {
+    const sv = R(stukvlak);
+    for (const e of stukvlak.querySelectorAll('[data-meet="bijdrage-foto"], [data-meet="bijdrage-tekst"], [data-meet="bijdrage-onder"]')) {
+      const er = R(e);
+      if (er.left < sv.left - t || er.right > sv.right + t) fout.push("bijdrage: stuk breder dan het vlak");
+      if (e.dataset.meet === "bijdrage-foto" && er.height > vh - 56 - 58 - 96 + t) fout.push("bijdrage: foto hoger dan het vlak");
+    }
+    if (stukvlak.scrollWidth > stukvlak.clientWidth + t) fout.push("bijdrage: vlak loopt zijwaarts over");
+    const kolom = R(document.querySelector('[data-meet="paneel"]'));
+    if (Math.abs(kolom.width - 440) > 0.5) fout.push(`bijdrage: kolom ${kolom.width} breed`);
   }
   // Jij: elk voorwerp binnen zijn vak, elke ingang op één regel binnen de kolom.
   for (const v of document.querySelectorAll('[data-meet="mijnstuk"]')) {

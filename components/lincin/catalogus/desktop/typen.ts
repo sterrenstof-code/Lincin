@@ -95,9 +95,13 @@ export type PaneelInhoud = {
 export type PaneelNav = {
   /** "02 van 08" */
   plaat: string;
-  sluit: () => void;
-  vorige: () => void;
-  volgende: () => void;
+  /** Sluiten (✕); zonder (de bijdragepagina, die heeft ← links) staat het kruisje er niet. */
+  sluit?: () => void;
+  /** Bladeren; zonder (de bijdragepagina) staan de pijlen er niet. */
+  vorige?: () => void;
+  volgende?: () => void;
+  /** Het kaartje bovenaan, in plaats van Plaat · Wie · Soort. */
+  kop?: [string, string][];
   /** Naar de pagina van de bijdrage (de titel). */
   pagina?: () => void;
 };

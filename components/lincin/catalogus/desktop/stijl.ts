@@ -75,7 +75,10 @@ export const CSS = `
 
 /* het paneel */
 .cd .panel{background:var(--card);color:var(--k);display:flex;flex-direction:column;min-height:0;height:100%}
-.cd .cm{display:flex;gap:10px;padding:10px 20px 2px;cursor:pointer}
+.cd .cm{display:flex;gap:10px;padding:10px 20px 2px;cursor:pointer;position:relative}
+/* Een antwoord: ingesprongen tot onder de tekst van zijn reactie, met een lijn in het vlak die het eraan hangt. */
+.cd .cm.antwoord{padding-left:68px;padding-top:4px}
+.cd .cm.antwoord::before{content:"";position:absolute;left:33px;top:0;bottom:0;width:2px;background:var(--g)}
 .cd .field{flex:1;height:44px;border:1px solid var(--k);background:var(--card);padding:0 12px}
 .cd .drawer{position:fixed;top:0;right:0;bottom:0;width:${PANEEL}px;z-index:40;box-shadow:-30px 0 60px rgba(20,18,16,.18);animation:cd-slide .42s ${VERLOOP_PANEEL}}
 .cd .drawer.weg{animation:none;transform:translateX(100%);transition:transform .36s ${VERLOOP_PANEEL}}

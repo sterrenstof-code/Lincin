@@ -87,7 +87,7 @@ export function BijdrageCatalogus({ id }: { id: string }) {
         aantalReacties={b.comments.total}
         berichtAan={b.own ? null : b.naam}
         leukDoor={b.leukDoor}
-        reacties={b.reacties(actief)}
+        reacties={b.reacties(true)}
         antwoordAan={b.antwoordNaam}
         invoer={b.draft}
         focus={focus}

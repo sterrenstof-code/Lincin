@@ -235,8 +235,31 @@ function Kopregel({ r }: { r: Reactie }) {
   );
 }
 
+/**
+ * Een antwoord springt in tot onder de tekst van zijn reactie en hangt er met
+ * een lijn in de naadkleur aan: geen naad ertussen, zodat het bij zijn
+ * reactie hoort en niet als een nieuwe leest.
+ */
+const INSPRONG = 66;
+function Draadlijn() {
+  const c = useCat();
+  return <View pointerEvents="none" style={{ position: "absolute", left: 29, top: 0, bottom: 0, width: 2, backgroundColor: c.naad }} />;
+}
+
 function ReactieRustig({ r, onPress }: { r: Reactie; onPress: () => void }) {
   const c = useCat();
+  if (r.antwoord) {
+    return (
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${r.naam}: ${r.tekst}`} style={{ flexDirection: "row", columnGap: 12, paddingTop: 2, paddingRight: 12, paddingBottom: 12, paddingLeft: INSPRONG }}>
+        <Draadlijn />
+        <Linc maat={32} letterMaat={11} {...r.linc} />
+        <View style={{ flex: 1, minWidth: 0, rowGap: 4 }}>
+          <Kopregel r={r} />
+          <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
+        </View>
+      </Pressable>
+    );
+  }
   return (
     <Band onPress={onPress} label={`${r.naam}: ${r.tekst}`} style={{ flexDirection: "row", columnGap: 12, padding: 12 }}>
       <Linc maat={36} letterMaat={12} {...r.linc} />
@@ -266,6 +289,13 @@ function ReactieActief({ r, doe }: { r: Reactie; doe: BijdrageDoe }) {
       </View>
     </>
   );
-  const vorm = { flexDirection: "row" as const, columnGap: 10, paddingTop: 10, paddingRight: 12, paddingBottom: 4, paddingLeft: r.antwoord ? 54 : 12 };
-  return r.antwoord ? <View style={vorm}>{inhoud}</View> : <Band style={vorm}>{inhoud}</Band>;
+  const vorm = { flexDirection: "row" as const, columnGap: 10, paddingTop: 10, paddingRight: 12, paddingBottom: 4, paddingLeft: r.antwoord ? INSPRONG : 12 };
+  return r.antwoord ? (
+    <View style={vorm}>
+      <Draadlijn />
+      {inhoud}
+    </View>
+  ) : (
+    <Band style={vorm}>{inhoud}</Band>
+  );
 }

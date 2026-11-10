@@ -9,10 +9,12 @@ Tak `thema-catalogus`, niet gepusht. Stand 10 november 2026. Hoort bij
 - Ze delen één manier van openen: één paneel en één hook die de foto naar het midden brengt.
 - Gesprekken en Events hebben de desktopvorm uit het ontwerp, in het kader van de gekozen weergave.
 - **14 van 17 staten slagen.** De drie andere (`wand-open`, `wand-open-donker`, `blad-open`) wijken 54 px af. Dat is een bewuste keuze: het prototype zet de foto daar 6vh onder het midden, en de briefing en het gedragsscript vragen het midden (§3).
-- **Het gedragsscript slaagt: 174 van 174 controles**, ook voor bewerken en verwijderen van je eigen bijdrage, en voor de weg van een open stuk naar zijn bijdragepagina.
+- **Het gedragsscript slaagt: 182 van 182 controles**, ook voor bewerken en verwijderen van je eigen bijdrage, en voor de weg van een open stuk naar zijn bijdragepagina.
 - **Jij heeft een desktopvorm** (§4b), in de opbouw van Gesprekken en Events.
-- **Responsive:** `node scripts/catalogus-desktop-maten.mjs` loopt 12 staten na in 10 vensters, van 1024 × 768 tot 2560 × 1440, ook staand en laag. Met Jij erbij kloppen alle 140 combinaties (§2b). Op 1440 × 900 is alles pixelgelijk aan het ontwerp gebleven.
-- Mobiel is ongewijzigd: `npm run catalogus:vergelijk` geeft 34 van 38, hetzelfde als vóór dit werk. Wat daar afwijkt (06 en 11) zijn de bewuste afwijkingen uit CATALOGUS-VERSLAG.md.
+- **Responsive:** `node scripts/catalogus-desktop-maten.mjs` loopt 12 staten na in 10 vensters, van 1024 × 768 tot 2560 × 1440, ook staand en laag. Met Jij en de bijdragepagina erbij kloppen alle 170 combinaties (§2b). Op 1440 × 900 is alles pixelgelijk aan het ontwerp gebleven.
+- Mobiel: `npm run catalogus:vergelijk` geeft 32 van 38. Wat afwijkt:
+  - 06 en 11: de bewuste afwijkingen uit CATALOGUS-VERSLAG.md;
+  - 15: antwoorden springen op verzoek verder in, met een lijn (§2d).
 - **De echte schermen zijn niet ingelogd nagelopen.** Er is geen testaccount en `.env.local` wijst naar de echte Supabase (§6). Wel nagelopen: typecheck, lint, de productiebuild, 1100 px breed, en dat magazine en modern pixel voor pixel gelijk zijn aan vóór dit werk op de pagina's die zonder inloggen te zien zijn.
 
 ## 1. Eindtabel van `npm run catalogus:vergelijk:desktop`
@@ -61,7 +63,7 @@ Uitvoer: `tmp/catalogus-desktop/` (eigen beeld, verschilbeeld, `verslag.json`, `
 
 ## 2. Gedrag en beweging (`node scripts/catalogus-desktop-gedrag.mjs`)
 
-Met beweging aan, 1440 × 900, op de testpagina's. **174 van 174 controles kloppen.** "—" betekent dat de controle niet voor die weergave geldt.
+Met beweging aan, 1440 × 900, op de testpagina's. **182 van 182 controles kloppen.** "—" betekent dat de controle niet voor die weergave geldt.
 
 | Controle | wand | blad | lichtbak | gloedraster |
 |---|---|---|---|---|
@@ -97,6 +99,7 @@ Met beweging aan, 1440 × 900, op de testpagina's. **174 van 174 controles klopp
 | Bewerk: het formulier in het paneel, zonder reactieveld; Bewaar zet de nieuwe titel | ja | ja | ja | ja |
 | Verwijder: paneel dicht, stuk weg | ja | ja | ja | ja |
 | Klik op de open foto (cursor vergroot) of de titel in het paneel: naar de bijdragepagina | ja | ja | ja | ja |
+| @naam in een reactie: vet en klikbaar, en een klik gaat naar dat profiel (niet naar een antwoord) | ja | ja | ja | ja |
 
 Twee kanttekeningen:
 
@@ -126,7 +129,7 @@ Vensters: 1024 × 768, 1024 × 1366, 1280 × 720, 1280 × 800, 1366 × 768, 1440
 - het paneel is 440 breed en raakt boven- en onderrand;
 - het menu blijft binnen het venster.
 
-**140 van 140 kloppen** (14 staten, met Jij). Beelden: `tmp/catalogus-desktop/maten/`.
+**170 van 170 kloppen** (17 staten, met Jij en de bijdragepagina). Beelden: `tmp/catalogus-desktop/maten/`.
 
 Onder 1024 breed is het de telefoonvorm, zoals tot nu toe.
 
@@ -135,15 +138,29 @@ Grenzen:
 - Een titel van drie of meer regels op een smal stuk van de wand kan nog onder de wand vallen.
 - Op heel brede schermen groeit het midden van Gesprekken mee; de berichten blijven hoogstens 420 breed.
 
-## 2c. Naar de pagina van een bijdrage
+## 2c. De pagina van een bijdrage
 
-In een geopend stuk brengt een klik op de foto (links) of op de titel in het paneel (rechts) je naar de bijdragepagina: `/post/[id]?pagina=1`.
+In een geopend stuk brengt een klik op de foto (links) of op de titel in het paneel (rechts) je naar `/post/[id]?pagina=1`. Boven de foto vergroot de cursor; de titel krijgt een streep als de muis erop staat. Een klik naast de foto sluit het paneel, zoals in het ontwerp. `/post/[id]` zonder `?pagina` blijft de feed met het stuk open, zodat een gedeelde link of een melding nog altijd in de gekozen weergave opent. Vanuit Jij gaat een klik op een bijdrage ook naar deze pagina.
 
-- Op desktop is dat de bijdragepagina van catalogus, in de kolom van 430: de volledige tekst, alle foto's, de hele draad, en het menu met bewerken en verwijderen.
-- Terug brengt je naar de feed.
-- Een klik naast de foto sluit het paneel, zoals in het ontwerp.
-- Boven de foto vergroot de cursor; de titel krijgt een streep als de muis erop staat.
-- `/post/[id]` zonder `?pagina` blijft de feed met het stuk open: een gedeelde link of een melding opent zo nog altijd in de gekozen weergave.
+Op desktop is de pagina niet ontworpen. Ik heb hem gebouwd uit het paneel, in het kader van de gekozen weergave:
+
+| Kolom | Inhoud |
+|---|---|
+| Links | Een strook met "← Terug" (en het aantal foto's bij een album). Daaronder het stuk, groot, op het grijze vlak: een foto zo groot als het vlak toelaat, bij een album alle foto's onder elkaar; een tekst als leeskolom van hoogstens 640 op een kaart, de hele tekst zonder bladzijden; een ander soort het voorwerp van de telefoon, anderhalf keer zo groot. Bijschrift en lopende tekst staan eronder. @namen en links zijn klikbaar |
+| Rechts (440) | Dezelfde kolom als het paneel van de feed: het kaartje (Bijdrage, Wie, Soort), de titel met datum en reacties, hartje, reacties en "Bericht aan …", de draad, het invoerveld, en ⋯ met bewerken en verwijderen bij je eigen bijdrage. Geen kruisje en geen pijlen: terug staat links |
+
+Een bijdrage die niet in de feed staat (een gedeelde link naar iets ouds), toont deze pagina ook.
+
+Testpagina's: `bijdrage-foto` (stuk 01 met twee foto's, reactie en antwoord), `bijdrage-tekst` (een lange tekst, donker) en `bijdrage-blad` (op het blad). Het meetscript loopt ze na op alle tien de vensters: het stuk blijft binnen het vlak, een foto is nooit hoger dan het vlak, en de kolom is 440.
+
+## 2d. Antwoorden
+
+Een antwoord springt in tot onder de tekst van zijn reactie. Een lijn van 2 px hangt het aan die reactie, en er staat geen naad tussen. Zo leest een antwoord niet als een nieuwe reactie. Dat geldt op de telefoon, in rust en actief: in rust sprong een antwoord eerst niet in. In het paneel en op de bijdragepagina is het ook zo; daar lag de insprong eerst op 38 (prototype) en nu op 68.
+
+Gevolg voor de vergelijkingen, met de drempels ongewijzigd:
+
+- Mobiel scherm 15 (draad en antwoord) slaagt niet meer: 0,73 % in licht, 0,74 % in donker. Het antwoord staat verder in en heeft de lijn.
+- `lichtbak-open` op desktop slaagt nog: het verschil valt binnen 0,5 %.
 
 ## 3. Wat niet slaagt, en waarom
 

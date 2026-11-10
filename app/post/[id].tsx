@@ -26,7 +26,7 @@ import { useMeasure } from "@/lib/lincin/measure";
 import { EditPost } from "@/components/lincin/EditPost";
 import { DesktopPost } from "@/components/lincin/desktop/DesktopPost";
 import { BijdrageCatalogus } from "@/components/lincin/catalogus/schermen/BijdrageCatalogus";
-import { FeedDesktopEcht, KolomBijdrage } from "@/components/lincin/catalogus/desktop/echt";
+import { BijdragePaginaEcht, FeedDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
 import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { openProfile as openProfileAnywhere, useIsDesktop } from "@/lib/lincin/desktop";
 import { safeBack } from "@/lib/nav";
@@ -66,12 +66,12 @@ export default function PostRoute(props: { id?: string; embedded?: boolean } = {
 
 /**
  * Sluiten gaat naar de feed; de wand blijft staan waar hij stond.
- * `?pagina=1` (een klik op de open foto of de titel): de bijdragepagina zelf.
+ * `?pagina=1` (een klik op de open foto of de titel): de bijdragepagina, in desktopvorm.
  */
 function BijdrageDesktop({ id }: { id: string }) {
   const router = useRouter();
   const { pagina } = useLocalSearchParams<{ pagina?: string }>();
-  if (pagina) return <KolomBijdrage id={id} />;
+  if (pagina) return <BijdragePaginaEcht id={id} />;
   return <FeedDesktopEcht key={id} startOpen={id} naSluiten={() => router.replace("/feed" as never)} />;
 }
 

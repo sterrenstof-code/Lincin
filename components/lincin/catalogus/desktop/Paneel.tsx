@@ -84,23 +84,31 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
     <div className="panel" data-meet="paneel">
       <div className="strip" style={{ background: "var(--card)", padding: "0 6px 0 20px", position: "relative" }} data-meet="paneel-kop">
         <Spec
-          rijen={[
-            ["Plaat", nav.plaat],
-            ["Wie", p.wie],
-            ["Soort", p.soort],
-          ]}
+          rijen={
+            nav.kop ?? [
+              ["Plaat", nav.plaat],
+              ["Wie", p.wie],
+              ["Soort", p.soort],
+            ]
+          }
         />
         <span style={{ display: "flex" }}>
           {p.eigen ? <EigenMenu eigen={p.eigen} /> : null}
-          <button className="ib" aria-label="Sluit" onClick={nav.sluit}>
-            ✕
-          </button>
-          <button className="ib" aria-label="Vorige bijdrage" onClick={nav.vorige}>
-            ←
-          </button>
-          <button className="ib" aria-label="Volgende bijdrage" onClick={nav.volgende}>
-            →
-          </button>
+          {nav.sluit ? (
+            <button className="ib" aria-label="Sluit" onClick={nav.sluit}>
+              ✕
+            </button>
+          ) : null}
+          {nav.vorige ? (
+            <button className="ib" aria-label="Vorige bijdrage" onClick={nav.vorige}>
+              ←
+            </button>
+          ) : null}
+          {nav.volgende ? (
+            <button className="ib" aria-label="Volgende bijdrage" onClick={nav.volgende}>
+              →
+            </button>
+          ) : null}
         </span>
       </div>
       <div style={{ flex: "none", padding: "18px 20px 8px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }} data-meet="paneel-titel">
@@ -143,8 +151,7 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
           p.reacties.map((c) => (
             <div
               key={c.id}
-              className="cm"
-              style={{ paddingLeft: 20 + (c.antwoord ? 38 : 0) }}
+              className={c.antwoord ? "cm antwoord" : "cm"}
               role="button"
               tabIndex={0}
               aria-label={`Antwoord aan ${c.naam}`}

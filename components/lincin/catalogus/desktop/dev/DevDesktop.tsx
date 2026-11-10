@@ -5,6 +5,7 @@ import { EditPost } from "@/components/lincin/EditPost";
 import type { PostWithAuthor } from "@/lib/api/posts";
 
 import { EventsDesktop } from "../EventsDesktop";
+import { BijdragePagina } from "../BijdragePagina";
 import { JijDesktop } from "../JijDesktop";
 import { FeedDesktop } from "../FeedDesktop";
 import { Berichten, BerichtInvoer, Bubbel, GedeeldStuk, GedeeldVak, GesprekkenDesktop } from "../GesprekkenDesktop";
@@ -25,7 +26,7 @@ import { EVENTS, GESPREKKEN, NAV_TEKST, REACTIES, beeld, kleurVan, stukken as vo
  * een keuze in het menu wordt bewaard, voor het gedragsscript.
  */
 
-const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" }> = {
+const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" }> = {
   "wand-dicht": { w: "wand" },
   "wand-open": { w: "wand", open: "2" },
   "wand-dicht-donker": { w: "wand", stand: "donker" },
@@ -47,9 +48,21 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
   jij: { w: "wand", pagina: "jij" },
   "jij-donker": { w: "wand", pagina: "jij", stand: "donker" },
   "jij-blad": { w: "blad", pagina: "jij" },
+  // De bijdragepagina op desktop: een foto (stuk 01, met antwoord) en een lange tekst.
+  "bijdrage-foto": { w: "wand", open: "1", pagina: "bijdrage" },
+  "bijdrage-tekst": { w: "lichtbak", pagina: "bijdrage", stand: "donker" },
+  "bijdrage-blad": { w: "blad", open: "1", pagina: "bijdrage" },
 };
 
 export const DEV_STATEN = Object.keys(STATEN);
+
+/** Een lange voorbeeldtekst, naar de tekstbijdrage in de schermafbeelding van de gebruiker. */
+const LANGE_TEKST = [
+  "Eigenlijk schrijf ik u enkel omdat er grote dingen staan te gebeuren en wel door toedoen van het echtpaar Röhrig.",
+  "Je moet weten dat de poes van de grootouders van mijn vrouw gestorven is. Een onaangename situatie natuurlijk, vooral voor de poes zelf, maar ook voor de opa en oma Röhrig, die er het hart van verloren.",
+  "Men had de kat elke dag gewassen en doorgekamd, omdat de luizen zich verder dan de kat niet door het huis verspreidden. Daarom kon men het ook niet laten de kat elke dag te wassen en door te kammen, want het onvermogen van de luizen om zich verder dan de kat uit te breiden, werd toegeschreven aan de dagelijkse uitroeiing van het onzichtbare kwaad.",
+  "Zo ging het de poes bijzonder slecht, en de vossen, die van dit alles niets wisten, zetten intussen koffie.",
+].join("\n\n");
 
 /** Een bijdrage zoals `getPost` hem geeft, met de foto's van het voorbeeld. */
 function nepBijdrage(stuk: DStuk): PostWithAuthor {
@@ -107,7 +120,7 @@ function VastPaneel({
       ? {
           bewerk: () => setBewerk(true),
           verwijder: () => {
-            nav.sluit();
+            nav.sluit?.();
             eigen.verwijder();
           },
           bewerken: !bewerk ? null : eigen.echt ? (
@@ -172,7 +185,7 @@ export function DevDesktop() {
     setPagina("feed");
   };
   const [stand, setStand] = useState<Stand>(s.stand ?? "licht");
-  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij">(s.pagina ?? "feed");
+  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage">(s.pagina ?? "feed");
   // De bijdragepagina (een klik op de open foto of de titel): hier alleen een vlak met het id.
   const [naarStuk, setNaarStuk] = useState<string | null>(null);
   const [profielVan, setProfielVan] = useState<string | null>(null);
@@ -252,6 +265,46 @@ export function DevDesktop() {
   }
 
   const paginaProps = { weergave, kiesWeergave: kies, stand, kiesStand: setStand, nav };
+
+  if (pagina === "bijdrage") {
+    const tekst = s.open ? null : LANGE_TEKST;
+    const x = basis.find((b) => b.id === (s.open ?? "1"))!;
+    const reacties = REACTIES[x.id] ?? [];
+    return (
+      <DesktopPagina {...paginaProps} actief="feed">
+        <BijdragePagina
+          stuk={tekst ? { soort: "tekst", tekst } : { soort: "foto", fotos: [x.beeld!, beeld("prop-koffie.jpg")] }}
+          onder={tekst ? undefined : "Sante vanuit Spanje. Met dank aan @mie voor de tip: https://example.com/bar"}
+          terug={() => setPagina("feed")}
+          kop={[
+            ["Bijdrage", tekst ? "8 sep" : x.datum],
+            ["Wie", tekst ? "Toysman de creator" : x.wie],
+            ["Soort", tekst ? "tekst" : x.soort],
+          ]}
+          profiel={setProfielVan}
+          inhoud={{
+            wie: tekst ? "Toysman de creator" : x.wie,
+            soort: tekst ? "tekst" : x.soort,
+            titel: tekst ? "De vossen maken koffie" : x.titel,
+            datum: tekst ? "8 sep" : x.datum,
+            aantalReacties: tekst ? 2 : reacties.length,
+            hartjes: x.hartjes,
+            vindIkLeuk: false,
+            berichtAan: tekst ? null : x.wie,
+            reacties: tekst
+              ? [
+                  { id: "t1", naam: "Mie", tekst: "Zooo mooi geschreven", linc: { kleur: "#8A9273", initiaal: "M" }, antwoord: false },
+                  { id: "t2", naam: "jij", tekst: "dankje @mie!", linc: { kleur: "#D9D7D1", initiaal: "J" }, antwoord: true },
+                ]
+              : reacties,
+            invoer: "",
+            antwoordAan: null,
+            doe: { leuk: () => {}, bericht: () => {}, tekst: () => {}, stuur: () => {}, antwoord: () => {}, stopAntwoord: () => {}, profiel: setProfielVan },
+          }}
+        />
+      </DesktopPagina>
+    );
+  }
 
   if (pagina === "gesprekken") {
     const c = GESPREKKEN[gesprek];

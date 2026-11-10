@@ -1,22 +1,20 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { View } from "react-native";
 
 import { EditPost } from "@/components/lincin/EditPost";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { useFeed } from "@/components/lincin/feed/useFeed";
 import { useAuth } from "@/lib/auth/provider";
-import { CATALOGUS, setPreference, useScheme } from "@/lib/design/theme";
+import { setPreference, useScheme } from "@/lib/design/theme";
 import { LIKE } from "@/lib/lincin/likes";
 import { usePrefs } from "@/lib/lincin/prefs";
 import type { CardPost } from "@/lib/lincin/model";
 
 import { CardVoorwerp, datumVan, soortVan, titelVan } from "../kaart";
 import { useCatNav } from "../nav";
-import { BijdrageCatalogus } from "../schermen/BijdrageCatalogus";
 import { vandaag } from "../schermen/FeedCatalogus";
-import { KOLOM } from "../stijl";
 import { useBijdrage } from "../schermen/useBijdrage";
+import { BijdragePagina, type BijdrageStuk } from "./BijdragePagina";
 import { EventsDesktop, type EventRij, type Maand } from "./EventsDesktop";
 import { FeedDesktop } from "./FeedDesktop";
 import { GesprekkenDesktop, type GesprekRij } from "./GesprekkenDesktop";
@@ -24,7 +22,7 @@ import { JijDesktop, type JijIngang, type JijStuk } from "./JijDesktop";
 import { DesktopPagina } from "./Pagina";
 import { Paneel } from "./Paneel";
 import { kiesWeergave, useWeergave } from "./weergave";
-import type { DStuk, KaderNav, PaneelNav, Stand, Tab } from "./typen";
+import type { DStuk, KaderNav, PaneelInhoud, PaneelNav, Stand, Tab } from "./typen";
 
 /**
  * Catalogus op desktop op echte gegevens: de feed (`useFeed`), het paneel
@@ -197,7 +195,7 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
 
   // Een gedeelde link naar een bijdrage die niet (meer) in de feed staat: de
   // bijdragepagina zelf, in de kolom van de telefoon.
-  if (startOpen && !f.feed.isLoading && !perId.has(startOpen)) return <KolomBijdrage id={startOpen} />;
+  if (startOpen && !f.feed.isLoading && !perId.has(startOpen)) return <BijdragePaginaEcht id={startOpen} />;
 
   return (
     <>
@@ -227,26 +225,14 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
   );
 }
 
-/**
- * De pagina van een bijdrage op desktop: de bijdragepagina van catalogus
- * (volledige tekst, alle foto's, de hele draad) in de kolom van de telefoon.
- * Terug gaat naar waar je vandaan kwam.
- */
-export function KolomBijdrage({ id }: { id: string }) {
-  const scheme = useScheme();
-  return (
-    <View style={{ flex: 1, backgroundColor: CATALOGUS[scheme === "dark" ? "dark" : "light"].naad }}>
-      <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>
-        <BijdrageCatalogus id={id} />
-      </View>
-    </View>
-  );
-}
+type Bijdrage = ReturnType<typeof useBijdrage>;
 
-/** Het paneel op echte gegevens: de inhoud van de bijdragepagina, zonder het beeld. */
-function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
-  const router = useRouter();
-  const b = useBijdrage(stuk.id, { naVerwijderen: nav.sluit });
+/**
+ * De inhoud van het paneel uit `useBijdrage`: dezelfde voor het paneel in de
+ * feed en de kolom van de bijdragepagina. `stuk` vult in zolang de bijdrage
+ * laadt (in de feed is die al bekend).
+ */
+function paneelInhoud(b: Bijdrage, router: ReturnType<typeof useRouter>, stuk?: DStuk): PaneelInhoud {
   const { p, card, t } = b;
   const meer: ReactNode = !p ? (
     <div className="S dim" style={{ padding: "18px 20px" }}>
@@ -257,53 +243,97 @@ function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
       Meer reacties · {b.comments.moreCount}
     </button>
   ) : null;
+  return {
+    wie: p ? b.naam : (stuk?.wie ?? ""),
+    soort: card ? soortVan(card) : (stuk?.soort ?? ""),
+    titel: card ? titelVan(card) : (stuk?.titel ?? ""),
+    datum: card ? datumVan(card) : (stuk?.datum ?? ""),
+    aantalReacties: p ? b.comments.total : (stuk?.reacties ?? 0),
+    hartjes: p ? b.likes.count : (stuk?.hartjes ?? 0),
+    vindIkLeuk: p ? b.likes.liked : !!stuk?.vindIkLeuk,
+    berichtAan: p && !b.own ? b.naam : null,
+    reacties: p
+      ? b.reacties(true).map((r) => ({
+          id: r.id,
+          naam: r.naam,
+          tekst: r.tekst,
+          linc: { beeld: typeof r.linc.beeld === "string" ? r.linc.beeld : null, kleur: r.linc.kleur ?? null, initiaal: r.linc.initiaal },
+          antwoord: r.antwoord,
+        }))
+      : [],
+    meer,
+    invoer: b.draft,
+    antwoordAan: b.antwoordNaam,
+    // Je eigen bijdrage: bewerken in het paneel, verwijderen na bevestiging (useBijdrage).
+    eigen:
+      p && b.own
+        ? {
+            bewerk: () => b.setBewerk(true),
+            verwijder: b.verwijder,
+            bewerken: b.bewerk ? <EditPost post={p} onDone={() => b.setBewerk(false)} /> : null,
+          }
+        : undefined,
+    doe: {
+      leuk: () => b.likes.toggle(LIKE),
+      bericht: b.praatOver,
+      tekst: b.setDraft,
+      stuur: b.stuur,
+      antwoord: b.antwoord,
+      stopAntwoord: b.stopAntwoord,
+      profiel: (gebruiker) => router.push(`/user/${gebruiker}` as never),
+    },
+  };
+}
+
+/** Het paneel op echte gegevens: de inhoud van de bijdragepagina, zonder het beeld. */
+function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
+  const router = useRouter();
+  const b = useBijdrage(stuk.id, { naVerwijderen: nav.sluit });
   return (
     <>
-      <Paneel
-        nav={nav}
-        inhoud={{
-          wie: p ? b.naam : stuk.wie,
-          soort: card ? soortVan(card) : stuk.soort,
-          titel: card ? titelVan(card) : stuk.titel,
-          datum: card ? datumVan(card) : stuk.datum,
-          aantalReacties: p ? b.comments.total : stuk.reacties,
-          hartjes: p ? b.likes.count : stuk.hartjes,
-          vindIkLeuk: p ? b.likes.liked : stuk.vindIkLeuk,
-          berichtAan: p && !b.own ? b.naam : null,
-          reacties: p
-            ? b.reacties(true).map((r) => ({
-                id: r.id,
-                naam: r.naam,
-                tekst: r.tekst,
-                linc: { beeld: typeof r.linc.beeld === "string" ? r.linc.beeld : null, kleur: r.linc.kleur ?? null, initiaal: r.linc.initiaal },
-                antwoord: r.antwoord,
-              }))
-            : [],
-          meer,
-          invoer: b.draft,
-          antwoordAan: b.antwoordNaam,
-          // Je eigen bijdrage: bewerken in het paneel, verwijderen na bevestiging (useBijdrage).
-          eigen:
-            p && b.own
-              ? {
-                  bewerk: () => b.setBewerk(true),
-                  verwijder: b.verwijder,
-                  bewerken: b.bewerk ? <EditPost post={p} onDone={() => b.setBewerk(false)} /> : null,
-                }
-              : undefined,
-          doe: {
-            leuk: () => b.likes.toggle(LIKE),
-            bericht: b.praatOver,
-            tekst: b.setDraft,
-            stuur: b.stuur,
-            antwoord: b.antwoord,
-            stopAntwoord: b.stopAntwoord,
-            profiel: (gebruiker) => router.push(`/user/${gebruiker}` as never),
-          },
-        }}
-      />
+      <Paneel nav={nav} inhoud={paneelInhoud(b, router, stuk)} />
       <PrivateSheet target={b.sheet} onClose={() => b.setSheet(null)} />
     </>
+  );
+}
+
+/**
+ * De pagina van een bijdrage op desktop (`/post/[id]?pagina=1`): het stuk
+ * groot, en rechts de kolom van het paneel. In het kader van de gekozen
+ * weergave. Terug gaat naar waar je vandaan kwam (anders de feed).
+ */
+export function BijdragePaginaEcht({ id }: { id: string }) {
+  const router = useRouter();
+  const k = useKader();
+  const nav = useNav();
+  const terug = () => (router.canGoBack() ? router.back() : router.replace("/feed" as never));
+  const b = useBijdrage(id, { naVerwijderen: terug });
+  const { card } = b;
+  const profiel = (gebruiker: string) => router.push(`/user/${gebruiker}` as never);
+  let stuk: BijdrageStuk = { soort: "tekst", tekst: "" };
+  if (card) {
+    const m = card.media;
+    if (m.kind === "foto") stuk = { soort: "foto", fotos: m.uris.filter((u): u is string => !!u) };
+    else if (m.kind === "tekst") stuk = { soort: "tekst", tekst: m.text || card.body || card.title };
+    else {
+      const kleur = m.kind === "kleur";
+      stuk = { soort: "voorwerp", node: <CardVoorwerp card={card} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
+    }
+  }
+  // Bij een tekst staat de tekst al links; anders bijschrift en tekst onder het stuk.
+  const onder = card && card.media.kind !== "tekst" ? b.onder : card ? card.caption : "";
+  return (
+    <DesktopPagina {...k} nav={nav} actief="feed">
+      <BijdragePagina
+        stuk={stuk}
+        onder={onder || undefined}
+        terug={terug}
+        kop={card ? [["Bijdrage", datumVan(card)], ["Wie", b.naam], ["Soort", soortVan(card)]] : [["Bijdrage", b.post.isError ? b.t.failed : b.t.loading]]}
+        inhoud={b.p ? paneelInhoud(b, router) : null}
+        profiel={profiel}
+      />
+      <PrivateSheet target={b.sheet} onClose={() => b.setSheet(null)} />
+    </DesktopPagina>
   );
 }
 
