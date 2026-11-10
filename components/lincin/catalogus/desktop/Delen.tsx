@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { DStuk } from "./typen";
 
@@ -110,3 +110,21 @@ export function plaat(i: number, n: number): string {
   const p = (x: number) => String(x).padStart(2, "0");
   return `${p(i + 1)} van ${p(n)}`;
 }
+
+/** De maat van het venster, opnieuw bij elke wijziging. */
+export function useVenster(): { b: number; h: number } {
+  const lees = () => (typeof window === "undefined" ? { b: 1440, h: 900 } : { b: window.innerWidth, h: window.innerHeight });
+  const [v, setV] = useState(lees);
+  useEffect(() => {
+    const f = () => setV(lees());
+    window.addEventListener("resize", f);
+    return () => window.removeEventListener("resize", f);
+  }, []);
+  return v;
+}
+
+/**
+ * De maten van het ontwerp gelden bij een venster van 900 hoog. Hoger of lager
+ * schaalt een voorwerp mee, zodat de verhoudingen blijven.
+ */
+export const ONTWERP_HOOGTE = 900;

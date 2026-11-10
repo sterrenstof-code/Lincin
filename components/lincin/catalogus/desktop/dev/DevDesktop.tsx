@@ -43,8 +43,23 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
 
 export const DEV_STATEN = Object.keys(STATEN);
 
-function VastPaneel({ stuk, nav, leuk, aan }: { stuk: DStuk; nav: PaneelNav; leuk: () => void; aan: boolean }) {
+function VastPaneel({
+  stuk,
+  nav,
+  leuk,
+  aan,
+  eigen,
+}: {
+  stuk: DStuk;
+  nav: PaneelNav;
+  leuk: () => void;
+  aan: boolean;
+  /** `?eigen=1`: dit stuk is van jou; verwijderen haalt het weg. */
+  eigen?: { verwijder: () => void; hernoem: (t: string) => void };
+}) {
   const [invoer, setInvoer] = useState("");
+  const [bewerk, setBewerk] = useState(false);
+  const [titel, setTitel] = useState(stuk.titel);
   const [extra, setExtra] = useState<PaneelReactie[]>([]);
   const [antwoord, setAntwoord] = useState<PaneelReactie | null>(null);
   const reacties = [...(REACTIES[stuk.id] ?? []), ...extra];
@@ -56,9 +71,39 @@ function VastPaneel({ stuk, nav, leuk, aan }: { stuk: DStuk; nav: PaneelNav; leu
     aantalReacties: reacties.length,
     hartjes: stuk.hartjes + (aan ? 1 : 0),
     vindIkLeuk: aan,
-    berichtAan: stuk.wie,
+    berichtAan: eigen ? null : stuk.wie,
     reacties,
     invoer,
+    eigen: eigen
+      ? {
+          bewerk: () => setBewerk(true),
+          verwijder: () => {
+            nav.sluit();
+            eigen.verwijder();
+          },
+          bewerken: bewerk ? (
+            <form
+              style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                eigen.hernoem(titel);
+                setBewerk(false);
+              }}
+              data-meet="bewerkformulier"
+            >
+              <input className="field" aria-label="Titel" value={titel} onChange={(e) => setTitel(e.target.value)} />
+              <span style={{ display: "flex", gap: 8 }}>
+                <button className="btn S" type="submit">
+                  Bewaar
+                </button>
+                <button className="btn S ghost" type="button" onClick={() => setBewerk(false)}>
+                  Annuleer
+                </button>
+              </span>
+            </form>
+          ) : null,
+        }
+      : undefined,
     antwoordAan: antwoord?.naam ?? null,
     doe: {
       leuk,
@@ -79,7 +124,9 @@ function VastPaneel({ stuk, nav, leuk, aan }: { stuk: DStuk; nav: PaneelNav; leu
 }
 
 export function DevDesktop() {
-  const { staat, bewaar } = useLocalSearchParams<{ staat: string; bewaar?: string }>();
+  const { staat, bewaar, eigen: vanMij } = useLocalSearchParams<{ staat: string; bewaar?: string; eigen?: string }>();
+  const [weg, setWeg] = useState<string[]>([]);
+  const [titels, setTitels] = useState<Record<string, string>>({});
   const s = STATEN[staat ?? ""] ?? STATEN["wand-dicht"];
   const bewaard = useWeergave("dev");
   const [eigen, setEigen] = useState<Weergave>(s.w);
@@ -98,7 +145,9 @@ export function DevDesktop() {
   const [komt, setKomt] = useState(EVENTS.map((e) => e.go));
 
   const basis = voorbeeldStukken();
-  const stukken = basis.map((x) => ({ ...x, hartjes: x.hartjes + (leuk[x.id] ? 1 : 0), vindIkLeuk: !!leuk[x.id] }));
+  const stukken = basis
+    .filter((x) => !weg.includes(x.id))
+    .map((x) => ({ ...x, titel: titels[x.id] ?? x.titel, hartjes: x.hartjes + (leuk[x.id] ? 1 : 0), vindIkLeuk: !!leuk[x.id] }));
   const tikLeuk = (id: string) => setLeuk((l) => ({ ...l, [id]: !l[id] }));
 
   const nav: KaderNav = {
@@ -120,7 +169,23 @@ export function DevDesktop() {
         stand={stand}
         kiesStand={setStand}
         nav={nav}
-        paneel={(stuk, pn) => <VastPaneel key={stuk.id} stuk={basis.find((b) => b.id === stuk.id)!} nav={pn} aan={!!leuk[stuk.id]} leuk={() => tikLeuk(stuk.id)} />}
+        paneel={(stuk, pn) => (
+          <VastPaneel
+            key={stuk.id}
+            stuk={{ ...basis.find((b) => b.id === stuk.id)!, titel: stuk.titel }}
+            nav={pn}
+            aan={!!leuk[stuk.id]}
+            leuk={() => tikLeuk(stuk.id)}
+            eigen={
+              vanMij
+                ? {
+                    verwijder: () => setWeg((w) => [...w, stuk.id]),
+                    hernoem: (t) => setTitels((x) => ({ ...x, [stuk.id]: t })),
+                  }
+                : undefined
+            }
+          />
+        )}
         leuk={tikLeuk}
         bericht={() => setPagina("gesprekken")}
         startOpen={s.open ?? null}

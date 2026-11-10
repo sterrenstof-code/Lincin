@@ -72,6 +72,13 @@ export type PaneelInhoud = {
   meer?: ReactNode;
   invoer: string;
   antwoordAan: string | null;
+  /** Je eigen bijdrage: bewerken en verwijderen (⋯ in de kop van het paneel). */
+  eigen?: {
+    bewerk: () => void;
+    verwijder: () => void;
+    /** Het formulier zolang je bewerkt; anders null. */
+    bewerken: ReactNode | null;
+  };
   doe: {
     leuk: () => void;
     bericht: () => void;

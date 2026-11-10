@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Acties, Spec, Sq } from "./Delen";
 import type { PaneelInhoud, PaneelNav } from "./typen";
@@ -17,15 +17,72 @@ import type { PaneelInhoud, PaneelNav } from "./typen";
  * Een klik op een reactie maakt er een antwoord van; dan staat boven het
  * invoerveld "Antwoord aan …" met een kruisje.
  */
+/**
+ * ⋯ bij je eigen bijdrage: bewerken en verwijderen. Esc en een klik buiten
+ * het menu sluiten het menu, niet het paneel.
+ */
+function EigenMenu({ eigen }: { eigen: NonNullable<PaneelInhoud["eigen"]> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const toets = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      setOpen(false);
+    };
+    const klik = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("keydown", toets, true);
+    document.addEventListener("mousedown", klik, true);
+    return () => {
+      window.removeEventListener("keydown", toets, true);
+      document.removeEventListener("mousedown", klik, true);
+    };
+  }, [open]);
+  return (
+    <span ref={ref} style={{ display: "flex" }}>
+      <button className="ib" aria-label="Meer: bewerken of verwijderen" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-meet="eigenknop">
+        ⋯
+      </button>
+      {open ? (
+        <span className="eigenmenu" role="menu" aria-label="Je bijdrage" data-meet="eigenmenu">
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              eigen.bewerk();
+            }}
+          >
+            Bewerk deze bijdrage
+          </button>
+          <button
+            role="menuitem"
+            style={{ color: "var(--gevaar)" }}
+            onClick={() => {
+              setOpen(false);
+              eigen.verwijder();
+            }}
+          >
+            Verwijder deze bijdrage
+          </button>
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNav }) {
   const veld = useRef<HTMLInputElement>(null);
+  const bewerken = p.eigen?.bewerken ?? null;
   useEffect(() => {
     if (p.antwoordAan) veld.current?.focus();
   }, [p.antwoordAan]);
 
   return (
     <div className="panel" data-meet="paneel">
-      <div className="strip" style={{ background: "var(--card)", padding: "0 6px 0 20px" }} data-meet="paneel-kop">
+      <div className="strip" style={{ background: "var(--card)", padding: "0 6px 0 20px", position: "relative" }} data-meet="paneel-kop">
         <Spec
           rijen={[
             ["Plaat", nav.plaat],
@@ -34,6 +91,7 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
           ]}
         />
         <span style={{ display: "flex" }}>
+          {p.eigen ? <EigenMenu eigen={p.eigen} /> : null}
           <button className="ib" aria-label="Sluit" onClick={nav.sluit}>
             ✕
           </button>
@@ -68,7 +126,14 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
         ) : null}
       </div>
       <div className="scroll" style={{ flex: 1 }} data-meet="paneel-draad">
-        {p.reacties.length ? (
+        {bewerken ? (
+          <div className="bewerk" data-meet="bewerk">
+            <div className="S dim" style={{ marginBottom: 14 }}>
+              Bewerk deze bijdrage
+            </div>
+            {bewerken}
+          </div>
+        ) : p.reacties.length ? (
           p.reacties.map((c) => (
             <div
               key={c.id}
@@ -94,7 +159,7 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
         )}
         {p.meer}
       </div>
-      {p.antwoordAan ? (
+      {p.antwoordAan && !bewerken ? (
         <div className="S" style={{ height: 36, flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px 0 20px", borderTop: "2px solid var(--g)" }}>
           <span>
             <span className="dim">Antwoord aan </span>
@@ -106,7 +171,7 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
         </div>
       ) : null}
       <form
-        style={{ height: 64, flex: "none", display: "flex", alignItems: "center", gap: 8, padding: "0 20px", borderTop: "2px solid var(--g)" }}
+        style={{ height: 64, flex: "none", display: bewerken ? "none" : "flex", alignItems: "center", gap: 8, padding: "0 20px", borderTop: "2px solid var(--g)" }}
         onSubmit={(e) => {
           e.preventDefault();
           p.doe.stuur();

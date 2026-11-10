@@ -26,8 +26,8 @@ export const VERLOOP_FOTO = "cubic-bezier(.2,.8,.2,1)";
 export const VERLOOP_PANEEL = "cubic-bezier(.3,.7,.25,1)";
 
 export const CSS = `
-.cd{--g:${L.vlak};--seam:${L.naad};--card:${L.kaart};--k:${L.inkt};--onk:${L.tekstOpInkt};--dim:${L.label};--two:${L.tekstTweede};--ph:${L.plaatshouder};--acc:${L.accent};--table:#141210}
-.cd[data-stand=donker]{--g:${D.vlak};--seam:${D.naad};--card:${D.kaart};--k:${D.inkt};--onk:${D.tekstOpInkt};--dim:${D.label};--two:${D.tekstTweede};--ph:${D.plaatshouder};--table:#000000}
+.cd{--g:${L.vlak};--seam:${L.naad};--card:${L.kaart};--k:${L.inkt};--onk:${L.tekstOpInkt};--dim:${L.label};--two:${L.tekstTweede};--ph:${L.plaatshouder};--acc:${L.accent};--gevaar:${L.gevaar};--table:#141210}
+.cd[data-stand=donker]{--g:${D.vlak};--seam:${D.naad};--card:${D.kaart};--k:${D.inkt};--onk:${D.tekstOpInkt};--dim:${D.label};--two:${D.tekstTweede};--ph:${D.plaatshouder};--gevaar:${D.gevaar};--table:#000000}
 .cd{position:relative;width:100%;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--seam);color:var(--k);font-family:${FAMILIE};font-size:15px;line-height:normal;text-align:left;-webkit-font-smoothing:auto}
 .cd *,.cd *::before,.cd *::after{box-sizing:border-box}
 .cd a{color:inherit;text-decoration:none;cursor:pointer}
@@ -84,6 +84,13 @@ export const CSS = `
 @keyframes cd-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .cd .rise{animation:cd-rise .35s ${VERLOOP_FOTO}}
 
+/* het menu van je eigen bijdrage (⋯ in het paneel) */
+.cd .eigenmenu{position:absolute;right:6px;top:52px;width:260px;z-index:3;background:var(--card);color:var(--k);box-shadow:0 24px 60px rgba(20,18,16,.28);display:flex;flex-direction:column}
+.cd .eigenmenu button{min-height:52px;padding:0 16px;text-align:left;border-top:2px solid var(--g)}
+.cd .eigenmenu button:first-child{border-top:0}
+.cd .eigenmenu button:hover{background:var(--g)}
+.cd .bewerk{padding:18px 20px}
+
 /* wand */
 .cd .wall{flex:1;min-height:0;background:var(--g);overflow:hidden;position:relative}
 .cd .track{position:relative;display:flex;align-items:flex-start;gap:84px;padding:6vh 90px 0;width:max-content;transition:transform .7s ${VERLOOP_FOTO};will-change:transform}
@@ -103,8 +110,9 @@ export const CSS = `
 
 /* wand op blad */
 .cd .table{flex:1;min-height:0;background:var(--table);display:grid;grid-template-columns:150px minmax(0,1fr)}
-.cd .tabs{display:flex;flex-direction:column;gap:4px;padding-top:96px;min-height:0}
-.cd .tab{height:88px;flex:none;background:var(--g);margin-left:14px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;font-size:14px;font-weight:500;transition:margin .2s,background .2s}
+/* Een laag venster: minder ruimte boven de tabbladen, en lagere tabbladen (ontwerp bij 900: 96 en 88). */
+.cd .tabs{display:flex;flex-direction:column;gap:4px;padding-top:clamp(16px,calc(100vh - 584px),96px);min-height:0}
+.cd .tab{height:clamp(56px,calc((100vh - 340px) / 4.4),88px);flex:none;background:var(--g);margin-left:14px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;font-size:14px;font-weight:500;transition:margin .2s,background .2s}
 .cd .tab:hover{margin-left:6px}
 .cd .tab[aria-current]{background:var(--seam);margin-left:0;font-weight:600}
 .cd .sheet{margin:40px 40px 40px 0;background:var(--seam);padding:2px;display:flex;flex-direction:column;gap:2px;min-width:0;min-height:0}
@@ -124,7 +132,8 @@ export const CSS = `
 .cd .light.has-open>*:not(.mid){opacity:0;pointer-events:none}
 .cd .light.has-open .mid{position:relative;z-index:2}
 .cd .film.has-open{opacity:.14;pointer-events:none}
-.cd .film{flex:none;display:flex;justify-content:center;gap:2px;padding-bottom:28px;overflow-x:auto}
+/* safe: is de strook breder dan het venster, dan schuift hij vanaf het eerste vakje. */
+.cd .film{flex:none;display:flex;justify-content:safe center;gap:2px;padding-bottom:28px;overflow-x:auto}
 .cd .film a{width:104px;height:124px;flex:none;background:var(--g);color:var(--k);padding:8px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;transition:transform .2s}
 .cd .film a:hover{transform:translateY(-6px)}
 .cd .film a[aria-current]{background:var(--card);outline:2px solid #fff}

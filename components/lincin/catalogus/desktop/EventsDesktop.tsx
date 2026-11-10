@@ -49,8 +49,9 @@ export function EventsDesktop({ rijen, kop, maand, stand }: { rijen: EventRij[];
           </div>
         ) : (
           <div
-            className={veel ? "grid scroll" : "grid"}
-            style={veel ? { gridAutoRows: "calc((100vh - 116px) / 3)" } : { gridTemplateRows: `repeat(${Math.max(1, rijen.length)},minmax(0,1fr))` }}
+            className="grid scroll"
+            // Drie rijen per scherm (ontwerp), elk minstens 230 hoog; meer schuift.
+            style={veel ? { gridAutoRows: "minmax(230px, calc((100vh - 118px) / 3))" } : { gridTemplateRows: "repeat(3,minmax(230px,1fr))" }}
           >
             {rijen.map((e) => (
               <div key={e.id} style={{ background: "var(--g)", display: "grid", gridTemplateColumns: "200px minmax(0,1fr)", minHeight: 0, opacity: e.voorbij ? 0.55 : 1 }} data-meet="event">
@@ -83,6 +84,10 @@ export function EventsDesktop({ rijen, kop, maand, stand }: { rijen: EventRij[];
                   </span>
                 </div>
               </div>
+            ))}
+            {/* Minder dan drie: de lege rijen in het vlak, niet in de naad. */}
+            {Array.from({ length: Math.max(0, 3 - rijen.length) }, (_, i) => (
+              <div key={`leeg${i}`} style={{ background: "var(--g)" }} />
             ))}
           </div>
         )}

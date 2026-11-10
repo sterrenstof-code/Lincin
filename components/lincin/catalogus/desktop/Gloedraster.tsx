@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-import { Pic, Spec, klikbaar } from "./Delen";
+import { ONTWERP_HOOGTE, Pic, Spec, klikbaar, useVenster } from "./Delen";
 import { useDoel } from "./naarMidden";
 import type { DStuk } from "./typen";
 
@@ -24,7 +24,16 @@ export function Gloedraster({
 }) {
   const vlak = useRef<HTMLDivElement>(null);
   const fotos = useRef(new Map<string, HTMLSpanElement>());
-  const doel = useDoel(open, "gloedraster", () => ({ foto: (open && fotos.current.get(open)) || null, vlak: vlak.current }), stukken.length);
+  // Het voorwerp op de helft van zijn maat (ontwerp), meeschalend met de
+  // hoogte, en altijd binnen zijn vak: de tekst boven en onder neemt ~100.
+  const v = useVenster();
+  const vakH = (v.h - 57) / 2 - 100;
+  const vakB = v.b / 4 - 32;
+  const maat = (p: DStuk) => {
+    const f = Math.min(v.h / ONTWERP_HOOGTE, vakH / (p.h * 0.5), vakB / (p.b * 0.5));
+    return { b: Math.round(p.b * 0.5 * f), h: Math.round(p.h * 0.5 * f) };
+  };
+  const doel = useDoel(open, "gloedraster", () => ({ foto: (open && fotos.current.get(open)) || null, vlak: vlak.current }), `${stukken.length} ${v.b} ${v.h}`);
   const cls = ["gg", open ? "has-open" : "", stukken.length > 8 ? "lang" : ""].filter(Boolean).join(" ");
   return (
     <div className={cls} ref={vlak} data-meet="vlak">
@@ -47,8 +56,8 @@ export function Gloedraster({
             <span className="obj">
               <Pic
                 stuk={p}
-                b={Math.round(p.b * 0.5)}
-                h={Math.round(p.h * 0.5)}
+                b={maat(p).b}
+                h={maat(p).h}
                 meet="foto"
                 picRef={(el) => {
                   if (el) fotos.current.set(p.id, el);

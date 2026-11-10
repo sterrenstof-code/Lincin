@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
-import { Acties, Pic, Spec, klikbaar, plaat } from "./Delen";
+import { Acties, Pic, Spec, klikbaar, plaat, useVenster } from "./Delen";
 import { useDoel } from "./naarMidden";
 import type { DStuk } from "./typen";
 
@@ -14,16 +14,6 @@ import type { DStuk } from "./typen";
  * kolommen links en rechts verdwijnen, de strook verbleekt, de foto gaat naar
  * het midden van de vrije ruimte (`useDoel`).
  */
-
-export function useVensterHoogte(): number {
-  const [h, setH] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
-  useEffect(() => {
-    const f = () => setH(window.innerHeight);
-    window.addEventListener("resize", f);
-    return () => window.removeEventListener("resize", f);
-  }, []);
-  return h;
-}
 
 export function Lichtbak({
   stukken,
@@ -49,7 +39,11 @@ export function Lichtbak({
   leuk: (id: string) => void;
   bericht: (id: string) => void;
 }) {
-  const vh = useVensterHoogte();
+  const v = useVenster();
+  // De foto: 54 % van de hoogte in 7 : 9 (ontwerp), maar nooit breder dan 30 %
+  // van het venster en nooit hoger dan het vlak boven de strook toelaat.
+  const fotoB = Math.min(v.h * 0.42, v.b * 0.3, ((v.h - 56 - 2 - 152 - 40) * 7) / 9);
+  const fotoH = (fotoB * 9) / 7;
   const foto = useRef<HTMLSpanElement | null>(null);
   // Het vlak van de weergave: de pagina onder de bovenbalk, met de strook.
   const vlak = useRef<HTMLDivElement>(null);
@@ -65,7 +59,18 @@ export function Lichtbak({
       <div className={open ? "light has-open" : "light"}>
         <div key={`l${p.id}`} className={rise} style={{ display: "flex", flexDirection: "column", gap: 22, paddingRight: 40 }} data-meet="lichtbak-titel">
           <span className="S">Plaat {plaat(i, stukken.length)}</span>
-          <span className="T" style={{ fontSize: "clamp(64px,8vw,120px)", lineHeight: 0.82, overflowWrap: "anywhere" }}>
+          <span
+            className="T"
+            style={{
+              fontSize: "clamp(48px,min(8vw,12.8vh),120px)",
+              lineHeight: 0.82,
+              overflowWrap: "break-word",
+              display: "-webkit-box",
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {p.titel}
           </span>
           <span style={{ width: 220 }}>
@@ -83,8 +88,8 @@ export function Lichtbak({
         <a key={`m${p.id}`} className={rise ? "mid rise" : "mid"} aria-current={isOpen ? "true" : undefined} aria-label="Open reacties" style={{ display: "block" }} {...klikbaar(() => openStuk(p.id))} data-meet="stuk" data-id={p.id}>
           <Pic
             stuk={p}
-            b={vh * 0.42}
-            h={vh * 0.54}
+            b={fotoB}
+            h={fotoH}
             meet="foto"
             picRef={(el) => {
               foto.current = el;

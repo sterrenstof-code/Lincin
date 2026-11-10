@@ -196,6 +196,7 @@ export function useBijdrage(id: string, { naVerwijderen }: { naVerwijderen?: () 
     menu,
     setMenu,
     menuRegels,
+    verwijder,
     bewerk,
     setBewerk,
     focus,

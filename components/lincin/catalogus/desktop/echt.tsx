@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { View } from "react-native";
 
+import { EditPost } from "@/components/lincin/EditPost";
 import { PrivateSheet } from "@/components/lincin/PrivateSheet";
 import { useFeed } from "@/components/lincin/feed/useFeed";
 import { useAuth } from "@/lib/auth/provider";
@@ -269,6 +270,15 @@ function PaneelEcht({ stuk, nav }: { stuk: DStuk; nav: PaneelNav }) {
           meer,
           invoer: b.draft,
           antwoordAan: b.antwoordNaam,
+          // Je eigen bijdrage: bewerken in het paneel, verwijderen na bevestiging (useBijdrage).
+          eigen:
+            p && b.own
+              ? {
+                  bewerk: () => b.setBewerk(true),
+                  verwijder: b.verwijder,
+                  bewerken: b.bewerk ? <EditPost post={p} onDone={() => b.setBewerk(false)} /> : null,
+                }
+              : undefined,
           doe: {
             leuk: () => b.likes.toggle(LIKE),
             bericht: b.praatOver,

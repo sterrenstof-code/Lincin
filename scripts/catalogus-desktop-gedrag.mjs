@@ -422,6 +422,46 @@ try {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(800);
 
+    // ---- je eigen bijdrage: bewerken en verwijderen (⋯) ----
+    noteer(w, "bijdrage van een ander: geen ⋯", !(await page.evaluate(() => !!document.querySelector('[data-meet="eigenknop"]'))));
+    await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht?eigen=1`);
+    await wacht(page);
+    await page.click(`[data-meet="stuk"][data-id="${id}"]`);
+    await page.waitForTimeout(1100);
+    const knopE = await page.evaluate(() => {
+      const b = document.querySelector('[data-meet="eigenknop"]');
+      const r = b?.getBoundingClientRect();
+      return b ? { pop: b.getAttribute("aria-haspopup"), h: r.height, b: r.width, bericht: [...document.querySelectorAll('[data-meet="drawer"] .link')].length } : null;
+    });
+    noteer(w, "eigen bijdrage: ⋯ in het paneel (44 × 44), geen \"Bericht aan\"", !!knopE && knopE.pop === "true" && knopE.h === 44 && knopE.b === 44 && knopE.bericht === 0, JSON.stringify(knopE));
+    await klik(page, '[data-meet="eigenknop"]');
+    const items = await page.$$eval('[data-meet="eigenmenu"] [role="menuitem"]', (l) => l.map((e) => e.textContent));
+    noteer(w, "⋯ toont Bewerk en Verwijder", items.join("|") === "Bewerk deze bijdrage|Verwijder deze bijdrage", items.join("|"));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
+    const naEsc = await page.evaluate(() => ({ menu: !!document.querySelector('[data-meet="eigenmenu"]'), paneel: !!document.querySelector('[data-meet="drawer"]:not(.weg)') }));
+    noteer(w, "Esc sluit het menu ⋯, niet het paneel", !naEsc.menu && naEsc.paneel);
+    await klik(page, '[data-meet="eigenknop"]');
+    await page.click('[data-meet="eigenmenu"] [role="menuitem"]:first-child');
+    await page.waitForTimeout(100);
+    const vorm = await page.evaluate(() => ({
+      form: !!document.querySelector('[data-meet="bewerk"] [data-meet="bewerkformulier"]'),
+      invoer: getComputedStyle(document.querySelector('[data-meet="paneel-invoer"]')).display,
+    }));
+    noteer(w, "Bewerk: het formulier in het paneel, zonder reactieveld", vorm.form && vorm.invoer === "none", JSON.stringify(vorm));
+    await page.fill('[data-meet="bewerkformulier"] input', "Nieuwe titel");
+    await page.click('[data-meet="bewerkformulier"] button[type="submit"]');
+    await page.waitForTimeout(100);
+    const titelNa = await page.textContent('[data-meet="paneel-titel"] .T');
+    const formWeg = await page.evaluate(() => !document.querySelector('[data-meet="bewerk"]'));
+    noteer(w, "Bewaar: nieuwe titel in het paneel, formulier weg", titelNa === "Nieuwe titel" && formWeg, titelNa ?? "");
+    await klik(page, '[data-meet="eigenknop"]');
+    await page.click('[data-meet="eigenmenu"] [role="menuitem"]:last-child');
+    await page.waitForTimeout(1100);
+    const weg = await page.evaluate((id) => ({ paneel: !!document.querySelector('[data-meet="drawer"]'), stuk: !!document.querySelector(`[data-meet="stuk"][data-id="${id}"]`), open: !!document.querySelector('[data-meet="stuk"][aria-current]') }), id);
+    // Lichtbak toont één stuk: daar staat na verwijderen het volgende.
+    noteer(w, "Verwijder: paneel dicht, stuk weg", !weg.paneel && !weg.stuk && !weg.open, JSON.stringify(weg));
+
     // ---- het menu Weergave ----
     await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht?bewaar=1`);
     await page.evaluate((w) => localStorage.setItem("lincin.weergave.dev", w), w);
