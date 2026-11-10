@@ -1,6 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
+import { EditPost } from "@/components/lincin/EditPost";
+import type { PostWithAuthor } from "@/lib/api/posts";
+
 import { EventsDesktop } from "../EventsDesktop";
 import { FeedDesktop } from "../FeedDesktop";
 import { Berichten, BerichtInvoer, Bubbel, GedeeldStuk, GedeeldVak, GesprekkenDesktop } from "../GesprekkenDesktop";
@@ -43,6 +46,25 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
 
 export const DEV_STATEN = Object.keys(STATEN);
 
+/** Een bijdrage zoals `getPost` hem geeft, met de foto's van het voorbeeld. */
+function nepBijdrage(stuk: DStuk): PostWithAuthor {
+  const fotos = [stuk.beeld ?? "", beeld("prop-koffie.jpg"), beeld("prop-kat.jpg")];
+  return {
+    id: `voorbeeld-${stuk.id}`,
+    user_id: "dev",
+    kind: "photo",
+    source_title: stuk.titel,
+    caption: "Een onderschrift van twee regels, om te zien hoe het tekstvak meegroeit in het paneel.",
+    body_text: null,
+    image_path: "voorbeeld/0.jpg",
+    image_url: fotos[0],
+    album_paths: fotos.map((_, i) => `voorbeeld/${i}.jpg`),
+    album_urls: fotos,
+    created_at: new Date().toISOString(),
+    author: { id: "dev", username: "jij", display_name: "jij", avatar_url: null },
+  } as unknown as PostWithAuthor;
+}
+
 function VastPaneel({
   stuk,
   nav,
@@ -54,8 +76,8 @@ function VastPaneel({
   nav: PaneelNav;
   leuk: () => void;
   aan: boolean;
-  /** `?eigen=1`: dit stuk is van jou; verwijderen haalt het weg. */
-  eigen?: { verwijder: () => void; hernoem: (t: string) => void };
+  /** `?eigen=1`: dit stuk is van jou; verwijderen haalt het weg. `echt`: het echte bewerkformulier. */
+  eigen?: { verwijder: () => void; hernoem: (t: string) => void; echt: boolean };
 }) {
   const [invoer, setInvoer] = useState("");
   const [bewerk, setBewerk] = useState(false);
@@ -81,7 +103,12 @@ function VastPaneel({
             nav.sluit();
             eigen.verwijder();
           },
-          bewerken: bewerk ? (
+          bewerken: !bewerk ? null : eigen.echt ? (
+            // Het echte formulier (components/lincin/EditPost) met een nagemaakte
+            // bijdrage van drie foto's: alleen voor de vorm. Bewaren zou naar de
+            // database gaan; de testpagina drukt het niet in.
+            <EditPost post={nepBijdrage(stuk)} onDone={() => setBewerk(false)} />
+          ) : (
             <form
               style={{ display: "flex", flexDirection: "column", gap: 12 }}
               onSubmit={(e) => {
@@ -101,7 +128,7 @@ function VastPaneel({
                 </button>
               </span>
             </form>
-          ) : null,
+          ),
         }
       : undefined,
     antwoordAan: antwoord?.naam ?? null,
@@ -181,6 +208,7 @@ export function DevDesktop() {
                 ? {
                     verwijder: () => setWeg((w) => [...w, stuk.id]),
                     hernoem: (t) => setTitels((x) => ({ ...x, [stuk.id]: t })),
+                    echt: vanMij === "echt",
                   }
                 : undefined
             }

@@ -220,7 +220,7 @@ Nieuw:
 
 - de feed, Gesprekken en Events in de vier weergaven op echte gegevens, in licht en donker;
 - hartje, reageren, antwoorden en "Bericht aan …" vanuit het paneel;
-- bewerken (`EditPost` in het paneel van 440, met foto's) en verwijderen met de bevestiging, op een echte eigen bijdrage;
+- bewerken en verwijderen op een echte eigen bijdrage: opslaan naar de database en de bevestiging bij verwijderen. **De vorm is wel nagelopen:** het echte `EditPost` in het paneel, met een nagemaakte bijdrage van drie foto's (`/dev/catalogus-desktop/wand-open?eigen=echt`), in licht op 1440 × 900 en in donker op 1024 × 768. Foto's, titel, onderschrift en Annuleer/Bewaar passen binnen de 440. De fotostrook schuift zijwaarts, net als op de telefoon, dus het vak "+ foto" staat bij drie of meer foto's half buiten beeld. Beelden: `tmp/catalogus-desktop/bewerk-*.png`;
 - een gedeelde link `/post/[id]`, ook naar een bijdrage die niet in de feed staat;
 - `/chat/[id]` en het wisselen van gesprek, en hoe de ingebedde draad er in catalogus uitziet;
 - Ik kom en afmelden vanuit Events;
