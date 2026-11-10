@@ -191,3 +191,6 @@ Op verzoek, na het nalopen op lincin.vercel.app:
 - Gesprek: de titel opent de groepsinfo (of het profiel); de groepsinfo heeft een catalogusvorm met alle leden. Berichten zonder kader: de jouwe inkt, die van de ander een kaart.
 - Kop: het + staat 2 px hoger, even hoog als ✳.
 - Raster: de lege helft van een halve rij is vlak in plaats van wit.
+- Desktop: Catalogus staat ook in de desktopinstellingen. Op een breed scherm (vanaf 1024) toont de app dan de telefoonvorm in een kolom van 430 in het midden (`app/_layout.tsx`, `KOLOM` in `catalogus/stijl.tsx`). Daarvoor kijkt `useIsDesktop()` in `lib/lincin/desktop.ts` naar het thema — een wijziging in `lib/` buiten `lib/design/`, nodig voor deze vraag.
+- Het onderschrift bij Thema zegt nu ook "Catalogus"; aangevuld waar het getoond wordt, omdat `lib/i18n.ts` niet-gecommitte wijzigingen van de eigenaar heeft.
+- Event: de pagina en de bladen (gasten, toevoegen, toegang) in catalogusvorm.

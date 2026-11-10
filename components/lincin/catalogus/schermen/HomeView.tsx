@@ -1,12 +1,12 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Pressable, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Kaartje, type Regel } from "../Kaartje";
 import { Kop, Meldingen, Plus } from "../Kop";
 import { Ballon, Hart } from "../Pictogram";
 import { Scherm, useVast } from "../Scherm";
-import { kaartjeTekst, NAAD, tekst, titel, useCat } from "../stijl";
+import { useSchermBreedte, kaartjeTekst, NAAD, tekst, titel, useCat } from "../stijl";
 import { Tabbalk, type CatTab } from "../Tabbalk";
 import { Raster, Vak } from "../Vak";
 
@@ -87,7 +87,7 @@ export function HomeView({
   const c = useCat();
   const vast = useVast();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const width = useSchermBreedte();
   // Eén tik opent (na 280 ms), twee tikken is een hartje — zoals `useDoubleTap` in Media.tsx.
   const vorige = useRef<{ id: string; t: number } | null>(null);
   const wacht = useRef<ReturnType<typeof setTimeout> | null>(null);

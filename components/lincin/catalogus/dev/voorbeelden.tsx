@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { CATALOGUS } from "@/lib/design/theme";
 
-import { Invoer } from "../Delen";
+import { Invoer, Knop } from "../Delen";
 import { Plus } from "../Kop";
 import { Foto, KleurVlak, LinkBlad, MuziekBlad, Plaatshouder, PlekKaart, PollBlad, SpraakBlad, TekstBlad } from "../Voorwerp";
 import { View } from "react-native";
@@ -13,7 +13,6 @@ import { EventsView, GesprekkenView, JijView, LincsView, MeldingenView, type Hoo
 import { GroepView } from "../schermen/GroepView";
 import { EventView } from "../schermen/EventView";
 import { Blad, BladRegel, BladTekst } from "../Blad";
-import { Knop } from "../Delen";
 
 /**
  * De voorbeeldgegevens van de testpagina's: exact de inhoud van het ontwerp

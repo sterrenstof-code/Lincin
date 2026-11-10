@@ -121,7 +121,7 @@ function SettingsMobile() {
         {
           key: "theme",
           label: t.theme,
-          sub: t.themeSub,
+          sub: `${t.themeSub} · Catalogus`,
           right: (
             <Segment<LincinTheme>
               options={[
@@ -276,7 +276,7 @@ function SettingsMobile() {
     >
       <ScrollView style={[{ flex: 1 }, vfade()]} contentContainerStyle={{ padding: GUTTER, paddingTop: 16, paddingBottom: 20, gap: 16 }}>
         <Group title={t.lookTitle}>
-          <Row label={t.theme} sub={t.themeSub}>
+          <Row label={t.theme} sub={`${t.themeSub} · Catalogus`}>
             <Segment<LincinTheme>
               options={[
                 { value: "magazine", label: t.themeMagazine },

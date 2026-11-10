@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useWindowDimensions } from "react-native";
 
+import { useThemeSpec } from "@/lib/design/theme";
+
 /**
  * Desktop (handoff 23 sep): vanaf 1024px breed een balk bovenaan met de
  * vier tabbladen (components/lincin/desktop/Shell.tsx) en daaronder de
@@ -24,7 +26,9 @@ function isDesktopWidth(width: number): boolean {
 
 export function useIsDesktop(): boolean {
   const { width } = useWindowDimensions();
-  return isDesktopWidth(width);
+  // Catalogus heeft geen desktopvorm: op een breed scherm staat de telefoonvorm in een kolom (app/_layout.tsx).
+  const catalogus = useThemeSpec().layout === "catalogus";
+  return !catalogus && isDesktopWidth(width);
 }
 
 /** Een bijdrage: op een telefoon het scherm, op desktop dat scherm op volle breedte. */

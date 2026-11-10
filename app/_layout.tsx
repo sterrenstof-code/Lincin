@@ -6,7 +6,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
-import { ActivityIndicator, AppState, Platform, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, View, useWindowDimensions } from "react-native";
 import "react-native-reanimated";
 
 import { AuthProvider, useAuth } from "@/lib/auth/provider";
@@ -19,7 +19,7 @@ import { initCryptoRandom } from "@/lib/crypto/random";
 import { installPageTransitions } from "@/lib/page-transition";
 import { ConfirmProvider } from "@/lib/confirm";
 import { ToastProvider } from "@/lib/toast";
-import { loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/design/theme";
+import { CATALOGUS, loadStoredPreference, useScheme, useTheme, useThemeSpec } from "@/lib/design/theme";
 import { desk, FONT_FILES } from "@/lib/design/type";
 import { useFonts } from "expo-font";
 import { AppLock } from "@/components/AppLock";
@@ -27,6 +27,7 @@ import { LightboxHost } from "@/components/lincin/Lightbox";
 import { setupNotificationCategories, setupNotificationChannels } from "@/lib/push";
 import { dropPersistedCache, forgetQueryCache, persistOptions, queryClient, setCacheOwner } from "@/lib/query-cache";
 import { clearAttachmentCache } from "@/lib/attachment-cache";
+import { BREED_VANAF, KOLOM } from "@/components/lincin/catalogus/stijl";
 
 /**
  * "Het venster krijgt focus" betekent op een telefoon: de app komt terug
@@ -77,6 +78,9 @@ const themedScreenLayout = ({ children, route }: { children: ReactNode; route: {
 export default function RootLayout() {
   const scheme = useScheme();
   const spec = useThemeSpec();
+  const { width } = useWindowDimensions();
+  // Catalogus op een breed scherm: de telefoonvorm in een kolom in het midden.
+  const kolom = spec.layout === "catalogus" && width >= BREED_VANAF;
   /**
    * De letters van v2 (lib/design/type.ts). Op web staan ze in de <head>
    * (`app/+html.tsx`) en is dit meteen klaar. Op native zitten ze in de
@@ -129,7 +133,15 @@ export default function RootLayout() {
               het resetten van je toestelsleutels, de enige onomkeerbare
               handeling in deze app. Zie lib/confirm.tsx. */}
           <ConfirmProvider>
-            <RootStack />
+            {kolom ? (
+              <View style={{ flex: 1, backgroundColor: CATALOGUS[spec.dark ? "dark" : "light"].naad }}>
+                <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>
+                  <RootStack />
+                </View>
+              </View>
+            ) : (
+              <RootStack />
+            )}
             {/* Blijft staan zolang de toestand duurt — anders dan de toast,
                 die een gebeurtenis meldt en weer weggaat. Zie het onderdeel. */}
             <OfflineNotice />

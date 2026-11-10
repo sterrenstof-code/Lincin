@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { Platform, type TextStyle } from "react-native";
+import { Platform, useWindowDimensions, type TextStyle } from "react-native";
 
 import { CATALOGUS, hueFor, useScheme, type CatalogusKleuren, type Hue, type Scheme } from "@/lib/design/theme";
 import { FONT } from "@/lib/design/type";
@@ -114,5 +114,18 @@ export const tabTekst: TextStyle = {
 export const RAAK = 44;
 /** De naad tussen vakken. */
 export const NAAD = 2;
+
+/**
+ * Catalogus heeft alleen een telefoonvorm. Op een breed scherm staat de app
+ * in een kolom van deze breedte in het midden (app/_layout.tsx).
+ */
+export const KOLOM = 430;
+export const BREED_VANAF = 1024;
+
+/** De breedte waarin catalogus tekent: het venster, of de kolom op een breed scherm. */
+export function useSchermBreedte(): number {
+  const { width } = useWindowDimensions();
+  return width >= BREED_VANAF ? KOLOM : width;
+}
 /** De marge in een vak. */
 export const MARGE = 12;

@@ -80,7 +80,7 @@ export function DesktopSettings() {
         {
           kind: "choice",
           label: t.theme,
-          sub: t.themeSub,
+          sub: `${t.themeSub} · Catalogus`,
           node: (
             <Choice
               value={lincin.theme}
@@ -88,6 +88,8 @@ export function DesktopSettings() {
               options={[
                 { value: "magazine", label: t.themeMagazine },
                 { value: "modern", label: t.themeModern },
+                // Catalogus heeft alleen een telefoonvorm; op desktop staat die in een kolom.
+                { value: "catalogus", label: "Catalogus" },
               ]}
             />
           ),
