@@ -9,8 +9,9 @@ Tak `thema-catalogus`, niet gepusht. Stand 10 november 2026. Hoort bij
 - Ze delen één manier van openen: één paneel en één hook die de foto naar het midden brengt.
 - Gesprekken en Events hebben de desktopvorm uit het ontwerp, in het kader van de gekozen weergave.
 - **14 van 17 staten slagen.** De drie andere (`wand-open`, `wand-open-donker`, `blad-open`) wijken 54 px af. Dat is een bewuste keuze: het prototype zet de foto daar 6vh onder het midden, en de briefing en het gedragsscript vragen het midden (§3).
-- **Het gedragsscript slaagt: 162 van 162 controles**, ook voor bewerken en verwijderen van je eigen bijdrage.
-- **Responsive:** `node scripts/catalogus-desktop-maten.mjs` loopt 12 staten na in 10 vensters, van 1024 × 768 tot 2560 × 1440, ook staand en laag. Alle 120 combinaties kloppen (§2b). Op 1440 × 900 is alles pixelgelijk aan het ontwerp gebleven.
+- **Het gedragsscript slaagt: 174 van 174 controles**, ook voor bewerken en verwijderen van je eigen bijdrage, en voor de weg van een open stuk naar zijn bijdragepagina.
+- **Jij heeft een desktopvorm** (§4b), in de opbouw van Gesprekken en Events.
+- **Responsive:** `node scripts/catalogus-desktop-maten.mjs` loopt 12 staten na in 10 vensters, van 1024 × 768 tot 2560 × 1440, ook staand en laag. Met Jij erbij kloppen alle 140 combinaties (§2b). Op 1440 × 900 is alles pixelgelijk aan het ontwerp gebleven.
 - Mobiel is ongewijzigd: `npm run catalogus:vergelijk` geeft 34 van 38, hetzelfde als vóór dit werk. Wat daar afwijkt (06 en 11) zijn de bewuste afwijkingen uit CATALOGUS-VERSLAG.md.
 - **De echte schermen zijn niet ingelogd nagelopen.** Er is geen testaccount en `.env.local` wijst naar de echte Supabase (§6). Wel nagelopen: typecheck, lint, de productiebuild, 1100 px breed, en dat magazine en modern pixel voor pixel gelijk zijn aan vóór dit werk op de pagina's die zonder inloggen te zien zijn.
 
@@ -60,7 +61,7 @@ Uitvoer: `tmp/catalogus-desktop/` (eigen beeld, verschilbeeld, `verslag.json`, `
 
 ## 2. Gedrag en beweging (`node scripts/catalogus-desktop-gedrag.mjs`)
 
-Met beweging aan, 1440 × 900, op de testpagina's. **162 van 162 controles kloppen.** "—" betekent dat de controle niet voor die weergave geldt.
+Met beweging aan, 1440 × 900, op de testpagina's. **174 van 174 controles kloppen.** "—" betekent dat de controle niet voor die weergave geldt.
 
 | Controle | wand | blad | lichtbak | gloedraster |
 |---|---|---|---|---|
@@ -95,6 +96,7 @@ Met beweging aan, 1440 × 900, op de testpagina's. **162 van 162 controles klopp
 | ⋯ toont Bewerk en Verwijder; Esc sluit dat menu en niet het paneel | ja | ja | ja | ja |
 | Bewerk: het formulier in het paneel, zonder reactieveld; Bewaar zet de nieuwe titel | ja | ja | ja | ja |
 | Verwijder: paneel dicht, stuk weg | ja | ja | ja | ja |
+| Klik op de open foto (cursor vergroot) of de titel in het paneel: naar de bijdragepagina | ja | ja | ja | ja |
 
 Twee kanttekeningen:
 
@@ -124,7 +126,7 @@ Vensters: 1024 × 768, 1024 × 1366, 1280 × 720, 1280 × 800, 1366 × 768, 1440
 - het paneel is 440 breed en raakt boven- en onderrand;
 - het menu blijft binnen het venster.
 
-**120 van 120 kloppen.** Beelden: `tmp/catalogus-desktop/maten/`.
+**140 van 140 kloppen** (14 staten, met Jij). Beelden: `tmp/catalogus-desktop/maten/`.
 
 Onder 1024 breed is het de telefoonvorm, zoals tot nu toe.
 
@@ -132,6 +134,16 @@ Grenzen:
 
 - Een titel van drie of meer regels op een smal stuk van de wand kan nog onder de wand vallen.
 - Op heel brede schermen groeit het midden van Gesprekken mee; de berichten blijven hoogstens 420 breed.
+
+## 2c. Naar de pagina van een bijdrage
+
+In een geopend stuk brengt een klik op de foto (links) of op de titel in het paneel (rechts) je naar de bijdragepagina: `/post/[id]?pagina=1`.
+
+- Op desktop is dat de bijdragepagina van catalogus, in de kolom van 430: de volledige tekst, alle foto's, de hele draad, en het menu met bewerken en verwijderen.
+- Terug brengt je naar de feed.
+- Een klik naast de foto sluit het paneel, zoals in het ontwerp.
+- Boven de foto vergroot de cursor; de titel krijgt een streep als de muis erop staat.
+- `/post/[id]` zonder `?pagina` blijft de feed met het stuk open: een gedeelde link of een melding opent zo nog altijd in de gekozen weergave.
 
 ## 3. Wat niet slaagt, en waarom
 
@@ -160,9 +172,23 @@ Drempels en referentiebeelden zijn niet aangepast.
 | Paneel: geen hartje per reactie | Niet gebouwd. Op mobiel blijft het |
 | Antwoorden: niet getekend | Een klik op een reactie maakt er een antwoord van. Boven het invoerveld staat dan "Antwoord aan …" met ✕. In rust is het paneel precies het ontwerp |
 | Polls | Een poll opent zijn eigen pagina (zoals mobiel), niet het paneel |
-| Jij, Meldingen, Nieuwe bijdrage | Niet ontworpen op desktop: ze staan in de kolom van 430, zoals tot nu toe. Ook alles daarachter (instellingen, profiel, event, groep) |
+| Jij | Niet ontworpen op desktop; gebouwd in de opbouw van Gesprekken en Events (§4b) |
+| Meldingen, Nieuwe bijdrage | Niet ontworpen op desktop: ze staan in de kolom van 430, zoals tot nu toe. Ook alles daarachter (instellingen, profiel van een ander, event, groep, mijn lincs, QR) |
 | URL | Een stuk openen in de feed verandert de URL niet. `/post/[id]` opent de feed met dat stuk open, en sluiten gaat dan naar `/feed`. Een bijdrage die niet in de feed staat (ouder), toont de bijdragepagina in de kolom |
 | Tablet (native) | Niet ontworpen: daar blijft de kolom. De desktopvorm is alleen voor web |
+
+## 4b. Jij op desktop
+
+Jij is voor desktop niet ontworpen. Ik heb de pagina gebouwd uit wat er is: de opbouw van Gesprekken en Events (kolommen met naden van 2, stroken van 56, vakken) en de inhoud van Jij op de telefoon (ontwerp 04).
+
+| Kolom | Inhoud |
+|---|---|
+| Links (340) | Je beeld (120 × 150) en je naam (38, gewicht 300), het kaartje (Naam, Lincs, Bijdragen, Sinds). Daaronder de ingangen als rijen van 72: Mijn lincs, Mijn profiel (zoals lincs je zien), Thema en stand, Instellingen, Mijn QR-code. Wachten er verzoeken, dan staat er een punt in de accentkleur bij Mijn lincs |
+| Rechts | Een strook met het aantal bijdragen en de nieuwste datum; daaronder al je bijdragen als vakken van 300 hoog. Er komen zoveel kolommen als er passen (minstens 220 breed). Een klik opent de bijdragepagina; een poll zijn eigen pagina |
+
+De pagina staat in elke weergave in het kader daarvan: de bovenbalk, of de tabbladen met het blad. De ingangen gaan naar de bestaande schermen, die in de kolom staan.
+
+Testpagina's: `/dev/catalogus-desktop/jij`, `jij-donker` en `jij-blad`. Ze tonen de inhoud van ontwerp 04 (de sterren, en plaatshouders tussen haken) en de acht stukken van het prototype. Het meetscript loopt ze na op alle tien de vensters. Op echte gegevens (`app/(app)/profile.tsx`) is Jij niet nagelopen (§6).
 
 ## 5. Gewijzigd in bestaande bestanden
 
@@ -174,6 +200,7 @@ Drempels en referentiebeelden zijn niet aangepast.
 | `app/(app)/chats.tsx` | Prop `gekozen`; tak voor catalogus op desktop met dezelfde rijen, en `ChatDetail` ingebed |
 | `app/chat/[id].tsx` | Catalogus op desktop → Gesprekken met dat gesprek |
 | `app/(app)/events.tsx` | Tak voor catalogus op desktop met dezelfde rijen |
+| `app/(app)/profile.tsx` | Tak voor catalogus op desktop: Jij met dezelfde gegevens als op de telefoon |
 | `components/lincin/catalogus/schermen/BijdrageCatalogus.tsx` | De gegevens en handelingen zitten nu in `useBijdrage.ts` (nieuw); de pagina zelf is gelijk gebleven |
 | `components/lincin/catalogus/schermen/FeedCatalogus.tsx` | `vandaag()` geëxporteerd |
 | `components/lincin/catalogus/schermen/useBijdrage.ts` | Geeft ook `verwijder` terug, voor ⋯ in het paneel |

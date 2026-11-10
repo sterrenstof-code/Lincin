@@ -84,6 +84,11 @@ export const CSS = `
 @keyframes cd-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .cd .rise{animation:cd-rise .35s ${VERLOOP_FOTO}}
 
+/* naar de pagina van de bijdrage: de titel in het paneel en de open foto */
+.cd .naarpagina{cursor:pointer}
+.cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.cd .scrim.opfoto{cursor:zoom-in}
+
 /* het menu van je eigen bijdrage (⋯ in het paneel) */
 .cd .eigenmenu{position:absolute;right:6px;top:52px;width:260px;z-index:3;background:var(--card);color:var(--k);box-shadow:0 24px 60px rgba(20,18,16,.28);display:flex;flex-direction:column}
 .cd .eigenmenu button{min-height:52px;padding:0 16px;text-align:left;border-top:2px solid var(--g)}

@@ -5,6 +5,7 @@ import { EditPost } from "@/components/lincin/EditPost";
 import type { PostWithAuthor } from "@/lib/api/posts";
 
 import { EventsDesktop } from "../EventsDesktop";
+import { JijDesktop } from "../JijDesktop";
 import { FeedDesktop } from "../FeedDesktop";
 import { Berichten, BerichtInvoer, Bubbel, GedeeldStuk, GedeeldVak, GesprekkenDesktop } from "../GesprekkenDesktop";
 import { DesktopPagina } from "../Pagina";
@@ -24,7 +25,7 @@ import { EVENTS, GESPREKKEN, NAV_TEKST, REACTIES, beeld, kleurVan, stukken as vo
  * een keuze in het menu wordt bewaard, voor het gedragsscript.
  */
 
-const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" }> = {
+const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" }> = {
   "wand-dicht": { w: "wand" },
   "wand-open": { w: "wand", open: "2" },
   "wand-dicht-donker": { w: "wand", stand: "donker" },
@@ -42,6 +43,10 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
   "weergaveknop-menu-blad": { w: "blad", menu: true },
   gesprekken: { w: "wand", pagina: "gesprekken" },
   events: { w: "wand", pagina: "events" },
+  // Niet in staten.json: Jij is op desktop niet ontworpen.
+  jij: { w: "wand", pagina: "jij" },
+  "jij-donker": { w: "wand", pagina: "jij", stand: "donker" },
+  "jij-blad": { w: "blad", pagina: "jij" },
 };
 
 export const DEV_STATEN = Object.keys(STATEN);
@@ -165,6 +170,8 @@ export function DevDesktop() {
   };
   const [stand, setStand] = useState<Stand>(s.stand ?? "licht");
   const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij">(s.pagina ?? "feed");
+  // De bijdragepagina (een klik op de open foto of de titel): hier alleen een vlak met het id.
+  const [naarStuk, setNaarStuk] = useState<string | null>(null);
   const [leuk, setLeuk] = useState<Record<string, boolean>>({});
   const [gesprek, setGesprek] = useState(0);
   const [bericht, setBericht] = useState("");
@@ -185,6 +192,14 @@ export function DevDesktop() {
     meldingen: () => {},
     nieuw: () => {},
   };
+
+  if (naarStuk) {
+    return (
+      <div data-meet="bijdragepagina" data-id={naarStuk} style={{ padding: 40 }}>
+        Bijdragepagina {naarStuk}
+      </div>
+    );
+  }
 
   if (pagina === "feed") {
     return (
@@ -217,6 +232,7 @@ export function DevDesktop() {
         leuk={tikLeuk}
         bericht={() => setPagina("gesprekken")}
         startOpen={s.open ?? null}
+        naarPagina={setNaarStuk}
         startMenu={s.menu}
       />
     );
@@ -340,9 +356,24 @@ export function DevDesktop() {
 
   return (
     <DesktopPagina {...paginaProps} actief="you">
-      <div style={{ flex: 1, background: "var(--g)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span className="S dim">Jij · niet ontworpen op desktop</span>
-      </div>
+      <JijDesktop
+        naam="[jouw naam]"
+        linc={{ beeld: beeld("prop-sterren.jpg"), kleur: "#C1724E", initiaal: "J" }}
+        regels={[
+          ["Naam", "[jouw naam]"],
+          ["Lincs", "[n]"],
+          ["Bijdragen", String(stukken.length)],
+          ["Sinds", "[jaar]"],
+        ]}
+        ingangen={[
+          { label: "Mijn lincs", rechts: "[n] →", open: () => {} },
+          { label: "Mijn profiel", rechts: "Zoals lincs je zien →", open: () => {} },
+          { label: "Thema en stand", rechts: `Catalogus · ${stand === "donker" ? "Donker" : "Licht"} →`, open: () => {} },
+          { label: "Instellingen", rechts: "Privé, meldingen →", open: () => {} },
+          { label: "Mijn QR-code", rechts: "→", open: () => {} },
+        ]}
+        bijdragen={stukken.map((x) => ({ ...x, open: () => setNaarStuk(x.id) }))}
+      />
     </DesktopPagina>
   );
 }

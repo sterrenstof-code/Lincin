@@ -42,6 +42,8 @@ const STATEN = [
   "weergaveknop-menu-blad",
   "gesprekken",
   "events",
+  "jij",
+  "jij-blad",
 ];
 const SCHAAL = { wand: [1.7, 0.74], blad: [1.7, 0.74], gloedraster: [3.2, 0.74], lichtbak: [1.5, 0.82] };
 
@@ -137,7 +139,7 @@ function controleer({ staat, schaal }) {
   const menu = document.querySelector('[data-meet="menu"]');
   if (menu) binnen(R(menu), { left: 0, top: 0, right: vw, bottom: vh }, "menu");
   // Gesprekken en Events: niets loopt zijwaarts over in een kolom.
-  for (const k of document.querySelectorAll('[data-meet="gesprekken"] > *, [data-meet="events"] > *')) {
+  for (const k of document.querySelectorAll('[data-meet="gesprekken"] > *, [data-meet="events"] > *, [data-meet="jij"] > *')) {
     if (k.scrollWidth > k.clientWidth + t) fout.push(`kolom loopt over (${k.scrollWidth} > ${k.clientWidth})`);
   }
   for (const e of document.querySelectorAll('[data-meet="event"]')) {
@@ -147,6 +149,16 @@ function controleer({ staat, schaal }) {
       const cr = R(c);
       if (cr.bottom > er.bottom + t || cr.right > er.right + t) fout.push("event: inhoud buiten de rij");
     }
+  }
+  // Jij: elk voorwerp binnen zijn vak, elke ingang op één regel binnen de kolom.
+  for (const v of document.querySelectorAll('[data-meet="mijnstuk"]')) {
+    const vr = R(v);
+    if (vr.top > vh) continue;
+    binnen(R(v.querySelector(".pic")), vr, "mijn bijdrage");
+  }
+  for (const i of document.querySelectorAll('[data-meet="ingang"]')) {
+    const ir = R(i);
+    for (const c of i.children) if (R(c).right > ir.right + t) fout.push("ingang loopt over");
   }
   return fout;
 }

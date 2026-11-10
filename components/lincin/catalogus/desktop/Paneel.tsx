@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Acties, Spec, Sq } from "./Delen";
+import { Acties, Spec, Sq, klikbaar } from "./Delen";
 import type { PaneelInhoud, PaneelNav } from "./typen";
 
 /**
@@ -104,9 +104,15 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
         </span>
       </div>
       <div style={{ flex: "none", padding: "18px 20px 8px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }} data-meet="paneel-titel">
-        <span className="T" style={{ fontSize: 46, minWidth: 0, overflowWrap: "anywhere" }}>
-          {p.titel}
-        </span>
+        {nav.pagina ? (
+          <a className="T naarpagina" style={{ fontSize: 46, minWidth: 0, overflowWrap: "anywhere" }} href="#" {...klikbaar(nav.pagina)} role="link" aria-label={`${p.titel}: open de bijdrage`} data-meet="naarpagina">
+            {p.titel}
+          </a>
+        ) : (
+          <span className="T" style={{ fontSize: 46, minWidth: 0, overflowWrap: "anywhere" }}>
+            {p.titel}
+          </span>
+        )}
         <span style={{ width: 150, flex: "none" }}>
           <Spec
             rijen={[

@@ -19,6 +19,8 @@ import { openPost, useIsDesktop } from "@/lib/lincin/desktop";
 import { usePageTitle } from "@/lib/page-title";
 import { JijCatalogus } from "@/components/lincin/catalogus/schermen/Lijsten";
 import { lincKleur } from "@/components/lincin/catalogus/stijl";
+import { JijDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 
 /**
  * Jij (README §07).
@@ -47,6 +49,7 @@ function YouMobile() {
   const scheme = useScheme();
   const spec = useThemeSpec();
   const unread = useUnread();
+  const catalogusDesktop = useCatalogusDesktop();
 
   const profile = useQuery({ queryKey: ["profile", myUserId], queryFn: () => getProfile(myUserId) });
   const posts = useQuery({ queryKey: ["posts-by-user", myUserId], queryFn: () => listUserPosts(myUserId, 60) });
@@ -85,6 +88,32 @@ function YouMobile() {
     onPress: () => openPost(post.id),
     children: <MiniBody post={post} fill={fc.fill} ink={fc.ink} />,
   }));
+
+  if (spec.layout === "catalogus" && catalogusDesktop) {
+    // Desktop: dezelfde gegevens als hieronder, in de opbouw van Gesprekken en Events.
+    const eigen = p?.username ? `/user/${p.username}` : null;
+    return (
+      <JijDesktopEcht
+        naam={name}
+        linc={{ beeld: p?.avatar_url, kleur: lincKleur(myUserId), initiaal: name.slice(0, 1).toUpperCase() }}
+        regels={[
+          ["Naam", name],
+          ["Lincs", String(lincs)],
+          ["Bijdragen", String(posts.data?.length ?? 0)],
+          ["Sinds", String(since.getFullYear())],
+        ]}
+        ingangen={[
+          { label: "Mijn lincs", rechts: pendingIn > 0 ? `${pendingIn} ${t.waitsForYou} →` : `${lincs} →`, nieuw: pendingIn > 0, open: () => router.push("/friends") },
+          ...(eigen ? [{ label: "Mijn profiel", rechts: "Zoals lincs je zien →", open: () => router.push(eigen as never) }] : []),
+          { label: "Thema en stand", rechts: `Catalogus · ${scheme === "dark" ? "Donker" : "Licht"} →`, open: () => router.push("/settings" as never) },
+          { label: "Instellingen", rechts: "Privé, meldingen →", open: () => router.push("/settings" as never) },
+          { label: t.myQr, rechts: "→", open: () => router.push("/qr-code") },
+        ]}
+        kaarten={(posts.data ?? []).map(fromPost)}
+        stand={posts.isLoading ? t.loading : posts.isError ? t.failed : null}
+      />
+    );
+  }
 
   if (spec.layout === "catalogus") {
     const eigen = p?.username ? `/user/${p.username}` : null;

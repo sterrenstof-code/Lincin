@@ -20,6 +20,7 @@ import { useBijdrage } from "../schermen/useBijdrage";
 import { EventsDesktop, type EventRij, type Maand } from "./EventsDesktop";
 import { FeedDesktop } from "./FeedDesktop";
 import { GesprekkenDesktop, type GesprekRij } from "./GesprekkenDesktop";
+import { JijDesktop, type JijIngang, type JijStuk } from "./JijDesktop";
 import { DesktopPagina } from "./Pagina";
 import { Paneel } from "./Paneel";
 import { kiesWeergave, useWeergave } from "./weergave";
@@ -149,6 +150,7 @@ function beeldVan(c: CardPost): string | null {
  */
 export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: string | null; naSluiten?: () => void }) {
   const f = useFeed();
+  const router = useRouter();
   const [weergave, kies] = useMijnWeergave();
   const [stand, kiesStand] = useStand();
 
@@ -195,15 +197,7 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
 
   // Een gedeelde link naar een bijdrage die niet (meer) in de feed staat: de
   // bijdragepagina zelf, in de kolom van de telefoon.
-  if (startOpen && !f.feed.isLoading && !perId.has(startOpen)) {
-    return (
-      <View style={{ flex: 1, backgroundColor: CATALOGUS[stand === "donker" ? "dark" : "light"].naad }}>
-        <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>
-          <BijdrageCatalogus id={startOpen} />
-        </View>
-      </View>
-    );
-  }
+  if (startOpen && !f.feed.isLoading && !perId.has(startOpen)) return <KolomBijdrage id={startOpen} />;
 
   return (
     <>
@@ -226,9 +220,26 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
         stand2={f.feed.isLoading ? f.t.loading : fout ? "De bijdragen laadden niet." : null}
         startOpen={startOpen}
         naSluiten={naSluiten}
+        naarPagina={(id) => router.push(`/post/${id}?pagina=1` as never)}
       />
       <PrivateSheet target={f.sheet} onClose={() => f.setSheet(null)} />
     </>
+  );
+}
+
+/**
+ * De pagina van een bijdrage op desktop: de bijdragepagina van catalogus
+ * (volledige tekst, alle foto's, de hele draad) in de kolom van de telefoon.
+ * Terug gaat naar waar je vandaan kwam.
+ */
+export function KolomBijdrage({ id }: { id: string }) {
+  const scheme = useScheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: CATALOGUS[scheme === "dark" ? "dark" : "light"].naad }}>
+      <View style={{ flex: 1, width: KOLOM, alignSelf: "center", overflow: "hidden" }}>
+        <BijdrageCatalogus id={id} />
+      </View>
+    </View>
   );
 }
 
@@ -377,6 +388,53 @@ export function EventsDesktopEcht({
   return (
     <DesktopPagina {...k} nav={nav} actief="events">
       <EventsDesktop rijen={rijen} kop={kop} maand={maand} stand={stand} />
+    </DesktopPagina>
+  );
+}
+
+/** Jij op desktop: je profiel, de ingangen van Jij, en al je bijdragen. */
+export function JijDesktopEcht({
+  naam,
+  linc,
+  regels,
+  ingangen,
+  kaarten,
+  stand,
+}: {
+  naam: string;
+  linc: { beeld?: string | null; kleur: string | null; initiaal: string };
+  regels: [string, string][];
+  ingangen: JijIngang[];
+  kaarten: CardPost[];
+  stand?: string | null;
+}) {
+  const k = useKader();
+  const nav = useNav();
+  const router = useRouter();
+  const uris = useMemo(() => kaarten.map(beeldVan).filter((u): u is string => !!u), [kaarten]);
+  const verh = useVerhoudingen(uris);
+  const bijdragen: JijStuk[] = kaarten.map((c, i) => {
+    const beeld = beeldVan(c);
+    const kleur = c.media.kind === "kleur";
+    const ding = beeld ? undefined : { node: <CardVoorwerp card={c} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
+    const r = beeld ? (verh.get(beeld) ?? 0.8) : 0;
+    return {
+      id: c.id,
+      nr: String(i + 1).padStart(2, "0"),
+      titel: titelVan(c),
+      soort: soortVan(c),
+      datum: datumVan(c),
+      beeld,
+      voorwerp: ding,
+      b: beeld ? 400 * r : ding!.b,
+      h: beeld ? 400 : ding!.h,
+      // Een poll heeft zijn eigen pagina; de rest de bijdragepagina.
+      open: () => router.push((c.kind === "poll" ? c.href : `/post/${c.id}?pagina=1`) as never),
+    };
+  });
+  return (
+    <DesktopPagina {...k} nav={nav} actief="you">
+      <JijDesktop naam={naam} linc={linc} regels={regels} ingangen={ingangen} bijdragen={bijdragen} stand={stand} />
     </DesktopPagina>
   );
 }

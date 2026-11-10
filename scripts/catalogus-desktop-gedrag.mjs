@@ -422,6 +422,29 @@ try {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(800);
 
+    // ---- naar de pagina van de bijdrage: de open foto en de titel in het paneel ----
+    for (const [hoe, doe] of [
+      ["de open foto", async () => klik(page, `[data-meet="stuk"][data-id="${id}"] [data-meet="foto"]`)],
+      ["de titel in het paneel", async () => klik(page, '[data-meet="naarpagina"]')],
+    ]) {
+      await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht`);
+      await wacht(page);
+      await page.click(`[data-meet="stuk"][data-id="${id}"]`);
+      await page.waitForTimeout(1100);
+      if (hoe === "de open foto") {
+        const f = await page.locator(`[data-meet="stuk"][data-id="${id}"] [data-meet="foto"]`).boundingBox();
+        await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2);
+        const cursor = await page.evaluate(() => getComputedStyle(document.querySelector('[data-meet="scrim"]')).cursor);
+        noteer(w, "boven de open foto: de cursor vergroot", cursor === "zoom-in", cursor);
+      }
+      await doe();
+      await page.waitForTimeout(300);
+      const naar = await page.evaluate(() => document.querySelector('[data-meet="bijdragepagina"]')?.getAttribute("data-id") ?? null);
+      noteer(w, `klik op ${hoe}: naar de bijdragepagina`, naar === id, `stuk ${naar}`);
+    }
+    await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht`);
+    await wacht(page);
+
     // ---- je eigen bijdrage: bewerken en verwijderen (⋯) ----
     noteer(w, "bijdrage van een ander: geen ⋯", !(await page.evaluate(() => !!document.querySelector('[data-meet="eigenknop"]'))));
     await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht?eigen=1`);

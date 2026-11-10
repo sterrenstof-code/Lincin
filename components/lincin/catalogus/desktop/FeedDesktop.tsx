@@ -44,6 +44,8 @@ export type FeedDesktopProps = {
   startMenu?: boolean;
   /** Na het sluiten (`/post/[id]` gaat dan naar `/feed`). */
   naSluiten?: () => void;
+  /** Naar de pagina van een bijdrage: een klik op de open foto of op de titel in het paneel. */
+  naarPagina?: (id: string) => void;
 };
 
 export function FeedDesktop(props: FeedDesktopProps) {
@@ -55,6 +57,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
   const [menu, setMenu] = useState(!!props.startMenu);
   const [zweef, setZweef] = useState<string | null>(null);
   const [fris, setFris] = useState(false);
+  const [opFoto, setOpFoto] = useState(false);
   const schuif = useRef<((d: number) => void) | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const naSluiten = useRef(props.naSluiten);
@@ -115,6 +118,14 @@ export function FeedDesktop(props: FeedDesktopProps) {
 
   const wand = weergave === "wand" || weergave === "blad";
 
+  /** Ligt dit punt op de foto van het open stuk? */
+  const fotoOnder = (x: number, y: number) => {
+    const f = document.querySelector('[data-meet="stuk"][aria-current] [data-meet="foto"]');
+    if (!f) return false;
+    const r = f.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  };
+
   // De toetsen (briefing §7). Het menu vangt Esc zelf, eerder (WeergaveKnop).
   useEffect(() => {
     const toets = (e: KeyboardEvent) => {
@@ -147,7 +158,13 @@ export function FeedDesktop(props: FeedDesktopProps) {
 
   const paneelStuk = stukken.find((s) => s.id === (open ?? sluitend)) ?? null;
   const paneelNav: PaneelNav | null = paneelStuk
-    ? { plaat: plaat(index(paneelStuk.id), stukken.length), sluit, vorige: () => stap(-1), volgende: () => stap(1) }
+    ? {
+        plaat: plaat(index(paneelStuk.id), stukken.length),
+        sluit,
+        vorige: () => stap(-1),
+        volgende: () => stap(1),
+        pagina: props.naarPagina ? () => props.naarPagina!(paneelStuk.id) : undefined,
+      }
     : null;
 
   const glow = weergave === "lichtbak" || weergave === "gloedraster";
@@ -210,7 +227,20 @@ export function FeedDesktop(props: FeedDesktopProps) {
             {hint}
           </div>
         ) : null}
-        {open ? <button className="scrim" aria-label="Sluit de bijdrage" onClick={sluit} /> : null}
+        {open ? (
+          <button
+            className={opFoto ? "scrim opfoto" : "scrim"}
+            aria-label="Sluit de bijdrage"
+            // De laag ligt over alles links van het paneel. Op de open foto
+            // gaat een klik naar de bijdrage; ernaast sluit hij.
+            onMouseMove={(e) => setOpFoto(!!props.naarPagina && fotoOnder(e.clientX, e.clientY))}
+            onClick={(e) => {
+              if (props.naarPagina && fotoOnder(e.clientX, e.clientY)) props.naarPagina(open);
+              else sluit();
+            }}
+            data-meet="scrim"
+          />
+        ) : null}
         {paneelStuk && paneelNav ? (
           <aside key={sessie} className={open ? "drawer" : "drawer weg"} aria-label="Gekozen bijdrage" data-meet="drawer">
             {props.paneel(paneelStuk, paneelNav)}

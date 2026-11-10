@@ -96,4 +96,6 @@ export type PaneelNav = {
   sluit: () => void;
   vorige: () => void;
   volgende: () => void;
+  /** Naar de pagina van de bijdrage (de titel). */
+  pagina?: () => void;
 };
