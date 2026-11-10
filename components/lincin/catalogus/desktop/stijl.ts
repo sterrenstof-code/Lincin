@@ -51,6 +51,9 @@ export const CSS = `
 .cd .pic{display:block;position:relative;flex:none;overflow:hidden;background:var(--ph)}
 .cd .pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cd .pic>.ding{position:absolute;left:0;top:0;transform-origin:0 0}
+.cd .pic>.album{position:absolute;right:8px;top:8px;z-index:1;display:flex;align-items:center;gap:5px;padding:4px 7px;background:rgba(20,18,16,.72);color:#fff;font-size:11px;font-weight:600;line-height:1;letter-spacing:.02em}
+.cd .kleine-acties{display:flex;gap:14px}
+.cd .kleine-acties button{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;min-height:28px}
 .cd .sq{flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;color:#141210;overflow:hidden}
 .cd .sq>img{width:100%;height:100%;object-fit:cover}
 .cd .strip{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;background:var(--g)}
@@ -142,10 +145,11 @@ export const CSS = `
 .cd .wall.has-open .hang[aria-current] .cap,.cd .wall.has-open .hang[aria-current] .floor,.cd .wall.has-open .hang[aria-current] .nr{opacity:0}
 /*
  * Een titel onder een stuk: hoogstens twee regels, dan "…". Een lang woord breekt
- * binnen de breedte van het stuk. De opvulling boven en onder houdt letters die
- * buiten de krappe regelhoogte steken heel, zonder de opmaak te verschuiven.
+ * binnen de breedte van het stuk. De regelhoogte is 1,1 in plaats van 0,92, zodat
+ * geen letter wordt afgesneden en er van een derde regel niets te zien is; de
+ * marge van −0,09em houdt een titel van één regel op precies dezelfde plek.
  */
-.cd .titel2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto;padding:.12em 0;margin:-.12em 0}
+.cd .titel2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto;line-height:1.1;margin:-.09em 0}
 
 /* wand op blad */
 .cd .table{flex:1;min-height:0;background:var(--table);display:grid;grid-template-columns:150px minmax(0,1fr)}

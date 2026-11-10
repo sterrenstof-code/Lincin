@@ -14,7 +14,7 @@ import type { DStuk } from "./typen";
  */
 
 export type JijIngang = { label: string; rechts: string; open: () => void; nieuw?: boolean };
-export type JijStuk = Pick<DStuk, "id" | "nr" | "titel" | "soort" | "datum" | "beeld" | "voorwerp" | "b" | "h"> & { open: () => void };
+export type JijStuk = Pick<DStuk, "id" | "nr" | "titel" | "soort" | "datum" | "beeld" | "voorwerp" | "b" | "h" | "fotos"> & { open: () => void };
 
 /** Het voorwerp in een vak: zijn eigen verhouding, binnen 150 × 190. */
 function inVak(s: JijStuk): { b: number; h: number } {

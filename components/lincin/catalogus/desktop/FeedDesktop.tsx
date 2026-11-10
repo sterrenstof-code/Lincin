@@ -183,7 +183,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
       </div>
     );
   } else if (wand) {
-    pagina = <Wand stukken={stukken} weergave={weergave} open={open} terug={sluitend} kies={openStuk} schuifRef={schuif} />;
+    pagina = <Wand stukken={stukken} weergave={weergave} open={open} terug={sluitend} kies={openStuk} leuk={props.leuk} schuifRef={schuif} />;
   } else if (weergave === "lichtbak") {
     pagina = (
       <Lichtbak
@@ -203,7 +203,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
       />
     );
   } else {
-    pagina = <Gloedraster stukken={stukken} open={open} kies={openStuk} zweef={(id) => !open && setZweef(id)} />;
+    pagina = <Gloedraster stukken={stukken} open={open} kies={openStuk} zweef={(id) => !open && setZweef(id)} leuk={props.leuk} />;
   }
 
 

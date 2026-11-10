@@ -175,15 +175,26 @@ Pagina's met een eigen desktopvorm, alle in het kader van de gekozen weergave:
 | Jij | profiel en ingangen, en al je bijdragen (§4b) |
 | Meldingen | de meldingen groot, linc-verzoeken met Accepteer en Negeer in de rij, rechts de tellers en "Alles gelezen" |
 | Het profiel van een ander | de opbouw van Jij: beeld, naam, bio, het kaartje (Linc, Sinds, Bijdragen) en de knoppen (Gesprek, Samen plannen; of Linc toevoegen, Accepteer); rechts al zijn bijdragen. Laden, niet gevonden en mislukt in hetzelfde kader |
+| Instellingen | links je account en de groepen als inhoudsopgave, rechts elke groep met zijn schakelaars, keuzes (alle opties naast elkaar) en rijen met → |
+| Mijn lincs | links de tellers en "+ Linc toevoegen", rechts de lincs als vakken met wat je van hen nog niet zag; toevoegen (QR, link, zoeken) staat in de kolom onder het kader |
+| Een event | links de datum, titel, kaartje, omschrijving, gasten, Ik kom / Misschien en de handelingen; rechts de foto's en video's als vakken, een klik opent de lichtbak |
 | Nieuwe bijdrage | één scherm in plaats van twee stappen: de soorten, het voorbeeld groot (foto's met omslag, de tekst als artikel, de poll), en de velden met voor wie, concept en Deel |
 
-Alle andere pagina's houden voorlopig de vorm van de telefoon in de kolom van 430: instellingen, een event, een groep, lijsten, de QR-code, mijn lincs. Maar ze staan nu onder dezelfde bovenbalk als de rest (`KolomKop` in `app/_layout.tsx`), met tabbladen, Weergave, ✳ en +. Welkom, inloggen en de openbare links krijgen geen kader.
+Alle andere pagina's houden voorlopig de vorm van de telefoon in de kolom van 430: een groep, lijsten, de QR-code, profiel bewerken, een event aanmaken. Maar ze staan nu onder dezelfde bovenbalk als de rest (`KolomKop` in `app/_layout.tsx`), met tabbladen, Weergave, ✳ en +. Welkom, inloggen en de openbare links krijgen geen kader.
 
 Verder in deze ronde:
 - Een titel op de wand en in het gloedraster heeft hoogstens twee regels en eindigt dan op "…". Een lang woord breekt binnen de breedte van zijn stuk.
 - De hint "scroll of ← → …" staat niet meer onder de wand en in de kop van het blad.
 - Het invoerveld van een gesprek heeft in catalogus de vorm van het ontwerp: + en ☺, één veld met een rand, "Stuur" of de microfoon. Dit geldt ook op de telefoon. Op echte gegevens is het niet nagelopen.
 - `/user/<naam>` vindt een linc ook op zijn weergavenaam (@mie). Laden, niet gevonden en mislukt staan er als zodanig.
+
+## 2f. Hartje, reacties en albums in elke weergave
+
+Op verzoek staan onder elk stuk het hartje en de reacties met hun aantal, ook op de wand, het blad en in het gloedraster (de lichtbak had ze al). Het hartje werkt meteen; de ballon opent het stuk. Een album draagt rechtsboven op de foto een label met twee gestapelde vlakken en het aantal foto's, in elke weergave en in de vakken van Jij en een profiel.
+
+Daardoor wijken wand, blad, het gloedraster en het menu bewust af van het prototype. `npm run catalogus:vergelijk:desktop` geeft nu **5 van 17**: de lichtbak (3), Gesprekken en Events slagen nog. Op de wand is een stuk 38 px hoger; in het gloedraster staat de rij naast "Wie" (4,9 %). In de testgegevens is stuk 04 een album van drie, om het label te tonen. Drempels en referentiebeelden zijn niet aangepast.
+
+Het meetscript loopt nu 24 staten na in 10 vensters (240), met alle nieuwe pagina's erbij. Daarvoor is de ruimte onder de wand voor bijschrift en interactie 190.
 
 ## 3. Wat niet slaagt, en waarom
 

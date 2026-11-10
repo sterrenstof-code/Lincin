@@ -25,6 +25,8 @@ export type DStuk = {
   /** Het eigen formaat op de wand; het raster neemt de helft. */
   b: number;
   h: number;
+  /** Een album: hoeveel foto's (het label op de foto). */
+  fotos?: number;
   /** Een stuk zonder foto: het voorwerp van mobiel, op zijn eigen maat. */
   voorwerp?: { node: ReactNode; b: number; h: number };
   hartjes: number;

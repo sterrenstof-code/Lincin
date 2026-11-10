@@ -47,6 +47,13 @@ const STATEN = [
   "bijdrage-foto",
   "bijdrage-tekst",
   "bijdrage-blad",
+  "meldingen",
+  "nieuw-foto",
+  "nieuw-tekst",
+  "profiel",
+  "instellingen",
+  "lincs",
+  "event",
 ];
 const SCHAAL = { wand: [1.7, 0.74], blad: [1.7, 0.74], gloedraster: [3.2, 0.74], lichtbak: [1.5, 0.82] };
 
@@ -142,7 +149,7 @@ function controleer({ staat, schaal }) {
   const menu = document.querySelector('[data-meet="menu"]');
   if (menu) binnen(R(menu), { left: 0, top: 0, right: vw, bottom: vh }, "menu");
   // Gesprekken en Events: niets loopt zijwaarts over in een kolom.
-  for (const k of document.querySelectorAll('[data-meet="gesprekken"] > *, [data-meet="events"] > *, [data-meet="jij"] > *')) {
+  for (const k of document.querySelectorAll('[data-meet="gesprekken"] > *, [data-meet="events"] > *, [data-meet="jij"] > *, [data-meet="meldingen"] > *, [data-meet="nieuw"] > *, [data-meet="instellingen"] > *, [data-meet="lincs"] > *, [data-meet="eventpagina"] > *')) {
     if (k.scrollWidth > k.clientWidth + t) fout.push(`kolom loopt over (${k.scrollWidth} > ${k.clientWidth})`);
   }
   for (const e of document.querySelectorAll('[data-meet="event"]')) {

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-import { ONTWERP_HOOGTE, Pic, Spec, klikbaar, useVenster } from "./Delen";
+import { KleineActies, ONTWERP_HOOGTE, Pic, Spec, klikbaar, useVenster } from "./Delen";
 import { useDoel } from "./naarMidden";
 import type { DStuk } from "./typen";
 
@@ -16,11 +16,13 @@ export function Gloedraster({
   open,
   kies,
   zweef,
+  leuk,
 }: {
   stukken: DStuk[];
   open: string | null;
   kies: (id: string) => void;
   zweef: (id: string) => void;
+  leuk?: (id: string) => void;
 }) {
   const vlak = useRef<HTMLDivElement>(null);
   const fotos = useRef(new Map<string, HTMLSpanElement>());
@@ -70,7 +72,10 @@ export function Gloedraster({
               <span className="T titel2" lang="nl" style={{ fontSize: 26 }} title={p.titel}>
                 {p.titel}
               </span>
-              <Spec rijen={[["Wie", p.wie]]} />
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <Spec rijen={[["Wie", p.wie]]} />
+                <KleineActies hartjes={p.hartjes} vindIkLeuk={p.vindIkLeuk} reacties={p.reacties} leuk={leuk ? () => leuk(p.id) : undefined} reageer={() => kies(p.id)} />
+              </span>
             </span>
           </a>
         );

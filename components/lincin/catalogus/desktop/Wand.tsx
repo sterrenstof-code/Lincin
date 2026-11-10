@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 
-import { ONTWERP_HOOGTE, Pic, Spec, klikbaar, useVenster } from "./Delen";
+import { KleineActies, ONTWERP_HOOGTE, Pic, Spec, klikbaar, useVenster } from "./Delen";
 import { useDoel } from "./naarMidden";
 import type { DStuk, Weergave } from "./typen";
 
@@ -26,6 +26,7 @@ export function Wand({
   open,
   terug,
   kies,
+  leuk,
   schuifRef,
 }: {
   stukken: DStuk[];
@@ -34,6 +35,8 @@ export function Wand({
   /** Het stuk dat net dichtging en terugkrimpt. */
   terug: string | null;
   kies: (id: string) => void;
+  /** Het hartje onder een stuk. */
+  leuk?: (id: string) => void;
   /** ← → als er niets open is. */
   schuifRef: MutableRefObject<((d: number) => void) | null>;
 }) {
@@ -46,7 +49,7 @@ export function Wand({
 
   // Meeschalen (responsive). De zone is 58 % van de vensterhoogte (ontwerp),
   // maar laat altijd ruimte voor de bovenmarge (6 %), de vloerlijn en het
-  // bijschrift (samen ~150, een titel van twee regels) binnen de wand; op het blad is die lager. De
+  // bijschrift (samen ~190: een titel van twee regels en hartje en reacties) binnen de wand; op het blad is die lager. De
   // stukken groeien en krimpen met de hoogte en passen altijd in de zone,
   // onder hun nummer (17 + 10).
   const v = useVenster();
@@ -58,7 +61,7 @@ export function Wand({
     ro.observe(w);
     return () => ro.disconnect();
   }, []);
-  const zone = Math.min(v.h * 0.58, wandH ? wandH - v.h * 0.06 - 150 : Infinity);
+  const zone = Math.min(v.h * 0.58, wandH ? wandH - v.h * 0.06 - 190 : Infinity);
   const hoogste = Math.max(1, ...stukken.map((s) => s.h));
   const f = Math.min(v.h / ONTWERP_HOOGTE, (zone - 27) / hoogste);
 
@@ -145,6 +148,7 @@ export function Wand({
                     ["Soort", s.soort],
                   ]}
                 />
+                <KleineActies hartjes={s.hartjes} vindIkLeuk={s.vindIkLeuk} reacties={s.reacties} leuk={leuk ? () => leuk(s.id) : undefined} reageer={() => kies(s.id)} />
               </span>
             </a>
           );

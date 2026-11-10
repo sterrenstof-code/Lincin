@@ -21,6 +21,8 @@ import { usePageTitle } from "@/lib/page-title";
 import { listMySharedLists } from "@/lib/api/shared-lists";
 import Constants from "expo-constants";
 import { InstellingenView, type Instelling } from "@/components/lincin/catalogus/schermen/OverigeViews";
+import { InstellingenDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { safeBack } from "@/lib/nav";
 
 /**
@@ -51,6 +53,7 @@ export default function SettingsScreen() {
 
 function SettingsMobile() {
   const { session, signOut } = useAuth();
+  const catalogusDesktop = useCatalogusDesktop();
   const myUserId = session?.user.id ?? "anon";
   const router = useRouter();
   const t = useT();
@@ -247,6 +250,17 @@ function SettingsMobile() {
       { soort: "regel", label: "Profiel", waarde: "Profiel bewerken", open: () => router.push("/profile-edit") },
       { soort: "regel", label: "Uitloggen", waarde: "", open: logout },
     ];
+    if (catalogusDesktop) {
+      return (
+        <InstellingenDesktopEcht
+          kop={[
+            ["Versie", Constants.expoConfig?.version ?? "—"],
+            ["Account", session?.user.email ?? "—"],
+          ]}
+          regels={regels}
+        />
+      );
+    }
     return (
       <InstellingenView
         kop={[

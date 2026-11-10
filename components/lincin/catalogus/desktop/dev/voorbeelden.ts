@@ -78,6 +78,8 @@ export function stukken(): DStuk[] {
     hartjes: p.likes,
     vindIkLeuk: false,
     reacties: p.cm.length,
+    // Niet in het prototype: een album, om het label met het aantal te tonen.
+    fotos: p.id === 4 ? 3 : undefined,
   }));
 }
 

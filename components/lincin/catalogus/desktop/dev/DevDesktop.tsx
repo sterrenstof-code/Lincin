@@ -15,6 +15,9 @@ import { BijdragePagina } from "../BijdragePagina";
 import { JijDesktop } from "../JijDesktop";
 import { MeldingenDesktop } from "../MeldingenDesktop";
 import { NieuwDesktop } from "../NieuwDesktop";
+import { InstellingenDesktop } from "../InstellingenDesktop";
+import { LincsDesktop } from "../LincsDesktop";
+import { EventDesktop } from "../EventDesktop";
 import type { Compose } from "@/app/post-compose";
 import { FeedDesktop } from "../FeedDesktop";
 import { Berichten, BerichtInvoer, Bubbel, GedeeldStuk, GedeeldVak, GesprekkenDesktop } from "../GesprekkenDesktop";
@@ -35,7 +38,7 @@ import { EVENTS, GESPREKKEN, NAV_TEKST, REACTIES, beeld, kleurVan, stukken as vo
  * een keuze in het menu wordt bewaard, voor het gedragsscript.
  */
 
-const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel" }> = {
+const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?: boolean; pagina?: "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel" | "instellingen" | "lincs" | "event" }> = {
   "wand-dicht": { w: "wand" },
   "wand-open": { w: "wand", open: "2" },
   "wand-dicht-donker": { w: "wand", stand: "donker" },
@@ -67,6 +70,10 @@ const STATEN: Record<string, { w: Weergave; open?: string; stand?: Stand; menu?:
   "nieuw-tekst": { w: "wand", pagina: "nieuw-tekst", stand: "donker" },
   profiel: { w: "wand", pagina: "profiel" },
   "profiel-donker": { w: "blad", pagina: "profiel", stand: "donker" },
+  instellingen: { w: "wand", pagina: "instellingen" },
+  lincs: { w: "wand", pagina: "lincs" },
+  event: { w: "wand", pagina: "event" },
+  "event-donker": { w: "blad", pagina: "event", stand: "donker" },
 };
 
 export const DEV_STATEN = Object.keys(STATEN);
@@ -225,7 +232,8 @@ function DevPagina() {
     setPagina("feed");
   };
   const [stand, setStand] = useState<Stand>(s.stand ?? "licht");
-  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel">(s.pagina ?? "feed");
+  const [pagina, setPagina] = useState<"feed" | "gesprekken" | "events" | "jij" | "bijdrage" | "meldingen" | "nieuw-foto" | "nieuw-tekst" | "profiel" | "instellingen" | "lincs" | "event">(s.pagina ?? "feed");
+  const [schakel, setSchakel] = useState<Record<string, boolean>>({ nieuw: true, reacties: true, stil: false });
   const [nieuw, setNieuw] = useState(() => ({
     kind: s.pagina === "nieuw-tekst" ? "tekst" : "foto",
     title: s.pagina === "nieuw-tekst" ? "De vossen maken koffie" : "",
@@ -315,6 +323,82 @@ function DevPagina() {
   }
 
   const paginaProps = { weergave, kiesWeergave: kies, stand, kiesStand: setStand, nav };
+
+  if (pagina === "instellingen") {
+    const zet = (k: string) => (v: boolean) => setSchakel((x) => ({ ...x, [k]: v }));
+    return (
+      <DesktopPagina {...paginaProps} actief="you">
+        <InstellingenDesktop
+          kop={[
+            ["Versie", "[versie]"],
+            ["Account", "[jouw naam]"],
+          ]}
+          regels={[
+            { soort: "groep", titel: "Uiterlijk" },
+            { soort: "keuze", label: "Thema", opties: [{ label: "Magazine", aan: false, kies: () => {} }, { label: "Modern", aan: false, kies: () => {} }, { label: "Catalogus", aan: true, kies: () => {} }] },
+            { soort: "keuze", label: "Stand", opties: [{ label: "Licht", aan: stand === "licht", kies: () => setStand("licht") }, { label: "Donker", aan: stand === "donker", kies: () => setStand("donker") }, { label: "Toestel", aan: false, kies: () => {} }] },
+            { soort: "keuze", label: "Taal", opties: [{ label: "NL", aan: true, kies: () => {} }, { label: "EN", aan: false, kies: () => {} }, { label: "DE", aan: false, kies: () => {} }] },
+            { soort: "groep", titel: "Meldingen" },
+            { soort: "schakelaar", label: "Nieuwe bijdragen", waarde: "Van al je lincs", aan: schakel.nieuw, zet: zet("nieuw") },
+            { soort: "schakelaar", label: "Reacties", waarde: "Op jouw bijdragen", aan: schakel.reacties, zet: zet("reacties") },
+            { soort: "schakelaar", label: "Stil", waarde: "Tussen 22:00 en 07:00", aan: schakel.stil, zet: zet("stil") },
+            { soort: "groep", titel: "Privé" },
+            { soort: "regel", label: "Versleuteling", waarde: "Alleen jij en je lincs", pijl: false },
+            { soort: "regel", label: "Sleutel", waarde: "Herstelcode maken", open: () => {} },
+            { soort: "groep", titel: "Account" },
+            { soort: "regel", label: "Profiel", waarde: "Profiel bewerken", open: () => {} },
+            { soort: "regel", label: "Uitloggen", waarde: "", open: () => {} },
+          ]}
+        />
+      </DesktopPagina>
+    );
+  }
+
+  if (pagina === "lincs") {
+    const l = (id: string, naam: string, kleur: string, n: string, b?: string) => ({ id, naam, gebruiker: naam.toLowerCase(), nieuw: n, linc: { beeld: b ?? null, kleur, initiaal: naam[0] }, open: () => setProfielVan(naam.toLowerCase()) });
+    return (
+      <DesktopPagina {...paginaProps} actief="you">
+        <LincsDesktop
+          totaal={5}
+          toevoegen={() => {}}
+          lincs={[l("1", "Mie", "#8A9273", "2", beeld("prop-kat-hero.jpg")), l("2", "Noor", "#C1724E", "3", beeld("prop-kat.jpg")), l("3", "Sem", "#6E8A97", "—"), l("4", "Lotte", "#C9B77F", "—", beeld("prop-koffie.jpg")), l("5", "Yusuf", "#A9503F", "—")]}
+        />
+      </DesktopPagina>
+    );
+  }
+
+  if (pagina === "event") {
+    const f = (id: string, img: Parameters<typeof beeld>[0], wie: string, tijd: string) => ({ id, beeld: beeld(img), video: false, wie, tijd, open: () => {} });
+    return (
+      <DesktopPagina {...paginaProps} actief="events">
+        <EventDesktop
+          dag="15"
+          maand="nov"
+          titel="Naar de dijk bij Marken"
+          regels={[
+            ["Wanneer", "zo · 14:00"],
+            ["Waar", "Marken"],
+            ["Van", "Noor"],
+            ["Gasten", "3"],
+            ["Toegang", "op verzoek"],
+          ]}
+          omschrijving="We fietsen vanaf het pontje. Neem iets warms mee."
+          gasten={[{ naam: "Noor", kleur: "#C1724E", initiaal: "N" }, { naam: "Sem", kleur: "#6E8A97", initiaal: "S" }, { naam: "jij", kleur: null, initiaal: "J" }]}
+          gastenOpen={() => {}}
+          antwoord="yes"
+          kom={() => {}}
+          misschien={() => {}}
+          telling="3 komen"
+          voorbij={false}
+          voegToe={() => {}}
+          voegToeTekst="Voeg toe"
+          handelingen={[{ label: "Nodig uit", doe: () => {} }, { label: "Deel code", doe: () => {} }]}
+          melding="Foto's en video's van een event zijn niet end-to-end versleuteld, zoals je gesprekken wel zijn."
+          fotos={[f("1", "post-tafel.jpg", "Noor", "14:12"), f("2", "prop-raket.jpg", "Sem", "14:40"), f("3", "post-kamer.jpg", "jij", "15:02"), f("4", "prop-koffie.jpg", "Noor", "15:30")]}
+        />
+      </DesktopPagina>
+    );
+  }
 
   if (pagina === "profiel") {
     const van = stukken.filter((x) => x.wie === "Mie" || x.wie === "johanna.coysman");

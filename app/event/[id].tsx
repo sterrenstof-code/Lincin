@@ -26,6 +26,8 @@ import {
   VideoTile,
 } from "@/components/lincin/EventPage";
 import { EventView } from "@/components/lincin/catalogus/schermen/EventView";
+import { EventDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { lincKleur } from "@/components/lincin/catalogus/stijl";
 import { Blad, BladRegel, BladTekst } from "@/components/lincin/catalogus/Blad";
 import { Knop } from "@/components/lincin/catalogus/Delen";
@@ -80,6 +82,7 @@ export default function EventDetailScreen() {
   // kolom van LincinScreen, ook op een tablet.
   const desktop = useIsDesktop();
   const catalogus = useThemeSpec().layout === "catalogus";
+  const catalogusDesktop = useCatalogusDesktop();
   const wide = desktop;
   const { session } = useAuth();
   const myUserId = session!.user.id;
@@ -556,6 +559,69 @@ export default function EventDetailScreen() {
       />
     </>
   );
+
+  // Catalogus op desktop: het event links, de foto's en video's rechts (components/lincin/catalogus/desktop).
+  if (catalogusDesktop) {
+    const mine = rsvp.mine(eventId);
+    const voegToe = actions[actions.length - 1];
+    return (
+      <EventDesktopEcht
+        dag={facts.day}
+        maand={facts.month}
+        titel={ev.name}
+        regels={[
+          ["Wanneer", facts.when],
+          ["Waar", facts.place || "—"],
+          ["Van", facts.host],
+          ["Gasten", String(ev.members_count)],
+          ["Toegang", facts.open ? "open" : "op verzoek"],
+        ]}
+        omschrijving={facts.description}
+        cover={ev.cover_url ? { beeld: ev.cover_url, open: () => openLightbox({ uris: [ev.cover_url], author: ev.name, kind: "event", time: hhmm(ev.starts_at), title: ev.description ?? "" }) } : null}
+        gasten={memberList.map((m) => {
+          const n = m.profile?.display_name ?? m.profile?.username ?? "?";
+          return { naam: n, beeld: m.profile?.avatar_url, kleur: lincKleur(m.user_id), initiaal: n.slice(0, 1).toUpperCase() };
+        })}
+        gastenOpen={() => setGuestsOpen(true)}
+        antwoord={mine === "yes" || mine === "maybe" ? mine : null}
+        kom={() => rsvp.answer(eventId, mine === "yes" ? null : "yes")}
+        misschien={() => rsvp.answer(eventId, mine === "maybe" ? null : "maybe")}
+        telling={tally}
+        voorbij={isPast}
+        voegToe={voegToe.onPress}
+        voegToeTekst={voegToe.label}
+        voegToeUit={voegToe.disabled}
+        handelingen={actions.slice(0, -1).map((a) => ({ label: a.label, doe: a.onPress }))}
+        fout={error}
+        melding="Foto's en video's van een event zijn niet end-to-end versleuteld, zoals je gesprekken wel zijn."
+        leeg={
+          !revealed
+            ? {
+                titel: "Nog niet te zien",
+                tekst: `${
+                  ev.reveal === "after"
+                    ? "De foto's komen tevoorschijn na afloop."
+                    : ev.reveal === "delayed"
+                      ? `De foto's komen tevoorschijn ${ev.reveal_delay_hours} uur na afloop.`
+                      : "De foto's worden zichtbaar tijdens het event."
+                } Toevoegen kan nu al.`,
+              }
+            : null
+        }
+        fotos={contribs.map((c) => ({
+          id: c.id,
+          beeld: c.image_url ?? null,
+          video: c.media_type === "video",
+          tekst: c.caption ?? c.link_url ?? "",
+          wie: c.user_id === myUserId ? t.me : (c.author?.display_name ?? c.author?.username ?? "Onbekend"),
+          tijd: hhmm(c.created_at),
+          open: c.media_type !== "video" && c.image_url ? () => openPhoto(c) : undefined,
+          verwijder: c.user_id === myUserId || ev.is_host ? () => onDeleteContribution(c) : undefined,
+        }))}
+        lagen={lagen}
+      />
+    );
+  }
 
   // Catalogus: het event als voorwerp met zijn kaartje, en de bijdragen in het raster van de home.
   if (catalogus && !desktop) {

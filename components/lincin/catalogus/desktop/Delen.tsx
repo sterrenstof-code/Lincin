@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { tokenize } from "@/components/MentionsText";
 import { openExternal } from "@/lib/safe-url";
@@ -28,7 +28,7 @@ export function Pic({
   meet,
   picRef,
 }: {
-  stuk: Pick<DStuk, "beeld" | "voorwerp">;
+  stuk: Pick<DStuk, "beeld" | "voorwerp"> & { fotos?: number };
   b: number;
   h: number;
   style?: CSSProperties;
@@ -39,6 +39,7 @@ export function Pic({
   return (
     <span ref={picRef} className="pic" data-meet={meet} style={{ width: b, height: h, ...style }}>
       {stuk.beeld ? <img src={stuk.beeld} alt="" draggable={false} /> : null}
+      {stuk.fotos && stuk.fotos > 1 ? <AlbumTeken n={stuk.fotos} /> : null}
       {!stuk.beeld && v ? (
         <span className="ding" style={{ width: v.b, height: v.h, transform: `scale(${Math.min(b / v.b, h / v.h)})` }}>
           {v.node}
@@ -173,6 +174,73 @@ export function TekstMetNamen({ tekst, profiel }: { tekst: string; profiel?: (ge
           <span key={i}>{d.type === "mention" ? `@${d.value}` : d.value}</span>
         ),
       )}
+    </>
+  );
+}
+
+/** Een album: twee gestapelde vlakken en het aantal foto's, rechtsboven op de foto. */
+export function AlbumTeken({ n }: { n: number }) {
+  return (
+    <span className="album" aria-label={`${n} foto's`} data-meet="album">
+      <svg aria-hidden="true" width={13} height={13} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth={1.4}>
+        <rect x="0.7" y="3.7" width="8.6" height="8.6" />
+        <path d="M3.7 3.7V.7h8.6v8.6H9.3" />
+      </svg>
+      {n}
+    </span>
+  );
+}
+
+/**
+ * Hartje en reacties onder een stuk, klein. Het hartje werkt meteen; de ballon
+ * opent het stuk. Een klik erop gaat niet ook naar het stuk eromheen.
+ */
+export function KleineActies({ hartjes, vindIkLeuk, reacties, leuk, reageer }: { hartjes: number; vindIkLeuk: boolean; reacties: number; leuk?: () => void; reageer?: () => void }) {
+  const stop = (doe?: () => void) => ({
+    onClick: (e: { preventDefault: () => void; stopPropagation: () => void }) => {
+      e.preventDefault();
+      e.stopPropagation();
+      doe?.();
+    },
+    onKeyDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+  });
+  return (
+    <span className="kleine-acties" data-meet="acties">
+      <button aria-pressed={vindIkLeuk} aria-label="Vind ik leuk" {...stop(leuk)}>
+        <Hart aan={vindIkLeuk} maat={16} />
+        {hartjes}
+      </button>
+      <button aria-label="Reacties" {...stop(reageer)}>
+        <Ballon maat={16} />
+        {reacties}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Een raster van vakken van minstens 220 breed: hoeveel lege vakken de laatste
+ * rij nodig heeft, zodat daar het vlak staat en geen gat in de naad.
+ */
+export function useLegeVakken(aantal: number): [React.RefObject<HTMLDivElement | null>, number] {
+  const ref = useRef<HTMLDivElement>(null);
+  const [kolommen, setKolommen] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setKolommen(Math.max(1, Math.floor((el.clientWidth + 2) / 222))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [aantal]);
+  return [ref, (kolommen - (aantal % kolommen)) % kolommen];
+}
+
+export function LegeVakken({ n }: { n: number }) {
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <span key={`leeg${i}`} style={{ background: "var(--g)" }} aria-hidden="true" />
+      ))}
     </>
   );
 }

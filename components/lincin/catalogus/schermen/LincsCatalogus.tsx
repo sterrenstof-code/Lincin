@@ -17,9 +17,9 @@ import { LincsView } from "./LijstViews";
  * aantal bijdragen dat je van hem nog niet zag. "+" en het laatste vak
  * openen het toevoegen (QR, je link, een naam zoeken) van het gewone scherm.
  */
-export function LincsCatalogus({ lincs, toevoegen }: { lincs: FriendshipWithProfile[]; toevoegen: () => void }) {
+/** Per linc: hoeveel bijdragen je van hem nog niet zag; telefoon en desktop. */
+export function useLincsRijen(lincs: FriendshipWithProfile[]) {
   const router = useRouter();
-  const terug = useTerug("/profile");
   const { session } = useAuth();
   const me = session?.user.id ?? "";
   const feed = useQuery({ queryKey: ["unified-feed", me], queryFn: () => listUnifiedFeed(me), enabled: !!me, staleTime: 30_000 });
@@ -35,7 +35,24 @@ export function LincsCatalogus({ lincs, toevoegen }: { lincs: FriendshipWithProf
     return m;
   }, [feed.data, isSeen, me]);
   const totaal = [...nieuw.values()].reduce((a, b) => a + b, 0);
+  const rijen = lincs.map((f) => {
+    const naam = displayName(f.other);
+    const n = nieuw.get(f.other.id) ?? 0;
+    return {
+      id: f.id,
+      naam,
+      gebruiker: f.other.username,
+      nieuw: n ? String(n) : "—",
+      linc: { beeld: f.other.avatar_url, kleur: lincKleur(f.other.id), initiaal: naam.slice(0, 1).toUpperCase() },
+      open: () => (f.other.username ? router.push(`/user/${f.other.username}` as never) : undefined),
+    };
+  });
+  return { rijen, totaal };
+}
 
+export function LincsCatalogus({ lincs, toevoegen }: { lincs: FriendshipWithProfile[]; toevoegen: () => void }) {
+  const terug = useTerug("/profile");
+  const { rijen, totaal } = useLincsRijen(lincs);
   return (
     <LincsView
       regels={[
@@ -45,17 +62,7 @@ export function LincsCatalogus({ lincs, toevoegen }: { lincs: FriendshipWithProf
       ]}
       terug={terug}
       toevoegen={toevoegen}
-      lincs={lincs.map((f) => {
-        const naam = displayName(f.other);
-        const n = nieuw.get(f.other.id) ?? 0;
-        return {
-          id: f.id,
-          naam,
-          nieuw: n ? String(n) : "—",
-          linc: { beeld: f.other.avatar_url, kleur: lincKleur(f.other.id), initiaal: naam.slice(0, 1).toUpperCase() },
-          open: () => (f.other.username ? router.push(`/user/${f.other.username}` as never) : undefined),
-        };
-      })}
+      lincs={rijen}
     />
   );
 }

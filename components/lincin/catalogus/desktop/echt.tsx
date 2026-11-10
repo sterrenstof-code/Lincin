@@ -23,6 +23,12 @@ import type { AttachmentInfo } from "@/lib/api/messages";
 import { JijDesktop, type JijIngang, type JijStuk } from "./JijDesktop";
 import { MeldingenDesktop, type MeldingDesktop } from "./MeldingenDesktop";
 import { NieuwDesktop } from "./NieuwDesktop";
+import { InstellingenDesktop } from "./InstellingenDesktop";
+import { LincsDesktop } from "./LincsDesktop";
+import { EventDesktop } from "./EventDesktop";
+import { useLincsRijen } from "../schermen/LincsCatalogus";
+import type { FriendshipWithProfile } from "@/lib/api/friends";
+import type { Instelling } from "../schermen/OverigeViews";
 import type { Compose } from "@/app/post-compose";
 import { DesktopPagina } from "./Pagina";
 import { Kop } from "./Kader";
@@ -195,6 +201,7 @@ export function FeedDesktopEcht({ startOpen = null, naSluiten }: { startOpen?: s
       hartjes: hart?.count ?? 0,
       vindIkLeuk: !!hart?.mine,
       reacties: c.commentCount,
+      fotos: c.media.kind === "foto" ? c.media.uris.length : undefined,
       eigenPagina: c.kind === "poll" ? () => f.openPost(c) : undefined,
     };
   });
@@ -463,6 +470,7 @@ function useMijnStukken(kaarten: CardPost[]): JijStuk[] {
       datum: datumVan(c),
       beeld,
       voorwerp: ding,
+      fotos: c.media.kind === "foto" ? c.media.uris.length : undefined,
       b: beeld ? 400 * r : ding!.b,
       h: beeld ? 400 : ding!.h,
       open: () => router.push((c.kind === "poll" ? c.href : `/post/${c.id}?pagina=1`) as never),
@@ -604,5 +612,52 @@ export function KolomKop({ pad, voorbeeld = false }: { pad: string; /** Testpagi
         knop={<WeergaveKnop weergave={k.weergave} open={menu} zetOpen={setMenu} kies={k.kiesWeergave} stand={k.stand} kiesStand={k.kiesStand} />}
       />
     </div>
+  );
+}
+
+/** Instellingen op desktop: dezelfde regels als op de telefoon, per groep. */
+export function InstellingenDesktopEcht({ kop, regels }: { kop: [string, string][]; regels: Instelling[] }) {
+  const k = useKader();
+  const nav = useNav();
+  return (
+    <DesktopPagina {...k} nav={nav} actief="you">
+      <InstellingenDesktop kop={kop} regels={regels} />
+    </DesktopPagina>
+  );
+}
+
+/** Mijn lincs op desktop. "+" opent het toevoegen van het gewone scherm, in de kolom eronder. */
+export function LincsDesktopEcht({ lincs, toevoegen }: { lincs: FriendshipWithProfile[]; toevoegen: () => void }) {
+  const k = useKader();
+  const nav = useNav();
+  const { rijen, totaal } = useLincsRijen(lincs);
+  return (
+    <DesktopPagina {...k} nav={nav} actief="you">
+      <LincsDesktop lincs={rijen} totaal={totaal} toevoegen={toevoegen} />
+    </DesktopPagina>
+  );
+}
+
+/** Een scherm van de telefoon in de kolom van 430, onder het kader van desktop (toevoegen bij mijn lincs). */
+export function KolomInKader({ children, actief = null }: { children: ReactNode; actief?: Tab | null }) {
+  const k = useKader();
+  const nav = useNav();
+  return (
+    <DesktopPagina {...k} nav={nav} actief={actief}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", background: "var(--seam)" }}>
+        <div style={{ width: 430, display: "flex", flexDirection: "column", minHeight: 0 }}>{children}</div>
+      </div>
+    </DesktopPagina>
+  );
+}
+
+/** Een event op desktop: het event links, de foto's en video's rechts. */
+export function EventDesktopEcht(props: Parameters<typeof EventDesktop>[0]) {
+  const k = useKader();
+  const nav = useNav();
+  return (
+    <DesktopPagina {...k} nav={nav} actief="events">
+      <EventDesktop {...props} />
+    </DesktopPagina>
   );
 }

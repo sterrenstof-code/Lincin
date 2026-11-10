@@ -32,6 +32,8 @@ import { useIsDesktop } from "@/lib/lincin/desktop";
 import { useFriendsModel } from "@/lib/lincin/friends-model";
 import { usePageTitle } from "@/lib/page-title";
 import { LincsCatalogus } from "@/components/lincin/catalogus/schermen/LincsCatalogus";
+import { KolomInKader, LincsDesktopEcht } from "@/components/lincin/catalogus/desktop/echt";
+import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
 import { useThemeSpec } from "@/lib/design/theme";
 import { useState } from "react";
 
@@ -59,14 +61,17 @@ export default function FriendsScreen() {
   // Catalogus toont eerst de lincs als raster; "+" opent dit scherm om er een toe te voegen.
   const catalogus = useThemeSpec().layout === "catalogus";
   const [toevoegen, setToevoegen] = useState(false);
+  const catalogusDesktop = useCatalogusDesktop();
 
   // Op het brede scherm woont Lincs in de Lincin-rail, net als Jij waar het
   // onder valt. Stond hier niet: Jij → Mijn lincs wisselde je midden in een
   // handeling naar een andere navigatie, zonder weg terug naar Jij.
   if (desktop) return <DesktopFriends />;
+  // Catalogus op desktop: de lincs als vakken; toevoegen in de kolom onder het kader.
+  if (catalogusDesktop && !toevoegen) return <LincsDesktopEcht lincs={accepted} toevoegen={() => setToevoegen(true)} />;
   if (catalogus && !toevoegen) return <LincsCatalogus lincs={accepted} toevoegen={() => setToevoegen(true)} />;
 
-  return (
+  const inhoud = (
     <SafeAreaView className="flex-1 bg-feed-lav" edges={["top"]}>
       {/* Eén scroller voor de hele pagina; de kop plakt bovenaan.
           Geen ScreenContainer meer: dit ontwerp gebruikt de volle
@@ -346,6 +351,7 @@ export default function FriendsScreen() {
       </PageScroll>
     </SafeAreaView>
   );
+  return catalogusDesktop ? <KolomInKader actief="you">{inhoud}</KolomInKader> : inhoud;
 }
 
 /**
