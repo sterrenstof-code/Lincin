@@ -6,7 +6,7 @@ import { Kaartje, type Regel } from "../Kaartje";
 import { Kop, Meer } from "../Kop";
 import { Speel } from "../Pictogram";
 import { Scherm } from "../Scherm";
-import { kaartjeTekst, NAAD, tekst, titel, useCat } from "../stijl";
+import { KAARTJE_REGEL, kaartjeTekst, NAAD, tekst, titel, useCat } from "../stijl";
 import { Naad, Raster, Vak } from "../Vak";
 import { Foto, Golf, Linc, type Beeld } from "../Voorwerp";
 import type { LincBeeld } from "./LijstViews";
@@ -46,18 +46,16 @@ export function ProfielView({
   const c = useCat();
   return (
     <Scherm kop={<Kop links="terug" onLinks={terug} regels={kop} rechts={meer ? <Meer onPress={meer} /> : undefined} />}>
-      <Band style={{ height: 330, padding: 12, justifyContent: "space-between" }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      {/* Het ontwerp zet naam en bio naast elkaar; een lange naam werd dan afgekapt. Nu staat de naam
+          volledig over de breedte (op meer regels als het moet) en de bio eronder. */}
+      <Band style={{ paddingTop: 28, paddingHorizontal: 12, paddingBottom: 16, rowGap: 10 }}>
+        <View style={{ alignItems: "center", marginBottom: 14 }}>
           {beeld.beeld ? <Foto b={160} h={210} beeld={beeld.beeld} /> : <Linc maat={160} letterMaat={52} {...beeld} style={{ height: 210 }} testID="voorwerp" />}
         </View>
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", columnGap: 12 }}>
-          <Text numberOfLines={1} style={[titel(52, 0.86), { color: c.inkt, flexShrink: 1 }]}>
-            {naam}
-          </Text>
-          <Text numberOfLines={4} style={[tekst(13, 400, 1.35), { color: c.inkt, width: 170, flexShrink: 0 }]}>
-            {bio}
-          </Text>
-        </View>
+        <Text accessibilityRole="header" style={[titel(52, 0.92), { color: c.inkt }]}>
+          {naam}
+        </Text>
+        {bio ? <Text style={[tekst(14, 400, 1.35), { color: c.inkt }]}>{bio}</Text> : null}
       </Band>
       {knoppen.length ? (
         <View testID="band" style={{ flexDirection: "row", columnGap: NAAD, backgroundColor: c.naad, borderTopWidth: NAAD, borderTopColor: c.naad }}>
@@ -68,7 +66,8 @@ export function ProfielView({
       ) : null}
       <Raster>
         {stukken.map((s) => (
-          <Vak key={s.id} hoogte={280} regels={s.regels} label={s.label} onPress={s.open}>
+          // 280 voor de drie regels van het ontwerp; een regel meer (de interacties) maakt het vak een regel hoger.
+          <Vak key={s.id} hoogte={280 + Math.max(0, s.regels.length - 3) * KAARTJE_REGEL} regels={s.regels} label={s.label} onPress={s.open}>
             {s.voorwerp}
           </Vak>
         ))}

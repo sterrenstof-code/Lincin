@@ -41,7 +41,7 @@ export function CardVoorwerp({ card, plek }: { card: CardPost; plek: Plek }) {
     case "foto":
       return <Foto b={foto.b} h={foto.h} beeld={m.uri} cacheKey={m.cacheKey} />;
     case "tekst":
-      return <TekstBlad tekst={m.text || card.title} maat={blad} />;
+      return <TekstBlad tekst={m.text || card.title} maat={blad} pagineer={plek === "bijdrage" || plek === "bijdrageActief"} />;
     case "poll":
       return <PollVoorwerp card={card} maat={blad} />;
     case "muziek":

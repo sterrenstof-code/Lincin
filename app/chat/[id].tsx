@@ -135,7 +135,7 @@ import { Kop as CatKop, Meer } from "@/components/lincin/catalogus/Kop";
 import { Naad } from "@/components/lincin/catalogus/Vak";
 import { safeBack } from "@/lib/nav";
 import { Linc } from "@/components/lincin/catalogus/Voorwerp";
-import { hueKleur, lincKleur } from "@/components/lincin/catalogus/stijl";
+import { hueKleur, lincKleur, tekst as catTekst, useCat } from "@/components/lincin/catalogus/stijl";
 
 /**
  * De leesmaat van een gesprek.
@@ -3368,6 +3368,9 @@ const MessageBubble = memo(function MessageBubble({
   const modern = useThemeSpec().layout === "bento";
   // Magazine (de omslag): een haarlijn van 1 en de tekst in serif.
   const mag = useThemeSpec().layout === "spread";
+  // Catalogus (ontwerp 07): geen kader; de jouwe een inktvlak, die van de ander een kaart op het grijze vlak.
+  const catalogus = useThemeSpec().layout === "catalogus";
+  const cat = useCat();
   const emojiOnly = !!content?.text && /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text);
   // Een avatar-slot links van elk inkomend bericht — in een groep én met
   // één persoon (Gesprek Voorbeeld); de avatar zelf alleen bij het laatste
@@ -3559,10 +3562,17 @@ const MessageBubble = memo(function MessageBubble({
               }
             : null,
           fill && !failed ? { backgroundColor: fill.fill } : null,
+          catalogus
+            ? {
+                borderWidth: selected && accent ? 1.5 : 0,
+                borderColor: accent,
+                backgroundColor: failed ? cat.gevaar : isMine ? cat.inkt : cat.kaart,
+              }
+            : null,
         ]}
         className={`${
           hasAttachment ? "" : content?.reply ? "pt-0 pb-2.5" : "px-4 py-2.5"
-        } ${modern ? "" : failed ? "bg-flame" : isMine ? "bg-ink" : "bg-page-alt"}`}
+        } ${modern || catalogus ? "" : failed ? "bg-flame" : isMine ? "bg-ink" : "bg-page-alt"}`}
       >
         {content === null ? (
           msg.pendingRekey ? (
@@ -3708,6 +3718,7 @@ const MessageBubble = memo(function MessageBubble({
                     // koppen en namen.
                     mag && !emojiOnly ? { ...sans(), fontSize: 16, lineHeight: 22 } : null,
                     fill ? { color: fill.ink } : null,
+                    catalogus ? { ...(emojiOnly ? null : catTekst(16, 400, 1.35)), color: isMine ? cat.tekstOpInkt : cat.inkt } : null,
                   ]}
                   className={`${
                     /^[\p{Extended_Pictographic}\u200d\ufe0f\s]{1,6}$/u.test(content.text!)
@@ -3823,6 +3834,8 @@ const MessageBubble = memo(function MessageBubble({
                 borderWidth: 1,
                 borderColor: color("ink", "postRule"),
                 backgroundColor: color("paper"),
+                // Catalogus: een kaartje met de naad van het vlak eromheen, zodat het los van de bubbel ligt.
+                ...(catalogus ? { borderWidth: 2, borderColor: cat.naad, backgroundColor: cat.kaart } : null),
               }}
             >
               <Text style={{ fontSize: 12, lineHeight: 15 }}>{r.emoji}</Text>

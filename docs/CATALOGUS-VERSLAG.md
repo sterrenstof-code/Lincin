@@ -180,3 +180,14 @@ npm run catalogus:vergelijk -- --stand=donker
 ```
 
 Uitvoer in `tmp/catalogus/`: per scherm en stand de eigen afbeelding, het verschilbeeld en `verslag.json`.
+
+## Aanpassingen na de oplevering (10 nov 2026)
+
+Op verzoek, na het nalopen op lincin.vercel.app:
+
+- **Profiel (06): bewust anders dan het ontwerp.** De naam staat volledig over de breedte onder de foto (op meer regels als het moet), de bio eronder. In het ontwerp staan ze naast elkaar en werd een lange naam afgekapt. Daardoor slaagt `06-profiel` niet meer tegen de referentie (11–16 %); de andere 36 slagen. De drempels en referentiebeelden zijn niet aangepast.
+- Profiel: elk vak heeft twee regels meer, Leuk en Reacties; het vak groeit mee.
+- Bijdrage: een tekst staat volledig op het blad, in bladzijden met ← n / m →.
+- Gesprek: de titel opent de groepsinfo (of het profiel); de groepsinfo heeft een catalogusvorm met alle leden. Berichten zonder kader: de jouwe inkt, die van de ander een kaart.
+- Kop: het + staat 2 px hoger, even hoog als ✳.
+- Raster: de lege helft van een halve rij is vlak in plaats van wit.

@@ -1,5 +1,5 @@
 import { Image, type ImageSource } from "expo-image";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { CATALOGUS } from "@/lib/design/theme";
@@ -108,13 +108,72 @@ function Blad({ children, donker = false, maat, style }: { children: ReactNode; 
   );
 }
 
-export function TekstBlad({ tekst: t, maat }: { tekst: string; maat?: Maat }) {
+export function TekstBlad({ tekst: t, maat, pagineer = false }: { tekst: string; maat?: Maat; pagineer?: boolean }) {
   const c = useCat();
+  if (pagineer) return <TekstBladen tekst={t} maat={maat ?? { b: 150, h: 180 }} />;
   return (
     <Blad maat={maat}>
       <Text style={[titel(19, 1.15), { color: c.inkt }]} numberOfLines={7}>
         {t}
       </Text>
+    </Blad>
+  );
+}
+
+const BLADEN_REGEL = 19 * 1.15;
+const BLADEN_BALK = 44;
+
+/**
+ * De hele tekst op het blad, in bladzijden (de bijdrage zelf). Het blad
+ * houdt zijn maat; de tekst schuift per bladzijde een veelvoud van de
+ * regelhoogte op, zodat er nooit een halve regel staat. Onderaan ← n / m →
+ * zodra de tekst niet op één bladzijde past.
+ */
+function TekstBladen({ tekst: t, maat }: { tekst: string; maat: Maat }) {
+  const c = useCat();
+  const [hoogte, setHoogte] = useState(0);
+  const [blz, setBlz] = useState(0);
+  useEffect(() => setBlz(0), [t]);
+
+  const binnen = maat.h - 20;
+  const regels = (ruimte: number) => Math.max(1, Math.floor(ruimte / BLADEN_REGEL));
+  const past = hoogte <= regels(binnen) * BLADEN_REGEL + 1;
+  const perBlz = regels(past ? binnen : binnen - BLADEN_BALK) * BLADEN_REGEL;
+  const aantal = past ? 1 : Math.ceil((hoogte - 1) / perBlz);
+  const nu = Math.min(blz, aantal - 1);
+
+  const pijl = (richting: -1 | 1) => {
+    const kan = richting < 0 ? nu > 0 : nu < aantal - 1;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={richting < 0 ? "Vorige bladzijde" : "Volgende bladzijde"}
+        accessibilityState={{ disabled: !kan }}
+        disabled={!kan}
+        onPress={() => setBlz(nu + richting)}
+        style={{ width: 44, height: BLADEN_BALK, alignItems: richting < 0 ? "flex-start" : "flex-end", justifyContent: "center", opacity: kan ? 1 : 0.3 }}
+      >
+        <Text style={[tekst(18), { color: c.inkt }]}>{richting < 0 ? "←" : "→"}</Text>
+      </Pressable>
+    );
+  };
+
+  return (
+    <Blad maat={maat} style={{ justifyContent: "flex-start" }}>
+      <View style={{ height: perBlz, overflow: "hidden" }}>
+        <View style={{ position: "absolute", left: 0, right: 0, top: -nu * perBlz }}>
+          <Text selectable onLayout={(e) => setHoogte(e.nativeEvent.layout.height)} style={[titel(19, 1.15), { color: c.inkt }]}>
+            {t}
+          </Text>
+        </View>
+      </View>
+      {aantal > 1 ? (
+        <View style={{ marginTop: "auto", height: BLADEN_BALK, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          {pijl(-1)}
+          <Text accessibilityLiveRegion="polite" style={[kaartjeTekst, { color: c.label }]}>{`${nu + 1} / ${aantal}`}</Text>
+          {pijl(1)}
+        </View>
+      ) : null}
     </Blad>
   );
 }

@@ -117,7 +117,8 @@ export function Raster({ children, style }: { children: ReactNode; style?: Style
         ) : (
           <View key={i} style={{ flexDirection: "row", columnGap: NAAD }}>
             <View style={{ flex: 1, minWidth: 0 }}>{rij[0]}</View>
-            <View style={{ flex: 1, minWidth: 0 }}>{rij[1] ?? null}</View>
+            {/* Een halve rij: de lege helft is vlak, geen naad. */}
+            <View style={{ flex: 1, minWidth: 0, backgroundColor: rij[1] ? undefined : c.vlak }}>{rij[1] ?? null}</View>
           </View>
         ),
       )}

@@ -5,6 +5,7 @@ import { CATALOGUS } from "@/lib/design/theme";
 import { Invoer } from "../Delen";
 import { Plus } from "../Kop";
 import { Foto, KleurVlak, LinkBlad, MuziekBlad, Plaatshouder, PlekKaart, PollBlad, SpraakBlad, TekstBlad } from "../Voorwerp";
+import { View } from "react-native";
 import { GesprekView, InstellingenView, NieuwFotoView, NieuwSoortView, ProfielView, SoortenView, type Soort } from "../schermen/OverigeViews";
 import { HomeView, type HomeHandelingen, type HomeStuk } from "../schermen/HomeView";
 import { BijdrageView, type BijdrageDoe, type Reactie } from "../schermen/BijdrageView";
@@ -584,6 +585,20 @@ export const VOORBEELDEN: Record<string, Voorbeeld> = {
           { id: "5", naam: "Lotte", nieuw: "—", linc: { beeld: BEELD.koffie, initiaal: "L" }, open: niets },
         ]}
       />
+    ),
+  },
+  // Geen ontwerp en geen referentie: een lange tekst in bladzijden, zoals op de bijdrage.
+  "tekst-bladen": {
+    render: () => (
+      <View style={{ padding: 28, alignItems: "center", backgroundColor: "transparent" }}>
+        <TekstBlad
+          pagineer
+          maat={{ b: 260, h: 312 }}
+          tekst={
+            "Eigelijk schrijf ik u enkel omdat er grote dingen staan te gebeuren en wel door toedoen van het echtpaar Röhrig.\n    Je moet weten dat de poes van de grootouders van mijn vrouw gestorven is. Een droevige zaak, maar het leven gaat door, en zo kwam het dat de vossen op een ochtend aan de deur stonden met een thermos en drie bekers. Niemand had ze uitgenodigd. Niemand durfde ze weg te sturen.\n    Ze zetten koffie, sterk en zonder suiker, en vertelden over de winter die eraan kwam. EINDE."
+          }
+        />
+      </View>
     ),
   },
   // Geen ontwerp en geen referentie: alleen om de groepspagina te bekijken.

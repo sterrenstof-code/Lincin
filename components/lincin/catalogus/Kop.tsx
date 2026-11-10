@@ -91,7 +91,8 @@ export function Plus({ label = "Nieuwe bijdrage", klein = false, onPress }: { la
   const c = useCat();
   return (
     <KopKnop label={label} onPress={onPress}>
-      <Text style={{ ...letter(klein ? 400 : 200), fontSize: klein ? 22 : 26, color: c.inkt }}>+</Text>
+      {/* Het + zit in Archivo 2 px onder het midden; zo staat het even hoog als ✳ ernaast. */}
+      <Text style={{ ...letter(klein ? 400 : 200), fontSize: klein ? 22 : 26, color: c.inkt, transform: [{ translateY: -2 }] }}>+</Text>
     </KopKnop>
   );
 }

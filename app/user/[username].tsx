@@ -23,6 +23,7 @@ import { sans, serif } from "@/lib/design/type";
 import { Label as OLabel, Ser } from "@/components/lincin/magazine/Omslag";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, fromPost, shortDate, type CardPost } from "@/lib/lincin/model";
+import { LIKE } from "@/lib/lincin/likes";
 import { usePostReactions } from "@/lib/lincin/reactions";
 import { DesktopProfile } from "@/components/lincin/desktop/DesktopProfile";
 import { openPost as openPostAnywhere, openThread, useIsDesktop } from "@/lib/lincin/desktop";
@@ -212,6 +213,8 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
               { label: "Titel", waarde: titelVan(c) },
               { label: "Soort", waarde: c.kind },
               { label: "Datum", waarde: datumVan(c) },
+              { label: "Leuk", waarde: String(reactions.grouped(c.id).find((g) => g.emoji === LIKE)?.count ?? 0) },
+              { label: "Reacties", waarde: String(c.commentCount) },
             ],
             label: titelVan(c),
             open: () => {
