@@ -12,14 +12,16 @@ import type { PaneelInhoud, PaneelNav } from "./typen";
  *
  * Het stuk:
  *   foto    alle foto's onder elkaar, zo groot als het vlak toelaat
- *   tekst   een leeskolom van hoogstens 640, de hele tekst zonder bladzijden
+ *   tekst   een artikel: geen kader, een leeskolom van hoogstens 680 met een
+ *           regel, de titel groot, het onderschrift als inleiding, en de
+ *           tekst in alinea's zoals in een boek (Artikel)
  *   anders  het voorwerp van de telefoon, anderhalf keer zo groot
  * Bijschrift en lopende tekst van een foto staan eronder, in dezelfde kolom.
  */
 
 export type BijdrageStuk =
   | { soort: "foto"; fotos: string[] }
-  | { soort: "tekst"; tekst: string }
+  | { soort: "tekst"; tekst: string; titel: string; regel: string }
   | { soort: "voorwerp"; node: ReactNode; b: number; h: number };
 
 export function BijdragePagina({
@@ -66,15 +68,13 @@ export function BijdragePagina({
               />
             ))
           ) : stuk.soort === "tekst" ? (
-            <div style={{ width: "100%", maxWidth: 640, background: "var(--card)", padding: "40px 44px", fontSize: 21, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "break-word" }} data-meet="bijdrage-tekst">
-              <TekstMetNamen tekst={stuk.tekst} profiel={profiel} />
-            </div>
+            <Artikel stuk={stuk} inleiding={onder} profiel={profiel} />
           ) : (
             <span style={{ width: stuk.b * 1.5, height: stuk.h * 1.5, flex: "none", position: "relative" }}>
               <span style={{ position: "absolute", left: 0, top: 0, width: stuk.b, height: stuk.h, transform: "scale(1.5)", transformOrigin: "0 0" }}>{stuk.node}</span>
             </span>
           )}
-          {onder ? (
+          {onder && stuk.soort !== "tekst" ? (
             <div style={{ width: "100%", maxWidth: 640, fontSize: 17, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "break-word" }} data-meet="bijdrage-onder">
               <TekstMetNamen tekst={onder} profiel={profiel} />
             </div>
@@ -93,5 +93,54 @@ export function BijdragePagina({
         )}
       </aside>
     </div>
+  );
+}
+
+/**
+ * Een tekst als artikel. Een regel tekst is een alinea; een volgende alinea
+ * springt in, zoals in een boek, en een lege regel geeft een witregel
+ * (zoals de schrijver ze typte). De eerste letter staat groot.
+ */
+function Artikel({
+  stuk,
+  inleiding,
+  profiel,
+}: {
+  stuk: { tekst: string; titel: string; regel: string };
+  inleiding?: string;
+  profiel?: (gebruiker: string) => void;
+}) {
+  const regels = stuk.tekst.replace(/\r/g, "").split("\n");
+  const alineas: { tekst: string; na: boolean }[] = [];
+  let witregel = false;
+  for (const r of regels) {
+    const t = r.trim();
+    if (!t) {
+      witregel = alineas.length > 0;
+      continue;
+    }
+    alineas.push({ tekst: t, na: witregel });
+    witregel = false;
+  }
+  return (
+    <article className="artikel" lang="nl" data-meet="bijdrage-tekst">
+      <header>
+        <span className="S dim">{stuk.regel}</span>
+        <h1 className="T">{stuk.titel}</h1>
+        {inleiding ? (
+          <p className="inleiding">
+            <TekstMetNamen tekst={inleiding} profiel={profiel} />
+          </p>
+        ) : null}
+      </header>
+      <div className="lijf">
+        {alineas.map((a, i) => (
+          <p key={i} className={i === 0 ? "eerste" : a.na ? "na-wit" : undefined}>
+            <TekstMetNamen tekst={a.tekst} profiel={profiel} />
+            {i === alineas.length - 1 ? <span className="slot" aria-hidden="true" /> : null}
+          </p>
+        ))}
+      </div>
+    </article>
   );
 }

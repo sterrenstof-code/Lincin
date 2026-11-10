@@ -74,6 +74,10 @@ export function FeedDesktop(props: FeedDesktopProps) {
         return;
       }
       if (timer.current) clearTimeout(timer.current);
+      // De focus niet op het stuk laten: zijn ring tekent om de plek waar het
+      // hing, niet om de foto die naar het midden gaat.
+      const actief = document.activeElement as HTMLElement | null;
+      if (actief?.closest?.('[data-meet="stuk"]')) actief.blur();
       setSluitend(null);
       if (!open) setSessie((n) => n + 1);
       setOpen(id);

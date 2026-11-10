@@ -36,6 +36,7 @@ export function GesprekkenDesktop({
   draad,
   invoer,
   gedeeld,
+  gedeeldAantal,
 }: {
   rijen: GesprekRij[];
   gekozen: string | null;
@@ -46,8 +47,10 @@ export function GesprekkenDesktop({
   draad: ReactNode;
   /** De invoer onder het gesprek, als de draad hem niet zelf heeft. */
   invoer?: ReactNode;
-  /** Wat in dit gesprek gedeeld is; null laat het blok weg. */
+  /** Wat in dit gesprek gedeeld is (een raster); null laat het blok weg. */
   gedeeld?: ReactNode;
+  /** Hoeveel er gedeeld is, rechts in de strook. */
+  gedeeldAantal?: number;
 }) {
   const g = rijen.find((r) => r.id === gekozen) ?? null;
   return (
@@ -128,8 +131,9 @@ export function GesprekkenDesktop({
           <>
             <div className="strip S" style={{ height: 40 }}>
               Gedeeld in dit gesprek
+              {gedeeldAantal ? <span className="dim">{gedeeldAantal}</span> : null}
             </div>
-            <div className="grid" style={{ flex: "none", gridTemplateColumns: "1fr 1fr" }}>
+            <div className="scroll" style={{ flex: "0 1 auto", minHeight: 0 }}>
               {gedeeld}
             </div>
           </>

@@ -110,6 +110,7 @@ export function BijdrageCatalogus({ id }: { id: string }) {
           leukReactie: (cid) => b.comments.toggleLike(cid),
           antwoord: b.antwoord,
           stopAntwoord: b.stopAntwoord,
+          profiel: (gebruiker) => router.push(`/user/${gebruiker}` as never),
           tekst: b.setDraft,
           stuur: b.stuur,
         }}

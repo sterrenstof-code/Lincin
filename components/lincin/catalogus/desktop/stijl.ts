@@ -36,6 +36,8 @@ export const CSS = `
 .cd input::placeholder{color:var(--two);opacity:1}
 .cd a:focus-visible,.cd button:focus-visible,.cd input:focus-visible,.cd [tabindex]:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
 .cd img{display:block}
+/* Het open stuk: geen focusring om zijn oude plek. */
+.cd .has-open [data-meet="stuk"][aria-current]:focus-visible{outline:none}
 .cd .app{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .cd .S{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;line-height:1.7}
 .cd .dim{color:var(--dim)}
@@ -91,10 +93,26 @@ export const CSS = `
 .cd .naam{font-weight:600}
 .cd .naam:hover{text-decoration:underline;text-underline-offset:3px}
 
+.cd .naarprofiel{display:inline-flex}
+.cd .naarprofiel:hover{text-decoration:underline;text-underline-offset:3px}
+.cd .naarprofiel.beeld{flex:none;align-self:flex-start}
+.cd .naarprofiel.beeld:hover{outline:2px solid var(--k);outline-offset:1px}
+
 /* naar de pagina van de bijdrage: de titel in het paneel en de open foto */
 .cd .naarpagina{cursor:pointer}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
 .cd .scrim.opfoto{cursor:zoom-in}
+
+/* een tekst als artikel (de bijdragepagina) */
+.cd .artikel{width:100%;max-width:680px;padding:24px 0 40px;color:var(--k)}
+.cd .artikel header{display:flex;flex-direction:column;gap:20px;padding-bottom:36px;margin-bottom:40px;border-bottom:2px solid var(--seam)}
+.cd .artikel h1{margin:0;font-size:clamp(48px,5.2vw,80px);overflow-wrap:break-word;text-wrap:balance}
+.cd .artikel .inleiding{margin:0;font-size:23px;line-height:1.4;color:var(--two);text-wrap:pretty}
+.cd .artikel .lijf p{margin:0;font-size:20px;line-height:1.65;text-indent:1.6em;hyphens:auto;-webkit-hyphens:auto;text-wrap:pretty;overflow-wrap:break-word}
+.cd .artikel .lijf p.eerste,.cd .artikel .lijf p.na-wit{text-indent:0}
+.cd .artikel .lijf p.na-wit{margin-top:1.65em}
+.cd .artikel .lijf p.eerste::first-letter{initial-letter:2;-webkit-initial-letter:2;font-weight:300;margin-right:.12em}
+.cd .artikel .slot{display:inline-block;width:.42em;height:.42em;margin-left:.4em;background:var(--k);vertical-align:.08em}
 
 /* het menu van je eigen bijdrage (⋯ in het paneel) */
 .cd .eigenmenu{position:absolute;right:6px;top:52px;width:260px;z-index:3;background:var(--card);color:var(--k);box-shadow:0 24px 60px rgba(20,18,16,.28);display:flex;flex-direction:column}

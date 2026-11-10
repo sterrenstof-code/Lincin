@@ -17,7 +17,9 @@ import { useBijdrage } from "../schermen/useBijdrage";
 import { BijdragePagina, type BijdrageStuk } from "./BijdragePagina";
 import { EventsDesktop, type EventRij, type Maand } from "./EventsDesktop";
 import { FeedDesktop } from "./FeedDesktop";
+import { GedeeldeBeelden } from "./GedeeldeBeelden";
 import { GesprekkenDesktop, type GesprekRij } from "./GesprekkenDesktop";
+import type { AttachmentInfo } from "@/lib/api/messages";
 import { JijDesktop, type JijIngang, type JijStuk } from "./JijDesktop";
 import { DesktopPagina } from "./Pagina";
 import { Paneel } from "./Paneel";
@@ -259,6 +261,7 @@ function paneelInhoud(b: Bijdrage, router: ReturnType<typeof useRouter>, stuk?: 
           tekst: r.tekst,
           linc: { beeld: typeof r.linc.beeld === "string" ? r.linc.beeld : null, kleur: r.linc.kleur ?? null, initiaal: r.linc.initiaal },
           antwoord: r.antwoord,
+          gebruiker: r.gebruiker,
         }))
       : [],
     meer,
@@ -310,11 +313,12 @@ export function BijdragePaginaEcht({ id }: { id: string }) {
   const b = useBijdrage(id, { naVerwijderen: terug });
   const { card } = b;
   const profiel = (gebruiker: string) => router.push(`/user/${gebruiker}` as never);
-  let stuk: BijdrageStuk = { soort: "tekst", tekst: "" };
+  let stuk: BijdrageStuk = { soort: "tekst", tekst: "", titel: "", regel: "" };
   if (card) {
     const m = card.media;
     if (m.kind === "foto") stuk = { soort: "foto", fotos: m.uris.filter((u): u is string => !!u) };
-    else if (m.kind === "tekst") stuk = { soort: "tekst", tekst: m.text || card.body || card.title };
+    else if (m.kind === "tekst")
+      stuk = { soort: "tekst", tekst: m.text || card.body || card.title, titel: card.title, regel: `${soortVan(card)} · ${b.naam} · ${datumVan(card)}` };
     else {
       const kleur = m.kind === "kleur";
       stuk = { soort: "voorwerp", node: <CardVoorwerp card={card} plek="bijdrage" />, b: kleur ? 290 : 260, h: kleur ? 370 : 312 };
@@ -364,18 +368,29 @@ export function GesprekkenDesktopEcht({
   ongelezen,
   stand,
   draad,
+  gedeeld,
 }: {
   rijen: GesprekRij[];
   gekozen: string | null;
   ongelezen: number;
   stand?: string | null;
   draad: ReactNode;
+  /** Het gedeelde beeld van het open gesprek (uit `ChatDetail`, `onMedia`). */
+  gedeeld?: AttachmentInfo[];
 }) {
   const k = useKader();
   const nav = useNav();
   return (
     <DesktopPagina {...k} nav={nav} actief="chats">
-      <GesprekkenDesktop rijen={rijen} gekozen={gekozen} ongelezen={ongelezen} stand={stand} draad={<div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{draad}</div>} />
+      <GesprekkenDesktop
+        rijen={rijen}
+        gekozen={gekozen}
+        ongelezen={ongelezen}
+        stand={stand}
+        draad={<div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{draad}</div>}
+        gedeeld={gedeeld?.length ? <GedeeldeBeelden media={gedeeld} naam={rijen.find((r) => r.id === gekozen)?.naam ?? ""} /> : null}
+        gedeeldAantal={gedeeld?.length}
+      />
     </DesktopPagina>
   );
 }

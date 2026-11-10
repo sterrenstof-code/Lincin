@@ -62,7 +62,7 @@ const LANGE_TEKST = [
   "Je moet weten dat de poes van de grootouders van mijn vrouw gestorven is. Een onaangename situatie natuurlijk, vooral voor de poes zelf, maar ook voor de opa en oma Röhrig, die er het hart van verloren.",
   "Men had de kat elke dag gewassen en doorgekamd, omdat de luizen zich verder dan de kat niet door het huis verspreidden. Daarom kon men het ook niet laten de kat elke dag te wassen en door te kammen, want het onvermogen van de luizen om zich verder dan de kat uit te breiden, werd toegeschreven aan de dagelijkse uitroeiing van het onzichtbare kwaad.",
   "Zo ging het de poes bijzonder slecht, en de vossen, die van dit alles niets wisten, zetten intussen koffie.",
-].join("\n\n");
+].join("\n   ");
 
 /** Een bijdrage zoals `getPost` hem geeft, met de foto's van het voorbeeld. */
 function nepBijdrage(stuk: DStuk): PostWithAuthor {
@@ -273,8 +273,8 @@ export function DevDesktop() {
     return (
       <DesktopPagina {...paginaProps} actief="feed">
         <BijdragePagina
-          stuk={tekst ? { soort: "tekst", tekst } : { soort: "foto", fotos: [x.beeld!, beeld("prop-koffie.jpg")] }}
-          onder={tekst ? undefined : "Sante vanuit Spanje. Met dank aan @mie voor de tip: https://example.com/bar"}
+          stuk={tekst ? { soort: "tekst", tekst, titel: "De vossen maken koffie", regel: "tekst · Toysman de creator · 8 sep" } : { soort: "foto", fotos: [x.beeld!, beeld("prop-koffie.jpg")] }}
+          onder={tekst ? "Kortverhaal" : "Sante vanuit Spanje. Met dank aan @mie voor de tip: https://example.com/bar"}
           terug={() => setPagina("feed")}
           kop={[
             ["Bijdrage", tekst ? "8 sep" : x.datum],
@@ -367,20 +367,20 @@ export function DevDesktop() {
             />
           }
           gedeeld={
-            gesprek === 0 ? (
-              <GedeeldVak
-                nr="01"
-                soort="foto"
-                beeld={beeld("post-drank.jpg")}
-                rijen={[
-                  ["Wie", "Mie"],
-                  ["Titel", "18 okt"],
-                ]}
-                open={() => setPagina("feed")}
-              />
-            ) : (
-              <></>
-            )
+            <div className="grid" style={{ flex: "none", gridTemplateColumns: "1fr 1fr" }}>
+              {gesprek === 0 ? (
+                <GedeeldVak
+                  nr="01"
+                  soort="foto"
+                  beeld={beeld("post-drank.jpg")}
+                  rijen={[
+                    ["Wie", "Mie"],
+                    ["Titel", "18 okt"],
+                  ]}
+                  open={() => setPagina("feed")}
+                />
+              ) : null}
+            </div>
           }
         />
       </DesktopPagina>

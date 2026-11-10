@@ -36,6 +36,8 @@ export type Reactie = {
   linc: LincBeeld;
   /** Een antwoord: ingesprongen, zonder naad erboven. */
   antwoord: boolean;
+  /** De gebruikersnaam van de schrijver: zijn beeld en naam gaan naar zijn profiel. */
+  gebruiker?: string | null;
   hartjes: number;
   vindIkLeuk: boolean;
 };
@@ -53,6 +55,8 @@ export type BijdrageDoe = {
   leukReactie: (id: string) => void;
   antwoord: (id: string) => void;
   stopAntwoord: () => void;
+  /** Naar het profiel van iemand (een beeld of naam bij een reactie). */
+  profiel?: (gebruiker: string) => void;
   tekst: (v: string) => void;
   stuur: () => void;
   openLeukDoor?: () => void;
@@ -218,18 +222,33 @@ export function BijdrageView({
           <Text style={[tekst(13), { color: c.inkt, flexShrink: 1 }]}>{leukDoor.zin}</Text>
         </Band>
       ) : null}
-      {reacties.map((r) => (actief ? <ReactieActief key={r.id} r={r} doe={doe} /> : <ReactieRustig key={r.id} r={r} onPress={doe.wakker} />))}
+      {reacties.map((r) => (actief ? <ReactieActief key={r.id} r={r} doe={doe} /> : <ReactieRustig key={r.id} r={r} onPress={doe.wakker} profiel={doe.profiel} />))}
       {meer}
       {actief ? null : <Naad />}
     </Scherm>
   );
 }
 
-function Kopregel({ r }: { r: Reactie }) {
+/** Het beeld van wie reageerde; met een gebruikersnaam een knop naar zijn profiel. */
+function ReactieLinc({ r, maat, letterMaat, profiel }: { r: Reactie; maat: number; letterMaat: number; profiel?: (g: string) => void }) {
+  const beeld = <Linc maat={maat} letterMaat={letterMaat} {...r.linc} />;
+  if (!profiel || !r.gebruiker) return beeld;
+  const g = r.gebruiker;
+  return (
+    <Pressable accessibilityRole="link" accessibilityLabel={`Profiel van ${r.naam}`} onPress={() => profiel(g)} hitSlop={4}>
+      {beeld}
+    </Pressable>
+  );
+}
+
+function Kopregel({ r, profiel }: { r: Reactie; profiel?: (g: string) => void }) {
   const c = useCat();
+  const g = r.gebruiker;
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-      <Text style={[kaartjeTekst, { color: c.inkt }]}>{r.naam}</Text>
+      <Text style={[kaartjeTekst, { color: c.inkt }]} onPress={profiel && g ? () => profiel(g) : undefined} accessibilityRole={profiel && g ? "link" : undefined}>
+        {r.naam}
+      </Text>
       <Text style={[kaartjeTekst, { color: c.label }]}>{r.tijd}</Text>
     </View>
   );
@@ -246,15 +265,15 @@ function Draadlijn() {
   return <View pointerEvents="none" style={{ position: "absolute", left: 29, top: 0, bottom: 0, width: 2, backgroundColor: c.naad }} />;
 }
 
-function ReactieRustig({ r, onPress }: { r: Reactie; onPress: () => void }) {
+function ReactieRustig({ r, onPress, profiel }: { r: Reactie; onPress: () => void; profiel?: (g: string) => void }) {
   const c = useCat();
   if (r.antwoord) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${r.naam}: ${r.tekst}`} style={{ flexDirection: "row", columnGap: 12, paddingTop: 2, paddingRight: 12, paddingBottom: 12, paddingLeft: INSPRONG }}>
         <Draadlijn />
-        <Linc maat={32} letterMaat={11} {...r.linc} />
+        <ReactieLinc r={r} maat={32} letterMaat={11} profiel={profiel} />
         <View style={{ flex: 1, minWidth: 0, rowGap: 4 }}>
-          <Kopregel r={r} />
+          <Kopregel r={r} profiel={profiel} />
           <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
         </View>
       </Pressable>
@@ -262,9 +281,9 @@ function ReactieRustig({ r, onPress }: { r: Reactie; onPress: () => void }) {
   }
   return (
     <Band onPress={onPress} label={`${r.naam}: ${r.tekst}`} style={{ flexDirection: "row", columnGap: 12, padding: 12 }}>
-      <Linc maat={36} letterMaat={12} {...r.linc} />
+      <ReactieLinc r={r} maat={36} letterMaat={12} profiel={profiel} />
       <View style={{ flex: 1, minWidth: 0, rowGap: 4 }}>
-        <Kopregel r={r} />
+        <Kopregel r={r} profiel={profiel} />
         <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
       </View>
     </Band>
@@ -275,9 +294,9 @@ function ReactieActief({ r, doe }: { r: Reactie; doe: BijdrageDoe }) {
   const c = useCat();
   const inhoud = (
     <>
-      <Linc maat={32} letterMaat={11} {...r.linc} />
+      <ReactieLinc r={r} maat={32} letterMaat={11} profiel={doe.profiel} />
       <View style={{ flex: 1, minWidth: 0, rowGap: 2 }}>
-        <Kopregel r={r} />
+        <Kopregel r={r} profiel={doe.profiel} />
         <MentionsText text={r.tekst} style={[tekst(15, 400, 1.35), { color: c.inkt }]} />
         <View style={{ flexDirection: "row", alignItems: "center", columnGap: 4, marginLeft: -8 }}>
           <TelKnop label={r.vindIkLeuk ? "Vind reactie niet meer leuk" : "Vind reactie leuk"} aan={r.vindIkLeuk} onPress={() => doe.leukReactie(r.id)}>

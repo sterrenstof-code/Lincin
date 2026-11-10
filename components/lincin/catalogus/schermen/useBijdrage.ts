@@ -80,6 +80,7 @@ export function useBijdrage(id: string, { naVerwijderen }: { naVerwijderen?: () 
         tekst: c.body,
         linc: { beeld: a?.avatar_url, kleur: lincKleur(c.user_id), initiaal: n.slice(0, 1).toUpperCase() },
         antwoord,
+        gebruiker: a?.username ?? null,
         hartjes: l.count,
         vindIkLeuk: l.liked,
       };

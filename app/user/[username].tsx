@@ -80,9 +80,21 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
 
+  /**
+   * Eerst op gebruikersnaam. Wie "@mie" typt, bedoelt soms de linc die zo
+   * héét: dan een linc wiens weergavenaam, zonder hoofdletters en spaties,
+   * gelijk is aan de naam in het adres.
+   */
   const profile = useQuery({
-    queryKey: ["profile-by-username", username],
-    queryFn: () => getProfileByUsername(username),
+    queryKey: ["profile-by-username", username, myUserId],
+    queryFn: async () => {
+      const direct = await getProfileByUsername(username);
+      if (direct || !myUserId) return direct;
+      const gelijk = (v: string | null | undefined) => (v ?? "").toLowerCase().replace(/\s+/g, "");
+      const lincs = qc.getQueryData<Awaited<ReturnType<typeof listMyFriendships>>>(["friendships", myUserId]) ?? (await listMyFriendships(myUserId));
+      const linc = lincs.find((f) => f.status === "accepted" && gelijk(f.other.display_name) === username);
+      return linc ? getProfileByUsername(linc.other.username) : null;
+    },
     enabled: !!username,
   });
   usePageTitle(profile.data ? displayName(profile.data) : null);
@@ -183,6 +195,21 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const count = `${cards.length} ${cards.length === 1 ? t.post1 : t.posts}`;
 
   if (catalogus && !embedded) {
+    // Zolang het profiel er niet is: zeggen wat er aan de hand is, geen leeg profiel.
+    if (!p) {
+      const tekst = profile.isLoading ? t.loading : profile.isError ? "Het profiel laadde niet." : `Er is geen linc met de naam @${username}.`;
+      return (
+        <ProfielView
+          kop={[{ label: "Linc", waarde: profile.isLoading ? t.loading : `@${username}` }]}
+          terug={() => safeBack(router, "/feed")}
+          beeld={{ kleur: null, initiaal: "?" }}
+          naam={profile.isLoading ? "" : `@${username}`}
+          bio={tekst}
+          knoppen={profile.isError ? [{ tekst: "Opnieuw", doe: () => void profile.refetch() }] : []}
+          stukken={[]}
+        />
+      );
+    }
     return (
       <>
         <ProfielView

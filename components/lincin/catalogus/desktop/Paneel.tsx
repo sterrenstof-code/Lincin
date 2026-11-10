@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Acties, Spec, Sq, TekstMetNamen, klikbaar } from "./Delen";
 import type { PaneelInhoud, PaneelNav } from "./typen";
@@ -76,6 +76,27 @@ function EigenMenu({ eigen }: { eigen: NonNullable<PaneelInhoud["eigen"]> }) {
 export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNav }) {
   const veld = useRef<HTMLInputElement>(null);
   const bewerken = p.eigen?.bewerken ?? null;
+  /** Beeld en naam van wie reageerde: naar zijn profiel, zonder een antwoord te beginnen. */
+  const naarProfiel = (c: PaneelInhoud["reacties"][number], inhoud: ReactNode, beeld = false) => {
+    const g = c.gebruiker;
+    if (!g || !p.doe.profiel) return inhoud;
+    return (
+      <a
+        className={beeld ? "naarprofiel beeld" : "naarprofiel"}
+        href={`/user/${g}`}
+        aria-label={`Profiel van ${c.naam}`}
+        data-gebruiker={g}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          p.doe.profiel!(g);
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        {inhoud}
+      </a>
+    );
+  };
   useEffect(() => {
     if (p.antwoordAan) veld.current?.focus();
   }, [p.antwoordAan]);
@@ -158,9 +179,9 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
               onClick={() => p.doe.antwoord(c.id)}
               onKeyDown={(e) => e.key === "Enter" && p.doe.antwoord(c.id)}
             >
-              <Sq kleur={c.linc.kleur} initiaal={c.linc.initiaal} beeld={c.linc.beeld} maat={28} />
+              {naarProfiel(c, <Sq kleur={c.linc.kleur} initiaal={c.linc.initiaal} beeld={c.linc.beeld} maat={28} />, true)}
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, paddingBottom: 10 }}>
-                <span className="S">{c.naam}</span>
+                <span className="S">{naarProfiel(c, c.naam)}</span>
                 <span style={{ lineHeight: 1.35, overflowWrap: "anywhere" }}>
                   <TekstMetNamen tekst={c.tekst} profiel={p.doe.profiel} />
                 </span>

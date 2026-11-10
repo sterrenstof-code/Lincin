@@ -54,6 +54,8 @@ export type PaneelReactie = {
   tekst: string;
   linc: { beeld?: string | null; kleur: string | null; initiaal: string };
   antwoord: boolean;
+  /** De gebruikersnaam: beeld en naam gaan naar het profiel. */
+  gebruiker?: string | null;
 };
 
 /** Wat het paneel van een bijdrage toont (briefing §4, punt 4). */

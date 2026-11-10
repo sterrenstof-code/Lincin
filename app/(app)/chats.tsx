@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { AttachmentInfo } from "@/lib/api/messages";
 
 import { DashedTile } from "@/components/lincin/modern/Bento";
 import { ChatsModern, type ChatRowData } from "@/components/lincin/modern/ChatsModern";
@@ -53,6 +54,8 @@ function ChatsMobile({ gekozen }: { gekozen?: string }) {
   const toast = useToast();
   const readMenu = useChatReadMenu();
   const catalogusDesktop = useCatalogusDesktop();
+  // Het gedeelde beeld van het open gesprek, voor de zijkolom (desktop).
+  const [gedeeld, setGedeeld] = useState<AttachmentInfo[]>([]);
 
   const chats = useQuery({
     queryKey: ["chats", myUserId],
@@ -149,7 +152,8 @@ function ChatsMobile({ gekozen }: { gekozen?: string }) {
           gekozen={open}
           ongelezen={unread}
           stand={chats.isLoading ? t.loading : chats.isError ? t.failed : rows.length === 0 ? t.noFriendsYet : null}
-          draad={open ? <ChatDetail key={open} id={open} embedded /> : null}
+          draad={open ? <ChatDetail key={open} id={open} embedded onMedia={setGedeeld} /> : null}
+          gedeeld={gedeeld}
         />
         {readMenu.sheet}
       </>

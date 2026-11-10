@@ -318,7 +318,16 @@ export default function ChatRoute(props: { id?: string; embedded?: boolean } = {
   return <ChatDetail {...props} />;
 }
 
-export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embedded?: boolean } = {}) {
+export function ChatDetail({
+  id: idProp,
+  embedded = false,
+  onMedia,
+}: {
+  id?: string;
+  embedded?: boolean;
+  /** Al het gedeelde beeld in de geladen berichten, nieuwste eerst (Catalogus op desktop, zijkolom). */
+  onMedia?: (media: AttachmentInfo[]) => void;
+} = {}) {
   const params = useLocalSearchParams<{ id: string }>();
   // Ingebed (desktop) komt het id als prop; als scherm uit de route.
   const id = idProp ?? params.id;
@@ -469,6 +478,27 @@ export function ChatDetail({ id: idProp, embedded = false }: { id?: string; embe
     }
     return out;
   }, [messages]);
+
+  // Voor de zijkolom van Gesprekken in catalogus (desktop): álle beelden,
+  // ook uit albums, zonder maximum. Ontsleuteld wordt pas waar ze getoond worden.
+  const alleBeelden = useMemo(() => {
+    const out: AttachmentInfo[] = [];
+    const gezien = new Set<string>();
+    for (let i = (messages?.length ?? 0) - 1; i >= 0; i--) {
+      const c = messages?.[i]?.content;
+      const reeks = c?.album && c.album.length > 1 ? c.album : c?.attachment ? [c.attachment] : [];
+      for (const a of reeks) {
+        if (a.type === "image" && !gezien.has(a.path)) {
+          gezien.add(a.path);
+          out.push(a);
+        }
+      }
+    }
+    return out;
+  }, [messages]);
+  useEffect(() => {
+    onMedia?.(alleBeelden);
+  }, [alleBeelden, onMedia]);
 
   useEffect(() => {
     if (!myUserId) return;
