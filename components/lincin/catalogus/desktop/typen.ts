@@ -45,7 +45,8 @@ export type KaderNav = {
   /** Aantal bijdragen, voor de kop van het blad. */
   inhoud: string;
   ongelezen: boolean;
-  nieuweMeldingen: boolean;
+  /** Het aantal nieuwe meldingen. */
+  nieuweMeldingen: number;
   tab: (t: Tab) => void;
   meldingen: () => void;
   nieuw: () => void;

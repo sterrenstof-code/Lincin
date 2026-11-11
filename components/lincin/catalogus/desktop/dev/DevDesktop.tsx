@@ -262,7 +262,7 @@ function DevPagina() {
   const nav: KaderNav = {
     ...NAV_TEKST,
     ongelezen: true,
-    nieuweMeldingen: true,
+    nieuweMeldingen: 3,
     tab: (t: Tab) => setPagina(t === "chats" ? "gesprekken" : t === "events" ? "events" : t === "you" ? "jij" : "feed"),
     meldingen: () => {},
     nieuw: () => {},

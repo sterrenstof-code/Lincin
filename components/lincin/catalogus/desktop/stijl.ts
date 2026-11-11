@@ -196,6 +196,13 @@ export const CSS = `
 .cd .gg.has-open>a[aria-current]>span:not(.obj){opacity:0}
 .cd .gg .spec>span:nth-child(odd),.cd .gg .dim{color:rgba(255,255,255,.7)}
 
+/* de meldingen: met iets nieuws een blok in de accentkleur met het aantal */
+.cd .ster{position:relative}
+.cd .ster.nieuw{width:auto;height:36px;padding:0 12px 0 10px;gap:8px;background:var(--acc);color:#fff;font-size:15px}
+.cd .ster.nieuw::after{content:"";position:absolute;inset:0;border:2px solid var(--acc);animation:cd-ping 1.6s ${VERLOOP_FOTO} 3;pointer-events:none}
+.cd .ster .aantal{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;animation:cd-rise .3s ${VERLOOP_FOTO}}
+@keyframes cd-ping{0%{opacity:.9;transform:scale(1)}80%,100%{opacity:0;transform:scale(1.35,1.6)}}
+
 /* de weergave in de bovenbalk */
 .cd .wk{flex:none;display:flex;align-items:center;gap:8px}
 .cd .wkgroep{display:flex}

@@ -23,11 +23,29 @@ const TABS: [Tab, string][] = [
 /** ✳ zonder emoji-vorm. */
 export const STER = "✳︎";
 
+/**
+ * De meldingen. Zonder iets nieuws de ster; met iets nieuws een blok in de
+ * accentkleur met het aantal, dat bij elk nieuw aantal even oplicht. Een punt
+ * van 7 bij de ster zag je te makkelijk over het hoofd.
+ */
 export function Meldingen({ nav, los = false }: { nav: KaderNav; los?: boolean }) {
+  const n = nav.nieuweMeldingen;
   return (
-    <a className="ib" aria-label={nav.nieuweMeldingen ? "Meldingen, nieuw" : "Meldingen"} style={{ position: "relative", marginLeft: los ? 0 : 8 }} {...klikbaar(nav.meldingen)} data-meet="ster">
+    <a
+      // Een nieuw aantal tekent het blok opnieuw, en dan licht het weer op.
+      key={n}
+      className={n ? "ib ster nieuw" : "ib ster"}
+      aria-label={n ? `Meldingen, ${n} nieuw` : "Meldingen"}
+      style={{ marginLeft: los ? 0 : 8 }}
+      {...klikbaar(nav.meldingen)}
+      data-meet="ster"
+    >
       {STER}
-      {nav.nieuweMeldingen ? <span className="dot" style={{ position: "absolute", top: 9, right: 7 }} /> : null}
+      {n ? (
+        <span className="aantal">
+          {n > 99 ? "99+" : n}
+        </span>
+      ) : null}
     </a>
   );
 }
