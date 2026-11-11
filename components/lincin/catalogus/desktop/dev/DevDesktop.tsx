@@ -317,7 +317,6 @@ function DevPagina() {
         bericht={() => setPagina("gesprekken")}
         startOpen={s.open ?? null}
         naarPagina={setNaarStuk}
-        startMenu={s.menu}
       />
     );
   }

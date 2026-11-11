@@ -41,7 +41,6 @@ export type FeedDesktopProps = {
   /** Een tekst in plaats van de stukken: laden, mislukt, nog niets. */
   stand2?: string | null;
   startOpen?: string | null;
-  startMenu?: boolean;
   /** Na het sluiten (`/post/[id]` gaat dan naar `/feed`). */
   naSluiten?: () => void;
   /** Naar de pagina van een bijdrage: een klik op de open foto of op de titel in het paneel. */
@@ -54,7 +53,6 @@ export function FeedDesktop(props: FeedDesktopProps) {
   const [open, setOpen] = useState<string | null>(props.startOpen ?? null);
   const [sluitend, setSluitend] = useState<string | null>(null);
   const [sessie, setSessie] = useState(0);
-  const [menu, setMenu] = useState(!!props.startMenu);
   const [zweef, setZweef] = useState<string | null>(null);
   const [fris, setFris] = useState(false);
   const [opFoto, setOpFoto] = useState(false);
@@ -131,7 +129,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
 
-  // De toetsen (briefing §7). Het menu vangt Esc zelf, eerder (WeergaveKnop).
+  // De toetsen (briefing §7).
   useEffect(() => {
     const toets = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -157,8 +155,8 @@ export function FeedDesktop(props: FeedDesktopProps) {
     props.kiesWeergave(w);
   };
 
-  const knop = (links: boolean) => (
-    <WeergaveKnop weergave={weergave} open={menu} zetOpen={setMenu} kies={kies} stand={props.stand} kiesStand={props.kiesStand} links={links} />
+  const knop = () => (
+    <WeergaveKnop weergave={weergave} kies={kies} stand={props.stand} kiesStand={props.kiesStand} />
   );
 
   const paneelStuk = stukken.find((s) => s.id === (open ?? sluitend)) ?? null;

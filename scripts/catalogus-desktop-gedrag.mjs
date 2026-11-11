@@ -16,7 +16,7 @@
  *   - het paneel beweegt als één vlak;
  *   - sluiten met een klik links, Esc of het kruisje: de foto staat terug;
  *   - ← → dicht en open, Enter opent;
- *   - het menu Weergave wisselt, sluit, en de keuze blijft na herladen;
+ *   - de knoppen Wand en Gloedraster wisselen, en de keuze blijft na herladen;
  *     Esc en een klik erbuiten sluiten het;
  *   - minder beweging: geen enkele overgang, meteen de eindtoestand;
  *   - lichtbak en gloedraster: het kleurveld wisselt mee.
@@ -503,56 +503,36 @@ try {
     // Lichtbak toont één stuk: daar staat na verwijderen het volgende.
     noteer(w, "Verwijder: paneel dicht, stuk weg", !weg.paneel && !weg.stuk && !weg.open, JSON.stringify(weg));
 
-    // ---- het menu Weergave ----
+    // ---- de weergave in de bovenbalk: Wand en Gloedraster ----
     await page.goto(`${BASE}/dev/catalogus-desktop/${w}-dicht?bewaar=1`);
     await page.evaluate((w) => localStorage.setItem("lincin.weergave.dev", w), w);
     await page.reload();
     await wacht(page);
-    await klik(page, '[data-meet="wkbtn"]');
-    await page.waitForTimeout(50);
-    const m = await page.evaluate(() => {
-      const b = document.querySelector('[data-meet="wkbtn"]');
-      const menu = document.querySelector('[data-meet="menu"]');
-      return {
-        open: !!menu,
-        aria: b.getAttribute("aria-haspopup") === "true" && b.getAttribute("aria-expanded") === "true",
-        rijen: [...document.querySelectorAll('[data-meet="menurij"]')].map((r) => [r.getAttribute("role"), r.getAttribute("aria-checked"), Math.round(r.getBoundingClientRect().height)]),
-        breed: menu ? menu.getBoundingClientRect().width : 0,
-        anim: menu ? [getComputedStyle(menu).animationName, getComputedStyle(menu).animationDuration, getComputedStyle(menu).animationTimingFunction] : null,
-        knop: Math.round(b.getBoundingClientRect().height),
-      };
-    });
+    const knoppen = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-meet="wkkeuze"]')].map((b) => [b.dataset.w, b.getAttribute("role"), b.getAttribute("aria-checked"), Math.round(b.getBoundingClientRect().height)]),
+    );
+    // Wand op blad en Lichtbak kies je niet meer: bewaard worden ze de wand.
+    const bewaardeW = w === "gloedraster" ? "gloedraster" : "wand";
     noteer(
       w,
-      "menu: 340 breed, vier rijen ≥ 60, menuitemradio, knop 36",
-      m.open && m.aria && m.breed === 340 && m.rijen.length === 4 && m.rijen.every((r) => r[0] === "menuitemradio" && r[2] >= 60) && m.knop === 36,
-      JSON.stringify({ b: m.breed, r: m.rijen.map((r) => r[2]), k: m.knop }),
+      "bovenbalk: twee knoppen Wand en Gloedraster, de bewaarde aan",
+      knoppen.length === 2 && knoppen.every((k) => k[1] === "radio" && k[3] === 36) && knoppen.find((k) => k[2] === "true")?.[0] === bewaardeW,
+      JSON.stringify(knoppen),
     );
-    noteer(w, "menu verschijnt: 0,2 s, 12 px omhoog", !!m.anim && m.anim[0] === "cd-rise" && m.anim[1] === "0.2s" && m.anim[2] === FOTO, m.anim?.join(" "));
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(50);
-    const escDicht = await page.evaluate(() => !document.querySelector('[data-meet="menu"]'));
-    noteer(w, "Esc sluit het menu", escDicht);
-    await klik(page, '[data-meet="wkbtn"]');
-    await page.mouse.click(720, 20);
-    await page.waitForTimeout(50);
-    const klikDicht = await page.evaluate(() => !document.querySelector('[data-meet="menu"]'));
-    noteer(w, "een klik erbuiten sluit het menu", klikDicht);
-    // Wisselen naar een andere weergave, en terug na herladen.
-    const naar = w === "lichtbak" ? "gloedraster" : "lichtbak";
-    await klik(page, '[data-meet="wkbtn"]');
-    const rijNr = WEERGAVEN.indexOf(naar) + 1;
-    await klik(page, `[data-meet="menurij"]:nth-of-type(${rijNr})`);
+    const naar = bewaardeW === "wand" ? "gloedraster" : "wand";
+    await klik(page, `[data-meet="wkkeuze"][data-w="${naar}"]`);
     await page.waitForTimeout(100);
-    const gewisseld = await page.evaluate((naar) => {
-      const menu = !!document.querySelector('[data-meet="menu"]');
-      const is = naar === "lichtbak" ? !!document.querySelector(".light") : !!document.querySelector(".gg");
-      return { menu, is };
-    }, naar);
+    const isNaar = (naar) => (naar === "gloedraster" ? !!document.querySelector(".gg") : !document.querySelector(".gg") && !document.querySelector(".light"));
+    const gewisseld = await page.evaluate(isNaar, naar);
     await page.reload();
     await wacht(page);
-    const bewaard = await page.evaluate((naar) => (naar === "lichtbak" ? !!document.querySelector(".light") : !!document.querySelector(".gg")), naar);
-    noteer(w, `menu wisselt naar ${naar}, sluit, en blijft na herladen`, gewisseld.is && !gewisseld.menu && bewaard);
+    const bewaard = await page.evaluate(isNaar, naar);
+    noteer(w, `een klik wisselt naar ${naar}, en blijft na herladen`, gewisseld && bewaard);
+    const standVoor = await page.evaluate(() => document.querySelector("[data-stand]")?.getAttribute("data-stand"));
+    await klik(page, '[data-meet="wkstand"]');
+    await page.waitForTimeout(50);
+    const standNa = await page.evaluate(() => document.querySelector("[data-stand]")?.getAttribute("data-stand"));
+    noteer(w, "de knop licht/donker wisselt de stand", !!standVoor && !!standNa && standVoor !== standNa, `${standVoor} → ${standNa}`);
     await page.evaluate(() => localStorage.removeItem("lincin.weergave.dev"));
     await ctx.close();
 

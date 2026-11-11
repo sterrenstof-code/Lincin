@@ -196,17 +196,15 @@ export const CSS = `
 .cd .gg.has-open>a[aria-current]>span:not(.obj){opacity:0}
 .cd .gg .spec>span:nth-child(odd),.cd .gg .dim{color:rgba(255,255,255,.7)}
 
-/* de knop Weergave */
-.cd .wk{position:relative;flex:none}
-.cd .wkbtn{height:36px;padding:0 12px;display:flex;align-items:center;gap:10px;border:1px solid currentColor}
-.cd .wkbtn[aria-expanded=true]{background:var(--k);color:var(--onk);border-color:var(--k)}
-.cd.glowt .wkbtn[aria-expanded=true]{background:#fff;color:#141210;border-color:#fff}
-.cd .menu{position:absolute;right:0;top:44px;width:340px;z-index:60;background:var(--card);color:var(--k);box-shadow:0 24px 60px rgba(20,18,16,.28);display:flex;flex-direction:column;animation:cd-rise .2s ${VERLOOP_FOTO}}
-.cd .menu.links{right:auto;left:0;top:auto;bottom:0}
-.cd .menu .rij{min-height:60px;display:grid;grid-template-columns:44px minmax(0,1fr) 20px;align-items:center;gap:12px;padding:8px 16px;text-align:left;border-top:2px solid var(--g);transition:background .12s}
-.cd .menu .rij:hover{background:var(--g)}
-.cd .menu .rij[aria-checked=true]{background:var(--g)}
-.cd .menu svg{color:var(--k)}
+/* de weergave in de bovenbalk */
+.cd .wk{flex:none;display:flex;align-items:center;gap:8px}
+.cd .wkgroep{display:flex}
+.cd .wkbtn{width:40px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid currentColor;opacity:.55;transition:opacity .12s,background .12s}
+.cd .wkgroep .wkbtn+.wkbtn{margin-left:-1px}
+.cd .wkbtn:hover{opacity:1}
+.cd .wkbtn[aria-checked=true]{opacity:1;background:var(--k);color:var(--onk);border-color:var(--k)}
+.cd.glowt .wkbtn[aria-checked=true]{background:#fff;color:#141210;border-color:#fff}
+.cd .wkstand{width:36px;border-color:transparent}
 
 @media (prefers-reduced-motion:reduce){.cd,.cd *,.cd *::before,.cd *::after{animation:none!important;transition:none!important}}
 `;

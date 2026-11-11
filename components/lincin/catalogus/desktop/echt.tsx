@@ -64,7 +64,7 @@ function useNav(inhoud = ""): KaderNav {
   };
 }
 
-/** Licht of donker: de stand van de app; het menu zet hem. */
+/** Licht of donker: de stand van de app; de knop in de bovenbalk zet hem. */
 function useStand(): [Stand, (s: Stand) => void] {
   const scheme = useScheme();
   return [scheme === "dark" ? "donker" : "licht", (s) => setPreference(s === "donker" ? "dark" : "light")];
@@ -608,7 +608,6 @@ export function KolomKop({ pad, voorbeeld = false }: { pad: string; /** Testpagi
   const { session } = useAuth();
   const k = useKader();
   const nav = useNav();
-  const [menu, setMenu] = useState(false);
   if ((!session && !voorbeeld) || ZONDER_KADER.test(pad)) return null;
   return (
     <div className="cd kolomkop" data-stand={k.stand} data-meet="kolomkop">
@@ -617,7 +616,7 @@ export function KolomKop({ pad, voorbeeld = false }: { pad: string; /** Testpagi
         actief={tabVan(pad)}
         nav={nav}
         helder={false}
-        knop={<WeergaveKnop weergave={k.weergave} open={menu} zetOpen={setMenu} kies={k.kiesWeergave} stand={k.stand} kiesStand={k.kiesStand} />}
+        knop={<WeergaveKnop weergave={k.weergave} kies={k.kiesWeergave} stand={k.stand} kiesStand={k.kiesStand} />}
       />
     </div>
   );

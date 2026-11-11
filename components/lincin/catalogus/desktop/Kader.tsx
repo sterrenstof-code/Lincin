@@ -105,7 +105,7 @@ export function Kader({
   weergave: Weergave;
   actief: Tab | null;
   nav: KaderNav;
-  /** De knop Weergave; bij `blad` opent zijn menu naar boven. */
+  /** De knoppen voor de weergave (WeergaveKnop). */
   knop: (links: boolean) => ReactNode;
   /** De bovenbalk zonder vlak, op het kleurveld. */
   helder?: boolean;

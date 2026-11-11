@@ -4,7 +4,8 @@ import { Platform, useWindowDimensions } from "react-native";
 import { useThemeSpec } from "@/lib/design/theme";
 
 import { BREED_VANAF } from "../stijl";
-import { WEERGAVEN, type Weergave } from "./typen";
+import type { Weergave } from "./typen";
+import { KEUZES } from "./WeergaveKnop";
 
 /**
  * De gekozen weergave van de feed op desktop (briefing §3).
@@ -26,7 +27,8 @@ function lees(gebruiker: string): Weergave {
   let w: Weergave = STANDAARD;
   try {
     const raw = typeof localStorage !== "undefined" ? localStorage.getItem(sleutel(gebruiker)) : null;
-    if (raw && (WEERGAVEN as string[]).includes(raw)) w = raw as Weergave;
+    // Wand op blad en Lichtbak kies je niet meer: wie die had, krijgt de wand.
+    if (raw && KEUZES.some(([k]) => k === raw)) w = raw as Weergave;
   } catch {
     // geen opslag: de standaard
   }
