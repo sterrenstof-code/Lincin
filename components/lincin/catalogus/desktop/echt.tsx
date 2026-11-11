@@ -57,7 +57,7 @@ function useNav(inhoud = ""): KaderNav {
     datum: vandaag(),
     inhoud,
     ongelezen: nav.ongelezen,
-    nieuweMeldingen: nav.nieuweMeldingen > 0,
+    nieuweMeldingen: nav.nieuweMeldingen,
     tab: (t) => nav.router.push(TAB_HREF[t] as never),
     meldingen: nav.meldingen,
     nieuw: nav.nieuw,
@@ -461,8 +461,10 @@ export function EventsDesktopEcht({
 }
 
 /** Bijdragen als vakken voor Jij en een profiel; een klik opent de bijdragepagina (een poll zijn eigen pagina). */
-function useMijnStukken(kaarten: CardPost[]): JijStuk[] {
+function useMijnStukken(alle: CardPost[]): JijStuk[] {
   const router = useRouter();
+  // Chronologisch: de nieuwste eerst.
+  const kaarten = useMemo(() => [...alle].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), [alle]);
   const uris = useMemo(() => kaarten.map(beeldVan).filter((u): u is string => !!u), [kaarten]);
   const verh = useVerhoudingen(uris);
   return kaarten.map((c, i) => {
