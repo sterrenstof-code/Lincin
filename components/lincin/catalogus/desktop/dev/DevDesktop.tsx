@@ -261,7 +261,7 @@ function DevPagina() {
 
   const nav: KaderNav = {
     ...NAV_TEKST,
-    ongelezen: true,
+    tellers: { chats: 2, you: 1 },
     nieuweMeldingen: 3,
     tab: (t: Tab) => setPagina(t === "chats" ? "gesprekken" : t === "events" ? "events" : t === "you" ? "jij" : "feed"),
     meldingen: () => {},

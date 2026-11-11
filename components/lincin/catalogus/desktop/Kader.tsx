@@ -50,6 +50,16 @@ export function Meldingen({ nav, los = false }: { nav: KaderNav; los?: boolean }
   );
 }
 
+/** Wat er nieuw is op een tabblad: het aantal op een blokje in de accentkleur, zoals de meldingen. */
+function Teller({ n }: { n?: number }) {
+  if (!n) return null;
+  return (
+    <span key={n} className="tel" aria-label={`${n} nieuw`}>
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 export function Kop({ actief, nav, knop, helder }: { actief: Tab | null; nav: KaderNav; knop: ReactNode; helder: boolean }) {
   return (
     <header className={helder ? "top helder" : "top"} data-meet="kop">
@@ -66,7 +76,7 @@ export function Kop({ actief, nav, knop, helder }: { actief: Tab | null; nav: Ka
         {TABS.map(([k, n]) => (
           <a key={k} aria-current={actief === k ? "page" : undefined} {...klikbaar(() => nav.tab(k))}>
             {n}
-            {k === "chats" && nav.ongelezen ? <span className="dot" /> : null}
+            <Teller n={nav.tellers[k]} />
           </a>
         ))}
       </nav>
@@ -91,11 +101,12 @@ function Tabbladen({ actief, nav, knop }: { actief: Tab | null; nav: KaderNav; k
         Lincin
       </a>
       {TABS.map(([k, n]) => {
-        const punt = k === "chats" && nav.ongelezen;
+        const punt = !!nav.tellers[k];
         return (
           <a key={k} className="tab" aria-current={actief === k ? "page" : undefined} {...klikbaar(() => nav.tab(k))} data-meet="tab">
             <span style={{ width: 8, height: 8, ...(punt ? { background: "var(--acc)" } : { border: "1.5px solid var(--k)" }) }} />
             <span>{n}</span>
+            <Teller n={nav.tellers[k]} />
           </a>
         );
       })}

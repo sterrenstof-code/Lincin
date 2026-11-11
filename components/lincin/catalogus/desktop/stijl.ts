@@ -203,6 +203,8 @@ export const CSS = `
 .cd .ster .aantal{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;animation:cd-rise .3s ${VERLOOP_FOTO}}
 @keyframes cd-ping{0%{opacity:.9;transform:scale(1)}80%,100%{opacity:0;transform:scale(1.35,1.6)}}
 
+.cd .tel{min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;background:var(--acc);color:#fff;font-size:12px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;animation:cd-rise .3s ${VERLOOP_FOTO}}
+
 /* de weergave in de bovenbalk */
 .cd .wk{flex:none;display:flex;align-items:center;gap:8px}
 .cd .wkgroep{display:flex}

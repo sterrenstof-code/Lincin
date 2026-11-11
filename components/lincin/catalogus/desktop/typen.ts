@@ -44,7 +44,8 @@ export type KaderNav = {
   datum: string;
   /** Aantal bijdragen, voor de kop van het blad. */
   inhoud: string;
-  ongelezen: boolean;
+  /** Wat er nieuw is per tabblad: ongelezen berichten (Gesprekken), linc-verzoeken (Jij). */
+  tellers: Partial<Record<Tab, number>>;
   /** Het aantal nieuwe meldingen. */
   nieuweMeldingen: number;
   tab: (t: Tab) => void;

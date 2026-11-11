@@ -26,6 +26,7 @@ export function useCatNav() {
     nieuw: () => router.push("/post-compose"),
     nieuweMeldingen: unread.notifications,
     ongelezen: unread.chats > 0,
+    berichten: unread.chats,
     verzoeken: unread.friendRequests,
   };
 }

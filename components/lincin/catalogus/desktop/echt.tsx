@@ -56,7 +56,7 @@ function useNav(inhoud = ""): KaderNav {
     editie: prefs.edition ? `№ ${prefs.edition.n}` : "№ —",
     datum: vandaag(),
     inhoud,
-    ongelezen: nav.ongelezen,
+    tellers: { chats: nav.berichten, you: nav.verzoeken },
     nieuweMeldingen: nav.nieuweMeldingen,
     tab: (t) => nav.router.push(TAB_HREF[t] as never),
     meldingen: nav.meldingen,
