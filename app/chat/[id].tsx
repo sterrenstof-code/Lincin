@@ -3516,6 +3516,74 @@ const MessageBubble = memo(function MessageBubble({
     .onEnd(springBack)
     .onFinalize(springBack);
 
+  // ── Swipe-to-reply op web (de telefoon in de browser) ────────────────
+  // Geen GestureDetector (zie SwipeWrap): losse touch-events, passief, zodat
+  // de lijst gewoon scrolt. Pas bij een duidelijk horizontale beweging naar
+  // rechts schuift de bubbel; meer dan 8px verticaal eerst en het is scrollen.
+  // Begint de vinger in iets wat zelf horizontaal schuift (de carrousel van
+  // een album), dan blijft het van dat ding.
+  const bubbleRef = useRef<View>(null);
+  const onReplyRef = useRef(onReply);
+  onReplyRef.current = onReply;
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const el = bubbleRef.current as unknown as HTMLElement | null;
+    if (!el?.addEventListener) return;
+    let x0 = 0;
+    let y0 = 0;
+    let richting: "x" | "y" | null = null;
+    const schuiftZelf = (t: EventTarget | null) => {
+      for (let n = t as HTMLElement | null; n && n !== el; n = n.parentElement) {
+        const o = getComputedStyle(n).overflowX;
+        if ((o === "auto" || o === "scroll") && n.scrollWidth > n.clientWidth) return true;
+      }
+      return false;
+    };
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || schuiftZelf(e.target)) {
+        richting = "y";
+        return;
+      }
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+      richting = null;
+      swipeTriggered.current = false;
+    };
+    const move = (e: TouchEvent) => {
+      if (richting === "y") return;
+      const dx = e.touches[0].clientX - x0;
+      const dy = e.touches[0].clientY - y0;
+      if (richting === null) {
+        if (Math.abs(dy) > 8 || dx < -10) richting = "y";
+        else if (dx > 10) richting = "x";
+        return;
+      }
+      const x = Math.min(Math.max(dx, 0), 72);
+      swipeX.setValue(x);
+      if (x >= 56 && !swipeTriggered.current) {
+        swipeTriggered.current = true;
+        navigator.vibrate?.(10);
+        onReplyRef.current?.();
+      }
+    };
+    const end = () => {
+      if (richting === "x") springBack();
+      richting = null;
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: true });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", end);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+    };
+    // springBack en swipeTriggered horen bij deze rij en veranderen niet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swipeX]);
+
   return (
     <View
       className={isMine ? "items-end" : "items-start"}
@@ -3529,23 +3597,21 @@ const MessageBubble = memo(function MessageBubble({
       style={{ maxWidth: "78%", minWidth: 0, flexShrink: 1, alignSelf: isMine ? "flex-end" : "flex-start" }}
     >
       {/* Swipe-to-reply indicator */}
-      {Platform.OS !== "web" && (
-        <Animated.View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
-            transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [-20, 0] }) }],
-            paddingHorizontal: 8,
-          }}
-        >
-          <Ionicons name="return-down-back-outline" color={flameDeep} size={18} />
-        </Animated.View>
-      )}
+      <Animated.View
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: swipeX.interpolate({ inputRange: [0, 56], outputRange: [0, 1] }),
+          transform: [{ translateX: swipeX.interpolate({ inputRange: [0, 56], outputRange: [-20, 0] }) }],
+          paddingHorizontal: 8,
+        }}
+      >
+        <Ionicons name="return-down-back-outline" color={flameDeep} size={18} />
+      </Animated.View>
 
       {/* Telegram: de avatar staat links onderaan, naast de láátste
           bubbel van een reeks; de naam staat ín de eerste (zie hieronder).
@@ -3563,7 +3629,8 @@ const MessageBubble = memo(function MessageBubble({
         *
         * De juiste "uit" is niet mounten. `SwipeWrap` doet dat: op native
         * de ingestelde gesture (die faalt bij >8px verticaal en dus wél
-        * samenleeft met de lijst), op web niets.
+        * samenleeft met de lijst), op web niets. Swipen op web gaat via
+        * losse touch-events (zie `bubbleRef` hierboven).
         */}
       {/* Een gedeelde bijdrage: een kaart met rug, №, titel en foto (Gesprek Voorbeeld 1a). */}
       {content?.postRef ? (
@@ -3573,6 +3640,7 @@ const MessageBubble = memo(function MessageBubble({
       ) : null}
       <SwipeWrap gesture={Platform.OS !== "web" ? panGesture : null}>
       <Animated.View
+        ref={bubbleRef}
         className={`flex-row items-center gap-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         style={{
           // De leesmaat: ~60 tekens op 16px. Het percentage zit op de
@@ -3580,7 +3648,7 @@ const MessageBubble = memo(function MessageBubble({
           maxWidth: BUBBLE_MAX_W,
           minWidth: 0,
           marginLeft: showAvatarSlot ? 44 : 0,
-          transform: [{ translateX: Platform.OS !== "web" ? swipeX : 0 }],
+          transform: [{ translateX: swipeX }],
         }}
       >
         {/* Telegram: de avatar links onderaan, naast de láátste bubbel van
