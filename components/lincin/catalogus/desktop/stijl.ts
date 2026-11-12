@@ -56,7 +56,7 @@ export const CSS = `
 .cd .kleine-acties button{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;min-height:28px}
 .cd .sq{flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;color:#141210;overflow:hidden}
 .cd .sq>img{width:100%;height:100%;object-fit:cover}
-.cd .strip{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 16px;background:var(--g)}
+.cd .strip{height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px;background:var(--g)}
 .cd .ib{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px}
 .cd .btn{height:44px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;background:var(--k);color:var(--onk)}
 .cd .btn.ghost{background:none;color:var(--k);border:1px solid var(--k)}
@@ -74,9 +74,9 @@ export const CSS = `
 .cd .tile[aria-current]{background:var(--card);outline:2px solid var(--k);outline-offset:-2px}
 
 /* de bovenbalk */
-.cd .top{height:56px;flex:none;display:flex;align-items:center;gap:28px;padding:0 8px 0 16px;background:var(--g);border-bottom:2px solid var(--seam)}
+.cd .top{height:72px;flex:none;display:flex;align-items:center;gap:36px;padding:0 16px 0 24px;background:var(--g);border-bottom:2px solid var(--seam)}
 .cd .top.helder{background:transparent;border-color:transparent}
-.cd .top nav{display:flex;gap:20px;margin-left:12px}
+.cd .top nav{display:flex;gap:28px;margin-left:16px}
 .cd .top nav a{height:44px;display:flex;align-items:center;gap:6px;padding:0 4px;font-weight:500;border-bottom:2px solid transparent}
 .cd .top nav a[aria-current]{font-weight:600;border-bottom-color:currentColor}
 
@@ -109,6 +109,7 @@ export const CSS = `
 .cd .naarpagina,.cd .naarlink{cursor:pointer}
 .cd .naarlink:hover{text-decoration:underline;text-underline-offset:4px}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.cd .fotopijlen{position:fixed;z-index:41;display:flex;gap:2px;margin-left:-10px;animation:cd-rise .3s .35s both}
 .cd .scrim.opfoto{cursor:zoom-in}.cd .scrim.oplink{cursor:pointer}
 
 /* een tekst als artikel (de bijdragepagina) */
@@ -184,7 +185,7 @@ export const CSS = `
 
 /* gloedraster */
 .cd .gg{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));border-top:1px solid rgba(255,255,255,.28);position:relative}
-.cd .gg.lang{grid-template-rows:none;grid-auto-rows:calc((100vh - 57px) / 2);overflow-y:auto}
+.cd .gg.lang{grid-template-rows:none;grid-auto-rows:calc((100vh - 73px) / 2);overflow-y:auto}
 .cd .gg>a{border-right:1px solid rgba(255,255,255,.28);border-bottom:1px solid rgba(255,255,255,.28);padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-height:0;min-width:0}
 .cd .gg>a:hover,.cd .gg>a[aria-current]{background:rgba(255,255,255,.1)}
 .cd .gg .obj{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}

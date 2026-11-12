@@ -120,16 +120,6 @@ export function Paneel({ inhoud: p, nav }: { inhoud: PaneelInhoud; nav: PaneelNa
               ✕
             </button>
           ) : null}
-          {nav.vorige ? (
-            <button className="ib" aria-label="Vorige bijdrage" onClick={nav.vorige}>
-              ←
-            </button>
-          ) : null}
-          {nav.volgende ? (
-            <button className="ib" aria-label="Volgende bijdrage" onClick={nav.volgende}>
-              →
-            </button>
-          ) : null}
         </span>
       </div>
       <div style={{ flex: "none", padding: "18px 20px 8px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }} data-meet="paneel-titel">

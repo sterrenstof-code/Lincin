@@ -23,6 +23,46 @@ import type { DStuk, KaderNav, PaneelNav, Stand, Weergave } from "./typen";
 
 const WEG_MS = 380;
 
+/**
+ * ← → onder de open foto, links uitgelijnd met de foto. De foto beweegt na
+ * openen of een stap nog ~0,7 s naar zijn plek; zolang volgt de rij hem
+ * beeld voor beeld, daarna alleen nog bij een andere venstermaat.
+ */
+function FotoPijlen({ id, vorige, volgende }: { id: string; vorige: () => void; volgende: () => void }) {
+  const [plek, setPlek] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const meet = () => {
+      const f = document.querySelector('[data-meet="stuk"][aria-current] [data-meet="foto"]');
+      if (!f) return;
+      const r = f.getBoundingClientRect();
+      setPlek((o) => (o && Math.abs(o.x - r.left) < 0.5 && Math.abs(o.y - r.bottom) < 0.5 ? o : { x: r.left, y: r.bottom }));
+    };
+    const tot = performance.now() + 1000;
+    const volg = () => {
+      meet();
+      if (performance.now() < tot) raf = requestAnimationFrame(volg);
+    };
+    volg();
+    window.addEventListener("resize", meet);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", meet);
+    };
+  }, [id]);
+  if (!plek) return null;
+  return (
+    <span className="fotopijlen" style={{ left: plek.x, top: plek.y + 14 }} data-meet="fotopijlen">
+      <button className="ib" aria-label="Vorige bijdrage" onClick={vorige}>
+        ←
+      </button>
+      <button className="ib" aria-label="Volgende bijdrage" onClick={volgende}>
+        →
+      </button>
+    </span>
+  );
+}
+
 function stil(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
@@ -164,8 +204,6 @@ export function FeedDesktop(props: FeedDesktopProps) {
     ? {
         plaat: plaat(index(paneelStuk.id), stukken.length),
         sluit,
-        vorige: () => stap(-1),
-        volgende: () => stap(1),
         pagina: props.naarPagina ? () => props.naarPagina!(paneelStuk.id) : undefined,
       }
     : null;
@@ -238,6 +276,7 @@ export function FeedDesktop(props: FeedDesktopProps) {
             data-meet="scrim"
           />
         ) : null}
+        {open && stukken.length > 1 ? <FotoPijlen id={open} vorige={() => stap(-1)} volgende={() => stap(1)} /> : null}
         {paneelStuk && paneelNav ? (
           <aside key={sessie} className={open ? "drawer" : "drawer weg"} aria-label="Gekozen bijdrage" data-meet="drawer">
             {props.paneel(paneelStuk, paneelNav)}
