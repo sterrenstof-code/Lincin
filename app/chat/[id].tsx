@@ -2563,7 +2563,8 @@ export function ChatDetail({
             /**
              * Catalogus: de invoer van het ontwerp (ook het paneel op desktop):
              * één veld met een rand van 1 inkt op de kaart, + en ☺ ervoor
-             * zonder eigen kader, en rechts "Stuur" in inkt zodra er iets te
+             * zonder eigen kader (als icoon, niet als letter: een glyph zit
+             * niet in het midden van zijn regel, een icoon wel), en rechts "Stuur" in inkt zodra er iets te
              * sturen is; leeg de microfoon voor een spraakbericht.
              */
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: cat.kaart }}>
@@ -2574,7 +2575,7 @@ export function ChatDetail({
                 disabled={sending}
                 style={({ pressed }) => [{ width: 44, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: attachMenuOpen ? cat.inkt : "transparent" }, pressed && AUX_PRESSED]}
               >
-                <Text style={[catTekst(26, 300), { lineHeight: 30, color: attachMenuOpen ? cat.tekstOpInkt : cat.inkt }]}>+</Text>
+                <Ionicons name="add" color={attachMenuOpen ? cat.tekstOpInkt : cat.inkt} size={22} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -2586,7 +2587,7 @@ export function ChatDetail({
                 }}
                 style={({ pressed }) => [{ width: 44, height: 48, alignItems: "center", justifyContent: "center" }, pressed && AUX_PRESSED]}
               >
-                <Text style={{ fontSize: 20, lineHeight: 24, color: cat.inkt }}>☺</Text>
+                <Ionicons name="happy-outline" color={cat.inkt} size={22} />
               </Pressable>
               <View style={{ flex: 1, minWidth: 0, minHeight: 48, justifyContent: "center", paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: cat.inkt, backgroundColor: cat.kaart }}>
                 <TextInput
@@ -2629,7 +2630,7 @@ export function ChatDetail({
                   disabled={sending}
                   style={({ pressed }) => [{ width: 48, height: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: cat.inkt }, pressed && AUX_PRESSED]}
                 >
-                  <Ionicons name="mic-outline" color={cat.inkt} size={20} />
+                  <Ionicons name="mic-outline" color={cat.inkt} size={22} />
                 </Pressable>
               )}
             </View>
