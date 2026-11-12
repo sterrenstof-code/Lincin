@@ -1311,6 +1311,89 @@ export function ChatDetail({
     setSelectedPendingIdx(0);
   }
 
+  /**
+   * Foto's en video's naar het gesprek slepen, of plakken (web). Ze komen in
+   * hetzelfde voorbeeld als via + → Foto: je ziet ze, schrijft er iets bij en
+   * verstuurt. Wat er al klaarstond blijft staan; samen hooguit tien.
+   */
+  const [slepen, setSlepen] = useState(false);
+  const addDroppedRef = useRef<(files: File[]) => void>(() => {});
+  addDroppedRef.current = (files) => {
+    const media = files.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (!media.length) {
+      if (files.length) toast.error("Alleen foto's en video's kunnen hierheen.");
+      return;
+    }
+    if (sending) return;
+    void (async () => {
+      const prepared = await Promise.all(
+        media.map((f) =>
+          preparePickedAsset({
+            uri: URL.createObjectURL(f),
+            mimeType: f.type,
+            fileName: f.name,
+            type: f.type.startsWith("video/") ? "video" : "image",
+            width: 0,
+            height: 0,
+          } as ImagePicker.ImagePickerAsset),
+        ),
+      );
+      setPendingImages((huidig) => {
+        const samen = [...(huidig ?? []), ...prepared];
+        if (samen.length > 10) toast.error("Hooguit tien tegelijk.");
+        return samen.slice(0, 10);
+      });
+      setSelectedPendingIdx((i) => (pendingImages?.length ? i : 0));
+    })();
+  };
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    // dragenter en dragleave vuren bij elk kind opnieuw: tellen, zodat de
+    // laag pas verdwijnt als de muis het venster echt verlaat.
+    let diepte = 0;
+    const heeftBestanden = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+    const enter = (e: DragEvent) => {
+      if (!heeftBestanden(e)) return;
+      diepte++;
+      setSlepen(true);
+    };
+    const over = (e: DragEvent) => {
+      if (!heeftBestanden(e)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = "copy";
+    };
+    const leave = (e: DragEvent) => {
+      if (!heeftBestanden(e)) return;
+      diepte = Math.max(0, diepte - 1);
+      if (!diepte) setSlepen(false);
+    };
+    const drop = (e: DragEvent) => {
+      if (!heeftBestanden(e)) return;
+      e.preventDefault();
+      diepte = 0;
+      setSlepen(false);
+      addDroppedRef.current(Array.from(e.dataTransfer?.files ?? []));
+    };
+    const paste = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (!files.length) return;
+      e.preventDefault();
+      addDroppedRef.current(files);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    window.addEventListener("paste", paste);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+      window.removeEventListener("paste", paste);
+    };
+  }, []);
+
   async function pickPlace() {
     setAttachMenuOpen(false);
     try {
@@ -2982,6 +3065,28 @@ export function ChatDetail({
             </Pressable>
           </Pressable>
         </Modal>
+        {slepen ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 50,
+              margin: 12,
+              borderWidth: 2,
+              borderStyle: "dashed",
+              borderColor: flameDeep,
+              backgroundColor: "rgba(20,18,16,0.55)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "500" }}>Laat los om toe te voegen aan het gesprek</Text>
+          </View>
+        ) : null}
       </ChatWorkspace>
     </LincinScreen>
   );
