@@ -103,6 +103,7 @@ import { subscribeToTyping, TYPING_EXPIRY_MS } from "@/lib/api/typing";
 import { useDraft } from "@/lib/lincin/drafts";
 import { supabase } from "@/lib/supabase/client";
 import { useAttachmentUri, useAttachmentUris } from "@/lib/attachment-cache";
+import { neemBijdrage } from "@/lib/lincin/bijdrage-in-gesprek";
 import {
   attachmentTypeFor,
   downloadBlobUri,
@@ -381,6 +382,8 @@ export function ChatDetail({
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
+  /** Een bijdrage die met het volgende bericht meegaat ("Bericht aan", lib/lincin/bijdrage-in-gesprek.ts). */
+  const [klaarBijdrage, setKlaarBijdrage] = useState<PostRef | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
   // Read receipts: last_read_at per user_id van andere chat-leden.
@@ -793,6 +796,16 @@ export function ChatDetail({
     if (id && messages) rememberThread(id, messages);
   }, [id, messages]);
 
+  // Kom je via "Bericht aan": de bijdrage boven het tekstveld, de cursor erin.
+  useEffect(() => {
+    if (!id) return;
+    const r = neemBijdrage(String(id));
+    setKlaarBijdrage(r);
+    if (!r) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 350);
+    return () => clearTimeout(t);
+  }, [id]);
+
   // Focus input zodra replyTo gezet wordt.
   // InteractionManager wacht tot alle animaties/transities klaar zijn
   // voordat hij focust — betrouwbaarder dan een vaste setTimeout op iOS.
@@ -1078,14 +1091,16 @@ export function ChatDetail({
 
     const currentReply = replyTo;
     setReplyTo(null);
+    const currentPost = klaarBijdrage;
+    setKlaarBijdrage(null);
     setShowEmojiPicker(false);
-    // Patch de optimistic rij met de reply zodat de quote meteen zichtbaar is
-    if (currentReply) {
+    // Patch de optimistic rij met de reply (en de bijdrage) zodat ze meteen zichtbaar zijn
+    if (currentReply || currentPost) {
       setMessages((prev) =>
         prev
           ? prev.map((m) =>
               m.id === tempId
-                ? { ...m, content: { text, reply: currentReply } }
+                ? { ...m, content: { text, ...(currentReply ? { reply: currentReply } : null), ...(currentPost ? { postRef: currentPost } : null) } }
                 : m
             )
           : prev
@@ -1093,7 +1108,7 @@ export function ChatDetail({
     }
 
     try {
-      const real = await sendMessage({ chatId: id, senderId: myUserId, text, reply: currentReply ?? undefined });
+      const real = await sendMessage({ chatId: id, senderId: myUserId, text, reply: currentReply ?? undefined, postRef: currentPost ?? undefined });
       // Vervang optimistic met de echte id (tenzij realtime ons al voor was).
       setMessages((prev) => {
         if (!prev) return prev;
@@ -2409,6 +2424,31 @@ export function ChatDetail({
                 onConfirm={(t) => onConfirmEdit(editingMessage.id, t)}
                 onCancel={() => setEditingMessage(null)}
               />
+            )}
+            {/* De bijdrage die met dit bericht meegaat ("Bericht aan"). */}
+            {klaarBijdrage && (
+              <ComposerInset style={{ paddingTop: space.md }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                  <View style={{ width: 3, alignSelf: "stretch", backgroundColor: color("ink") }} />
+                  <View style={{ flex: 1, paddingVertical: 2 }}>
+                    <Text style={[feedType.kicker, { color: color("ink", "inkDim"), letterSpacing: 0.55 }]} numberOfLines={1}>
+                      OVER DEZE BIJDRAGE
+                    </Text>
+                    <Text style={[feedType.label, { color: color("ink"), marginTop: 3 }]} numberOfLines={1}>
+                      {klaarBijdrage.title || klaarBijdrage.quote || "Bijdrage"}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Bijdrage niet vermelden"
+                    onPress={() => setKlaarBijdrage(null)}
+                    hitSlop={10}
+                    style={({ pressed }) => ({ width: 30, height: 30, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 })}
+                  >
+                    <Ionicons name="close" color={color("ink")} size={17} />
+                  </Pressable>
+                </View>
+              </ComposerInset>
             )}
             {/* Reply preview bar */}
             {replyTo && (

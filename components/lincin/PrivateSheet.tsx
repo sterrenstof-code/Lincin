@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,6 +9,7 @@ import { color, line } from "@/lib/design/theme";
 import { lincinType } from "@/lib/design/type";
 import { useT } from "@/lib/i18n";
 import { openThread, useIsDesktop } from "@/lib/lincin/desktop";
+import { zetBijdrage } from "@/lib/lincin/bijdrage-in-gesprek";
 import { useToast } from "@/lib/toast";
 
 import { useSheetMotion } from "./BottomSheet";
@@ -58,6 +59,28 @@ export function PrivateSheet({ target: current, onClose }: { target: PrivateTarg
     onClose();
   };
 
+  // Geen blad meer: meteen naar het gesprek, met de bijdrage klaar boven het
+  // tekstveld en de cursor erin (lib/lincin/bijdrage-in-gesprek.ts). Het blad
+  // hieronder blijft alleen als het gesprek niet geopend kon worden.
+  const [blad, setBlad] = useState(false);
+  useEffect(() => {
+    if (!current || !session) return;
+    let weg = false;
+    setBlad(false);
+    getOrCreateDirectChat(current.friendId)
+      .then((chatId) => {
+        if (weg) return;
+        if (current.postId) zetBijdrage(chatId, { id: current.postId, title: current.postTitle ?? current.quote ?? "", quote: current.quote ?? "" });
+        onClose();
+        openThread(chatId);
+      })
+      .catch(() => !weg && setBlad(true));
+    return () => {
+      weg = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, session]);
+
   async function send() {
     if (!target || !session || sending) return;
     const text = draft.trim() || "hey, over deze bladzijde…";
@@ -88,7 +111,7 @@ export function PrivateSheet({ target: current, onClose }: { target: PrivateTarg
   const desktop = useIsDesktop();
 
   // De sluier vervaagt op zijn plek; alleen het blad schuift (zie BottomSheet).
-  if (!motion.mounted) return null;
+  if (!motion.mounted || !blad) return null;
   return (
     <Modal visible transparent animationType="none" onRequestClose={close}>
       <View style={{ flex: 1, justifyContent: desktop ? "center" : "flex-end", alignItems: desktop ? "center" : "stretch" }}>
