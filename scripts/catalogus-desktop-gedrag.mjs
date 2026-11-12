@@ -516,7 +516,7 @@ try {
     noteer(
       w,
       "bovenbalk: twee knoppen Wand en Gloedraster, de bewaarde aan",
-      knoppen.length === 2 && knoppen.every((k) => k[1] === "radio" && k[3] === 36) && knoppen.find((k) => k[2] === "true")?.[0] === bewaardeW,
+      knoppen.length === 2 && knoppen.every((k) => k[1] === "radio" && k[3] === 40) && knoppen.find((k) => k[2] === "true")?.[0] === bewaardeW,
       JSON.stringify(knoppen),
     );
     const naar = bewaardeW === "wand" ? "gloedraster" : "wand";

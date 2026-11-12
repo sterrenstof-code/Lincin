@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Spec, klikbaar } from "./Delen";
+import { Icoon } from "./Iconen";
 import type { KaderNav, Tab, Weergave } from "./typen";
 
 /**
@@ -40,7 +41,7 @@ export function Meldingen({ nav, los = false }: { nav: KaderNav; los?: boolean }
       {...klikbaar(nav.meldingen)}
       data-meet="ster"
     >
-      {STER}
+      <Icoon naam="ster" />
       {n ? (
         <span className="aantal">
           {n > 99 ? "99+" : n}
@@ -83,8 +84,8 @@ export function Kop({ actief, nav, knop, helder }: { actief: Tab | null; nav: Ka
       <span style={{ flex: 1 }} />
       {knop}
       <Meldingen nav={nav} />
-      <a className="ib" aria-label="Nieuwe bijdrage" style={{ fontSize: 28, fontWeight: 200 }} {...klikbaar(nav.nieuw)}>
-        +
+      <a className="ib" aria-label="Nieuwe bijdrage" {...klikbaar(nav.nieuw)}>
+        <Icoon naam="plus" />
       </a>
     </header>
   );

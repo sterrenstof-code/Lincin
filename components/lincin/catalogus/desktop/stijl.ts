@@ -198,22 +198,23 @@ export const CSS = `
 
 /* de meldingen: met iets nieuws een blok in de accentkleur met het aantal */
 .cd .ster{position:relative}
-.cd .ster.nieuw{width:auto;height:36px;padding:0 12px 0 10px;gap:8px;background:var(--acc);color:#fff;font-size:15px}
+.cd .ster.nieuw{width:auto;padding:0 12px 0 9px;gap:7px;background:var(--acc);color:#fff}
 .cd .ster.nieuw::after{content:"";position:absolute;inset:0;border:2px solid var(--acc);animation:cd-ping 1.6s ${VERLOOP_FOTO} 3;pointer-events:none}
 .cd .ster .aantal{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;animation:cd-rise .3s ${VERLOOP_FOTO}}
 @keyframes cd-ping{0%{opacity:.9;transform:scale(1)}80%,100%{opacity:0;transform:scale(1.35,1.6)}}
 
 .cd .tel{min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;background:var(--acc);color:#fff;font-size:12px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;animation:cd-rise .3s ${VERLOOP_FOTO}}
 
-/* de weergave in de bovenbalk */
-.cd .wk{flex:none;display:flex;align-items:center;gap:8px}
+/* de weergave in de bovenbalk: dezelfde vakken van 40 als ✳ en +; de gekozen gevuld met inkt */
+.cd .wk{flex:none;display:flex;align-items:center;gap:4px}
 .cd .wkgroep{display:flex}
-.cd .wkbtn{width:40px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid currentColor;opacity:.55;transition:opacity .12s,background .12s}
-.cd .wkgroep .wkbtn+.wkbtn{margin-left:-1px}
-.cd .wkbtn:hover{opacity:1}
-.cd .wkbtn[aria-checked=true]{opacity:1;background:var(--k);color:var(--onk);border-color:var(--k)}
-.cd.glowt .wkbtn[aria-checked=true]{background:#fff;color:#141210;border-color:#fff}
-.cd .wkstand{width:36px;border-color:transparent}
+.cd .wkbtn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
+.cd .wkbtn:hover{background:rgba(127,127,127,.14)}
+.cd .wkbtn[aria-checked=true]{background:var(--k);color:var(--onk)}
+.cd.glowt .wkbtn[aria-checked=true]{background:#fff;color:#141210}
+.cd .top .ib{width:40px;height:40px;transition:background .12s}
+.cd .top .ib.nieuw{width:auto}
+.cd .top .ib:not(.nieuw):hover{background:rgba(127,127,127,.14)}
 
 @media (prefers-reduced-motion:reduce){.cd,.cd *,.cd *::before,.cd *::after{animation:none!important;transition:none!important}}
 `;
