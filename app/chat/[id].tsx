@@ -1317,6 +1317,10 @@ export function ChatDetail({
    * verstuurt. Wat er al klaarstond blijft staan; samen hooguit tien.
    */
   const [slepen, setSlepen] = useState(false);
+  // Het voorbeeld van foto's: op een breed scherm een venster in het midden,
+  // op de telefoon het hele scherm.
+  const { width: vensterB } = useWindowDimensions();
+  const fotoVenster = vensterB >= 720;
   const addDroppedRef = useRef<(files: File[]) => void>(() => {});
   addDroppedRef.current = (files) => {
     const media = files.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
@@ -2849,7 +2853,8 @@ export function ChatDetail({
             if (!sending) { setPendingImages(null); setPendingCaption(""); setSelectedPendingIdx(0); }
           }}
         >
-          <View style={{ flex: 1, backgroundColor: "#000" }}>
+          <View style={fotoVenster ? { flex: 1, backgroundColor: "rgba(10,9,8,0.82)", alignItems: "center", justifyContent: "center", padding: 32 } : { flex: 1 }}>
+          <View style={fotoVenster ? { width: "100%", maxWidth: 760, height: "100%", maxHeight: 820, backgroundColor: "#000", overflow: "hidden" } : { flex: 1, backgroundColor: "#000" }}>
             {/* Sluit-knop + teller */}
             <SafeAreaView style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 8 }}>
               <Pressable
@@ -2910,14 +2915,22 @@ export function ChatDetail({
               </ScrollView>
             )}
 
-            {/* Caption + verstuur */}
+            {/* Caption + verstuur. Met een kopje erboven en een rand: het
+                veld was een donkere pil op zwart, en las niet als iets waar
+                je kon typen. */}
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-              <View style={{ backgroundColor: "rgba(0,0,0,0.7)", flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
+              <View style={{ backgroundColor: "#141210", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 }}>
+              <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                Schrijf er iets bij <Text style={{ fontWeight: "400", textTransform: "none", letterSpacing: 0 }}>(mag ook leeg)</Text>
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
                 <TextInput
                   value={pendingCaption}
                   onChangeText={setPendingCaption}
-                  placeholder="Voeg een onderschrift toe…"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  placeholder={pendingImages && pendingImages.length > 1 ? "Wat wil je over deze foto's zeggen?" : "Wat wil je over deze foto zeggen?"}
+                  placeholderTextColor="rgba(255,255,255,0.55)"
+                  accessibilityLabel="Bijschrift"
+                  autoFocus={fotoVenster}
                   multiline
                   maxLength={500}
                   editable={!sending}
@@ -2925,12 +2938,13 @@ export function ChatDetail({
                     flex: 1,
                     color: "#fff",
                     fontSize: 16,
-                    minHeight: 40,
-                    maxHeight: 100,
+                    minHeight: 48,
+                    maxHeight: 120,
                     paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    backgroundColor: "rgba(255,255,255,0.12)",
-                    borderRadius: 20,
+                    paddingVertical: 12,
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    borderWidth: 1,
+                    borderColor: pendingCaption ? "#fff" : "rgba(255,255,255,0.45)",
                     ...(Platform.OS === "web" ? { outlineWidth: 0 } as any : {}),
                   }}
                 />
@@ -3026,7 +3040,9 @@ export function ChatDetail({
                   )}
                 </Pressable>
               </View>
+              </View>
             </KeyboardAvoidingView>
+          </View>
           </View>
         </Modal>
 
