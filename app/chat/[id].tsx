@@ -130,7 +130,7 @@ import { Place } from "@/components/lincin/Media";
 import { Carousel } from "@/components/lincin/Carousel";
 import { openLightbox } from "@/components/lincin/Lightbox";
 import { currentPlace, openPlace, placeCoords } from "@/lib/lincin/place";
-import { useImageRatio } from "@/lib/lincin/ratio";
+import { useImageSize } from "@/lib/lincin/ratio";
 import { prepareImageForUpload } from "@/lib/image-prep";
 import { Kop as CatKop, Meer } from "@/components/lincin/catalogus/Kop";
 import { useCatalogusDesktop } from "@/components/lincin/catalogus/desktop/weergave";
@@ -4411,8 +4411,15 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
   // verloor boven en onder, een liggende de zijkanten. Nu 240 breed en zo
   // hoog als de foto zelf (begrensd 4:5–1.91:1, zie lib/lincin/ratio), en
   // wat buiten die grenzen valt wordt ingepast in plaats van afgesneden.
-  const ratio = useImageRatio(uri);
-  const thumbH = Math.round(240 / ratio);
+  //
+  // Minstens 240, en zo breed als de bubbel: met een bijschrift dat breder
+  // is dan de foto stond de foto links op 240 en vulde de bubbelkleur de
+  // rest als een zwart (of gekleurd) vlak. Nu vult de foto de breedte, in
+  // zijn eigen verhouding: de echte, zodat er nooit een balk naast of boven
+  // staat. Alleen een extreem lange of brede foto wordt bijgesneden (tussen
+  // 1:2 en 3:1); de lichtbak toont altijd de hele foto.
+  const size = useImageSize(uri);
+  const ratio = size ? Math.max(0.5, Math.min(3, size.w / size.h)) : 1;
 
   return (
     <>
@@ -4420,13 +4427,13 @@ function ImageWithLightbox({ uri, loading }: { uri: string | null; loading: bool
       <Pressable
         onPress={() => uri && setOpen(true)}
         className="overflow-hidden"
-        style={{ opacity: loading ? 0.6 : 1 }}
+        style={{ opacity: loading ? 0.6 : 1, alignSelf: "stretch", minWidth: 240 }}
       >
         {uri && !loading ? (
           <Image
             source={{ uri }}
-            style={{ width: 240, height: thumbH }}
-            contentFit="contain"
+            style={{ width: "100%", aspectRatio: ratio }}
+            contentFit="cover"
             transition={150}
           />
         ) : (
