@@ -14,7 +14,8 @@ import { addNotificationTapListener, registerPushToken } from "@/lib/push";
 import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
-import { KeyGate } from "@/components/KeyGate";
+import { KeyGate, PasskeyView } from "@/components/KeyGate";
+import { passkeySupported } from "@/lib/crypto/passkey";
 import { PageTransition } from "@/components/PageTransition";
 import { useTheme } from "@/lib/design/theme";
 import { creamOnDark, desk, feed, flame } from "@/lib/design/type";
@@ -29,12 +30,34 @@ function ThemedTab({ children }: { children: ReactNode }) {
   );
 }
 
+const PASSKEY_LATER = "lincin-passkey-later:";
+const LATER_MS = 30 * 24 * 3600 * 1000;
+
+/** Heeft deze persoon op dit toestel de laatste 30 dagen "Later" gezegd? */
+function passkeyLater(userId: string): boolean {
+  try {
+    const t = Number(localStorage.getItem(PASSKEY_LATER + userId));
+    return !!t && Date.now() - t < LATER_MS;
+  } catch {
+    return false;
+  }
+}
+
+function setPasskeyLater(userId: string): void {
+  try {
+    localStorage.setItem(PASSKEY_LATER + userId, String(Date.now()));
+  } catch {
+    // Geen opslag: dan vragen we het de volgende keer opnieuw.
+  }
+}
+
 const themedTabLayout = ({ children }: { children: ReactNode }) => <ThemedTab>{children}</ThemedTab>;
 
 export default function AppLayout() {
   const { session, loading, recovering } = useAuth();
   const [bootstrapping, setBootstrapping] = useState(true);
   const [keyStatus, setKeyStatus] = useState<KeyStatus>({ state: "ready" });
+  const [offerPasskey, setOfferPasskey] = useState(false);
   const qc = useQueryClient();
   const restoring = useIsRestoring();
 
@@ -56,6 +79,9 @@ export default function AppLayout() {
       // het zelf, zoals vroeger.
       qc.setQueryData(["onboarded", userId], result.onboarded);
       setKeyStatus(result.keys);
+      if (result.keys.state === "ready" && !result.hasPasskey && !passkeyLater(userId) && (await passkeySupported()) !== false) {
+        setOfferPasskey(true);
+      }
     } catch (err) {
       console.warn("bootstrapProfile failed", err);
     }
@@ -287,6 +313,23 @@ export default function AppLayout() {
   // Eerst je sleutel: op dit toestel, en met herstelcode op de server.
   if (keyStatus.state !== "ready") {
     return <KeyGate userId={session.user.id} status={keyStatus} onDone={runBootstrap} />;
+  }
+
+  // Daarna, één keer: een passkey, zodat gewiste browsergegevens je sleutel
+  // niet meer kosten (0101). "Later" vraagt het 30 dagen niet opnieuw.
+  if (offerPasskey) {
+    const uid = session.user.id;
+    return (
+      <PasskeyView
+        userId={uid}
+        name={session.user.email ?? "Lincin"}
+        onDone={() => setOfferPasskey(false)}
+        onLater={() => {
+          setPasskeyLater(uid);
+          setOfferPasskey(false);
+        }}
+      />
+    );
   }
 
   return (

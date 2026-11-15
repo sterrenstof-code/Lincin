@@ -153,6 +153,7 @@ export function DesktopSettings() {
     { label: t.myQr, onPress: () => router.push("/qr-code") },
     { label: t.linkDevice, onPress: () => router.push("/device-link") },
     { label: t.recoveryCode, onPress: () => router.push("/recovery-code") },
+    { label: "Passkey", onPress: () => router.push("/passkey") },
     { label: t.logout, onPress: logout, red: true },
   ];
 

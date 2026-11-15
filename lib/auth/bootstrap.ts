@@ -8,6 +8,7 @@ import {
   setIdentityOwner,
   storeIdentity,
 } from "../crypto/keys";
+import { createPasskeyCopy, openWithPasskey } from "../crypto/passkey";
 import { unwrapPrivateKey, wrapPrivateKey } from "../crypto/recovery";
 import { supabase } from "../supabase/client";
 
@@ -18,12 +19,13 @@ import { supabase } from "../supabase/client";
  *            toon de code (`saveRecoveryBackup`) voor je verder gaat
  *   restore  de server kent je sleutel, dit toestel niet: haal hem met een
  *            QR van een ander toestel of met je herstelcode
- *            (`restoreWithRecoveryCode`), of begin opnieuw (`startFresh`)
+ *            (`restoreWithRecoveryCode`), met een passkey
+ *            (`restoreWithPasskey`), of begin opnieuw (`startFresh`)
  */
 export type KeyStatus =
   | { state: "ready" }
   | { state: "backup" }
-  | { state: "restore"; hasBackup: boolean };
+  | { state: "restore"; hasBackup: boolean; hasPasskey: boolean };
 
 /**
  * Wordt aangeroepen na succesvolle login. Zorgt voor:
@@ -55,6 +57,7 @@ export async function bootstrapProfile(args: {
   const [
     { data: existing, error: selErr },
     { data: row },
+    { count: passkeys },
     loaded,
     owner,
   ] = await Promise.all([
@@ -68,6 +71,7 @@ export async function bootstrapProfile(args: {
       .select("privkey, wrapped")
       .eq("user_id", args.userId)
       .maybeSingle(),
+    supabase.from("key_passkeys").select("credential_id", { count: "exact", head: true }).eq("user_id", args.userId),
     loadIdentity(),
     getIdentityOwner(),
   ]);
@@ -78,18 +82,23 @@ export async function bootstrapProfile(args: {
   // Meegelezen met het profiel, zodat de app er geen aparte vraag voor
   // hoeft te stellen (0082). Een nieuw account heeft de stappen nog niet gehad.
   const onboarded = existing ? existing.onboarded_at !== null : false;
-  const keys = await settleKeys(args, existing, legacyPrivkey, wrapped, loaded, owner);
-  return { keys, onboarded };
+  const hasPasskey = existing ? (passkeys ?? 0) > 0 : false;
+  const keys = await settleKeys(args, existing, legacyPrivkey, wrapped, hasPasskey, loaded, owner);
+  return { keys, onboarded, hasPasskey };
 }
 
-/** Wat het opstarten oplevert: de stand van je sleutel, en of je de stappen na het aanmaken al had. */
-export type BootstrapResult = { keys: KeyStatus; onboarded: boolean };
+/**
+ * Wat het opstarten oplevert: de stand van je sleutel, of je de stappen na
+ * het aanmaken al had, en of er een passkey-kopie van je sleutel is (0101).
+ */
+export type BootstrapResult = { keys: KeyStatus; onboarded: boolean; hasPasskey: boolean };
 
 async function settleKeys(
   args: { userId: string; email: string; preferredUsername?: string },
   existing: { identity_pubkey: string | null } | null,
   legacyPrivkey: string | null,
   wrapped: string | null,
+  hasPasskey: boolean,
   loaded: Awaited<ReturnType<typeof loadIdentity>>,
   owner: string | null,
 ): Promise<KeyStatus> {
@@ -143,7 +152,7 @@ async function settleKeys(
   // ── De server kent je sleutel, dit toestel niet ──────────────────────────
   if (serverPub) {
     if (local) await clearIdentity();
-    return { state: "restore", hasBackup: !!wrapped };
+    return { state: "restore", hasBackup: !!wrapped, hasPasskey };
   }
 
   // ── Nergens een sleutel: een nieuwe ──────────────────────────────────────
@@ -188,6 +197,43 @@ export async function restoreWithRecoveryCode(userId: string, code: string): Pro
 }
 
 /**
+ * Een passkey maken en de sleutel van dit toestel ermee versleuteld naar de
+ * server (0101). Gooit `PasskeyError` als de gebruiker annuleert of de
+ * passkey het niet kan.
+ */
+export async function savePasskeyCopy(userId: string, name: string): Promise<void> {
+  const local = await loadIdentity();
+  if (!local) throw new Error("Geen sleutel op dit toestel.");
+  const row = await createPasskeyCopy({ userId, name, secretKey: local.secretKey });
+  const { error } = await supabase.from("key_passkeys").insert({ user_id: userId, ...row });
+  if (error) throw error;
+}
+
+/** Je sleutel terug met een passkey. `false` als die niet bij dit account past. */
+export async function restoreWithPasskey(userId: string): Promise<boolean> {
+  const [{ data: rows, error }, { data: profile }] = await Promise.all([
+    supabase.from("key_passkeys").select("credential_id, wrapped").eq("user_id", userId),
+    supabase.from("profiles").select("identity_pubkey").eq("id", userId).maybeSingle(),
+  ]);
+  if (error) throw error;
+  if (!rows?.length) return false;
+  const secretKey = await openWithPasskey(userId, rows);
+  if (!secretKey) return false;
+  const publicKey = derivePublicFromPrivate(secretKey);
+  // Past hij niet bij wat je vrienden van je kennen, dan is het een oude kopie.
+  if (profile?.identity_pubkey && profile.identity_pubkey !== bytesToBase64(publicKey)) return false;
+  await storeIdentity({ secretKey, publicKey });
+  await setIdentityOwner(userId);
+  return true;
+}
+
+/** Heeft dit account een passkey-kopie? */
+export async function hasPasskeyCopy(userId: string): Promise<boolean> {
+  const { count } = await supabase.from("key_passkeys").select("credential_id", { count: "exact", head: true }).eq("user_id", userId);
+  return (count ?? 0) > 0;
+}
+
+/**
  * Opnieuw beginnen zonder je oude sleutel: berichten van vroeger blijven
  * onleesbaar, nieuwe werken weer. Alleen na een bevestiging in de app.
  */
@@ -201,4 +247,6 @@ export async function startFresh(userId: string): Promise<void> {
     .eq("id", userId);
   if (error) throw error;
   await supabase.from("private_keys").delete().eq("user_id", userId);
+  // Ook de passkey-kopieën: die bevatten de oude sleutel.
+  await supabase.from("key_passkeys").delete().eq("user_id", userId);
 }

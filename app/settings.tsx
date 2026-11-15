@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 
 import { LincinScreen, vfade } from "@/components/lincin/Chrome";
 import { SettingsModern, type SettingsGroupData } from "@/components/lincin/modern/SettingsModern";
@@ -211,6 +211,9 @@ function SettingsMobile() {
           : []),
         { key: "device", label: "Toestel koppelen", sub: "Je sleutels naar een tweede toestel", onPress: () => router.push("/device-link"), right: arrow() },
         { key: "recovery", label: "Herstelcode", sub: "Een nieuwe code maken", onPress: () => router.push("/recovery-code"), right: arrow() },
+        ...(Platform.OS === "web"
+          ? [{ key: "passkey", label: "Passkey", sub: "Je sleutel terug met je vingerafdruk", onPress: () => router.push("/passkey"), right: arrow() }]
+          : []),
         { key: "logout", label: "Uitloggen", sub: "Op dit toestel", onPress: logout, right: arrow(true) },
       ],
     },
@@ -370,6 +373,13 @@ function SettingsMobile() {
               →
             </Val>
           </Row>
+          {Platform.OS === "web" ? (
+            <Row label="Passkey" sub="Je sleutel terug met je vingerafdruk" onPress={() => router.push("/passkey")}>
+              <Val>
+                →
+              </Val>
+            </Row>
+          ) : null}
           <Row label="Uitloggen" sub="Op dit toestel" onPress={logout} last>
             <Val red>
               →

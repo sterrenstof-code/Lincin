@@ -13,7 +13,15 @@ import {
   PrimaryButton,
 } from "@/components/lincin/auth/AuthKit";
 import { useAuth } from "@/lib/auth/provider";
-import { restoreWithRecoveryCode, saveRecoveryBackup, startFresh, type KeyStatus } from "@/lib/auth/bootstrap";
+import {
+  restoreWithPasskey,
+  restoreWithRecoveryCode,
+  saveRecoveryBackup,
+  savePasskeyCopy,
+  startFresh,
+  type KeyStatus,
+} from "@/lib/auth/bootstrap";
+import { PasskeyError } from "@/lib/crypto/passkey";
 import { loadIdentity } from "@/lib/crypto/keys";
 import { generateRecoveryCode, normalizeRecoveryCode } from "@/lib/crypto/recovery";
 import { color } from "@/lib/design/theme";
@@ -28,7 +36,7 @@ import { copyToClipboard } from "@/lib/share";
  */
 export function KeyGate({ userId, status, onDone }: { userId: string; status: KeyStatus; onDone: () => void }) {
   if (status.state === "backup") return <BackupView userId={userId} onDone={onDone} />;
-  if (status.state === "restore") return <RestoreView userId={userId} hasBackup={status.hasBackup} onDone={onDone} />;
+  if (status.state === "restore") return <RestoreView userId={userId} hasBackup={status.hasBackup} hasPasskey={status.hasPasskey} onDone={onDone} />;
   return null;
 }
 
@@ -89,14 +97,16 @@ export function BackupView({ userId, onDone, renew = false, onBack }: { userId: 
       </View>
 
       <View style={{ flex: 1, minHeight: 28 }} />
-      <View style={{ marginHorizontal: 6, marginBottom: 24 }}>
+      <View style={{ marginHorizontal: 6, marginBottom: 24, gap: 6 }}>
+        {/* Catalogus heeft in de instellingen geen eigen regel voor de passkey: hij staat hier. */}
+        {renew && Platform.OS === "web" ? <OutlineButton label="Of maak een passkey" onPress={() => router.push("/passkey")} /> : null}
         <PrimaryButton label="Ik heb hem bewaard" onPress={save} busy={busy} />
       </View>
     </AuthPage>
   );
 }
 
-function RestoreView({ userId, hasBackup, onDone }: { userId: string; hasBackup: boolean; onDone: () => void }) {
+function RestoreView({ userId, hasBackup, hasPasskey, onDone }: { userId: string; hasBackup: boolean; hasPasskey: boolean; onDone: () => void }) {
   const { signOut } = useAuth();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -130,6 +140,19 @@ function RestoreView({ userId, hasBackup, onDone }: { userId: string; hasBackup:
       else setError("Deze code past niet. Kijk hem nog eens na.");
     } catch {
       setError("Herstellen is niet gelukt. Probeer het opnieuw.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withPasskey() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (await restoreWithPasskey(userId)) onDone();
+      else setError("Deze passkey hoort niet bij dit account. Kies een andere, of gebruik je herstelcode.");
+    } catch (e) {
+      if (!(e instanceof PasskeyError && e.reason === "geannuleerd")) setError("Dat lukte niet met deze passkey. Probeer het opnieuw, of gebruik je herstelcode.");
     } finally {
       setBusy(false);
     }
@@ -174,9 +197,22 @@ function RestoreView({ userId, hasBackup, onDone }: { userId: string; hasBackup:
         <AuthTitle>Haal je sleutel naar dit toestel.</AuthTitle>
         <AuthSub>
           Je gesprekken zijn versleuteld met een sleutel die niet op dit toestel staat.{" "}
-          {hasBackup ? "Typ je herstelcode, of scan de QR-code van een toestel waarop je al bent ingelogd." : "Scan de QR-code van een toestel waarop je al bent ingelogd."}
+          {hasPasskey
+            ? hasBackup
+              ? "Bevestig met je passkey, typ je herstelcode, of scan de QR-code van een toestel waarop je al bent ingelogd."
+              : "Bevestig met je passkey, of scan de QR-code van een toestel waarop je al bent ingelogd."
+            : hasBackup
+              ? "Typ je herstelcode, of scan de QR-code van een toestel waarop je al bent ingelogd."
+              : "Scan de QR-code van een toestel waarop je al bent ingelogd."}
         </AuthSub>
+        {hasPasskey && !hasBackup && error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
       </View>
+
+      {hasPasskey ? (
+        <View style={{ marginTop: 22, marginHorizontal: 6 }}>
+          <PrimaryButton label="Met je passkey" onPress={withPasskey} busy={busy} />
+        </View>
+      ) : null}
 
       {hasBackup ? (
         <View style={{ marginTop: 26, marginHorizontal: 24, gap: 14 }}>
@@ -199,7 +235,13 @@ function RestoreView({ userId, hasBackup, onDone }: { userId: string; hasBackup:
 
       <View style={{ flex: 1, minHeight: 28 }} />
       <View style={{ marginHorizontal: 6, gap: 6 }}>
-        {hasBackup ? <PrimaryButton label="Herstel" onPress={restore} busy={busy} /> : null}
+        {hasBackup ? (
+          hasPasskey ? (
+            <OutlineButton label="Herstel met code" onPress={restore} />
+          ) : (
+            <PrimaryButton label="Herstel" onPress={restore} busy={busy} />
+          )
+        ) : null}
         <OutlineButton
           label={Platform.OS === "web" ? "QR of link van een ander toestel" : "Scan QR van een ander toestel"}
           onPress={() => router.push("/device-receive")}
@@ -213,6 +255,76 @@ function RestoreView({ userId, hasBackup, onDone }: { userId: string; hasBackup:
           <AuthSub>Uitloggen</AuthSub>
         </Pressable>
       </View>
+    </AuthPage>
+  );
+}
+
+/**
+ * Een passkey voor je sleutel (0101): na de herstelcode aangeboden, en
+ * vanuit de instellingen. Met een passkey haal je je sleutel terug met je
+ * vingerafdruk of gezicht, ook als de browser zijn gegevens kwijt is.
+ */
+export function PasskeyView({
+  userId,
+  name,
+  has = false,
+  onDone,
+  onLater,
+  onBack,
+}: {
+  userId: string;
+  name: string;
+  /** Er is al een passkey: dan maak je er een extra. */
+  has?: boolean;
+  onDone: () => void;
+  onLater?: () => void;
+  onBack?: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function make() {
+    setBusy(true);
+    setError(null);
+    try {
+      await savePasskeyCopy(userId, name);
+      onDone();
+    } catch (e) {
+      if (e instanceof PasskeyError && e.reason === "geannuleerd") {
+        // Venster weggeklikt: niets zeggen.
+      } else if (e instanceof PasskeyError && e.reason === "geen-prf") {
+        setError("Deze passkey kan je sleutel niet bewaren. Probeer het met Google Wachtwoordbeheer of de iCloud-sleutelhanger, of bewaar je herstelcode goed.");
+      } else {
+        setError("Dat lukte niet. Probeer het opnieuw.");
+      }
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthPage>
+      <AuthTop label="Passkey" onBack={onBack} />
+      <View style={{ paddingTop: 28, paddingHorizontal: 24, gap: 10 }}>
+        <AuthTitle>{has ? "Nog een passkey." : "Maak een passkey."}</AuthTitle>
+        <AuthSub>
+          Dan haal je je sleutel terug met je vingerafdruk of je gezicht: op een nieuw toestel, of als deze browser zijn
+          gegevens kwijt is. Google of Apple bewaart de passkey voor je. Wij kunnen er niets mee.
+        </AuthSub>
+        {has ? <AuthSub>Je hebt er al een. Een tweede helpt als je ook een andere wachtwoordbeheerder gebruikt.</AuthSub> : null}
+        <AuthSub>Je herstelcode blijft gewoon werken.</AuthSub>
+        {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
+      </View>
+      <View style={{ flex: 1, minHeight: 28 }} />
+      <View style={{ marginHorizontal: 6, marginBottom: onLater ? 0 : 24 }}>
+        <PrimaryButton label="Maak een passkey" onPress={make} busy={busy} />
+      </View>
+      {onLater ? (
+        <View style={{ marginTop: 18, marginBottom: 28, paddingHorizontal: 24, flexDirection: "row", justifyContent: "flex-end" }}>
+          <Pressable accessibilityRole="button" onPress={onLater} hitSlop={10}>
+            <AuthSub>Later</AuthSub>
+          </Pressable>
+        </View>
+      ) : null}
     </AuthPage>
   );
 }

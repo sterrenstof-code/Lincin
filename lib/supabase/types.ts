@@ -69,6 +69,13 @@ export type Database = {
   public: {
     Tables: {
       /** 0090 — je eigen privésleutel (base64 X25519); alleen jij leest je rij. */
+      /** 0101 — je sleutel, versleuteld met een passkey (lib/crypto/passkey.ts). */
+      key_passkeys: {
+        Row: { credential_id: string; user_id: string; wrapped: string; created_at: string };
+        Insert: { credential_id: string; user_id: string; wrapped: string; created_at?: string };
+        Update: { wrapped?: string };
+        Relationships: [];
+      };
       private_keys: {
         Row: { user_id: string; privkey: string | null; wrapped: string | null; updated_at: string };
         Insert: { user_id: string; privkey?: null; wrapped?: string | null; updated_at?: string };

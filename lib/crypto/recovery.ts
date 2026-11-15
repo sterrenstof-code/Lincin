@@ -70,26 +70,34 @@ async function wrapKey(code: string, userId: string): Promise<Uint8Array> {
 export async function wrapPrivateKey(secretKey: Uint8Array, code: string, userId: string): Promise<string> {
   const normalized = normalizeRecoveryCode(code);
   if (!normalized) throw new Error("Ongeldige herstelcode.");
-  initCryptoRandom();
-  const nonce = randomBytes(NONCE_BYTES);
-  const sealed = new XChaCha20Poly1305(await wrapKey(normalized, userId)).seal(
-    nonce,
-    secretKey,
-    new TextEncoder().encode(userId)
-  );
-  const combined = new Uint8Array(nonce.length + sealed.length);
-  combined.set(nonce, 0);
-  combined.set(sealed, nonce.length);
-  return bytesToBase64(combined);
+  return sealSecretKey(secretKey, await wrapKey(normalized, userId), userId);
 }
 
 /** De privésleutel terug, of `null` als de code niet past. */
 export async function unwrapPrivateKey(wrapped: string, code: string, userId: string): Promise<Uint8Array | null> {
   const normalized = normalizeRecoveryCode(code);
   if (!normalized) return null;
+  return openSecretKey(wrapped, await wrapKey(normalized, userId), userId);
+}
+
+/**
+ * De verpakking zelf, voor elke sleutel van 32 bytes: ook die van een
+ * passkey (lib/crypto/passkey.ts).
+ */
+export function sealSecretKey(secretKey: Uint8Array, key: Uint8Array, userId: string): string {
+  initCryptoRandom();
+  const nonce = randomBytes(NONCE_BYTES);
+  const sealed = new XChaCha20Poly1305(key).seal(nonce, secretKey, new TextEncoder().encode(userId));
+  const combined = new Uint8Array(nonce.length + sealed.length);
+  combined.set(nonce, 0);
+  combined.set(sealed, nonce.length);
+  return bytesToBase64(combined);
+}
+
+export function openSecretKey(wrapped: string, key: Uint8Array, userId: string): Uint8Array | null {
   const combined = base64ToBytes(wrapped);
   if (combined.length <= NONCE_BYTES) return null;
-  return new XChaCha20Poly1305(await wrapKey(normalized, userId)).open(
+  return new XChaCha20Poly1305(key).open(
     combined.slice(0, NONCE_BYTES),
     combined.slice(NONCE_BYTES),
     new TextEncoder().encode(userId)
