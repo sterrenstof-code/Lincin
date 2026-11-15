@@ -14,7 +14,27 @@ import { Platform } from "react-native";
 const DB_NAME = "comm-app-secure";
 const STORE = "kv";
 
+/**
+ * Op web mag de browser wat een site bewaart opruimen als het toestel vol
+ * raakt (Chrome op Android doet dat echt). Dan is de sleutel weg en staat
+ * er bij de volgende keer "Haal je sleutel naar dit toestel". Met `persist`
+ * vragen we de browser dat niet te doen. Chrome beslist dat zelf, zonder
+ * iets te vragen. Wist iemand zelf de sitegegevens, dan helpt dit niet.
+ * We vragen het één keer per sessie, zodra er een sleutel gelezen of
+ * geschreven wordt.
+ */
+let blijvendGevraagd = false;
+function vraagBlijvend(): void {
+  if (blijvendGevraagd || typeof navigator === "undefined" || !navigator.storage?.persist) return;
+  blijvendGevraagd = true;
+  navigator.storage
+    .persisted()
+    .then((al) => (al ? true : navigator.storage.persist()))
+    .catch(() => {});
+}
+
 function openDB(): Promise<IDBDatabase> {
+  vraagBlijvend();
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => {
