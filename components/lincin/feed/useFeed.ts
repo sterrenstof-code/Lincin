@@ -125,11 +125,13 @@ export function useFeed() {
   const fresh = useMemo(() => cards.filter((c) => !seen.has(c.id)).length, [cards, seen]);
 
   /**
-   * De omslag: de populairste bijdrage — de foto waar de laatste maand het
-   * meest mee gedaan is (comments, emoji, duwen; `monthInteractions`). Bij
-   * gelijkstand de nieuwste (`byTime` is nieuwste eerst). Geen foto in de
-   * feed: de nieuwste bijdrage. (De oktoberhandoff koos de eerste ongelezen
-   * foto; op vraag van de eigenaar blijft de populairste de omslag.)
+   * De omslag: de populairste bijdrage — de foto waar de laatste week het
+   * meest mee gedaan is (comments, emoji, duwen; `weekInteractions`). Bij
+   * gelijkstand de nieuwste (`byTime` is nieuwste eerst), dus zonder
+   * gedoe die week gewoon de nieuwste foto. Geen foto in de feed: de
+   * nieuwste bijdrage. (De oktoberhandoff koos de eerste ongelezen foto;
+   * op vraag van de eigenaar blijft de populairste de omslag. Tot nov 2026
+   * telde de laatste maand; dan bleef één foto wekenlang staan.)
    *
    * Hij blijft staan tijdens een bezoek: een like of comment terwijl je
    * kijkt laat hem niet onder je vinger wisselen.
@@ -139,7 +141,7 @@ export function useFeed() {
     const pinned = heroPin.current ? byTime.find((c) => c.id === heroPin.current) : undefined;
     if (pinned) return pinned;
     const photos = byTime.filter((c) => c.media.kind === "foto" && !c.media.video);
-    const pick = photos.length ? photos.reduce((best, c) => (c.monthInteractions > best.monthInteractions ? c : best), photos[0]) : byTime[0];
+    const pick = photos.length ? photos.reduce((best, c) => (c.weekInteractions > best.weekInteractions ? c : best), photos[0]) : byTime[0];
     if (pick) heroPin.current = pick.id;
     return pick;
   }, [byTime]);

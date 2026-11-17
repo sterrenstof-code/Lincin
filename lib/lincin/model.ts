@@ -57,6 +57,8 @@ export type CardPost = {
   commentCount: number;
   /** Comments, emoji en duwen van de laatste dertig dagen, gewogen. */
   monthInteractions: number;
+  /** Hetzelfde over de laatste zeven dagen: daarmee kiest de feed zijn omslag. */
+  weekInteractions: number;
   /** Alleen een post heeft emoji-reacties; een poll stemt. */
   reactable: boolean;
   /**
@@ -234,6 +236,7 @@ export function fromPost(p: PostWithAuthor): CardPost {
     media,
     commentCount: p.comment_count ?? 0,
     monthInteractions: p.month_interaction_count ?? 0,
+    weekInteractions: p.recent_interaction_count ?? 0,
     reactable: true,
     swatch: swatchOf((p.meta as { swatch?: unknown } | null)?.swatch, p.user_id),
   };
@@ -259,6 +262,7 @@ export function fromPoll(p: PollWithDetails, t: Dict): CardPost {
     media: { kind: "poll", poll: p },
     commentCount: 0,
     monthInteractions: 0,
+    weekInteractions: 0,
     reactable: false,
     swatch: swatchOf(p.swatch, p.user_id),
   };
