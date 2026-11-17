@@ -401,7 +401,7 @@ export function SettingsColumn({ myUserId }: { myUserId: string }) {
       {group("01", t.lookTitle)}
       <SetRow
         label={t.theme}
-        sub={t.themeSub}
+        sub={`${t.themeSub} · Catalogus`}
         below={
           <Seg
             value={lincin.theme}
@@ -409,6 +409,7 @@ export function SettingsColumn({ myUserId }: { myUserId: string }) {
             options={[
               { value: "magazine", label: t.themeMagazine },
               { value: "modern", label: t.themeModern },
+              { value: "catalogus", label: "Catalogus" },
             ]}
           />
         }
