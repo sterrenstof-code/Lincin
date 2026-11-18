@@ -374,11 +374,11 @@ try {
     await page.waitForTimeout(1100);
     const terug = await page.evaluate(() => document.querySelector('[data-meet="stuk"][aria-current]')?.getAttribute("data-id") ?? null);
     noteer(w, "← open: vorig stuk", terug === id, `stuk ${terug}`);
-    // De pijlen onder de foto.
+    // De pijlen linksonder, voor elk stuk op dezelfde plek.
     await page.click('[aria-label="Volgende bijdrage"]');
     await page.waitForTimeout(1100);
     const pijl = await page.evaluate(() => document.querySelector('[data-meet="stuk"][aria-current]')?.getAttribute("data-id") ?? null);
-    noteer(w, "→ onder de foto: volgend stuk", pijl === volgend, `stuk ${pijl}`);
+    noteer(w, "→ linksonder: volgend stuk", pijl === volgend, `stuk ${pijl}`);
     await page.click('[aria-label="Vorige bijdrage"]');
     await page.waitForTimeout(1100);
 

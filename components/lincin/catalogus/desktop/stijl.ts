@@ -109,7 +109,7 @@ export const CSS = `
 .cd .naarpagina,.cd .naarlink{cursor:pointer}
 .cd .naarlink:hover{text-decoration:underline;text-underline-offset:4px}
 .cd .naarpagina:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
-.cd .fotopijlen{position:fixed;z-index:41;display:flex;gap:2px;margin-left:-10px;animation:cd-rise .3s .35s both}
+.cd .pijlen{position:fixed;left:14px;bottom:16px;z-index:41;display:flex;gap:2px;animation:cd-rise .3s .35s both}
 .cd .scrim.opfoto{cursor:zoom-in}.cd .scrim.oplink{cursor:pointer}
 
 /* een tekst als artikel (de bijdragepagina) */
