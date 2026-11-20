@@ -15,6 +15,7 @@ import { OMSLAG, THEMES, color, setPreference, themeSpec, usePreference, type Li
 import { setLang, useLang, useT, type Lang } from "@/lib/i18n";
 import { setAppLock, useAppLock } from "@/lib/app-lock";
 import { pushOn, setPref, setPushPref, usePrefs, type PushKind, type TogglePref } from "@/lib/lincin/prefs";
+import { ensurePushPermission } from "@/lib/push";
 import { useIsDesktop } from "@/lib/lincin/desktop";
 import { DesktopSettings } from "@/components/lincin/desktop/DesktopSettings";
 import { usePageTitle } from "@/lib/page-title";
@@ -98,8 +99,15 @@ function SettingsMobile() {
     if (ok) signOut();
   }
 
-  const toggle = (name: TogglePref) => () => setPref(myUserId, name, !prefs[name]);
-  const flipPush = (kind: PushKind) => () => setPushPref(myUserId, kind, !pushOn(prefs, kind));
+  const toggle = (name: TogglePref) => () => {
+    setPref(myUserId, name, !prefs[name]);
+    if (name === "pushNew" && !prefs[name]) void ensurePushPermission(myUserId).catch(() => {});
+  };
+  const flipPush = (kind: PushKind) => () => {
+    const on = !pushOn(prefs, kind);
+    setPushPref(myUserId, kind, on);
+    if (on) void ensurePushPermission(myUserId).catch(() => {});
+  };
   const pushRows: { kind: PushKind; label: string; sub: string }[] = [
     { kind: "messages", label: t.pushMessages, sub: t.pushMessagesSub },
     { kind: "comments", label: t.pushComments, sub: t.pushCommentsSub },

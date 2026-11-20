@@ -1,8 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 
+import { confirm } from "./confirm";
 import { supabase } from "./supabase/client";
 
 /**
@@ -193,7 +195,7 @@ async function registerWebPush(userId: string): Promise<string | null> {
  * Op web: gebruikt de native browser Push API + VAPID (zie registerWebPush).
  * Op iOS/Android: gebruikt Expo push tokens via Expo's push service.
  */
-export async function registerPushToken(userId: string): Promise<string | null> {
+export async function registerPushToken(userId: string, opts: { ask?: boolean } = {}): Promise<string | null> {
   // Web: volledig eigen pad via browser Push API.
   if (Platform.OS === "web") {
     return registerWebPush(userId);
@@ -202,9 +204,11 @@ export async function registerPushToken(userId: string): Promise<string | null> 
   // Native: expo-notifications werkt niet op simulators.
   if (!Device.isDevice) return null;
 
+  // Het venster van het systeem komt alleen na `offerPushOnce` (ask: true):
+  // op iOS krijg je die vraag maar één keer.
   const settings = await Notifications.getPermissionsAsync();
   let granted = settings.status === "granted";
-  if (!granted) {
+  if (!granted && opts.ask) {
     const ask = await Notifications.requestPermissionsAsync();
     granted = ask.status === "granted";
   }
@@ -240,6 +244,62 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     console.warn("registerPushToken failed", e);
     return null;
   }
+}
+
+const OFFER_KEY = (userId: string) => `lincin-push-offer:${userId}`;
+const OFFER_AGAIN_MS = 7 * 24 * 3_600_000;
+const OFFER_MAX = 3;
+
+/**
+ * Meldingen aanbieden, de gebruikelijke manier (nov 2026). Eerst onze eigen
+ * vraag met uitleg; pas bij "Zet aan" het venster van het systeem. Op iOS
+ * mag dat venster maar één keer: een "nee" daar is voorgoed, tenzij je zelf
+ * naar Instellingen gaat. Zo verspillen we hem niet aan iemand die de app
+ * net opent en nog niet weet waarvoor.
+ *
+ * "Later": na een week nog eens, hoogstens drie keer. Al toegestaan: meteen
+ * registreren. Al geweigerd in het systeem: niets meer vragen.
+ */
+export async function offerPushOnce(userId: string): Promise<void> {
+  if (Platform.OS === "web" || !Device.isDevice) return;
+  try {
+    const settings = await Notifications.getPermissionsAsync();
+    if (settings.status === "granted") {
+      await registerPushToken(userId);
+      return;
+    }
+    if (!settings.canAskAgain) return;
+    const raw = await AsyncStorage.getItem(OFFER_KEY(userId));
+    const seen: { count: number; last: number } = raw ? JSON.parse(raw) : { count: 0, last: 0 };
+    if (seen.count >= OFFER_MAX || Date.now() - seen.last < OFFER_AGAIN_MS) return;
+    const yes = await confirm(
+      "Meldingen aanzetten?",
+      "Dan weet je wanneer een vriend je een bericht stuurt, op je bijdrage reageert of je wil toevoegen. Geen reclame, geen samenvattingen. Je telefoon vraagt het hierna nog één keer.",
+      { affirmativeLabel: "Zet aan" },
+    );
+    if (yes) await registerPushToken(userId, { ask: true });
+    else await AsyncStorage.setItem(OFFER_KEY(userId), JSON.stringify({ count: seen.count + 1, last: Date.now() }));
+  } catch {
+    // Niet aangeboden: volgende keer opnieuw.
+  }
+}
+
+/**
+ * Een meldingsschakelaar in Instellingen aangezet: dat is een duidelijke
+ * ja, dus meteen het systeemvenster. Weigerde je eerder in het systeem,
+ * dan kan alleen Instellingen van je telefoon het nog omzetten.
+ */
+export async function ensurePushPermission(userId: string): Promise<void> {
+  if (Platform.OS === "web" || !Device.isDevice) return;
+  const settings = await Notifications.getPermissionsAsync();
+  if (settings.status === "granted") return void (await registerPushToken(userId));
+  if (settings.canAskAgain) return void (await registerPushToken(userId, { ask: true }));
+  const open = await confirm(
+    "Meldingen staan uit",
+    "Je telefoon blokkeert meldingen van Lincin. Zet ze aan in de instellingen van je telefoon.",
+    { affirmativeLabel: "Open instellingen" },
+  );
+  if (open) await Linking.openSettings();
 }
 
 /**

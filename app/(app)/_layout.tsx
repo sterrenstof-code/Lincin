@@ -10,7 +10,7 @@ import { listMyChats, shareMyMessagesOnce, watchMyChatList } from "@/lib/api/cha
 import { listMyFriendships } from "@/lib/api/friends";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
 import { touchLastSeen } from "@/lib/api/profiles";
-import { addNotificationTapListener, registerPushToken, setNativeBadge } from "@/lib/push";
+import { addNotificationTapListener, offerPushOnce, registerPushToken, setNativeBadge } from "@/lib/push";
 import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
@@ -237,7 +237,10 @@ export default function AppLayout() {
   // stappen na het aanmaken klaar zijn, en even na het eerste beeld.
   useEffect(() => {
     if (!session || bootstrapping || onboarded.data !== true) return;
-    const t = setTimeout(() => void offerAppLockOnce(), 1500);
+    // Eerst meldingen (eigen vraag, dan het systeem), daarna het slot:
+    // nooit twee vensters over elkaar.
+    const uid = session.user.id;
+    const t = setTimeout(() => void offerPushOnce(uid).then(() => offerAppLockOnce()), 1500);
     return () => clearTimeout(t);
   }, [session, bootstrapping, onboarded.data]);
 

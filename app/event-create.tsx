@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createElement, useEffect, useState } from "react";
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Platform, Pressable, Text, View, type ViewStyle } from "react-native";
 
 import { bodyStyle, Button, Field, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
@@ -421,7 +422,7 @@ function fieldBox(th: ReturnType<typeof useThemeSpec>["id"]): ViewStyle {
   };
 }
 
-/** Cross-platform datetime input. Op web: native HTML datetime-local. Op native: text. */
+/** Cross-platform datetime input. Op web: HTML datetime-local. Native: de kiezer van het toestel. */
 function DateInput({
   label,
   value,
@@ -464,15 +465,73 @@ function DateInput({
       </View>
     );
   }
+  return <NativeDateInput label={label} value={value} onChange={onChange} />;
+}
+
+/**
+ * Native: de kiezer van het toestel. iOS heeft er één voor datum en tijd
+ * samen (compact: een knopje dat de kalender opent). Android kent geen
+ * gecombineerde; daar eerst de datum, dan de tijd, elk in een eigen venster.
+ * `value` blijft dezelfde yyyy-mm-ddThh:mm (lokale tijd) als op web.
+ */
+function NativeDateInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const th = useThemeSpec().id;
+  const date = new Date(value);
+  const valid = !Number.isNaN(date.getTime());
+  const current = valid ? date : new Date();
+
+  if (Platform.OS === "ios") {
+    return (
+      <View style={{ gap: 6 }}>
+        <Text style={labelStyle(th, 9, color("ink", "inkDim"))}>{label}</Text>
+        <View style={[fieldBox(th), { alignItems: "flex-start", paddingVertical: 8 }]}>
+          <DateTimePicker
+            value={current}
+            mode="datetime"
+            display="compact"
+            locale="nl-NL"
+            minuteInterval={5}
+            accessibilityLabel={label}
+            onChange={(_e, d) => d && onChange(toLocalISO(d))}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  function openAndroid() {
+    DateTimePickerAndroid.open({
+      value: current,
+      mode: "date",
+      onChange: (e, d) => {
+        if (e.type !== "set" || !d) return;
+        DateTimePickerAndroid.open({
+          value: d,
+          mode: "time",
+          is24Hour: true,
+          onChange: (e2, t) => {
+            if (e2.type !== "set" || !t) return;
+            const out = new Date(d);
+            out.setHours(t.getHours(), t.getMinutes(), 0, 0);
+            onChange(toLocalISO(out));
+          },
+        });
+      },
+    });
+  }
+
+  const shown = valid
+    ? current.toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    : "Kies een moment";
   return (
-    <Field
-      label={label}
-      value={value}
-      onChangeText={onChange}
-      placeholder="yyyy-mm-ddThh:mm"
-      autoCapitalize="none"
-      autoCorrect={false}
-    />
+    <View style={{ gap: 6 }}>
+      <Text style={labelStyle(th, 9, color("ink", "inkDim"))}>{label}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${shown}`} onPress={openAndroid} style={fieldBox(th)}>
+        <Text style={[th === "magazine" ? { ...serif(), fontSize: 20 } : { ...sans(400), fontSize: 15 }, { color: color("ink"), paddingVertical: 12 }]}>
+          {shown}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
