@@ -13,7 +13,8 @@
     "csp:check": "node scripts/csp-hashes.mjs",
     "catalogus:vergelijk": "node scripts/catalogus-vergelijk.mjs",
     "catalogus:vergelijk:desktop": "node scripts/catalogus-vergelijk.mjs --desktop",
-    "rls:proef": "node scripts/rls-proef.mjs"
+    "rls:proef": "node scripts/rls-proef.mjs",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -79,6 +80,7 @@
     "babel-preset-expo": "~54.0.12",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "patch-package": "^8.0.1",
     "pixelmatch": "^8.0.0",
     "playwright": "^1.65.0",
     "pngjs": "^7.0.0",

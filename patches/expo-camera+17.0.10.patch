@@ -1,0 +1,28 @@
+diff --git a/node_modules/expo-camera/build/web/useWebQRScanner.js b/node_modules/expo-camera/build/web/useWebQRScanner.js
+index ae13c40..9a3810e 100644
+--- a/node_modules/expo-camera/build/web/useWebQRScanner.js
++++ b/node_modules/expo-camera/build/web/useWebQRScanner.js
+@@ -60,7 +60,8 @@ const createWorkerAsyncFunction = (fn, deps) => {
+     };
+ };
+ const decode = createWorkerAsyncFunction(qrWorkerMethod, [
+-    'https://cdn.jsdelivr.net/npm/jsqr@1.2.0/dist/jsQR.min.js',
++    // Lincin: jsQR van onze eigen server, niet van jsDelivr (geen IP's naar derden).
++    (typeof location !== 'undefined' ? location.origin : '') + '/vendor/jsqr-1.2.0.min.js',
+ ]);
+ export function useWebQRScanner(video, { isEnabled, captureOptions, interval, onScanned, onError, }) {
+     const isRunning = React.useRef(false);
+diff --git a/node_modules/expo-camera/src/web/useWebQRScanner.ts b/node_modules/expo-camera/src/web/useWebQRScanner.ts
+index cf65a62..858fde5 100644
+--- a/node_modules/expo-camera/src/web/useWebQRScanner.ts
++++ b/node_modules/expo-camera/src/web/useWebQRScanner.ts
+@@ -75,7 +75,8 @@ const createWorkerAsyncFunction = <T extends (data: any) => any>(fn: T, deps: st
+ };
+ 
+ const decode = createWorkerAsyncFunction(qrWorkerMethod, [
+-  'https://cdn.jsdelivr.net/npm/jsqr@1.2.0/dist/jsQR.min.js',
++  // Lincin: jsQR van onze eigen server, niet van jsDelivr (geen IP's naar derden).
++    (typeof location !== 'undefined' ? location.origin : '') + '/vendor/jsqr-1.2.0.min.js',
+ ]);
+ 
+ export function useWebQRScanner(
