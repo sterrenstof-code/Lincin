@@ -1,5 +1,6 @@
 import { isLincinTheme, rememberHues, type LincinTheme } from "../design/theme";
 import { supabase } from "../supabase/client";
+import { uploadBody } from "../upload-body";
 
 /** Eén regel op je profiel: waar je heen wijst, en hoe je het noemt. */
 export type ProfileLink = {
@@ -159,7 +160,7 @@ export async function uploadAvatar(
 ): Promise<string> {
   const ext = mimeType === "image/png" ? "png" : "jpg";
   const path = `${userId}/avatar.${ext}`;
-  const blob = new Blob([fileBytes], { type: mimeType });
+  const blob = uploadBody(fileBytes, mimeType);
 
   const { error } = await supabase.storage
     .from("avatars")

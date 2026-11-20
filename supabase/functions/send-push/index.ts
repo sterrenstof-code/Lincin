@@ -586,13 +586,23 @@ Deno.serve(async (req: Request) => {
           "Accept-Encoding": "gzip, deflate",
         },
         body: JSON.stringify(
-          expoNotifications.map((n) => ({
-            to: n.to,
-            title: n.title,
-            body: n.body,
-            data: n.data,
-            sound: "default",
-          }))
+          expoNotifications.map((n) => {
+            // De kanalen (Android) en knoppen (iOS) die de app zelf aanmaakt
+            // in lib/push.ts; zonder deze velden viel alles in Expo's
+            // standaardkanaal en verscheen "Beantwoorden" nooit.
+            const type = (n.data as { type?: string } | undefined)?.type;
+            const message = type === "message";
+            return {
+              to: n.to,
+              title: n.title,
+              body: n.body,
+              data: n.data,
+              sound: "default",
+              channelId: message ? "messages" : "general",
+              priority: message ? "high" : "default",
+              ...(type === "message" || type === "friend_request" ? { categoryId: type } : {}),
+            };
+          })
         ),
       });
       results.expo = await response.json();

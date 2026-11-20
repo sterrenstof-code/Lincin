@@ -9,6 +9,7 @@ import { withLastSeen, type Profile } from "./profiles";
 import { shareMyMessagesWithMembers } from "./rekey";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { timeoutSignal } from "@/lib/supabase/timeout";
+import { uploadBody } from "../upload-body";
 
 export type ChatRow = {
   id: string;
@@ -290,7 +291,7 @@ export async function uploadGroupAvatar(
 ): Promise<string> {
   const ext = mimeType === "image/png" ? "png" : "jpg";
   const path = `${userId}/group_${chatId}.${ext}`;
-  const blob = new Blob([fileBytes], { type: mimeType });
+  const blob = uploadBody(fileBytes, mimeType);
   const { error } = await supabase.storage
     .from("avatars")
     .upload(path, blob, { contentType: mimeType, upsert: true });

@@ -1,8 +1,8 @@
+import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 // Legacy-ingang: de klassieke functies op de hoofdingang gooien sinds
 // SDK 54 bij aanroep. Zie de toelichting in `lib/crypto/file.ts`.
 import * as FileSystem from "expo-file-system/legacy";
-import * as Linking from "expo-linking";
 
 export type CalendarEvent = {
   title: string;
@@ -61,10 +61,11 @@ export async function downloadCalendarEvent(event: CalendarEvent): Promise<void>
     return;
   }
 
-  // Native: schrijf naar tijdelijk bestand en open met OS calendar app
+  // Native: een file:// uit de cache openen mag niet (iOS kan het niet,
+  // Android 7+ weigert het). Het deelvenster biedt "Agenda" zelf aan.
   const path = `${FileSystem.cacheDirectory}${filename}`;
   await FileSystem.writeAsStringAsync(path, ics, {
     encoding: FileSystem.EncodingType.UTF8,
   });
-  await Linking.openURL(path);
+  await Sharing.shareAsync(path, { mimeType: "text/calendar", UTI: "com.apple.ical.ics", dialogTitle: event.title });
 }

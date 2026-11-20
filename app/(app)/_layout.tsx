@@ -10,7 +10,7 @@ import { listMyChats, shareMyMessagesOnce, watchMyChatList } from "@/lib/api/cha
 import { listMyFriendships } from "@/lib/api/friends";
 import { countUnreadNotifications, subscribeToNotifications } from "@/lib/api/notifications";
 import { touchLastSeen } from "@/lib/api/profiles";
-import { addNotificationTapListener, registerPushToken } from "@/lib/push";
+import { addNotificationTapListener, registerPushToken, setNativeBadge } from "@/lib/push";
 import { setUnreadBadge } from "@/lib/page-title";
 import { supabase } from "@/lib/supabase/client";
 import { InstallBanner } from "@/components/InstallBanner";
@@ -219,6 +219,7 @@ export default function AppLayout() {
   // net als WhatsApp/Telegram. Werkt op iOS 16.4+ PWA en Chrome Android/desktop.
   // In de browser zelf wordt dit stil genegeerd.
   useEffect(() => {
+    setNativeBadge(totalAttention);
     if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) return;
     if (totalAttention > 0) {
       (navigator as any).setAppBadge(totalAttention).catch(() => {});

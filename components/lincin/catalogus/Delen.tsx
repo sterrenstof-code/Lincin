@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Pressable, Text, TextInput, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { Platform, Pressable, Text, TextInput, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { kaartjeTekst, letter, NAAD, tekst, useCat } from "./stijl";
 
@@ -159,7 +159,7 @@ export function Veld({
           paddingVertical: 0,
           color: c.inkt,
           ...tekst(15),
-          outlineStyle: "none",
+          ...(Platform.OS === "web" ? { outlineStyle: "none" } : null),
         } as unknown as TextStyle,
         style,
       ]}

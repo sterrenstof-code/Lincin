@@ -10,6 +10,7 @@ import { createNotification } from "./notifications";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
+import { uploadBody } from "../upload-body";
 
 export type EntityType = "post" | "poll" | "call_plan" | "list";
 
@@ -38,7 +39,7 @@ async function uploadCommentImage(userId: string, uri: string): Promise<string> 
       : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
   const path = `${userId}/comment-${unique}.${safeExt}`;
   const bytes = await uriToBytes(uri);
-  const blob = new Blob([bytes as any], { type });
+  const blob = uploadBody(bytes, type);
   const { error } = await supabase.storage
     .from(COMMENT_BUCKET)
     .upload(path, blob, { contentType: type, upsert: false });

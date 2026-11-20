@@ -1,3 +1,4 @@
+import * as Sharing from "expo-sharing";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { emojiSuggestionsFor, replaceEmoticons } from "@/lib/emoji";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,6 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -110,7 +110,6 @@ import {
   encryptFileBytes,
   uriToBytes,
 } from "@/lib/crypto/file";
-import { openJitsiCall } from "@/lib/jitsi";
 import { getCallPlanWithDetails, voteCallPlanSlot } from "@/lib/api/call-plans";
 import { createNotification } from "@/lib/api/notifications";
 import { getPollWithDetails, votePollOption } from "@/lib/api/polls";
@@ -1621,11 +1620,9 @@ export function ChatDetail({
   /** Start een videogesprek en meldt dat één keer in het gesprek. */
   async function startCall() {
     if (!id) return;
-    if (typeof window !== "undefined" && window.document) {
-      setCallOpen(true);
-    } else {
-      openJitsiCall(id).catch(() => {});
-    }
+    // Overal in de app zelf: op web een iframe, native een WebView
+    // (components/VideoCallModal). Vroeger ging native naar de browser.
+    setCallOpen(true);
     if (!callSentRef.current && myUserId) {
       callSentRef.current = true;
       try {
@@ -1722,11 +1719,7 @@ export function ChatDetail({
       setReactionDetail({ emoji, names });
     },
     joinCall: (chatId) => {
-      if (typeof window !== "undefined" && window.document) {
-        setCallOpen(true);
-      } else {
-        openJitsiCall(chatId).catch(() => {});
-      }
+      setCallOpen(true);
     },
   };
   const rowActions = useMemo<RowActions>(
@@ -4810,7 +4803,7 @@ function AttachmentView({
           onPress={() =>
             Platform.OS === "web"
               ? downloadBlobUri(uri!, attachment.filename ?? "bestand")
-              : Linking.openURL(uri!).catch(() => {})
+              : Sharing.shareAsync(uri!, { mimeType: attachment.mime_type ?? undefined, dialogTitle: attachment.filename ?? undefined }).catch(() => {})
           }
           className="ml-2 p-2"
         >

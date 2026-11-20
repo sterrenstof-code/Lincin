@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, TextInput, View, type TextStyle } from "react-native";
+import { Platform, Pressable, Text, TextInput, View, type TextStyle } from "react-native";
 
 import { Band, Knop, Onderstreept, Schakelaar } from "../Delen";
 import { Kaartje, type Regel } from "../Kaartje";
@@ -286,7 +286,7 @@ export function FormRegel({ r }: { r: Veldregel }) {
               paddingHorizontal: 2,
               paddingVertical: 1,
               ...tekst(16),
-              outlineStyle: "none",
+              ...(Platform.OS === "web" ? { outlineStyle: "none" } : null),
             } as unknown as TextStyle
           }
         />

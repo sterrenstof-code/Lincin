@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -140,7 +141,7 @@ export function Carousel({
         accessibilityRole="imagebutton"
         accessibilityLabel={multi ? `Foto ${i + 1} van ${n}` : "Foto"}
         onPress={() => onZoom!(i)}
-        style={[style, { cursor: "zoom-in" } as object]}
+        style={[style, Platform.OS === "web" ? ({ cursor: "zoom-in" } as object) : null]}
       >
         {image}
       </Pressable>

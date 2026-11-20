@@ -5,6 +5,7 @@ import { IMG, signedImageUrl, signedImageUrls } from "../media";
 import { uriToBytes } from "../crypto/file";
 import { getProfiles, type Profile } from "./profiles";
 import { uniqueTopic } from "@/lib/supabase/channel";
+import { uploadBody } from "../upload-body";
 
 export type EventRevealMode = "during" | "after" | "delayed";
 
@@ -172,7 +173,7 @@ async function uploadToEventBucket(
 ): Promise<void> {
   const bytes = await uriToBytes(uri);
   const contentType = mimeType || "application/octet-stream";
-  const blob = new Blob([bytes as any], { type: contentType });
+  const blob = uploadBody(bytes, contentType);
   const { error } = await supabase.storage
     .from(EVENT_BUCKET)
     .upload(path, blob, { contentType });

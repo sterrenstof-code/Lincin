@@ -32,7 +32,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   newArchEnabled: true,
 
   ios: {
-    supportsTablet: true,
+    /**
+     * Eerste uitgave: alleen iPhone (op een iPad draait hij als
+     * iPhone-app). Op een iPad van 1024pt of breder kozen magazine en modern
+     * de desktopvorm, die op muis en hover gebouwd is en bij draaien van
+     * vorm wisselt. Later aanzetten mag; na uitgave weer uitzetten kan bij
+     * Apple niet. De ~ipad-sleutels hieronder doen pas mee als dit `true` is.
+     */
+    supportsTablet: false,
     bundleIdentifier: "io.beyondesign.lincin",
     /**
      * Privacy manifest. Apple wil van élke app horen waarom hij een paar

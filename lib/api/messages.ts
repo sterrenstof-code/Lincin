@@ -11,6 +11,7 @@ import { supabase } from "../supabase/client";
 import { getProfiles } from "./profiles";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { timeoutSignal } from "@/lib/supabase/timeout";
+import { blobBytes, uploadBody } from "../upload-body";
 
 export type MessageRow = {
   id: string;
@@ -546,9 +547,7 @@ export async function uploadEncryptedAttachment(args: {
   const path = `${args.chatId}/${randomId()}.bin`;
   // Upload as Blob — supabase-js accepts ArrayBuffer/Blob/Uint8Array but
   // Blob is the most cross-platform on web + RN.
-  const blob = new Blob([args.ciphertext as any], {
-    type: "application/octet-stream",
-  });
+  const blob = uploadBody(args.ciphertext, "application/octet-stream");
   const { error } = await supabase.storage
     .from(ATTACHMENT_BUCKET)
     .upload(path, blob, { contentType: "application/octet-stream", upsert: false });
@@ -564,8 +563,7 @@ export async function downloadEncryptedAttachment(
     .from(ATTACHMENT_BUCKET)
     .download(path);
   if (error) throw error;
-  const buffer = await data.arrayBuffer();
-  return new Uint8Array(buffer);
+  return blobBytes(data);
 }
 
 /** Build the AttachmentInfo envelope from encrypt-helper output. */

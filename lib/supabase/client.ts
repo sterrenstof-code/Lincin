@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import type { Database } from "./types";
 
@@ -41,3 +41,16 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: Platform.OS === "web",
   },
 });
+
+/**
+ * Native: de sessie alleen verversen zolang de app op de voorgrond staat,
+ * zoals Supabase voor React Native aanraadt. In de achtergrond lopen timers
+ * niet betrouwbaar; kwam je na uren terug, dan gingen de eerste verzoeken
+ * met een verlopen token en kreeg je 401's. Bij terugkeer meteen verversen.
+ */
+if (Platform.OS !== "web") {
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") supabase.auth.startAutoRefresh();
+    else supabase.auth.stopAutoRefresh();
+  });
+}

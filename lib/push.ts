@@ -247,20 +247,32 @@ export async function registerPushToken(userId: string): Promise<string | null> 
  * aan en cleanup de returnwaarde. Op web worden taps afgehandeld via de
  * service worker (zie public/sw.js notificationclick + postMessage).
  */
+/** Elke melding maar één keer openen (luisteraar én koude start). */
+const handledResponses = new Set<string>();
+
 export function addNotificationTapListener(
   onTap: (data: Record<string, any>) => void
 ) {
-  const sub = Notifications.addNotificationResponseReceivedListener(
-    (response) => {
-      const data = (response.notification.request.content.data ?? {}) as Record<
-        string,
-        any
-      >;
-      // "reply"-actie vanuit notificatie-center — zelfde navigatie als tap
-      // (chat opent, gebruiker kan beantwoorden). Inline-send zonder app-open
-      // vereist background task en is fase 2.
-      onTap(data);
-    }
-  );
+  if (Platform.OS === "web") return () => {};
+  const handle = (response: Notifications.NotificationResponse | null) => {
+    if (!response) return;
+    const id = response.notification.request.identifier;
+    if (handledResponses.has(id)) return;
+    handledResponses.add(id);
+    // "reply"-actie vanuit notificatie-center — zelfde navigatie als tap
+    // (chat opent, gebruiker kan beantwoorden). Inline-send zonder app-open
+    // vereist background task en is fase 2.
+    onTap((response.notification.request.content.data ?? {}) as Record<string, any>);
+  };
+  const sub = Notifications.addNotificationResponseReceivedListener(handle);
+  // Werd de app gestart door op een melding te tikken, dan was die tik er
+  // al vóór deze luisteraar; hij staat dan klaar als "laatste antwoord".
+  Notifications.getLastNotificationResponseAsync().then(handle, () => {});
   return () => sub.remove();
+}
+
+/** Het getal op het app-icoon (iOS, en Android-launchers die het tonen). */
+export function setNativeBadge(count: number): void {
+  if (Platform.OS === "web") return;
+  Notifications.setBadgeCountAsync(Math.max(0, count)).catch(() => {});
 }

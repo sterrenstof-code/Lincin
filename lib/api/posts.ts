@@ -8,6 +8,7 @@ import { listFeedCallPlans, type CallPlanWithDetails } from "./call-plans";
 import { listFeedActivityEvents, listMemoryPosts, type ActivityEventWithActor } from "./activity-events";
 import { listMySharedLists, type SharedListWithDetails } from "./shared-lists";
 import type { LinkPreview } from "./unfurl";
+import { uploadBody } from "../upload-body";
 
 /**
  * Vondsten ("finds") — de inhoud van de feed.
@@ -318,7 +319,7 @@ export async function createFind(args: {
     const path = i === 0 ? `${args.userId}/${postId}.${ext}` : `${args.userId}/${postId}-${i}.${ext}`;
     const contentType = contentTypeForExt(ext);
     const bytes = await uriToBytes(uri);
-    const blob = new Blob([bytes as any], { type: contentType });
+    const blob = uploadBody(bytes, contentType);
     const { error: upErr } = await supabase.storage
       .from(POSTS_BUCKET)
       .upload(path, blob, { contentType, upsert: false });
@@ -345,7 +346,7 @@ export async function createFind(args: {
     const path = `${args.userId}/${postId}-clip.${ext}`;
     const contentType = contentTypeForExt(ext);
     const bytes = await uriToBytes(args.videoUri);
-    const blob = new Blob([bytes as any], { type: contentType });
+    const blob = uploadBody(bytes, contentType);
     const { error: upErr } = await supabase.storage
       .from(POSTS_BUCKET)
       .upload(path, blob, { contentType, upsert: false });
@@ -817,7 +818,7 @@ export async function updatePostPhotos(
       const path = `${post.user_id}/${post.id}-${cryptoRandomId().slice(0, 8)}.${ext}`;
       const contentType = contentTypeForExt(ext);
       const bytes = await uriToBytes(photo.uri);
-      const blob = new Blob([bytes as any], { type: contentType });
+      const blob = uploadBody(bytes, contentType);
       const { error } = await supabase.storage.from(POSTS_BUCKET).upload(path, blob, { contentType, upsert: false });
       if (error) throw error;
       uploaded.push(path);
