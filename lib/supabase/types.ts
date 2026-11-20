@@ -209,7 +209,7 @@ export type Database = {
           id: string;
           type: "direct" | "group";
           name: string | null;
-          created_by: string;
+          created_by: string | null;
           created_at: string;
           last_message_at: string | null;
           /** 0029_chat_avatar */

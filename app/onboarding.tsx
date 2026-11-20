@@ -13,6 +13,7 @@ import {
   AuthTitle,
   AuthTop,
   CellRow,
+  LinedField,
   OutlineButton,
   PrimaryButton,
   StepBars,
@@ -20,6 +21,8 @@ import {
 } from "@/components/lincin/auth/AuthKit";
 import { getMyFriendCode } from "@/lib/api/friend-codes";
 import { getProfile, updateMyProfile, uploadAvatar } from "@/lib/api/profiles";
+import { deleteMyAccount } from "@/lib/api/account";
+import { AGE_REFUSED_TEXT, markAgeRefused, oldEnough } from "@/lib/auth/age";
 import { useAuth } from "@/lib/auth/provider";
 import { uriToBytes } from "@/lib/crypto/file";
 import { color, friendColor, hueFor, useHueChoices, useScheme, useThemeSpec } from "@/lib/design/theme";
@@ -48,9 +51,89 @@ export default function OnboardingScreen() {
   usePageTitle("Welkom");
   const { session, loading } = useAuth();
   const [step, setStep] = useState<2 | 3>(2);
+  const [ageOk, setAgeOk] = useState(false);
   if (loading) return null;
   if (!session) return <Redirect href="/(auth)/welcome" />;
+  // Wie via het formulier kwam gaf al een geboortejaar op; met een
+  // maillink, Google of Apple nog niet.
+  if (!ageOk && session.user.user_metadata?.age_ok !== true) return <AgeStep onOk={() => setAgeOk(true)} />;
   return step === 2 ? <PhotoStep userId={session.user.id} onNext={() => setStep(3)} /> : <InviteStep userId={session.user.id} onBack={() => setStep(2)} />;
+}
+
+/**
+ * Leeftijd (lib/auth/age.ts). Te jong: het account dat de maillink of
+ * Google al maakte wordt meteen gewist, en je wordt afgemeld.
+ */
+function AgeStep({ onOk }: { onOk: () => void }) {
+  const { signOut } = useAuth();
+  const [year, setYear] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refused, setRefused] = useState(false);
+
+  async function onNext() {
+    const ok = oldEnough(year);
+    if (ok === null) return setError("Vul je geboortejaar in, bijvoorbeeld 1994.");
+    setBusy(true);
+    setError(null);
+    if (!ok) {
+      markAgeRefused();
+      setRefused(true);
+      // Het account is er al (maillink, Google): meteen weer weg. Afmelden
+      // pas met de knop, anders verdwijnt deze uitleg voor je hem las.
+      await deleteMyAccount().catch(() => {});
+      setBusy(false);
+      return;
+    }
+    const { error: e } = await supabase.auth.updateUser({ data: { age_ok: true } });
+    setBusy(false);
+    if (e) return setError("Dat lukte niet. Probeer het opnieuw.");
+    onOk();
+  }
+
+  return (
+    <AuthPage>
+      <AuthTop label="Account maken" />
+      <View style={{ paddingTop: 28, paddingHorizontal: 24, gap: 10 }}>
+        <AuthTitle>{refused ? "Nog even geduld" : "Wanneer ben je geboren?"}</AuthTitle>
+        <AuthSub>{refused ? AGE_REFUSED_TEXT : "Alleen het jaar. We bewaren het niet."}</AuthSub>
+      </View>
+      {refused ? (
+        <View style={{ marginTop: 28, marginHorizontal: 6 }}>
+          <OutlineButton label="Terug" onPress={() => void signOut().catch(() => {})} />
+        </View>
+      ) : (
+        <>
+          <View style={{ marginTop: 28, marginHorizontal: 24 }}>
+            <LinedField
+              label="Geboortejaar"
+              value={year}
+              onChangeText={(v) => {
+                setYear(v.replace(/\D/g, "").slice(0, 4));
+                setError(null);
+              }}
+              placeholder="bijvoorbeeld 1994"
+              keyboardType="number-pad"
+              inputMode="numeric"
+              autoComplete="birthdate-year"
+              maxLength={4}
+              returnKeyType="go"
+              onSubmitEditing={onNext}
+            />
+          </View>
+          {error ? (
+            <View style={{ marginTop: 14, marginHorizontal: 24 }}>
+              <AuthNotice tone="error">{error}</AuthNotice>
+            </View>
+          ) : null}
+          <View style={{ flex: 1, minHeight: 28 }} />
+          <View style={{ marginHorizontal: 6, marginBottom: 24 }}>
+            <PrimaryButton label="Volgende" onPress={onNext} busy={busy} />
+          </View>
+        </>
+      )}
+    </AuthPage>
+  );
 }
 
 function PhotoStep({ userId, onNext }: { userId: string; onNext: () => void }) {

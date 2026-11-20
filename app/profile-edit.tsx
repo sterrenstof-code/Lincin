@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { CharCount } from "@/components/CharCount";
 import { FormatBar } from "@/components/FormatBar";
 import { bodyStyle, Button, Field, IconBtn, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
+import { deleteMyAccount } from "@/lib/api/account";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -412,9 +413,57 @@ export default function ProfileEditScreen() {
             {pwdResult?.ok === true ? <Note tone="ink">Wachtwoord ingesteld.</Note> : null}
             {pwdResult && pwdResult.ok === false ? <Note tone="red">{pwdResult.message}</Note> : null}
           </Section>
+
+          <DeleteAccount />
         </>
       )}
     </SubPage>
+  );
+}
+
+/**
+ * Je account verwijderen (AVG art. 17, 0105). Twee stappen, geen
+ * browservenster: eerst de knop, dan zeggen wat er weggaat en nog eens
+ * bevestigen.
+ */
+function DeleteAccount() {
+  const { signOut } = useAuth();
+  const th = useThemeSpec().id;
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onDelete() {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteMyAccount();
+      await signOut().catch(() => {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Verwijderen lukte niet. Probeer het opnieuw.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section label="Account" pad>
+      <Text style={bodyStyle(th, 14, color("ink", "inkDim"))}>
+        {ask
+          ? "Je profiel, bijdragen, reacties, berichten, foto's en sleutels worden voorgoed gewist. Gesprekken blijven voor de anderen, zonder jouw berichten. Dit kan niet ongedaan gemaakt worden."
+          : "Je account en alles wat je op Lincin zette voorgoed verwijderen."}
+      </Text>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+        {ask ? (
+          <>
+            <Button label={busy ? "Bezig…" : "Ja, verwijder alles"} tone="danger" busy={busy} onPress={onDelete} />
+            <Button label="Toch niet" tone="quiet" disabled={busy} onPress={() => setAsk(false)} />
+          </>
+        ) : (
+          <Button label="Account verwijderen" tone="danger" icon="trash-outline" onPress={() => setAsk(true)} />
+        )}
+      </View>
+      {error ? <Note tone="red">{error}</Note> : null}
+    </Section>
   );
 }
 

@@ -15,7 +15,7 @@ export type ChatRow = {
   type: "direct" | "group";
   name: string | null;
   avatar_url: string | null;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
   /**
    * Timestamp van het meest recente bericht in deze chat. Gevuld via DB-

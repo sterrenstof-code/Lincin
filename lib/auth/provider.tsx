@@ -77,7 +77,8 @@ type AuthContextValue = {
 export type OAuthProvider = "apple" | "google";
 
 /** Wat het aanmaken van een account meegeeft aan het profiel (0082). */
-export type SignUpProfile = { displayName: string; hue: Hue };
+/** `ageOk`: het geboortejaar op het formulier was in orde (lib/auth/age.ts). */
+export type SignUpProfile = { displayName: string; hue: Hue; ageOk: true };
 
 /**
  * Apple en Google staan pas aan als ze in Supabase ingesteld zijn — anders
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // ze over zodra het profiel aangemaakt wordt.
             data: {
               has_password: true,
-              ...(profile ? { display_name: profile.displayName.trim(), hue: profile.hue } : null),
+              ...(profile ? { display_name: profile.displayName.trim(), hue: profile.hue, age_ok: profile.ageOk } : null),
             },
             emailRedirectTo: getAuthRedirectUrl(),
           },

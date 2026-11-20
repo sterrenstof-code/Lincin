@@ -15,6 +15,7 @@ import {
   SIGNUP_HUES,
   StepBars,
 } from "@/components/lincin/auth/AuthKit";
+import { AGE_REFUSED_TEXT, ageRefused, markAgeRefused, oldEnough } from "@/lib/auth/age";
 import { useAuth } from "@/lib/auth/provider";
 import { color, type Hue } from "@/lib/design/theme";
 import { usePageTitle } from "@/lib/page-title";
@@ -53,12 +54,15 @@ export default function SignupScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(typeof params.email === "string" ? params.email : "");
   const [password, setPassword] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [refused, setRefused] = useState(ageRefused);
   // Een willekeurige kleur om mee te beginnen: anders kiest iedereen die
   // niet kiest dezelfde.
   const [hue, setHue] = useState<Hue>(() => SIGNUP_HUES[Math.floor(Math.random() * SIGNUP_HUES.length)]);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
 
   const clean = () => email.trim().toLowerCase();
   const reset = () => {
@@ -73,10 +77,16 @@ export default function SignupScreen() {
           ? "Geef een geldig e-mailadres."
           : password.length < 8
             ? "Kies een wachtwoord van minstens 8 tekens."
-            : null;
+            : oldEnough(birthYear) === null
+              ? "Vul je geboortejaar in, bijvoorbeeld 1994."
+              : null;
     if (err) return setStatus({ kind: "error", message: err });
+    if (!oldEnough(birthYear)) {
+      markAgeRefused();
+      return setRefused(true);
+    }
     setStatus({ kind: "submitting" });
-    const { error, needsConfirmation, alreadyExists } = await signUp(clean(), password, { displayName: name, hue });
+    const { error, needsConfirmation, alreadyExists } = await signUp(clean(), password, { displayName: name, hue, ageOk: true });
     if (error) {
       return setStatus(
         error.message.includes("registered") ? { kind: "exists" } : { kind: "error", message: error.message },
@@ -94,6 +104,18 @@ export default function SignupScreen() {
   }
 
   const back = () => (router.canGoBack() ? router.back() : router.replace("/(auth)/welcome"));
+
+  if (refused) {
+    return (
+      <AuthPage>
+        <AuthTop label="Account maken" onBack={back} />
+        <View style={{ paddingTop: 28, paddingHorizontal: 24, gap: 10 }}>
+          <AuthTitle>Nog even geduld</AuthTitle>
+          <AuthSub>{AGE_REFUSED_TEXT}</AuthSub>
+        </View>
+      </AuthPage>
+    );
+  }
 
   if (status.kind === "confirm") {
     return (
@@ -175,6 +197,22 @@ export default function SignupScreen() {
           autoCapitalize="none"
           autoComplete="new-password"
           textContentType="newPassword"
+          returnKeyType="next"
+          onSubmitEditing={() => yearRef.current?.focus()}
+        />
+        <LinedField
+          ref={yearRef}
+          label="Geboortejaar"
+          value={birthYear}
+          onChangeText={(v) => {
+            setBirthYear(v.replace(/\D/g, "").slice(0, 4));
+            reset();
+          }}
+          placeholder="bijvoorbeeld 1994"
+          keyboardType="number-pad"
+          inputMode="numeric"
+          autoComplete="birthdate-year"
+          maxLength={4}
           returnKeyType="go"
           onSubmitEditing={onNext}
         />

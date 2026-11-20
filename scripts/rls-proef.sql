@@ -84,6 +84,10 @@ insert into public.friendships (requester_id, addressee_id, status, accepted_at)
 values (current_setting('proef.c')::uuid, current_setting('proef.a')::uuid, 'accepted', now());
 set local role authenticated;
 
+-- A begint een gesprek met C (chats.created_by stond op RESTRICT, 0105).
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.a'), 'role', 'authenticated')::text, true);
+select public.get_or_create_direct_chat(current_setting('proef.c')::uuid);
+
 -- ---- B probeert bij A ----------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.b'), 'role', 'authenticated')::text, true);
 
@@ -176,6 +180,27 @@ begin
   exception when insufficient_privilege then
     insert into proef (naam, ok) values ('anon leest geen profielen', true);
   end;
+end $$;
+
+-- ---- A wist zijn account (delete-account, 0105) -------------------------
+reset role;
+do $$
+declare a uuid := current_setting('proef.a')::uuid; n int;
+begin
+  perform public.prepare_account_deletion(a);
+  delete from auth.users where id = a;
+  select (select count(*) from public.profiles where id = a)
+       + (select count(*) from public.posts where user_id = a)
+       + (select count(*) from public.key_passkeys where user_id = a)
+       + (select count(*) from public.user_prefs where user_id = a)
+       + (select count(*) from public.presence where user_id = a)
+       + (select count(*) from public.list_items where user_id = a)
+       + (select count(*) from public.chat_members where user_id = a)
+       + (select count(*) from public.friendships where requester_id = a or addressee_id = a)
+    into n;
+  insert into proef (naam, ok) values ('A wissen laat geen rijen van A achter', n = 0);
+exception when others then
+  insert into proef (naam, ok) values ('A wissen laat geen rijen van A achter (' || sqlerrm || ')', false);
 end $$;
 
 reset role;
