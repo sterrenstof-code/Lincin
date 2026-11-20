@@ -30,7 +30,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "expo": "~54.0.37",
-    "expo-asset": "~12.0.13",
+    "expo-asset": "~12.0.14",
     "expo-audio": "~1.1.1",
     "expo-build-properties": "~1.0.10",
     "expo-camera": "~17.0.10",

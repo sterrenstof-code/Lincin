@@ -40,13 +40,32 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
      * waarschuwing (ITMS-91053) of afwijzing bij het inleveren. Dit zijn
      * de vier die React Native en de Expo-modules zelf gebruiken — voor
      * AsyncStorage, bestandscache, tijdmeting en vrije ruimte — met de
-     * redencodes die Apple daarvoor voorschrijft. De app verzamelt geen
-     * trackinggegevens; vandaar de lege lijsten.
+     * redencodes die Apple daarvoor voorschrijft. De app volgt niemand
+     * (geen tracking, geen trackingdomeinen).
+     *
+     * Wat hij wél verzamelt, alleen om te werken en aan je account
+     * gekoppeld: e-mail, naam, gebruikers-id, foto's/video's en wat je
+     * schrijft. Berichten en gedeelde plekken zijn end-to-end versleuteld
+     * en tellen voor Apple daarom niet mee; contacten gaan alleen als hash
+     * heen en worden niet bewaard. Houd dit gelijk met de privacylabels in
+     * App Store Connect en met lib/legal.ts.
      */
     privacyManifests: {
       NSPrivacyTracking: false,
       NSPrivacyTrackingDomains: [],
-      NSPrivacyCollectedDataTypes: [],
+      NSPrivacyCollectedDataTypes: [
+        "NSPrivacyCollectedDataTypeEmailAddress",
+        "NSPrivacyCollectedDataTypeName",
+        "NSPrivacyCollectedDataTypeUserID",
+        "NSPrivacyCollectedDataTypePhotosorVideos",
+        "NSPrivacyCollectedDataTypeOtherUserContent",
+        "NSPrivacyCollectedDataTypeDeviceID",
+      ].map((type) => ({
+        NSPrivacyCollectedDataType: type,
+        NSPrivacyCollectedDataTypeLinked: true,
+        NSPrivacyCollectedDataTypeTracking: false,
+        NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+      })),
       NSPrivacyAccessedAPITypes: [
         {
           NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
