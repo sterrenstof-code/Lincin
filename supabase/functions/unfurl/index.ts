@@ -599,7 +599,14 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // 2. Ophalen
+  // 2. Ophalen — hoogstens 60 nieuwe per uur per account (0104).
+  const { data: allowed, error: claimErr } = await admin.rpc("claim_unfurl", { p_user: who.user.id });
+  if (claimErr) {
+    console.warn("unfurl claim", claimErr.message);
+    return json({ preview: null, error: "Geen voorbeeld beschikbaar." }, 503);
+  }
+  if (!allowed) return json({ preview: null, error: "Even te veel links. Probeer het straks opnieuw." }, 429);
+
   try {
     const preview = await buildPreview(normalized);
     await admin
