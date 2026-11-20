@@ -40,6 +40,7 @@ select set_config('request.jwt.claims', json_build_object('sub', current_setting
 
 insert into public.profiles (id, username, identity_pubkey)
 values (current_setting('proef.a')::uuid, 'proefa' || substr(md5(random()::text), 1, 8), 'proef');
+update public.profiles set last_seen_at = now() where id = current_setting('proef.a')::uuid;
 insert into public.posts (id, user_id, caption)
 values (current_setting('proef.post')::uuid, current_setting('proef.a')::uuid, 'privé van A');
 insert into public.key_passkeys (credential_id, user_id, wrapped)
@@ -76,6 +77,12 @@ begin
   end loop;
   insert into proef (naam, ok) values ('A kan geen 21 vriendschapsverzoeken op een dag sturen (' || n || ' gelukt)', geweigerd and n = 20);
 end $$;
+
+-- A en C zijn lincs; B kent A niet.
+reset role;
+insert into public.friendships (requester_id, addressee_id, status, accepted_at)
+values (current_setting('proef.c')::uuid, current_setting('proef.a')::uuid, 'accepted', now());
+set local role authenticated;
 
 -- ---- B probeert bij A ----------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.b'), 'role', 'authenticated')::text, true);
@@ -130,6 +137,9 @@ insert into proef (naam, ok)
 select 'B vinkt af op eigen naam; het item blijft van A', checked and checked_by = current_setting('proef.b')::uuid and user_id = current_setting('proef.a')::uuid
 from public.list_items where id = current_setting('proef.item')::uuid;
 
+insert into proef (naam, ok) select 'B ziet niet wanneer A laatst actief was (profiel)', last_seen_at is null from public.profiles where id = current_setting('proef.a')::uuid;
+insert into proef (naam, ok) select 'B ziet niet wanneer A laatst actief was (last_seen_of)', count(*) = 0 from public.last_seen_of(array[current_setting('proef.a')::uuid]);
+
 -- Verzoek, intrekken, opnieuw: de tweede keer op dezelfde dag niet.
 do $$
 begin
@@ -142,6 +152,10 @@ begin
     insert into proef (naam, ok) values ('B kan C niet blijven porren met verzoeken', true);
   end;
 end $$;
+
+-- C is een linc van A en ziet het wel.
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.c'), 'role', 'authenticated')::text, true);
+insert into proef (naam, ok) select 'C (linc van A) ziet wanneer A laatst actief was', count(*) = 1 from public.last_seen_of(array[current_setting('proef.a')::uuid]);
 
 -- ---- Niet ingelogd -------------------------------------------------------
 reset role;

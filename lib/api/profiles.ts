@@ -42,6 +42,18 @@ export type Profile = {
 const PROFILE_COLUMNS =
   "id, username, display_name, avatar_url, identity_pubkey, last_seen_at, bio, hero_url, links, hue";
 
+/**
+ * `last_seen_at` op het profiel blijft leeg (0103): het tijdstip komt uit
+ * `last_seen_of`, en alleen voor jezelf, je lincs en wie met jou in een
+ * gesprek zit. Lukt dat niet, dan gewoon geen "actief".
+ */
+export async function withLastSeen<T extends { id: string; last_seen_at?: string | null }>(list: T[]): Promise<T[]> {
+  if (list.length === 0) return list;
+  const { data } = await supabase.rpc("last_seen_of", { p_ids: list.map((p) => p.id) });
+  const seen = new Map<string, string>((data ?? []).map((r: { id: string; last_seen_at: string }) => [r.id, r.last_seen_at]));
+  return list.map((p) => ({ ...p, last_seen_at: seen.get(p.id) ?? null }));
+}
+
 /** Elk geladen profiel geeft zijn eigen kleur af aan `hueFor` (0082). */
 function remembered<T extends { id: string; hue?: string | null }>(list: T[]): T[] {
   rememberHues(list);
@@ -132,7 +144,7 @@ export async function getProfiles(userIds: string[]): Promise<Profile[]> {
     .select(PROFILE_COLUMNS)
     .in("id", userIds);
   if (error) throw error;
-  return remembered(data ?? []);
+  return withLastSeen(remembered(data ?? []));
 }
 
 /**

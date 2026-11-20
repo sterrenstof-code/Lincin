@@ -5,7 +5,7 @@ import { isAttentive } from "../attention";
 import { rememberHues } from "../design/theme";
 import { supabase } from "../supabase/client";
 import { forgetChatRecipients, subscribeToAllMyMessages, type MessageRow } from "./messages";
-import type { Profile } from "./profiles";
+import { withLastSeen, type Profile } from "./profiles";
 import { shareMyMessagesWithMembers } from "./rekey";
 import { uniqueTopic } from "@/lib/supabase/channel";
 import { timeoutSignal } from "@/lib/supabase/timeout";
@@ -200,7 +200,7 @@ async function listMyChatsLegacy(myUserId: string): Promise<ChatWithMembers[]> {
     .abortSignal(timeoutSignal());
   if (pErr) throw pErr;
   rememberHues(profiles ?? []);
-  const profileById = new Map<string, Profile>(profiles?.map((p) => [p.id, p]) ?? []);
+  const profileById = new Map<string, Profile>((await withLastSeen(profiles ?? [])).map((p) => [p.id, p]));
 
   const membersByChat = new Map<string, Profile[]>();
   for (const m of members) {
@@ -324,7 +324,7 @@ export async function listChatMembers(
     .in("id", profileIds);
   if (pErr) throw pErr;
   rememberHues(profiles ?? []);
-  const byId = new Map<string, Profile>((profiles ?? []).map((p) => [p.id, p]));
+  const byId = new Map<string, Profile>((await withLastSeen(profiles ?? [])).map((p) => [p.id, p]));
   return rows.map((r) => ({
     user_id: r.user_id,
     role: r.role as "owner" | "member",

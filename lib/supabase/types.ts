@@ -1075,6 +1075,8 @@ export type Database = {
     };
 
     Functions: {
+      /** 0103 — laatst actief, alleen voor jezelf, je lincs en wie met je in een gesprek zit. */
+      last_seen_of: { Args: { p_ids: string[] }; Returns: { id: string; last_seen_at: string }[] };
       /** 0085/0086 — polls. */
       poll_results: { Args: { p_poll_id: string }; Returns: { option_id: string; votes: number }[] };
       poll_voter_count: { Args: { p_poll_id: string }; Returns: number };
