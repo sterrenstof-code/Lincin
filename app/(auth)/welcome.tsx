@@ -68,7 +68,13 @@ export default function WelcomeScreen() {
       <View style={{ paddingTop: 16, paddingHorizontal: 24, paddingBottom: 24, alignItems: "center" }}>
         <AuthLabel style={{ textAlign: "center", color: color("ink", "inkDim") }}>
           Door verder te gaan ga je akkoord met de{" "}
-          <Text style={{ textDecorationLine: "underline" }}>voorwaarden</Text>
+          <Text accessibilityRole="link" style={{ textDecorationLine: "underline" }} onPress={() => router.push("/voorwaarden")}>
+            voorwaarden
+          </Text>{" "}
+          en het{" "}
+          <Text accessibilityRole="link" style={{ textDecorationLine: "underline" }} onPress={() => router.push("/privacy")}>
+            privacybeleid
+          </Text>
         </AuthLabel>
       </View>
     </AuthPage>

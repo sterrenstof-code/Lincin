@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
-import { Pressable, View, type TextInput } from "react-native";
+import { Pressable, Text, View, type TextInput } from "react-native";
 
 import {
   AuthLabel,
@@ -245,6 +245,18 @@ export default function SignupScreen() {
       ) : null}
 
       <View style={{ flex: 1, minHeight: 28 }} />
+      <View style={{ marginHorizontal: 24, marginBottom: 12 }}>
+        <AuthLabel style={{ color: color("ink", "inkDim") }}>
+          Met Volgende ga je akkoord met de{" "}
+          <Text accessibilityRole="link" style={{ textDecorationLine: "underline" }} onPress={() => router.push("/voorwaarden")}>
+            voorwaarden
+          </Text>{" "}
+          en het{" "}
+          <Text accessibilityRole="link" style={{ textDecorationLine: "underline" }} onPress={() => router.push("/privacy")}>
+            privacybeleid
+          </Text>
+        </AuthLabel>
+      </View>
       <View style={{ marginHorizontal: 6, marginBottom: 24 }}>
         <PrimaryButton label="Volgende" onPress={onNext} busy={status.kind === "submitting"} />
       </View>
