@@ -1075,6 +1075,10 @@ export type Database = {
     };
 
     Functions: {
+      /** 0106 — blokkeren. */
+      block_user: { Args: { p_user: string }; Returns: undefined };
+      unblock_user: { Args: { p_user: string }; Returns: undefined };
+      my_blocked_users: { Args: Record<string, never>; Returns: { id: string; username: string; display_name: string | null; avatar_url: string | null }[] };
       /** 0103 — laatst actief, alleen voor jezelf, je lincs en wie met je in een gesprek zit. */
       last_seen_of: { Args: { p_ids: string[] }; Returns: { id: string; last_seen_at: string }[] };
       /** 0085/0086 — polls. */

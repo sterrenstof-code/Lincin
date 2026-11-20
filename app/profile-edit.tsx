@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import { CharCount } from "@/components/CharCount";
 import { FormatBar } from "@/components/FormatBar";
 import { bodyStyle, Button, Field, IconBtn, labelStyle, Note, Section, SubPage } from "@/components/lincin/SubPage";
 import { deleteMyAccount } from "@/lib/api/account";
+import { listBlockedUsers, unblockUser } from "@/lib/api/friends";
 import { useAuth } from "@/lib/auth/provider";
 import {
   getProfile,
@@ -414,10 +415,46 @@ export default function ProfileEditScreen() {
             {pwdResult && pwdResult.ok === false ? <Note tone="red">{pwdResult.message}</Note> : null}
           </Section>
 
+          <BlockedUsers />
+
           <DeleteAccount />
         </>
       )}
     </SubPage>
+  );
+}
+
+/** Wie je blokkeerde (0106), met opheffen. Alleen als er iemand is. */
+function BlockedUsers() {
+  const th = useThemeSpec().id;
+  const qc = useQueryClient();
+  const blocked = useQuery({ queryKey: ["blocked-users"], queryFn: listBlockedUsers });
+  const [busy, setBusy] = useState<string | null>(null);
+  if (!blocked.data?.length) return null;
+
+  async function onUnblock(id: string) {
+    setBusy(id);
+    try {
+      await unblockUser(id);
+      await qc.invalidateQueries();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Section label="Geblokkeerd" pad>
+      <View style={{ gap: 10 }}>
+        {blocked.data.map((u) => (
+          <View key={u.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <Text style={bodyStyle(th, 15, color("ink"))} numberOfLines={1}>
+              {u.display_name || `@${u.username}`}
+            </Text>
+            <Button label="Opheffen" tone="quiet" small busy={busy === u.id} onPress={() => void onUnblock(u.id)} />
+          </View>
+        ))}
+      </View>
+    </Section>
   );
 }
 

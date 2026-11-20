@@ -161,6 +161,28 @@ end $$;
 select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.c'), 'role', 'authenticated')::text, true);
 insert into proef (naam, ok) select 'C (linc van A) ziet wanneer A laatst actief was', count(*) = 1 from public.last_seen_of(array[current_setting('proef.a')::uuid]);
 
+-- C blokkeert B (0106): B ziet het niet, kan het niet wissen, en kan C geen verzoek meer sturen.
+select public.block_user(current_setting('proef.b')::uuid);
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.b'), 'role', 'authenticated')::text, true);
+insert into proef (naam, ok) select 'B ziet niet dat C hem blokkeerde', count(*) = 0 from public.friendships where requester_id = current_setting('proef.c')::uuid and addressee_id = current_setting('proef.b')::uuid;
+do $$
+declare n int;
+begin
+  delete from public.friendships where requester_id = current_setting('proef.c')::uuid and addressee_id = current_setting('proef.b')::uuid;
+  get diagnostics n = row_count;
+  insert into proef (naam, ok) values ('B kan de blokkade van C niet wissen', n = 0);
+  begin
+    insert into public.friendships (requester_id, addressee_id, status) values (current_setting('proef.b')::uuid, current_setting('proef.c')::uuid, 'pending');
+    insert into proef (naam, ok) values ('B kan C na een blokkade geen verzoek sturen', false);
+  exception when others then
+    -- Om de blokkade, niet om de daglimiet van eerder in deze proef.
+    insert into proef (naam, ok) values ('B kan C na een blokkade geen verzoek sturen', sqlerrm = 'not allowed');
+  end;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', current_setting('proef.c'), 'role', 'authenticated')::text, true);
+select public.unblock_user(current_setting('proef.b')::uuid);
+insert into proef (naam, ok) select 'C kan de blokkade opheffen', count(*) = 0 from public.my_blocked_users();
+
 -- ---- Niet ingelogd -------------------------------------------------------
 reset role;
 set local role anon;

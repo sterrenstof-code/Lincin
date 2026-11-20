@@ -62,6 +62,8 @@ export async function listMyFriendships(
     .select(
       "id, requester_id, addressee_id, status, created_at, accepted_at"
     )
+    // Wie jij blokkeerde is geen vriend en geen verzoek (0106).
+    .neq("status", "blocked")
     .order("created_at", { ascending: false });
   if (error) throw error;
   const rows = (data ?? []) as Friendship[];
@@ -88,4 +90,26 @@ export async function listMyFriendships(
       return { ...r, other } satisfies FriendshipWithProfile;
     })
     .filter((x): x is FriendshipWithProfile => x !== null);
+}
+
+/**
+ * Iemand blokkeren (0106): geen lincs meer, geen verzoeken meer, en jij
+ * verlaat jullie één-op-één-gesprek. De ander ziet niet dat hij geblokkeerd is.
+ */
+export async function blockUser(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("block_user", { p_user: userId });
+  if (error) throw error;
+}
+
+export async function unblockUser(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("unblock_user", { p_user: userId });
+  if (error) throw error;
+}
+
+export type BlockedUser = { id: string; username: string; display_name: string | null; avatar_url: string | null };
+
+export async function listBlockedUsers(): Promise<BlockedUser[]> {
+  const { data, error } = await supabase.rpc("my_blocked_users");
+  if (error) throw error;
+  return (data ?? []) as BlockedUser[];
 }

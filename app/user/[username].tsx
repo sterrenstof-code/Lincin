@@ -3,6 +3,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { ActionSheet } from "@/components/ActionSheet";
+
 import { LincinScreen, TopRow, vfade } from "@/components/lincin/Chrome";
 import { PostCard } from "@/components/lincin/PostCard";
 import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateSheet";
@@ -31,6 +33,7 @@ import { usePageTitle } from "@/lib/page-title";
 import { markSeen } from "@/lib/read-state";
 import { useToast } from "@/lib/toast";
 import { confirm } from "@/lib/confirm";
+import { useModeration } from "@/lib/lincin/moderation";
 import { safeBack } from "@/lib/nav";
 import { bioLine } from "@/lib/lincin/model";
 import { CardVoorwerp, datumVan, titelVan } from "@/components/lincin/catalogus/kaart";
@@ -81,6 +84,8 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const username = (usernameProp ?? raw ?? "").toString().trim().toLowerCase();
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<PrivateTarget | null>(null);
+  const [meerOpen, setMeerOpen] = useState(false);
+  const mod = useModeration();
 
   /**
    * Eerst op gebruikersnaam. Wie "@mie" typt, bedoelt soms de linc die zo
@@ -197,6 +202,39 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
   const since = relation.kind === "friend" && relation.since ? `${t.lincSince} ${shortDate(relation.since, lang)}` : null;
   const count = `${cards.length} ${cards.length === 1 ? t.post1 : t.posts}`;
 
+  /** ⋯ bij iemand anders: als linc verwijderen, en blokkeren (0106). */
+  const meerSheet =
+    p && relation.kind !== "self" && relation.kind !== "not-found" ? (
+      <ActionSheet
+        visible={meerOpen}
+        onClose={() => setMeerOpen(false)}
+        title={name}
+        actions={[
+          ...(relation.kind === "friend"
+            ? [
+                {
+                  label: "Verwijder als linc",
+                  onPress: () => {
+                    setMeerOpen(false);
+                    void confirm(`${name} verwijderen als linc?`, "Jullie zien elkaars bijdragen dan niet meer.", { affirmativeLabel: "Verwijder", destructive: true }).then((ok) => {
+                      if (ok) void run(() => deleteFriendship(relation.friendshipId));
+                    });
+                  },
+                },
+              ]
+            : []),
+          {
+            label: `Blokkeer ${name}`,
+            destructive: true,
+            onPress: () => {
+              setMeerOpen(false);
+              void mod.block(p.id, name).then((ok) => ok && safeBack(router, "/feed"));
+            },
+          },
+        ]}
+      />
+    ) : null;
+
   if (catalogus && !embedded && catalogusDesktop) {
     // Desktop: de opbouw van Jij, met de bio en de knoppen.
     const melding = p ? null : profile.isLoading ? t.loading : profile.isError ? "Het profiel laadde niet." : `Er is geen linc met de naam @${username}.`;
@@ -217,6 +255,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
           melding={melding}
         />
         <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
+        {meerSheet}
       </>
     );
   }
@@ -246,16 +285,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
             { label: "Bijdragen", waarde: String(cards.length) },
           ]}
           terug={() => safeBack(router, "/feed")}
-          meer={
-            relation.kind === "friend"
-              ? () =>
-                  confirm(`${name} verwijderen als linc?`, "Jullie zien elkaars bijdragen dan niet meer.", { affirmativeLabel: "Verwijder", destructive: true }).then(
-                    (ok) => {
-                      if (ok) void run(() => deleteFriendship(relation.friendshipId));
-                    },
-                  )
-              : undefined
-          }
+          meer={meerSheet ? () => setMeerOpen(true) : undefined}
           beeld={{ beeld: p?.avatar_url, kleur: lincKleur(p?.id), initiaal: initial }}
           naam={name}
           bio={bioLine(p?.bio)}
@@ -351,9 +381,16 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
       header={
         <TopRow
           right={
-            <Mono variant="micro" tone="dim">
-              {t.scrProfile}
-            </Mono>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Mono variant="micro" tone="dim">
+                {t.scrProfile}
+              </Mono>
+              {meerSheet ? (
+                <Pressable accessibilityRole="button" accessibilityLabel={`Meer over ${name}`} onPress={() => setMeerOpen(true)} hitSlop={8}>
+                  <Mono variant="micro">Meer</Mono>
+                </Pressable>
+              ) : null}
+            </View>
           }
         />
       }
@@ -451,6 +488,7 @@ export function UserProfileScreen({ username: usernameProp, embedded = false }: 
         ) : null}
       </ScrollView>
       <PrivateSheet target={sheet} onClose={() => setSheet(null)} />
+      {meerSheet}
     </LincinScreen>
   );
 }

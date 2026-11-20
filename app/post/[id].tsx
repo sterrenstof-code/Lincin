@@ -12,6 +12,7 @@ import { PrivateSheet, type PrivateTarget } from "@/components/lincin/PrivateShe
 import { useFeedCard } from "@/components/lincin/feed/useFeed";
 import { BORDER, Box, GUTTER, Mono, Serif, VerticalLabel, line } from "@/components/lincin/ui";
 import type { EntityComment } from "@/lib/api/entity-comments";
+import { useModeration } from "@/lib/lincin/moderation";
 import { deletePost, getPost, type PostWithAuthor } from "@/lib/api/posts";
 import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
@@ -170,6 +171,7 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
   const { ref: mediaRef, size: mediaSize, onLayout: onMediaLayout } = useMeasure();
   const canEvent = !!p && (/\?/.test(p.caption ?? "") || card?.media.kind === "plek");
   const own = !!p && p.user_id === myUserId;
+  const mod = useModeration();
   const authorName = p ? displayName(p.author) : "";
   const spec = useThemeSpec();
   const modern = spec.id === "modern";
@@ -213,6 +215,13 @@ export function PostScreen({ id: idProp, embedded = false }: { id?: string; embe
                 <Pressable accessibilityRole="button" onPress={remove} hitSlop={6}>
                   <Mono variant="micro" tone="red">
                     Verwijder
+                  </Mono>
+                </Pressable>
+              ) : null}
+              {p && !own ? (
+                <Pressable accessibilityRole="button" accessibilityLabel="Meld deze bijdrage" onPress={() => void mod.reportPost(p.id)} hitSlop={6}>
+                  <Mono variant="micro" tone="red">
+                    Meld
                   </Mono>
                 </Pressable>
               ) : null}

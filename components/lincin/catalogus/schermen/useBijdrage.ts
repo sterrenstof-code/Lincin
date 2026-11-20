@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { confirm } from "@/lib/confirm";
 import { useLang, useT } from "@/lib/i18n";
 import { useComments } from "@/lib/lincin/comments";
+import { useModeration } from "@/lib/lincin/moderation";
 import { useDraft } from "@/lib/lincin/drafts";
 import { LIKE, usePostLikes } from "@/lib/lincin/likes";
 import { displayName, fromPost, relTime } from "@/lib/lincin/model";
@@ -37,6 +38,7 @@ export function useBijdrage(id: string, { naVerwijderen }: { naVerwijderen?: () 
   const t = useT();
   const lang = useLang();
   const toast = useToast();
+  const mod = useModeration();
   const { session } = useAuth();
   const me = session?.user.id ?? "";
 
@@ -150,6 +152,15 @@ export function useBijdrage(id: string, { naVerwijderen }: { naVerwijderen?: () 
     : [
         { label: `Stuur ${naam} een bericht hierover`, doe: () => (setMenu(false), praatOver()) },
         { label: "Reageer", doe: () => (setMenu(false), setFocus((n) => n + 1)) },
+        { label: "Meld deze bijdrage", gevaar: true, doe: () => (setMenu(false), p && void mod.reportPost(p.id)) },
+        {
+          label: `Blokkeer ${naam}`,
+          gevaar: true,
+          doe: () => {
+            setMenu(false);
+            if (p) void mod.block(p.user_id, naam).then((ok) => ok && safeBack(router, "/feed"));
+          },
+        },
       ];
 
   function stuur() {
